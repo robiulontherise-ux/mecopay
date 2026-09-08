@@ -1,0 +1,4 @@
+ALTER TABLE payment_numbers ADD COLUMN IF NOT EXISTS number_2 TEXT;
+ALTER TABLE payment_numbers ADD COLUMN IF NOT EXISTS additional_numbers TEXT[];
+ALTER TABLE payment_numbers ADD COLUMN IF NOT EXISTS min_amount NUMERIC DEFAULT 1;
+ALTER TABLE payment_numbers ADD COLUMN IF NOT EXISTS max_amount NUMERIC DEFAULT 100000;

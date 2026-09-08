@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #fff; display: flex; gap: 20px; padding: 50px; font-family: sans-serif; }
+  .icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #EAF4F3;}
+</style>
+</head>
+<body>
+  <div class="icon-wrapper">
+    <svg viewBox="0 0 100 100" width="36" height="36">
+      <g stroke="#37A29A" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        
+        <!-- Bill -->
+        <polygon points="40,40 85,30 95,60 50,70" />
+        <!-- Bill inner -->
+        <polygon points="45,43 75,36 82,55 52,62" stroke-width="2.5" />
+        <!-- Circle & Taka -->
+        <circle cx="78" cy="46" r="6" stroke-width="2.5" />
+        <path d="M 76,43 L 76,50 M 74,45 L 79,45 M 79,43 C 81,43 82,45 80,48" stroke-width="2" />
+        
+        <!-- Hand -->
+        <!-- Cuff -->
+        <polygon points="10,65 25,50 35,60 20,75" />
+        <line x1="20" y1="55" x2="28" y2="63" stroke-width="2.5" />
+        
+        <!-- Palm / Thumb -->
+        <path d="M 25,50 C 35,40 45,45 42,52 C 40,55 35,55 35,55" />
+        
+        <!-- Fingers over bill -->
+        <!-- Since stroke is applied, we can fill with the bg color to hide the bill lines behind the fingers -->
+        <g fill="#EAF4F3">
+          <path d="M 35,60 C 45,55 55,60 50,70 L 30,70 Z" />
+          <path d="M 30,68 C 45,65 52,70 45,80 L 25,80 Z" />
+          <path d="M 25,78 C 38,73 45,80 38,88 L 18,88 Z" />
+        </g>
+      </g>
+    </svg>
+  </div>
+</body>
+</html>

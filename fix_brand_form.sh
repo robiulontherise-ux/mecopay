@@ -1,0 +1,3 @@
+sed -i '/<label className="block text-sm font-medium text-slate-300 mb-1">Brand Name <span className="text-red-500">\*<\/span><\/label>/!b;n;c\                    <input type="text" value={brandForm.name} onChange={(e) => setBrandForm({...brandForm, name: e.target.value})} placeholder="e.g., MecoPay" className="w-full bg-[#242d42] border border-slate-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" />\n                  </div>\n                  <div>' src/components/DashboardShell.tsx
+
+sed -i '/<label className="block text-sm font-medium text-slate-300 mb-1">Primary Website URL<\/label>/!b;n;c\                    <input ' src/components/DashboardShell.tsx

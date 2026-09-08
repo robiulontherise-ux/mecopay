@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #fff; display: flex; gap: 20px; padding: 50px; font-family: sans-serif; }
+  .icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #EAF4F3;}
+</style>
+</head>
+<body>
+  <div class="icon-wrapper">
+    <svg viewBox="0 0 100 100" width="36" height="36">
+      
+      <!-- The Bill (Behind the fingers, in front of the thumb base) -->
+      <g stroke="#39A499" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- Bill Background -->
+        <!-- Bill angles up to the right. 
+             Corners: bottom-left (30,55), top-left (40,30), top-right (85,20), bottom-right (95,50) -->
+        <polygon points="35,50 45,25 90,15 95,45 85,50 75,52" fill="#EAF4F3" />
+        
+        <!-- Bill inner border -->
+        <polygon points="40,45 48,30 83,23 88,43" stroke-width="3" />
+        
+        <!-- Circle & Taka -->
+        <circle cx="75" cy="33" r="8" />
+        <text x="75" y="35" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bold" fill="#39A499" font-family="sans-serif" stroke="none">৳</text>
+      </g>
+
+      <!-- The Hand (Solid Teal) -->
+      <g fill="#39A499" stroke="#39A499" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        
+        <!-- Cuff -->
+        <polygon points="5,70 15,55 30,65 15,85" />
+        <line x1="18" y1="58" x2="28" y2="78" stroke="#FFFFFF" stroke-width="2" /> <!-- Cuff fold line -->
+
+        <!-- Palm & Thumb -->
+        <path d="M 20,60 C 25,50 35,50 35,55 C 38,50 45,45 50,50 C 50,55 40,60 35,62" />
+        <path d="M 15,65 C 20,60 30,65 35,65" stroke="none" />
+
+        <!-- Fingers over bill -->
+        <!-- We use #39A499 fill, but #FFFFFF stroke to separate them -->
+        <g stroke="#FFFFFF" stroke-width="2">
+          <!-- Index -->
+          <path d="M 35,60 C 45,55 55,60 50,70 L 32,70" />
+          <!-- Middle -->
+          <path d="M 32,68 C 45,65 52,70 45,80 L 28,78" />
+          <!-- Ring -->
+          <path d="M 28,76 C 40,73 45,80 38,88 L 22,83" />
+        </g>
+
+      </g>
+
+    </svg>
+  </div>
+</body>
+</html>

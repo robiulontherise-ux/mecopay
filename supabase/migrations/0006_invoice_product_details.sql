@@ -1,0 +1,2 @@
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS product_name TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS redirect_link TEXT;

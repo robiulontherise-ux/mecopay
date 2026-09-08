@@ -1,0 +1,120 @@
+     1	import React, { useState, useEffect } from 'react';
+     2	import { useParams, useNavigate } from 'react-router-dom';
+     3	import { supabase } from '../../lib/supabase';
+     4	import { ShieldCheck, Loader2, Lock, Copy } from 'lucide-react';
+     5	
+     6	export default function CheckoutPage() {
+     7	  const { slug } = useParams();
+     8	  const navigate = useNavigate();
+     9	  
+    10	  const [linkData, setLinkData] = useState<any>(null);
+    11	  const [brandData, setBrandData] = useState<any>(null);
+    12	  const [gateways, setGateways] = useState<any[]>([]);
+    13	  
+    14	  const [loading, setLoading] = useState(true);
+    15	  const [error, setError] = useState('');
+    16	  
+    17	  const [step, setStep] = useState(1);
+    18	  const [invoiceId, setInvoiceId] = useState('');
+    19	  
+    20	  const [formData, setFormData] = useState<Record<string, string>>({});
+    21	  
+    22	  const [selectedGateway, setSelectedGateway] = useState<any>(null);
+    23	  const [senderNumber, setSenderNumber] = useState('');
+    24	  const [trxId, setTrxId] = useState('');
+    25	
+    26	  useEffect(() => {
+    27	    fetchData();
+    28	  }, [slug]);
+    29	
+    30	  const fetchData = async () => {
+    31	    try {
+    32	      setLoading(true);
+    33	      setError('');
+    34	      
+    35	      const { data: link, error: linkErr } = await supabase
+    36	        .from('payment_links')
+    37	        .select('*')
+    38	        .eq('slug', slug)
+    39	        .single();
+    40	        
+    41	      if (linkErr) throw linkErr;
+    42	      if (!link) throw new Error("Payment link not found");
+    43	      
+    44	      setLinkData(link);
+    45	      
+    46	      const { data: brand, error: brandErr } = await supabase
+    47	        .from('brands')
+    48	        .select('*')
+    49	        .eq('id', link.brand_id)
+    50	        .single();
+    51	        
+    52	      if (brandErr) throw brandErr;
+    53	      setBrandData(brand);
+    54	      
+    55	      const { data: gws, error: gwErr } = await supabase
+    56	        .from('payment_numbers')
+    57	        .select('*')
+    58	        .eq('brand_id', link.brand_id);
+    59	        
+    60	      if (gwErr) throw gwErr;
+    61	      setGateways(gws || []);
+    62	      
+    63	    } catch (err: any) {
+    64	      console.error(err);
+    65	      setError(err.message || 'Failed to load checkout');
+    66	    } finally {
+    67	      setLoading(false);
+    68	    }
+    69	  };
+    70	
+    71	  const handleFieldChange = (name: string, value: string) => {
+    72	    setFormData(prev => ({ ...prev, [name]: value }));
+    73	  };
+    74	
+    75	  const handleDetailsSubmit = async (e: React.FormEvent) => {
+    76	    e.preventDefault();
+    77	    try {
+    78	      setLoading(true);
+    79	      
+    80	      // Fallback variables for existing schema compatibility
+    81	      let primaryName = formData['Name'] || formData['name'] || 'Customer';
+    82	      let primaryPhone = formData['Phone'] || formData['phone'] || '';
+    83	      let primaryEmail = formData['Email'] || formData['email'] || '';
+    84	      
+    85	      const payload: any = {
+    86	        user_id: linkData.user_id,
+    87	        brand_id: linkData.brand_id,
+    88	        payment_link_id: linkData.id,
+    89	        amount: linkData.price,
+    90	        status: 'Pending',
+    91	        customer_name: primaryName,
+    92	        customer_phone: primaryPhone,
+    93	        customer_email: primaryEmail
+    94	      };
+    95	
+    96	      // Try to add customer_data (assuming migration might be run by user)
+    97	      payload.customer_data = formData;
+    98	
+    99	      const { data, error } = await supabase
+   100	        .from('invoices')
+   101	        .insert(payload)
+   102	        .select()
+   103	        .single();
+   104	
+   105	      if (error) {
+   106	        // If it fails because customer_data doesn't exist yet, retry without it
+   107	        if (error.message.includes('customer_data')) {
+   108	           delete payload.customer_data;
+   109	           const retry = await supabase.from('invoices').insert(payload).select().single();
+   110	           if (retry.error) throw retry.error;
+   111	           setInvoiceId(retry.data.id);
+   112	        } else {
+   113	           throw error;
+   114	        }
+   115	      } else {
+   116	        setInvoiceId(data.id);
+   117	      }
+   118	      
+   119	      setStep(2);
+   120	    } catch (err: any) {

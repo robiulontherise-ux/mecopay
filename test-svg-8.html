@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #fff; display: flex; gap: 20px; padding: 50px; font-family: sans-serif; }
+  .icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #f5f5f5;}
+</style>
+</head>
+<body>
+
+  <!-- Current -->
+  <div class="icon-wrapper" style="background: #F2F7F6;">
+    <svg viewBox="0 0 100 100" width="36" height="36">
+      <g stroke="#2C8B82" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="#43B0A4">
+        <!-- Bill -->
+        <polygon points="35,30 85,20 95,55 45,65" />
+        <circle cx="68" cy="40" r="10" fill="#FFFFFF" stroke="none" />
+        <text x="68" y="42" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bold" fill="#43B0A4" font-family="sans-serif" stroke="none">৳</text>
+        
+        <!-- Sleeve -->
+        <polygon points="10,48 28,42 35,70 15,80" />
+        <!-- Cuff detail -->
+        <line x1="28" y1="42" x2="35" y2="70" stroke="#2C8B82" stroke-width="4" />
+        <!-- Hand / Thumb -->
+        <path d="M 28,42 C 40,35 45,40 40,50 L 30,52" />
+        <!-- Fingers -->
+        <path d="M 32,60 C 45,55 55,60 50,70 L 35,75" />
+        <path d="M 35,75 C 45,70 55,75 50,85 L 30,90" />
+        <path d="M 25,85 C 35,80 40,85 35,92 L 15,95" />
+      </g>
+    </svg>
+  </div>
+
+  <!-- Attempt 1 -->
+  <div class="icon-wrapper" style="background: #F8F9F9;">
+    <svg viewBox="0 0 100 100" width="36" height="36">
+      <!-- We will use a main color #319E92 -->
+      <g stroke="#319E92" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        
+        <!-- Bill -->
+        <polygon points="40,30 85,15 95,45 50,60" fill="#E6F2F0" />
+        <!-- Inner Bill line -->
+        <polygon points="45,32 80,20 86,40 52,52" stroke-width="3" />
+        <!-- Bill circle -->
+        <circle cx="75" cy="32" r="6" />
+        <!-- Taka symbol inside circle -->
+        <path d="M 73,28 L 73,36 M 71,30 L 76,30 M 76,28 C 77,28 78,29 78,31 C 78,34 74,34 74,34" stroke-width="2" />
+
+        <!-- Hand Fill layer -->
+        <g fill="#76C2B8" stroke="none">
+           <polygon points="15,65 30,50 45,65 30,80" />
+        </g>
+
+        <!-- Cuff -->
+        <polygon points="10,55 25,40 35,50 20,65" fill="#76C2B8" />
+        <line x1="20" y1="45" x2="30" y2="55" />
+        
+        <!-- Fingers under bill -->
+        <path d="M 45,55 C 50,55 55,65 45,70" fill="#76C2B8" />
+        <path d="M 40,60 C 45,60 50,70 40,75" fill="#76C2B8" />
+        <path d="M 35,65 C 40,65 45,75 35,80" fill="#76C2B8" />
+        
+        <!-- Thumb -->
+        <path d="M 30,50 C 40,40 50,45 45,50 C 40,55 35,55 35,55" fill="#76C2B8" />
+        
+      </g>
+    </svg>
+  </div>
+
+  <!-- Attempt 2 -->
+  <div class="icon-wrapper" style="background: #F5FAF8;">
+    <svg viewBox="0 0 100 100" width="36" height="36">
+      <g stroke="#20877C" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        
+        <!-- Bill -->
+        <!-- Angles up slightly. Hand holds the left-bottom corner -->
+        <!-- Background of bill is transparent/white -->
+        <path d="M 30,45 L 80,30 L 90,60 L 40,75 Z" fill="#FFFFFF" />
+        <!-- Inner Border of Bill -->
+        <path d="M 35,46 L 75,34 L 83,57 L 43,69 Z" stroke-width="3" />
+        
+        <!-- Taka symbol inside circle -->
+        <circle cx="70" cy="46" r="8" fill="#FFFFFF"/>
+        <text x="70" y="48" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="bold" fill="#20877C" font-family="sans-serif" stroke="none">৳</text>
+
+        <!-- Hand -->
+        <g fill="#57B4A9">
+          <!-- Cuff -->
+          <polygon points="5,55 20,40 35,55 20,70" />
+          <line x1="15" y1="45" x2="28" y2="58" />
+          
+          <!-- Fingers curling under the bill -->
+          <path d="M 38,65 C 50,60 55,75 45,80 Z" />
+          <path d="M 32,70 C 45,65 50,80 40,85 Z" />
+          <path d="M 26,75 C 38,70 45,85 35,90 Z" />
+          <path d="M 20,80 C 30,75 40,90 28,95 Z" />
+          
+          <!-- Thumb over the bill -->
+          <path d="M 25,45 C 35,35 45,35 45,45 C 45,52 35,55 35,55 Z" />
+        </g>
+      </g>
+    </svg>
+  </div>
+  
+</body>
+</html>

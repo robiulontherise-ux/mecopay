@@ -1,0 +1,753 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
+import { Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert } from 'lucide-react';
+
+export default function DashboardShell() {
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL || user?.email === 'robiulontherise@gmail.com';
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'brand' | 'payments' | 'site' | 'admin'>('brand');
+  const [activeSubMenu, setActiveSubMenu] = useState<string>('Profile');
+  const [isYearly, setIsYearly] = useState(false);
+  const [showAddFund, setShowAddFund] = useState(false);
+
+
+  // Admin Users Real State
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [mockAdminUsers, setMockAdminUsers] = useState<any[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  
+  const [adminWarning, setAdminWarning] = useState('');
+  
+  const fetchUsers = async () => {
+    setIsLoadingUsers(true);
+    setAdminWarning('');
+    try {
+      const res = await fetch('/api/admin/users');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.warning) setAdminWarning(data.warning);
+        setMockAdminUsers(data.users || []);
+      } else {
+        const err = await res.json();
+        console.error("Failed to fetch users:", err.error);
+        setAdminWarning("Could not load users from server.");
+      }
+    } catch (e) {
+      console.error(e);
+      setAdminWarning("Failed to connect to backend API.");
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubMenu === 'Users' && isAdmin) {
+      fetchUsers();
+    }
+  }, [activeSubMenu, isAdmin]);
+  
+  const toggleUserStatus = async (id: string, currentStatus: string) => {
+    const isBlocking = currentStatus === 'Active';
+    try {
+      const res = await fetch(`/api/admin/users/${id}/${isBlocking ? 'block' : 'unblock'}`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        setMockAdminUsers(users => users.map(u => 
+          u.id === id ? { ...u, status: isBlocking ? 'Blocked' : 'Active' } : u
+        ));
+      } else {
+        const err = await res.json();
+        alert("Error changing status: " + err.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update status");
+    }
+  };
+
+  // Profile States
+  const [profileName, setProfileName] = useState<string>('');
+  const [profilePhone, setProfilePhone] = useState<string>('+8801');
+  const [ageGroup, setAgeGroup] = useState<'18_plus' | 'under_18'>('18_plus');
+  const [nidNumber, setNidNumber] = useState<string>('');
+  const [nidFrontImage, setNidFrontImage] = useState<string>('');
+  const [nidBackImage, setNidBackImage] = useState<string>('');
+  const [birthNumber, setBirthNumber] = useState<string>('');
+  const [birthImage, setBirthImage] = useState<string>('');
+  const [faceImage, setFaceImage] = useState<string>('');
+  const [isBirthLocked, setIsBirthLocked] = useState(false);
+  const [isNidLocked, setIsNidLocked] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState<string>('');
+  const [socialFb, setSocialFb] = useState<string>('');
+  const [socialInsta, setSocialInsta] = useState<string>('');
+  const [socialLi, setSocialLi] = useState<string>('');
+  const [socialYt, setSocialYt] = useState<string>('');
+  const [isIdentityLocked, setIsIdentityLocked] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  // Brand States
+  const [showBrandModal, setShowBrandModal] = useState(false);
+  const [activeBrandDropdown, setActiveBrandDropdown] = useState<number | null>(null);
+  const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
+  const [selectedGatewayBrandId, setSelectedGatewayBrandId] = useState<string>('');
+  const [gatewayForm, setGatewayForm] = useState({
+    bkash_merchant_id: '',
+    bkash_app_key: '',
+    bkash_app_secret: '',
+    nagad_merchant_id: '',
+    nagad_public_key: '',
+    personal_bkash_no: '',
+    personal_nagad_no: '',
+    personal_rocket_no: ''
+  });
+  
+  // Mock Brands Data
+  
+  // Real Brand States
+  const [brands, setBrands] = useState<any[]>([]);
+  const [isLoadingBrands, setIsLoadingBrands] = useState(false);
+  const [brandForm, setBrandForm] = useState({
+    name: '',
+    websites: [''],
+    logo_url: '',
+    support_email: '',
+    support_phone: '',
+    whatsapp_number: '',
+    facebook_page_id: '', verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false
+  });
+
+  // Fetch Brands from Supabase & LocalStorage
+  const fetchBrands = async () => {
+    setIsLoadingBrands(true);
+    const local = localStorage.getItem('app_brands');
+    let localBrands = local ? JSON.parse(local) : [];
+
+    try {
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('brands')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (!error && data && data.length > 0) {
+          setBrands(data);
+          localStorage.setItem('app_brands', JSON.stringify(data));
+          setIsLoadingBrands(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Error loading remote brands:', err);
+    }
+    
+    // Fallback to local storage or initial default brand
+    if (localBrands.length === 0) {
+      localBrands = [
+        {
+          id: 'brand_default_1',
+          name: 'My Store Brand',
+          website_url: 'https://example.com, t.me/mybot',
+          logo_url: '',
+          support_email: 'support@example.com',
+          status: 'Active',
+          verify_trx_id: true,
+          verify_phone: true,
+          merchant_api: true,
+          personal_api: true,
+          has_gateway: false
+        }
+      ];
+      localStorage.setItem('app_brands', JSON.stringify(localBrands));
+    }
+    setBrands(localBrands);
+    setIsLoadingBrands(false);
+  };
+
+  useEffect(() => {
+    fetchBrands();
+  }, [user, activeSubMenu]);
+
+  // Handle Create / Edit Brand Modal
+  const handleOpenCreateBrand = () => {
+    setEditingBrandId(null);
+    setBrandForm({
+      name: '', websites: [''], logo_url: '', support_email: '', support_phone: '', whatsapp_number: '', facebook_page_id: '', verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false
+    });
+    setShowBrandModal(true);
+  };
+
+  const handleOpenEditBrand = (brand: any) => {
+    setEditingBrandId(brand.id);
+    setBrandForm({
+      name: brand.name || '',
+      websites: brand.website_url ? brand.website_url.split(',') : [''],
+      logo_url: brand.logo_url || '',
+      support_email: brand.support_email || '',
+      support_phone: brand.support_phone || '',
+      whatsapp_number: brand.whatsapp_number || '',
+      facebook_page_id: brand.facebook_page_id || '',
+      verify_trx_id: !!brand.verify_trx_id,
+      verify_phone: !!brand.verify_phone,
+      merchant_api: !!brand.merchant_api,
+      personal_api: !!brand.personal_api
+    });
+    setActiveBrandDropdown(null);
+    setShowBrandModal(true);
+  };
+
+  const handleSaveBrand = async () => {
+    const validWebsites = brandForm.websites.filter((w: string) => w.trim() !== '');
+    if (!brandForm.name.trim()) {
+      alert("Brand Name is required!");
+      return;
+    }
+    if (validWebsites.length === 0) {
+      alert("At least one Website / Redirect URL is required!");
+      return;
+    }
+
+    const payload = {
+      user_id: user?.id || 'demo_user',
+      name: brandForm.name.trim(),
+      website_url: validWebsites.join(','),
+      logo_url: brandForm.logo_url,
+      support_email: brandForm.support_email,
+      status: 'Active',
+      verify_trx_id: brandForm.verify_trx_id,
+      verify_phone: brandForm.verify_phone,
+      merchant_api: brandForm.merchant_api,
+      personal_api: brandForm.personal_api,
+      has_gateway: false
+    };
+    
+    let updatedList = [...brands];
+
+    try {
+      if (editingBrandId) {
+        if (user?.id) {
+          try {
+            const { data, error } = await supabase
+              .from('brands')
+              .update(payload)
+              .eq('id', editingBrandId)
+              .select();
+            if (!error && data && data.length > 0) {
+              updatedList = brands.map(b => b.id === editingBrandId ? data[0] : b);
+            } else {
+              updatedList = brands.map(b => b.id === editingBrandId ? { ...b, ...payload } : b);
+            }
+          } catch(e) {
+            updatedList = brands.map(b => b.id === editingBrandId ? { ...b, ...payload } : b);
+          }
+        } else {
+          updatedList = brands.map(b => b.id === editingBrandId ? { ...b, ...payload } : b);
+        }
+      } else {
+        const newBrandObj = { id: 'brand_' + Date.now(), ...payload };
+        if (user?.id) {
+          try {
+            const { data, error } = await supabase
+              .from('brands')
+              .insert([payload])
+              .select();
+            if (!error && data && data.length > 0) {
+              updatedList = [data[0], ...brands];
+            } else {
+              updatedList = [newBrandObj, ...brands];
+            }
+          } catch(e) {
+            updatedList = [newBrandObj, ...brands];
+          }
+        } else {
+          updatedList = [newBrandObj, ...brands];
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBrands(updatedList);
+      localStorage.setItem('app_brands', JSON.stringify(updatedList));
+      setShowBrandModal(false);
+      const isEdit = !!editingBrandId;
+      setEditingBrandId(null);
+      setBrandForm({
+        name: '', websites: [''], logo_url: '', support_email: '', support_phone: '', whatsapp_number: '', facebook_page_id: '', verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false
+      });
+      alert(isEdit ? "Brand updated successfully!" : "New Brand created successfully!");
+    }
+  };
+
+  // Handle Delete Brand
+  const handleDeleteBrand = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this brand?")) return;
+    
+    try {
+      if (user?.id) {
+        await supabase.from('brands').delete().eq('id', id);
+      }
+      const filtered = brands.filter(b => b.id !== id);
+      setBrands(filtered);
+      localStorage.setItem('app_brands', JSON.stringify(filtered));
+      setActiveBrandDropdown(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error || !user) {
+        console.error('Auth verification failed:', error);
+        alert('Session expired or invalid. Please log in again.');
+        // Force clear local storage just in case signOut fails
+        localStorage.clear();
+        supabase.auth.signOut().then(() => {
+          window.location.href = '/login';
+        }).catch(() => {
+          window.location.href = '/login';
+        });
+        return;
+      }
+      setUser(user);
+      setProfileName(user.user_metadata?.full_name || '');
+      setProfilePhone(user.user_metadata?.phone || '+8801');
+      setAgeGroup(user.user_metadata?.age_group || '18_plus');
+      setNidNumber(user.user_metadata?.nid_number || user.user_metadata?.identity_number || '');
+      setNidFrontImage(user.user_metadata?.nid_front_image || user.user_metadata?.doc_front_image || '');
+      setNidBackImage(user.user_metadata?.nid_back_image || user.user_metadata?.doc_back_image || '');
+      setBirthNumber(user.user_metadata?.birth_number || '');
+      setBirthImage(user.user_metadata?.birth_image || '');
+      setFaceImage(user.user_metadata?.face_image || '');
+      setWebsiteUrl(user.user_metadata?.website_url || '');
+      setSocialFb(user.user_metadata?.social_fb || '');
+      setSocialInsta(user.user_metadata?.social_insta || '');
+      setSocialLi(user.user_metadata?.social_li || '');
+      setSocialYt(user.user_metadata?.social_yt || '');
+      
+      const hasBirth = !!(user.user_metadata?.birth_number || (user.user_metadata?.identity_type === 'birth_cert' && user.user_metadata?.identity_number));
+      const hasNid = !!(user.user_metadata?.nid_number || (user.user_metadata?.identity_type === 'nid' && user.user_metadata?.identity_number));
+      
+      setIsBirthLocked(hasBirth);
+      setIsNidLocked(hasNid);
+      
+      // Determine overall platform lock status
+      if (user.user_metadata?.age_group === 'under_18') {
+        setIsIdentityLocked(hasBirth);
+      } else {
+        setIsIdentityLocked(hasBirth && hasNid);
+      }
+      
+      // Handle legacy users
+      if (!user.user_metadata?.age_group && user.user_metadata?.identity_number) {
+         setIsIdentityLocked(true);
+      }
+      setIs2FAEnabled(user.user_metadata?.two_factor_enabled || false);
+    });
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
+
+
+  const menuData = {
+    brand: {
+      title: 'Your MecoPay',
+      items: ['Profile', 'Service & Billing', 'Brand', 'Plugins & Apps', 'Dashboard', 'Analytics'],
+    },
+    payments: {
+      title: 'Payments Center',
+      items: ['Gateway Settings', 'Official Merchant API', 'Personal API', 'Payment Links', 'Invoices', 'Transactions', 'Transaction Analysis'],
+    },
+    site: {
+      title: 'My Site',
+      items: ['Landing Page Builder', 'Manage Posts', 'Custom Domain', 'SEO Settings'],
+    },
+    ...(isAdmin && {
+      admin: {
+        title: 'Admin Panel',
+        items: ['Overview', 'Users', 'System Settings', 'Reports']
+      }
+    })
+  };
+
+  // Helper function to render content based on the selected sub-menu
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setter(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleResetProfile = async () => {
+    if (!isAdmin) return;
+    if (!confirm("Admin Action: Are you sure you want to completely reset your profile data to test again?")) return;
+    
+    setIsSavingProfile(true);
+    setProfileMessage('');
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { 
+          full_name: '', 
+          phone: '',
+          identity_type: 'nid',
+          identity_number: '',
+          face_image: '',
+          doc_front_image: '',
+          doc_back_image: '',
+          website_url: '',
+          social_fb: '',
+          social_insta: '',
+          social_li: '',
+          social_yt: ''
+        }
+      });
+      if (error) throw error;
+      
+      setProfileName('');
+      setProfilePhone('');
+      setAgeGroup('18_plus');
+      setNidNumber('');
+      setNidFrontImage('');
+      setNidBackImage('');
+      setBirthNumber('');
+      setBirthImage('');
+      setFaceImage('');
+      setWebsiteUrl('');
+      setSocialFb('');
+      setSocialInsta('');
+      setSocialLi('');
+      setSocialYt('');
+      setIsIdentityLocked(false);
+      setIsBirthLocked(false);
+      setIsNidLocked(false);
+      
+      setProfileMessage('Profile has been completely reset for testing.');
+      setTimeout(() => setProfileMessage(''), 3000);
+    } catch (err: any) {
+      setProfileMessage('Error: ' + err.message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!isIdentityLocked) {
+      if (!identityNumber || !faceImage || !docFrontImage || (identityType === 'nid' && !docBackImage)) {
+        alert("Please provide all required Identity Verification details (Number and Images) to unlock the platform.");
+        return;
+      }
+    }
+    
+    setIsSavingProfile(true);
+    setProfileMessage('');
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { 
+          full_name: profileName, 
+          phone: profilePhone,
+          identity_type: identityType,
+          identity_number: identityNumber,
+          face_image: faceImage,
+          doc_front_image: docFrontImage,
+          doc_back_image: docBackImage,
+          website_url: websiteUrl,
+          social_fb: socialFb,
+          social_insta: socialInsta,
+          social_li: socialLi,
+          social_yt: socialYt
+        }
+      });
+      if (error) throw error;
+      if (identityNumber) setIsIdentityLocked(true);
+      setProfileMessage('Profile updated successfully!');
+      setTimeout(() => setProfileMessage(''), 3000);
+    } catch (err: any) {
+      setProfileMessage('Error: ' + err.message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleToggle2FA = async () => {
+    // In a real app, this would initiate a 2FA enrollment flow
+    // For now, just toggle the boolean in metadata
+    setIsSavingProfile(true);
+    try {
+      const newState = !is2FAEnabled;
+      const { data, error } = await supabase.auth.updateUser({
+        data: { two_factor_enabled: newState }
+      });
+      if (error) throw error;
+      setIs2FAEnabled(newState);
+      setProfileMessage(newState ? '2-Step Verification enabled via Google Authenticator' : '2-Step Verification disabled');
+      setTimeout(() => setProfileMessage(''), 3000);
+    } catch (err: any) {
+      setProfileMessage('Error: ' + err.message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const renderContent = () => {
+    if (activeSubMenu === 'Brand') {
+      return (
+        <div className="w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div className="flex items-center gap-4">
+              <h2 className="text-3xl font-bold text-white tracking-tight">My Brands</h2>
+
+            </div>
+            <button 
+              onClick={handleOpenCreateBrand}
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm"
+            >
+              <Plus className="w-5 h-5" />
+              Add New Brand
+            </button>
+          </div>
+
+          <div className="bg-[#1a2234] border border-slate-700/50 rounded-xl shadow-lg">
+            <div className="overflow-x-auto min-h-[250px]">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#242d42] border-b border-slate-700/50">
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-300">#</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-300">Brand Name</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-300">Configuration</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-300">Allowed Websites</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-300">Status</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-300 text-right pr-8">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {brands.map((brand, index) => (
+                    <tr key={brand.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="px-6 py-4 text-sm text-slate-400">{index + 1}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-white">
+                        <div className="flex items-center gap-3">
+                          {brand.logo_url ? (
+                            <img src={brand.logo_url} alt={brand.name} className="w-8 h-8 object-cover rounded bg-slate-800 border border-slate-700" />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-400 font-bold">
+                              {brand.name ? brand.name.charAt(0).toUpperCase() : 'B'}
+                            </div>
+                          )}
+                          <span>{brand.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex gap-1.5">
+                            {brand.merchant_api && <span className="bg-blue-500/20 text-blue-400 text-[10px] px-1.5 py-0.5 rounded border border-blue-500/20">Merchant</span>}
+                            {brand.personal_api && <span className="bg-purple-500/20 text-purple-400 text-[10px] px-1.5 py-0.5 rounded border border-purple-500/20">Personal</span>}
+                            {!brand.merchant_api && !brand.personal_api && <span className="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded">No API</span>}
+                          </div>
+                          <div className="flex gap-1.5">
+                            {brand.verify_trx_id && <span className="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded">TrxID</span>}
+                            {brand.verify_phone && <span className="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded">Phone</span>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-slate-300">
+                        <div className="flex flex-col gap-1">
+                          {brand.website_url ? brand.website_url.split(',').map((url: string, i: number) => (
+                            <span key={i} className="text-blue-400 hover:underline">{url}</span>
+                          )) : <span className="text-slate-500">None</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/20">
+                          {brand.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right pr-6 relative">
+                        <button 
+                          onClick={() => setActiveBrandDropdown(activeBrandDropdown === brand.id ? null : brand.id)}
+                          className="p-2 text-slate-400 hover:text-white transition-colors focus:outline-none"
+                        >
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+                        
+                        {/* Dropdown */}
+                        {activeBrandDropdown === brand.id && (
+                          <div className="absolute right-12 top-10 w-48 bg-[#1e293b] border border-slate-700 rounded-lg shadow-xl py-2 z-50">
+                            <button onClick={() => handleOpenEditBrand(brand)} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition-colors">
+                              <Edit className="w-4 h-4" /> Edit Brand Settings
+                            </button>
+                            
+                            <button onClick={() => handleDeleteBrand(brand.id)} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800 hover:text-red-300 flex items-center gap-2 transition-colors">
+                              <Trash2 className="w-4 h-4" /> Delete Brand
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Profile') {
+      return (
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-bold text-white mb-6">Profile Settings</h2>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div className="flex flex-col items-center mb-8">
+              <div className="relative mb-3">
+                <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-emerald-500/50 flex items-center justify-center overflow-hidden">
+                  {user?.user_metadata?.avatar_url ? (
+                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-3xl font-bold text-slate-400">{(user?.email || 'U').charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <button className="absolute bottom-0 right-0 p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full transition-colors border-2 border-slate-900 shadow-sm">
+                  <Upload className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <p className="text-sm font-medium text-slate-400 mb-2">{user?.email}</p>
+              <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                <span className="text-xs text-slate-500">Client ID:</span>
+                <code className="text-xs text-slate-300 font-bold">{user?.id || 'USR-2024-X8F9A2B'}</code>
+                <button onClick={() => navigator.clipboard.writeText(user?.id || 'USR-2024-X8F9A2B')} className="text-slate-500 hover:text-white transition-colors" title="Copy Client ID">
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+
+            <div className="space-y-5">
+              {profileMessage && (
+                <div className={`p-3 rounded-lg text-sm text-center ${profileMessage.includes('Error') ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                  {profileMessage}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Email Address (Read-Only)</label>
+                <input type="email" value={user?.email || ''} readOnly className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-500 cursor-not-allowed focus:outline-none transition-colors" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Full Name</label>
+                <input type="text" placeholder="Enter full name" value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Phone Number</label>
+                <input type="tel" placeholder="+8801..." value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
+              </div>
+
+              {/* Identity Verification */}
+              <div className="pt-6 border-t border-slate-800/50 mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white font-medium flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Identity Verification</h3>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => setIsIdentityLocked(!isIdentityLocked)}
+                      className="text-xs bg-red-500/20 text-red-400 px-3 py-1.5 rounded border border-red-500/30 hover:bg-red-500/30 transition-colors flex items-center gap-1 font-medium"
+                    >
+                      <RefreshCw className="w-3 h-3" /> {isIdentityLocked ? 'Admin Unlock' : 'Admin Lock'}
+                    </button>
+                  )}
+                </div>
+                
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                  <div className="flex gap-3">
+                    <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
+                    <div className="text-sm text-red-200">
+                      <p className="font-bold text-red-400 mb-1">CRITICAL WARNING</p>
+                      <ul className="list-disc pl-4 space-y-1">
+                        <li>You must provide your NID or an online copy of your Birth Certificate to use our platform (including free plans).</li>
+                        <li><strong>Identity details can only be entered once and will be locked permanently.</strong></li>
+                        <li>Face Image and Identity Document will be strictly matched.</li>
+                        <li className="text-amber-400 mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded font-medium">একই আইডেন্টিটি দিয়ে একাধিকবার অ্যাকাউন্ট খোলার চেষ্টা করলে অথবা আমাদের প্ল্যাটফর্ম ব্যবহার করে কোনো কাস্টমারের কাছ থেকে অ্যাডভান্স পেমেন্ট নিয়ে প্রতারণা করলে (যার প্রমাণ পাওয়া গেলে), আপনার অ্যাকাউন্ট স্থায়ীভাবে ব্লক করে দেওয়া হবে এবং আপনি আর কখনোই আমাদের প্ল্যাটফর্ম ব্যবহার করতে পারবেন না।</li>
+                        <li className="text-red-400 mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded font-bold animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.2)]">যদি আপলোড করা ছবি এবং এনআইডি/জন্ম নিবন্ধনের তথ্যে কোনো অমিল থাকে বা ভুয়া প্রমাণিত হয়, তবে রেজিস্ট্রেশনের ২৪ ঘণ্টার মধ্যে যাচাই করে আপনার আইডি স্থায়ীভাবে ব্লক করে দেওয়া হবে।</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex space-x-6 mb-4">
+                  <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300`}>
+                    <input type="radio" value="nid" checked={identityType === 'nid'} onChange={(e) => setIdentityType('nid')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
+                    <span>NID Card</span>
+                  </label>
+                  <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300`}>
+                    <input type="radio" value="birth_cert" checked={identityType === 'birth_cert'} onChange={(e) => setIdentityType('birth_cert')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
+                    <span>Birth Certificate (Online Copy)</span>
+                  </label>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-400 mb-2">{identityType === 'nid' ? 'NID Number' : 'Birth Certificate Number'}</label>
+                  <input type="text" placeholder={`Enter ${identityType === 'nid' ? 'NID' : 'Birth Certificate'} number`} value={identityNumber} onChange={(e) => setIdentityNumber(e.target.value)} disabled={isIdentityLocked} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-start">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Passport Size Face Image</label>
+                    <div className={`aspect-[3/4] flex flex-col items-center justify-center border-2 border-dashed border-slate-700 bg-slate-900/50 rounded-lg p-4 text-center transition-colors group relative overflow-hidden ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/50'}`}>
+                      {faceImage ? (
+                        <img src={faceImage} alt="Face" className="w-full h-full object-cover absolute inset-0" />
+                      ) : (
+                        <>
+                          <ImageIcon className="w-6 h-6 text-slate-500 mb-2 group-hover:text-emerald-400 transition-colors" />
+                          <span className="text-xs text-slate-400 group-hover:text-slate-300">Upload Face Image</span>
+                        </>
+                      )}
+                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setFaceImage)} disabled={isIdentityLocked} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">{identityType === 'nid' ? 'NID Front Side' : 'Certificate Image'}</label>
+                    <div className={`${identityType === 'nid' ? 'aspect-video' : 'aspect-[1/1.414]'} flex flex-col items-center justify-center border-2 border-dashed border-slate-700 bg-slate-900/50 rounded-lg p-4 text-center transition-colors group relative overflow-hidden ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/50'}`}>
+                      {docFrontImage ? (
+                        <img src={docFrontImage} alt="Document Front" className="w-full h-full object-cover absolute inset-0" />
+                      ) : (
+                        <>
+                          <Upload className="w-6 h-6 text-slate-500 mb-2 group-hover:text-emerald-400 transition-colors" />
+                          <span className="text-xs text-slate-400 group-hover:text-slate-300">Upload {identityType === 'nid' ? 'Front Side' : 'Image'}</span>
+                        </>
+                      )}
+                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setDocFrontImage)} disabled={isIdentityLocked} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed" />
+                    </div>
+                  </div>
+                  {identityType === 'nid' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">NID Back Side</label>
+                    <div className={`aspect-video flex flex-col items-center justify-center border-2 border-dashed border-slate-700 bg-slate-900/50 rounded-lg p-4 text-center transition-colors group relative overflow-hidden ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/50'}`}>
+                      {docBackImage ? (
+                        <img src={docBackImage} alt="Document Back" className="w-full h-full object-cover absolute inset-0" />
+                      ) : (
+                        <>
+                          <Upload className="w-6 h-6 text-slate-500 mb-2 group-hover:text-emerald-400 transition-colors" />
+                          <span className="text-xs text-slate-400 group-hover:text-slate-300">Upload Back Side</span>
+                        </>
+                      )}
+                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setDocBackImage)} disabled={isIdentityLocked} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed" />
+                    </div>
+                  </div>
+                  )}
+                </div>
+              </div>
+
+

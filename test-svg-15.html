@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #fff; display: flex; gap: 20px; padding: 50px; font-family: sans-serif; }
+  .icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #F8F9F9;}
+</style>
+</head>
+<body>
+  <!-- Based on the new clear screenshot -->
+  <div class="icon-wrapper">
+    <svg viewBox="0 0 100 100" width="40" height="40">
+      <g stroke="#1BA098" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        
+        <!-- Back bill -->
+        <path d="M 50,45 L 85,45 L 85,60 L 65,60" fill="none" />
+        
+        <!-- Front bill base (solid fill) -->
+        <path d="M 45,28 L 80,28 C 82,28 84,30 84,32 L 84,48 C 84,50 82,52 80,52 L 45,52 C 43,52 41,50 41,48 L 41,32 C 41,30 43,28 45,28 Z" fill="#92D1C8" />
+        
+        <!-- Inner bill detail -->
+        <!-- Just an arc or partial rect inside -->
+        <path d="M 46,35 C 50,32 55,32 60,32" fill="none" stroke-width="3"/>
+        
+        <circle cx="68" cy="40" r="7" fill="#FFFFFF" stroke="none" />
+        <!-- Taka symbol inside circle -->
+        <path d="M 66,37 L 66,43 M 64,38 L 70,38 M 70,36 C 72,36 73,38 71,41" stroke-width="2" />
+        
+        <!-- Hand / Palm & Fingers (under bill) -->
+        <path d="M 25,65 C 35,55 45,65 55,65 C 65,65 70,60 70,55 C 70,52 65,52 60,52 L 50,52 C 45,52 35,60 25,65 Z" fill="#92D1C8" />
+        
+        <!-- Thumb (over bill) -->
+        <path d="M 25,60 C 35,45 45,35 55,35 C 60,35 60,40 55,42 C 50,45 40,50 35,60 Z" fill="#92D1C8" />
+        
+        <!-- Cuff -->
+        <polygon points="12,50 25,45 32,65 18,72" fill="#92D1C8" />
+        <line x1="20" y1="48" x2="26" y2="66" stroke-width="3"/>
+        
+      </g>
+    </svg>
+  </div>
+</body>
+</html>

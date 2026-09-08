@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #fff; display: flex; gap: 20px; padding: 50px; font-family: sans-serif; }
+  .icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #EAF4F3;}
+</style>
+</head>
+<body>
+  <div class="icon-wrapper">
+    <svg viewBox="0 0 100 100" width="36" height="36">
+      
+      <!-- The Bill (Drawn with stroke) -->
+      <g stroke="#37A29A" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <polygon points="40,35 85,25 95,55 50,65" />
+        <!-- Inner border -->
+        <polygon points="45,38 75,32 82,50 52,56" stroke-width="2.5" />
+        <!-- Circle & Taka -->
+        <circle cx="78" cy="42" r="6" stroke-width="2.5" />
+        <!-- Taka symbol -->
+        <path d="M 76,39 L 76,46 M 74,41 L 79,41 M 79,39 C 81,39 82,41 80,44" stroke-width="2" />
+      </g>
+
+      <!-- The Hand (Solid Fill) -->
+      <g fill="#37A29A" stroke="#EAF4F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Cuff -->
+        <polygon points="10,60 25,45 35,55 20,70" />
+        <!-- Fold line on cuff -->
+        <line x1="20" y1="50" x2="28" y2="58" />
+        
+        <!-- Base Palm -->
+        <path d="M 23,50 C 35,40 45,45 42,52 L 35,55 C 30,55 25,60 25,60 Z" />
+
+        <!-- Fingers (These need to cover the bill lines) -->
+        <!-- Since SVG renders in order, this naturally covers the bill -->
+        <!-- We use thick stroke of background color #EAF4F3 to create the negative space separation -->
+        
+        <!-- Thumb -->
+        <path d="M 23,50 C 35,40 45,45 42,52 C 40,55 35,55 35,55 Z" />
+
+        <!-- Index Finger -->
+        <path d="M 35,55 C 50,55 55,65 45,70 L 30,70 L 25,60 Z" />
+        <!-- Middle Finger -->
+        <path d="M 32,65 C 48,65 52,75 42,80 L 25,80 L 25,70 Z" />
+        <!-- Ring Finger -->
+        <path d="M 28,75 C 42,75 46,85 36,90 L 18,90 L 20,80 Z" />
+        <!-- Pinky Finger -->
+        <path d="M 24,85 C 38,85 42,95 32,100 L 14,100 L 16,90 Z" />
+
+      </g>
+    </svg>
+  </div>
+</body>
+</html>

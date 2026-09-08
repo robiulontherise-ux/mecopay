@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #fff; display: flex; gap: 20px; padding: 50px; font-family: sans-serif; }
+  .icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #EAF4F3;}
+</style>
+</head>
+<body>
+  <div class="icon-wrapper">
+    <svg viewBox="0 0 100 100" width="36" height="36">
+      
+      <!-- The Bill (Drawn with stroke) -->
+      <g stroke="#4CAEA3" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <polygon points="40,35 85,25 95,55 50,65" />
+        <!-- Inner border -->
+        <polygon points="45,38 75,32 82,50 52,56" stroke-width="2" />
+        <!-- Circle & Taka -->
+        <circle cx="78" cy="42" r="5" stroke-width="2" />
+        <!-- Taka symbol -->
+        <path d="M 76.5,40 L 76.5,45 M 75,41.5 L 78.5,41.5 M 78.5,40 C 80,40 80.5,41.5 79.5,43.5" stroke-width="1.5" />
+      </g>
+
+      <!-- The Hand (Solid Fill) -->
+      <g fill="#4CAEA3" stroke="#EAF4F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Cuff -->
+        <polygon points="12,65 25,50 35,58 22,73" />
+        <!-- Fold line on cuff -->
+        <line x1="22" y1="54" x2="28" y2="60" />
+        
+        <!-- Thumb -->
+        <path d="M 23,52 C 35,42 45,46 42,53 C 40,56 35,56 35,56 Z" />
+
+        <!-- Fingers (These need to cover the bill lines) -->
+        <!-- Index Finger -->
+        <path d="M 33,56 C 48,56 53,65 43,70 L 28,70 L 23,60 Z" />
+        <!-- Middle Finger -->
+        <path d="M 30,66 C 46,66 50,75 40,80 L 23,80 L 23,70 Z" />
+        <!-- Ring Finger -->
+        <path d="M 26,76 C 40,76 44,85 34,90 L 16,90 L 18,80 Z" />
+        
+        <!-- Extra block to fill bottom left gap if needed -->
+        <polygon points="12,65 25,50 22,73" fill="#4CAEA3" stroke="none"/>
+
+      </g>
+    </svg>
+  </div>
+</body>
+</html>

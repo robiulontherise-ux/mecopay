@@ -1,0 +1,48 @@
+--- src/components/payment-hub/GatewaySettings.tsx
++++ src/components/payment-hub/GatewaySettings.tsx
+@@ -7,16 +7,38 @@
+ 
+ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
++  const [gateways, setGateways] = useState<any[]>([]);
++  const [isCreating, setIsCreating] = useState(false);
++  const [loading, setLoading] = useState(true);
++
+   const [activeCategory, setActiveCategory] = useState<'Personal MFS' | 'Merchant' | 'Bangla QR'>('Personal MFS');
+   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+ 
+   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+   const [accountNumber, setAccountNumber] = useState('');
+   const [minAmount, setMinAmount] = useState('1');
+   const [maxAmount, setMaxAmount] = useState('100000');
+   const [currency, setCurrency] = useState('BDT');
+   
+   const [isSaving, setIsSaving] = useState(false);
+ 
+   useEffect(() => {
+     if (brands.length > 0 && !selectedBrandId) {
+       setSelectedBrandId(brands[0].id);
+     }
++    fetchGateways();
+   }, [brands]);
+ 
++  const fetchGateways = async () => {
++    try {
++      const { data: { user } } = await supabase.auth.getUser();
++      if (!user) return;
++      const { data, error } = await supabase
++        .from('payment_numbers')
++        .select('*')
++        .eq('user_id', user.id);
++      if (!error && data) setGateways(data);
++    } catch (e) {
++      console.error(e);
++    } finally {
++      setLoading(false);
++    }
++  };
++
+   const handleSave = async () => {
+     if (!selectedBrandId || !selectedProvider || !accountNumber) {
+       alert("Please fill all required fields (Brand, Provider, Account Number)");
+       return;
+     }

@@ -1,0 +1,31 @@
+# MecoPay Strict Project Rules
+
+You are building "MecoPay", a hybrid payment gateway and SaaS platform. You must strictly adhere to these architectural rules at all times. Do not hallucinate external libraries, databases, or auth patterns not mentioned here.
+
+## 1. Core Tech Stack
+- **Framework:** React 18+ (Vite SPA).
+- **Styling:** Tailwind CSS (Dark Mode default, reference ZiniPay aesthetic: deep slate backgrounds, cyan/emerald accents, blurred overlays).
+- **Backend/Database:** Supabase (PostgreSQL).
+- **Deployment:** Cloudflare Pages / Edge Runtime.
+
+## 2. Authentication Rules (CRITICAL)
+- **NO Passwords or Custom Signups:** Use `@supabase/supabase-js` with Google OAuth exclusively. Do not build email/password registration forms.
+- **Data Fetching:** Fetch Name and Email directly from the Google Auth provider. Clients can only manually edit/add their Phone Number in the Profile section.
+- **Admin Routing:** Check the authenticated user's email against `process.env.ADMIN_EMAIL`. If it matches, grant access to the Admin Dashboard. All other users are standard clients.
+
+## 3. Database & Edge Runtime
+- **Supabase RLS:** Row Level Security is mandatory. Every table (`websites`, `payment_links`, `invoices`) must have a `user_id` column. Clients must ONLY be able to fetch their own data.
+- **Automated Config Import (Zero Android Code):** Do NOT try to build custom Google Auth inside the Android App. We will use a standard open-source SMS Forwarder app. The React dashboard generates a custom configuration file (`.json`) containing the Supabase URL, Anon Key, and an HMAC-SHA256 secret. The client downloads this file and imports it into the app via the '+' icon. The HMAC-SHA256 secret ensures that even if the URL/Key is exposed, unauthorized payloads are rejected. RLS handles user-level security.
+
+## 4. UI/UX & Layout Constraints
+- **3-Panel Logic:** The app is logically divided into Left (Brand/Service config), Center (Payment/Invoice), and Right (Landing Page/Posts). Maintain this structural separation in your code modules (e.g., `/components/left-panel`, `/components/center-panel`).
+- **Service Blocker (Paywall):** If a user's service plan (`1-Day Free Test` or `Pro Plan`) is expired or null, render a full-screen or module-level blurred overlay blocking access to Apps, Websites, and Payments, urging them to renew.
+- **No External Links in Right Panel:** The post builder component must strictly filter out standard `<a>` tags. Only allow embedding YouTube/Rumble iframes and internal MecoPay Payment Link buttons.
+
+## 5. Billing Logic & Payment Limits
+- **Volume Limits & Auto-Routing:** Personal accounts are capped at 3 Lakh TK per month per number, with a maximum of 2 numbers allowed. Your code must implement routing logic: if `number_1` reaches the monthly volume limit, auto-switch the checkout gateway destination to `number_2`.
+- **Billing Math:** MecoPay billing is a combination of fixed time (e.g., 100 TK/Month) and volume percentage.
+- **Invoice State:** Only calculate volume percentages from invoices marked as `Completed`. `Pending` (Leads) do not count towards the bill.
+
+## 6. Prompting Context
+When the user provides images (e.g., ZiniPay screenshots), use them ONLY for aesthetic inspiration (colors, card shapes, spacing). ALWAYS override the image's structural layout with the logical flow defined in `CURSOR_ARCHITECTURE.md`.
