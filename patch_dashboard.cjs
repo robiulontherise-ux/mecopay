@@ -1,137 +1,119 @@
 const fs = require('fs');
+let file = 'src/components/DashboardShell.tsx';
+let content = fs.readFileSync(file, 'utf8');
 
-let content = fs.readFileSync('src/components/DashboardShell.tsx', 'utf-8');
+// 1. Fix the double project_url
+content = content.replace(/project_url: cfg\.project_url \|\| prev\.project_url,\n\s*project_url: cfg\.project_url \|\| prev\.project_url,/, 'project_url: cfg.project_url || prev.project_url,');
 
-// 1. Add json_payload_template to useState
-const stateOld = `
-  const [forwarderSettings, setForwarderSettings] = useState({
-    sender_number: '',
-    text_filter: '',
-    webhook_edge_url: '',
-    headers: '',
-    project_url: '',
-    anon_key: '',
-    ws_channel: '',
-    heartbeat_edge_url: ''
-  });
-`;
-const stateNew = `
-  const [forwarderSettings, setForwarderSettings] = useState({
-    sender_number: '',
-    text_filter: '',
-    webhook_edge_url: '',
-    headers: '',
-    json_payload_template: '',
-    project_url: '',
-    anon_key: '',
-    ws_channel: '',
-    heartbeat_edge_url: ''
-  });
-`;
-content = content.replace(stateOld.trim(), stateNew.trim());
+// 2. We need to refactor the useEffect so it fetches global config FIRST, then checks devices.
+// But wait, the easiest way to get the global config is from the `__GLOBAL_CONFIG__` row.
+// Let's rewrite the sync logic entirely inside that useEffect.
 
-// 2. Add json_payload_template to fetch results
-const fetchOld = `
-            headers: cfg.headers || prev.headers,
-            project_url: cfg.project_url || prev.project_url,
-`;
-const fetchNew = `
-            headers: cfg.headers || prev.headers,
-            json_payload_template: cfg.json_payload_template || prev.json_payload_template,
-            project_url: cfg.project_url || prev.project_url,
-`;
-content = content.replace(fetchOld.trim(), fetchNew.trim());
+const old_sync = `      // 1. Fetch devices and auto-sync any existing devices from device_status into sms_forwarder_settings
+      Promise.all([
+        supabase.from('sms_forwarder_settings').select('*').eq('user_id', user.id),
+        supabase.from('device_status').select('*').eq('user_id', user.id)
+      ]).then(async ([{ data: fData }, { data: dData }]) => {
+        if (!isMounted) return;
 
-const supabaseFetchOld = `
-            headers: data.headers || prev.headers,
-            project_url: data.project_url || prev.project_url,
-`;
-const supabaseFetchNew = `
-            headers: data.headers || prev.headers,
-            json_payload_template: data.json_payload_template || prev.json_payload_template,
-            project_url: data.project_url || prev.project_url,
-`;
-content = content.replace(supabaseFetchOld.trim(), supabaseFetchNew.trim());
+        const forwarderDevices = new Set((fData || []).map(d => d.device_name).filter(d => Boolean(d) && d !== '__GLOBAL_CONFIG__'));
+        const statusDevices = Array.from(new Set((dData || []).map(d => d.device_id).filter(d => d && d !== 'android-app-1' && d !== 'default-device')));
 
-// 3. Add to upsert in handleSaveForwarderSettings
-const upsertOld = `
-              headers: forwarderSettings.headers,
-              project_url: forwarderSettings.project_url,
-`;
-const upsertNew = `
+        
+        // Check if there are any devices in device_status not yet saved in sms_forwarder_settings
+        const missingInForwarder = statusDevices.filter(d => !forwarderDevices.has(d));
+        if (missingInForwarder.length > 0) {
+          for (const dev of missingInForwarder) {
+            const hostUrl = forwarderSettings.project_url ;
+            const anonKey = forwarderSettings.anon_key ;
+            const channel = forwarderSettings.ws_channel ;
+            const edgeUrl = forwarderSettings.heartbeat_edge_url ;
+            const genWebhookUrl = \`\${forwarderSettings.webhook_edge_url }?user_id=\${user.id}\`;
+            const genWsUrl = \`wss://\${hostUrl}/realtime/v1/websocket?apikey=\${anonKey}&vsn=1.0.0&channel=\${channel}&user_id=\${user.id}&secret=\${hmacSecret || ''}&device_id=\${encodeURIComponent(dev)}&edge_url=\${edgeUrl}\`;
+
+            await supabase.from('sms_forwarder_settings').upsert({
+              user_id: user.id,
+              device_name: dev,
+              hmac_secret: hmacSecret || '',
+              sender_number: forwarderSettings.sender_number,
+              text_filter: forwarderSettings.text_filter,
+              webhook_edge_url: forwarderSettings.webhook_edge_url,
               headers: forwarderSettings.headers,
               json_payload_template: forwarderSettings.json_payload_template,
               project_url: forwarderSettings.project_url,
-`;
-content = content.replace(upsertOld.trim(), upsertNew.trim());
+              anon_key: forwarderSettings.anon_key,
+              ws_channel: forwarderSettings.ws_channel,
+              heartbeat_edge_url: forwarderSettings.heartbeat_edge_url,
+              webhook_url: genWebhookUrl,
+              heartbeat_ws_url: genWsUrl,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,device_name' });
+          }
+        }
 
-// 4. Add UI field. It should be right after headers.
-const uiOld = `
-              {/* 4. Headers */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  4. Headers (JSON Box)
-                </label>
-                <textarea
-                  rows={3}
-                  value={forwarderSettings.headers}
-                  onChange={(e) => setForwarderSettings({ ...forwarderSettings, headers: e.target.value })}
-                  placeholder={'{\\n  "Content-Type": "application/json"\\n}'}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-200 font-mono text-sm focus:outline-none focus:border-purple-500 transition-colors"
-                />
-                <span className="text-[11px] text-slate-500 mt-1 block">
-                  অ্যাপ থেকে ফরোয়ার্ড করা রিকোয়েস্টে যে হেডারগুলো পাঠানো হবে।
-                </span>
-              </div>
+        const allDevices = Array.from(new Set([...forwarderDevices, ...statusDevices]));
+        setCustomDevices(allDevices);
+        if (dData) {
+          const activeStatuses = dData.filter(d => d && d.device_id !== 'android-app-1' && d.device_id !== 'default-device');
+          setDeviceStatuses(activeStatuses);
+        }
+      });`
 
-              <div className="border-t border-slate-800/80 pt-4 mt-4">
-                <h4 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-3">
-                  Heartbeat WebSocket URL উপাদানসমূহ (Auto Composed by SQL)
-                </h4>
-`;
+const new_sync = `      // 1. Fetch devices and auto-sync any existing devices from device_status into sms_forwarder_settings
+      Promise.all([
+        supabase.from('sms_forwarder_settings').select('*').eq('user_id', user.id),
+        supabase.from('device_status').select('*').eq('user_id', user.id)
+      ]).then(async ([{ data: fData }, { data: dData }]) => {
+        if (!isMounted) return;
 
-const uiNew = `
-              {/* 4. Headers */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  4. Headers (JSON Box)
-                </label>
-                <textarea
-                  rows={3}
-                  value={forwarderSettings.headers}
-                  onChange={(e) => setForwarderSettings({ ...forwarderSettings, headers: e.target.value })}
-                  placeholder={'{\\n  "Content-Type": "application/json"\\n}'}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-200 font-mono text-sm focus:outline-none focus:border-purple-500 transition-colors"
-                />
-                <span className="text-[11px] text-slate-500 mt-1 block">
-                  অ্যাপ থেকে ফরোয়ার্ড করা রিকোয়েস্টে যে হেডারগুলো পাঠানো হবে।
-                </span>
-              </div>
+        const forwarderDevices = new Set((fData || []).map(d => d.device_name).filter(d => Boolean(d) && d !== '__GLOBAL_CONFIG__'));
+        const statusDevices = Array.from(new Set((dData || []).map(d => d.device_id).filter(d => d && d !== 'android-app-1' && d !== 'default-device')));
+        
+        // Find __GLOBAL_CONFIG__ to use for missing devices
+        const globalConfigRow = (fData || []).find(d => d.device_name === '__GLOBAL_CONFIG__');
 
-              {/* 4.5 Json Payload Template */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  Json Payload Template
-                </label>
-                <textarea
-                  rows={3}
-                  value={forwarderSettings.json_payload_template || ''}
-                  onChange={(e) => setForwarderSettings({ ...forwarderSettings, json_payload_template: e.target.value })}
-                  placeholder={'{\\n  "sender": "{sender}",\\n  "message": "{message}"\\n}'}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-200 font-mono text-sm focus:outline-none focus:border-purple-500 transition-colors"
-                />
-                <span className="text-[11px] text-slate-500 mt-1 block">
-                  এসএমএস ফরোয়ার্ডার অ্যাপ থেকে পাঠানো JSON পে-লোডের স্ট্রাকচার।
-                </span>
-              </div>
+        // Check if there are any devices in device_status not yet saved in sms_forwarder_settings
+        const missingInForwarder = statusDevices.filter(d => !forwarderDevices.has(d));
+        if (missingInForwarder.length > 0 && globalConfigRow) {
+          for (const dev of missingInForwarder) {
+            const hostUrl = globalConfigRow.project_url || '';
+            const anonKey = globalConfigRow.anon_key || '';
+            const channel = globalConfigRow.ws_channel || '';
+            const edgeUrl = globalConfigRow.heartbeat_edge_url || '';
+            const webEdgeUrl = globalConfigRow.webhook_edge_url || '';
+            const genWebhookUrl = \`\${webEdgeUrl}?user_id=\${user.id}\`;
+            const genWsUrl = \`wss://\${hostUrl}/realtime/v1/websocket?apikey=\${anonKey}&vsn=1.0.0&channel=\${channel}&user_id=\${user.id}&secret=\${hmacSecret || ''}&device_id=\${encodeURIComponent(dev)}&edge_url=\${edgeUrl}\`;
 
-              <div className="border-t border-slate-800/80 pt-4 mt-4">
-                <h4 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-3">
-                  Heartbeat WebSocket URL উপাদানসমূহ (Auto Composed by SQL)
-                </h4>
-`;
+            await supabase.from('sms_forwarder_settings').upsert({
+              user_id: user.id,
+              device_name: dev,
+              hmac_secret: hmacSecret || '',
+              sender_number: globalConfigRow.sender_number,
+              text_filter: globalConfigRow.text_filter,
+              webhook_edge_url: webEdgeUrl,
+              headers: globalConfigRow.headers,
+              json_payload_template: globalConfigRow.json_payload_template,
+              project_url: hostUrl,
+              anon_key: anonKey,
+              ws_channel: channel,
+              heartbeat_edge_url: edgeUrl,
+              dashboard_url: 'https://mecopay.pages.dev/dashboard',
+              webhook_url: genWebhookUrl,
+              heartbeat_ws_url: genWsUrl,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,device_name' });
+          }
+        }
 
-content = content.replace(uiOld.trim(), uiNew.trim());
+        const allDevices = Array.from(new Set([...forwarderDevices, ...statusDevices]));
+        setCustomDevices(allDevices);
+        if (dData) {
+          const activeStatuses = dData.filter(d => d && d.device_id !== 'android-app-1' && d.device_id !== 'default-device');
+          setDeviceStatuses(activeStatuses);
+        }
+      });`
 
-fs.writeFileSync('src/components/DashboardShell.tsx', content, 'utf-8');
-console.log('DashboardShell.tsx patched');
+content = content.replace(old_sync, new_sync);
+
+fs.writeFileSync(file, content);
+console.log('Patched DashboardShell.tsx sync devices');

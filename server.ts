@@ -168,6 +168,7 @@ async function startServer() {
         anon_key: adminSettings.anon_key,
         ws_channel: adminSettings.ws_channel,
         heartbeat_edge_url: adminSettings.heartbeat_edge_url,
+        dashboard_url: adminSettings.dashboard_url || 'https://mecopay.pages.dev/dashboard',
         webhook_url: genWebhookUrl,
         heartbeat_ws_url: genWsUrl,
         updated_at: new Date().toISOString()
@@ -218,6 +219,7 @@ async function startServer() {
           heartbeat_edge_url: settings.heartbeat_edge_url,
           webhook_url: genWebhookUrl,
           heartbeat_ws_url: genWsUrl,
+        dashboard_url: settings.dashboard_url || 'https://mecopay.pages.dev/dashboard',
           updated_at: new Date().toISOString()
         }).eq('id', d.id);
         
@@ -307,10 +309,13 @@ async function startServer() {
       // Also attempt updating Supabase if available
       if (supabaseAdmin) {
         try {
-          await supabaseAdmin.from('sms_forwarder_settings').upsert({
-            device_name: '__GLOBAL_CONFIG__',
-            ...updated
-          }, { onConflict: 'device_name' });
+          if (updated.user_id) {
+            await supabaseAdmin.from('sms_forwarder_settings').upsert({
+              user_id: updated.user_id,
+              device_name: '__GLOBAL_CONFIG__',
+              ...updated
+            }, { onConflict: 'user_id,device_name' });
+          }
 
           // Also update all existing devices with new global settings
           const { data: allRows } = await supabaseAdmin.from('sms_forwarder_settings').select('*');
@@ -325,10 +330,12 @@ async function startServer() {
                 text_filter: updated.text_filter,
                 webhook_edge_url: updated.webhook_edge_url,
                 headers: updated.headers,
+                json_payload_template: updated.json_payload_template,
                 project_url: updated.project_url,
                 anon_key: updated.anon_key,
                 ws_channel: updated.ws_channel,
                 heartbeat_edge_url: updated.heartbeat_edge_url,
+                dashboard_url: updated.dashboard_url || 'https://mecopay.pages.dev/dashboard',
                 webhook_url: updatedWebhook,
                 heartbeat_ws_url: updatedWs,
                 updated_at: new Date().toISOString()
@@ -459,7 +466,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, { setHeaders: (res, path) => { if (path.endsWith(".html")) { res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); } } }));
     app.get('/mysite*', (req, res) => {
       res.sendFile(path.join(distPath, 'src/mysite/index.html'));
     });

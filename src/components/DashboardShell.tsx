@@ -264,7 +264,8 @@ export default function DashboardShell() {
     project_url: '',
     anon_key: '',
     ws_channel: '',
-    heartbeat_edge_url: ''
+    heartbeat_edge_url: '',
+    dashboard_url: 'https://mecopay.pages.dev/dashboard'
   });
   const [isSavingForwarderSettings, setIsSavingForwarderSettings] = useState(false);
   const [allClientDevices, setAllClientDevices] = useState<any[]>([]);
@@ -609,32 +610,36 @@ export default function DashboardShell() {
 
         const forwarderDevices = new Set((fData || []).map(d => d.device_name).filter(d => Boolean(d) && d !== '__GLOBAL_CONFIG__'));
         const statusDevices = Array.from(new Set((dData || []).map(d => d.device_id).filter(d => d && d !== 'android-app-1' && d !== 'default-device')));
-
         
+        // Find __GLOBAL_CONFIG__ to use for missing devices
+        const globalConfigRow = (fData || []).find(d => d.device_name === '__GLOBAL_CONFIG__');
+
         // Check if there are any devices in device_status not yet saved in sms_forwarder_settings
         const missingInForwarder = statusDevices.filter(d => !forwarderDevices.has(d));
-        if (missingInForwarder.length > 0) {
+        if (missingInForwarder.length > 0 && globalConfigRow) {
           for (const dev of missingInForwarder) {
-            const hostUrl = forwarderSettings.project_url ;
-            const anonKey = forwarderSettings.anon_key ;
-            const channel = forwarderSettings.ws_channel ;
-            const edgeUrl = forwarderSettings.heartbeat_edge_url ;
-            const genWebhookUrl = `${forwarderSettings.webhook_edge_url }?user_id=${user.id}`;
+            const hostUrl = globalConfigRow.project_url || '';
+            const anonKey = globalConfigRow.anon_key || '';
+            const channel = globalConfigRow.ws_channel || '';
+            const edgeUrl = globalConfigRow.heartbeat_edge_url || '';
+            const webEdgeUrl = globalConfigRow.webhook_edge_url || '';
+            const genWebhookUrl = `${webEdgeUrl}?user_id=${user.id}`;
             const genWsUrl = `wss://${hostUrl}/realtime/v1/websocket?apikey=${anonKey}&vsn=1.0.0&channel=${channel}&user_id=${user.id}&secret=${hmacSecret || ''}&device_id=${encodeURIComponent(dev)}&edge_url=${edgeUrl}`;
 
             await supabase.from('sms_forwarder_settings').upsert({
               user_id: user.id,
               device_name: dev,
               hmac_secret: hmacSecret || '',
-              sender_number: forwarderSettings.sender_number,
-              text_filter: forwarderSettings.text_filter,
-              webhook_edge_url: forwarderSettings.webhook_edge_url,
-              headers: forwarderSettings.headers,
-              json_payload_template: forwarderSettings.json_payload_template,
-              project_url: forwarderSettings.project_url,
-              anon_key: forwarderSettings.anon_key,
-              ws_channel: forwarderSettings.ws_channel,
-              heartbeat_edge_url: forwarderSettings.heartbeat_edge_url,
+              sender_number: globalConfigRow.sender_number,
+              text_filter: globalConfigRow.text_filter,
+              webhook_edge_url: webEdgeUrl,
+              headers: globalConfigRow.headers,
+              json_payload_template: globalConfigRow.json_payload_template,
+              project_url: hostUrl,
+              anon_key: anonKey,
+              ws_channel: channel,
+              heartbeat_edge_url: edgeUrl,
+              dashboard_url: globalConfigRow.dashboard_url || 'https://mecopay.pages.dev/dashboard',
               webhook_url: genWebhookUrl,
               heartbeat_ws_url: genWsUrl,
               updated_at: new Date().toISOString()
@@ -662,10 +667,11 @@ export default function DashboardShell() {
               webhook_edge_url: cfg.webhook_edge_url || prev.webhook_edge_url,
               headers: cfg.headers || prev.headers,
               json_payload_template: cfg.json_payload_template || prev.json_payload_template,
-            project_url: cfg.project_url || prev.project_url,
+              project_url: cfg.project_url || prev.project_url,
               anon_key: cfg.anon_key || prev.anon_key,
               ws_channel: cfg.ws_channel || prev.ws_channel,
-              heartbeat_edge_url: cfg.heartbeat_edge_url || prev.heartbeat_edge_url
+              heartbeat_edge_url: cfg.heartbeat_edge_url || prev.heartbeat_edge_url,
+              dashboard_url: cfg.dashboard_url || prev.dashboard_url
             }));
           }
         })
@@ -681,9 +687,11 @@ export default function DashboardShell() {
             webhook_edge_url: data.webhook_edge_url || prev.webhook_edge_url,
             headers: data.headers || prev.headers,
             json_payload_template: data.json_payload_template || prev.json_payload_template,
+            project_url: data.project_url || prev.project_url,
             anon_key: data.anon_key || prev.anon_key,
             ws_channel: data.ws_channel || prev.ws_channel,
-            heartbeat_edge_url: data.heartbeat_edge_url || prev.heartbeat_edge_url
+            heartbeat_edge_url: data.heartbeat_edge_url || prev.heartbeat_edge_url,
+            dashboard_url: data.dashboard_url || prev.dashboard_url
           }));
         }
       });
@@ -2400,7 +2408,7 @@ if (activeSubMenu === 'Webhook Settings') {
             await fetch('/api/system-settings', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(forwarderSettings)
+              body: JSON.stringify({ ...forwarderSettings, user_id: user?.id })
             });
           } catch (apiErr) {
             console.warn('Failed to save to /api/system-settings', apiErr);
@@ -2423,6 +2431,7 @@ if (activeSubMenu === 'Webhook Settings') {
               anon_key: forwarderSettings.anon_key,
               ws_channel: forwarderSettings.ws_channel,
               heartbeat_edge_url: forwarderSettings.heartbeat_edge_url,
+              dashboard_url: forwarderSettings.dashboard_url,
               webhook_url: `${forwarderSettings.webhook_edge_url}?user_id=${user?.id}`,
               heartbeat_ws_url: `wss://${forwarderSettings.project_url}/realtime/v1/websocket?apikey=${forwarderSettings.anon_key}&vsn=1.0.0&channel=${forwarderSettings.ws_channel}&user_id=${user?.id}&secret=${hmacSecret || 'GLOBAL_SECRET'}&device_id=Global&edge_url=${forwarderSettings.heartbeat_edge_url}`,
               updated_at: new Date().toISOString()
@@ -2663,6 +2672,22 @@ if (activeSubMenu === 'Webhook Settings') {
                   />
                   <span className="text-[11px] text-slate-500 mt-1 block">
                     হার্টবিট এজ ফাংশন লিংক। যা WebSocket URL এর শেষে &edge_url= হিসেবে থাকবে।
+                  </span>
+                </div>
+                {/* 9. Dashboard URL */}
+                <div className="mt-4">
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    9. Dashboard URL
+                  </label>
+                  <input
+                    type="text"
+                    value={forwarderSettings.dashboard_url || ""}
+                    onChange={(e) => setForwarderSettings({ ...forwarderSettings, dashboard_url: e.target.value })}
+                    placeholder="https://mecopay.pages.dev/dashboard"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-200 font-mono text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                  />
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    ক্লাইন্ট ড্যাশবোর্ডের URL, যা অ্যাপে দেখানো হবে।
                   </span>
                 </div>
               </div>

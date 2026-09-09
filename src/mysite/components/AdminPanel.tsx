@@ -263,11 +263,11 @@ ${defaultHomeContent}`
 
 Write comprehensive lecture notes, problem sets, and key insights here.
 
-## 🎯 Key Highlights
+##  Key Highlights
 - Concept 1
 - Concept 2
 
-## 📝 Practice Exercises
+##  Practice Exercises
 1. Problem statement
 `);
     setActiveTab('new-post');
@@ -454,7 +454,7 @@ ${postContent}`
               {statusNotice}
             </span>
             <button onClick={() => setStatusNotice(null)} className="text-emerald-400 hover:text-emerald-200">
-              ✕
+              
             </button>
           </div>
         </div>

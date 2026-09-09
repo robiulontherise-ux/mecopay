@@ -8,7 +8,7 @@ export default function WebsiteBuilderHub({ user }) {
   if (activeView === 'no_code') {
     return (
       <div className="h-[calc(100vh-100px)] overflow-y-auto w-full -mx-4 sm:mx-0 bg-slate-950 rounded-xl">
-        <MySiteApp />
+        <MySiteApp builderUser={user} />
       </div>
     );
   }
