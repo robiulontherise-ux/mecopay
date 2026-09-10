@@ -7,7 +7,6 @@ import DashboardRoute from './components/DashboardRoute';
 import CheckoutPage from './components/checkout/CheckoutPage';
 import AccessPage from './components/checkout/AccessPage';
 import { PrivacyPolicy, TermsConditions, RefundPolicy, CustomerRightsAndAntiFraud, DeveloperDocsPage } from './components/Legal';
-import StorefrontApp from './mysite/App';
 
 interface EBProps { children?: React.ReactNode; }
 interface EBState { hasError: boolean; error: any; }
@@ -38,28 +37,9 @@ class ErrorBoundary extends React.Component<EBProps, EBState> {
 function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isStoreDomain, setIsStoreDomain] = useState(false);
 
   useEffect(() => {
-    // 1. Domain Detection Logic
-    const hostname = window.location.hostname;
-    const isMainDomain = 
-      hostname === 'localhost' || 
-      hostname === '127.0.0.1' ||
-      hostname === 'mecopay.com' || 
-      hostname === 'www.mecopay.com' ||
-      hostname.includes('run.app') || 
-      hostname.includes('webcontainer.io');
-
-    if (!isMainDomain) {
-      setIsStoreDomain(true);
-      // We don't need to load main app auth if it's a store domain, 
-      // StorefrontApp handles its own auth and data fetching.
-      setLoading(false);
-      return; 
-    }
-
-    // 2. Main App Auth Check
+    // Check for hash errors from OAuth
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     if (hashParams.has('error_description')) {
       alert("Login Error: " + decodeURIComponent(hashParams.get('error_description') || ''));
@@ -92,16 +72,6 @@ function App() {
     );
   }
 
-  // --- STOREFRONT ROUTING ---
-  if (isStoreDomain) {
-    return (
-      <ErrorBoundary>
-        <StorefrontApp />
-      </ErrorBoundary>
-    );
-  }
-
-  // --- MAIN APP ROUTING (MecoPay Dashboard & Checkout) ---
   return (
     <ErrorBoundary>
       <BrowserRouter>
