@@ -6,13 +6,12 @@ import MfaVerification from './MfaVerification';
 export default function DashboardRoute() {
   const [loading, setLoading] = useState(true);
   const [needsMfa, setNeedsMfa] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
-    checkMfaAndProfile();
+    checkMfa();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      checkMfaAndProfile();
+      checkMfa();
     });
 
     return () => {
@@ -20,23 +19,9 @@ export default function DashboardRoute() {
     };
   }, []);
 
-  const checkMfaAndProfile = async () => {
+  const checkMfa = async () => {
     try {
-      // First fetch the profile to check if super admin
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_super_admin')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (profile?.is_super_admin) {
-          setIsSuperAdmin(true);
-        }
-      }
-
-      // Check the current level from the token
+      // First check the current level from the token
       // We do not force refreshSession here because concurrent refresh requests after OAuth login
       // will cause Supabase to invalidate the session and log the user out.
       const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -79,5 +64,5 @@ export default function DashboardRoute() {
     return <MfaVerification onVerified={() => setNeedsMfa(false)} />;
   }
 
-  return <DashboardShell isSuperAdmin={isSuperAdmin} />;
+  return <DashboardShell />;
 }

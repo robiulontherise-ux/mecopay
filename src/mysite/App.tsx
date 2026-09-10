@@ -77,14 +77,8 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
         }
         // Redirect to admin panel ONLY IF the user is the Admin
         if (_event === 'SIGNED_IN') {
-           // Fetch current site settings to see if the logged-in user is the owner of the current domain
-           const currentDomain = window.location.hostname;
-           supabase.from('site_settings')
-             .select('client_id')
-             .or(`domain.eq.${currentDomain},custom_domain.eq.${currentDomain},subdomain.eq.${currentDomain}`)
-             .limit(1)
-             .maybeSingle()
-             .then(({data}) => {
+           // Fetch current site settings to see if the logged-in user is the owner
+           supabase.from('site_settings').select('client_id').eq('id', 'default').limit(1).maybeSingle().then(({data}) => {
              if (data && data.client_id === session.user.id) {
                setCurrentView('admin');
                window.location.hash = 'admin';
@@ -131,7 +125,7 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
          const { data, error } = await supabase
            .from('site_settings')
            .select('*')
-           .or(`domain.eq.${currentDomain},custom_domain.eq.${currentDomain},subdomain.eq.${currentDomain}`)
+           .or(`domain.eq.${currentDomain},subdomain.eq.${currentDomain}`)
            .limit(1)
            .maybeSingle();
          if (!error && data) {
@@ -140,7 +134,7 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
          }
       }
       
-      if (settingsData) {
+      if (!settingsErr && settingsData) {
         setSiteSettings(settingsData);
       }
 

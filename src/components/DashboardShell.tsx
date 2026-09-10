@@ -11,12 +11,12 @@ import Invoices from "./payment-hub/Invoices";
 import { useNavigate } from 'react-router-dom';
 import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book } from 'lucide-react';
 
-export default function DashboardShell({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
+export default function DashboardShell() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [hmacSecret, setHmacSecret] = useState<string>('');
-  const isAdmin = isSuperAdmin;
+  const isAdmin = user?.email === (import.meta as any).env.VITE_ADMIN_EMAIL || user?.email === 'robiulontherise@gmail.com';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'brand' | 'payments' | 'site' | 'admin'>('brand');
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error', id: number} | null>(null);
