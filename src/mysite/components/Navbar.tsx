@@ -169,7 +169,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="hidden md:inline max-w-[120px] truncate font-medium">
                     {user.user_metadata?.full_name || user.email?.split('@')[0]}
                   </span>
-                  <span className="text-slate-500 text-[10px]"></span>
+                  <span className="text-slate-500 text-[10px]">▼</span>
                 </button>
 
                 {/* Dropdown Menu */}
@@ -278,7 +278,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <span className="flex items-center gap-1.5">
                     {cat.name}
-                    {hasSub && <span className="text-[10px] opacity-60"></span>}
+                    {hasSub && <span className="text-[10px] opacity-60">▼</span>}
                   </span>
                 </button>
 

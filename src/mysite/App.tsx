@@ -185,16 +185,7 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
           setCurrentView('post-detail');
         }
       } else if (hash === 'admin') {
-        if (isAdmin || builderUser) {
-          setCurrentView('admin');
-        } else if (!authLoading && !user) {
-          setAuthModalContext('admin');
-          setAuthModalOpen(true);
-        } else if (!authLoading && user && !isAdmin) {
-          alert('Access Restricted. You are not the owner of this website.');
-          window.location.hash = '';
-          setCurrentView('home');
-        }
+        setCurrentView('admin');
       } else if (hash.startsWith('category/')) {
         const catSlug = hash.replace('category/', '');
         const foundCat = categories.find((c) => c.slug === catSlug || c.id === catSlug);
@@ -211,7 +202,7 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
     handleHashChange();
 
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [posts, categories, isAdmin, builderUser, authLoading, user]);
+  }, [posts, categories, isAdmin]);
 
   // Navigate to Post Detail
   const handleSelectPost = (post: Post) => {
@@ -336,28 +327,17 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
   const handleSaveSiteSettings = async (settings: SiteSettings) => {
     if (!user?.id) return alert('No client ID found (not logged in).');
     settings.client_id = user.id;
+    // Try to update first
+    const { error: updateError, data: updateData } = await supabase.from('site_settings').update(settings).eq('id', 'default').eq('client_id', user.id).select();
     
-    // Remove the temporary 'default' id to prevent UUID syntax errors
-    const payload = { ...settings };
-    if (payload.id === 'default') {
-      delete (payload as any).id;
-    }
-    
-    // Try to update first (find by client_id)
-    const { error: updateError, data: updateData } = await supabase
-      .from('site_settings')
-      .update(payload)
-      .eq('client_id', user.id)
-      .select();
-    
-    if (updateError && !updateError.message.includes('JSON object requested, multiple (or no) rows returned')) {
+    if (updateError) {
       console.error('Supabase settings update error:', updateError);
       throw new Error(updateError.message);
     }
     
-    // If update affected 0 rows, insert it
+    // If update affected 0 rows, it means the row doesn't exist, so insert it
     if (!updateData || updateData.length === 0) {
-       const { error: insertError, data: insertData } = await supabase.from('site_settings').insert([payload]).select();
+       const { error: insertError, data: insertData } = await supabase.from('site_settings').insert([settings]).select();
        if (insertError) {
           console.error('Supabase settings insert error:', insertError);
           throw new Error(insertError.message);
@@ -365,10 +345,9 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
        if (!insertData || insertData.length === 0) {
           throw new Error("RLS Error: Database blocked the save. Check your table policies!");
        }
-       setSiteSettings(insertData[0]);
-    } else {
-       setSiteSettings(updateData[0]);
     }
+    
+    setSiteSettings(settings);
   };
 
   const handleDeletePost = async (postId: string) => {
