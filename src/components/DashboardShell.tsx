@@ -11,12 +11,12 @@ import Invoices from "./payment-hub/Invoices";
 import { useNavigate } from 'react-router-dom';
 import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book } from 'lucide-react';
 
-export default function DashboardShell() {
+export default function DashboardShell({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [hmacSecret, setHmacSecret] = useState<string>('');
-  const isAdmin = user?.email === (import.meta as any).env.VITE_ADMIN_EMAIL || user?.email === 'robiulontherise@gmail.com';
+  const isAdmin = isSuperAdmin;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'brand' | 'payments' | 'site' | 'admin'>('brand');
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error', id: number} | null>(null);
@@ -299,6 +299,8 @@ export default function DashboardShell() {
     allow_telegram: false,
     allow_tally: false,
     allow_facebook: false,
+    allow_whatsapp: false,
+    allow_youtube: false,
     allow_drive: false,
     logo_url: '',
     support_email: '',
@@ -349,6 +351,8 @@ export default function DashboardShell() {
       allow_telegram: false,
       allow_tally: false,
       allow_facebook: false,
+      allow_whatsapp: false,
+      allow_youtube: false,
       allow_drive: false,
       logo_url: '',
       support_email: '',
@@ -369,6 +373,8 @@ export default function DashboardShell() {
       allow_telegram: !!brand.redirect_links?.allow_telegram,
       allow_tally: !!brand.redirect_links?.allow_tally,
       allow_facebook: !!brand.redirect_links?.allow_facebook,
+      allow_whatsapp: !!brand.redirect_links?.allow_whatsapp,
+      allow_youtube: !!brand.redirect_links?.allow_youtube,
       allow_drive: !!brand.redirect_links?.allow_drive,
       logo_url: brand.logo_url || '',
       support_email: brand.support_email || '',

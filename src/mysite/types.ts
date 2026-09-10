@@ -70,4 +70,7 @@ export interface SiteSettings {
   show_default_home: boolean;
   default_home_content: string;
   default_home_format_type?: 'standard' | 'code';
+  subdomain?: string;
+  custom_domain?: string;
+  domain?: string;
 }
