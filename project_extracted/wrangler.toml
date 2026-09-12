@@ -1,0 +1,9 @@
+name = "buet-dmc-dreamers"
+compatibility_date = "2026-08-24"
+
+[site]
+bucket = "./dist"
+
+[vars]
+VITE_SUPABASE_URL = "https://vhajqegupkzfvlswpeja.supabase.co"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoYWpxZWd1cGt6ZnZsc3dwZWphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1OTQ3NDIsImV4cCI6MjEwMzE3MDc0Mn0.5bD2xPSkDJ3h9-HZd5aRdpyxCxIXynMcGsivE1nQZSk"

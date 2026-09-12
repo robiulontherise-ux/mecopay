@@ -60,6 +60,7 @@ export interface CAPITrackingEvent {
 
 export interface SiteSettings {
   client_id?: string;
+  owner_email?: string;
   id: string;
   site_name: string;
   site_logo: string;

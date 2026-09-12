@@ -1,0 +1,6 @@
+{
+  "name": "BUET DMC Dreamers - EdTech Platform",
+  "description": "Production-ready EdTech platform with Supabase Cloud backend, dynamic CMS admin panel, lazy authentication, post & series management, and Meta CAPI tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
