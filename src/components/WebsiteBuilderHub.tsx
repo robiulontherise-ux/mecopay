@@ -58,6 +58,7 @@ export default function WebsiteBuilderHub({ user }) {
       } else {
         // Insert
         const result = await supabase.from('site_settings').insert({
+          id: 'default',
           client_id: user.id, // Primary linking key
           brand_id: selectedBrand,
           owner_email: user.email,
