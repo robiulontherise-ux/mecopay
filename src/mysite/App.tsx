@@ -78,7 +78,8 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
         // Redirect to admin panel ONLY IF the user is the Admin
         if (_event === 'SIGNED_IN') {
            // Fetch current site settings to see if the logged-in user is the owner
-           supabase.from('site_settings').select('client_id').eq('id', 'default').limit(1).maybeSingle().then(({data}) => {
+           let domain = window.location.hostname;
+           supabase.from('site_settings').select('client_id').or(`client_id.eq.${session.user.id},domain.eq.${domain},subdomain.eq.${domain}`).limit(1).maybeSingle().then(({data}) => {
              if (data && data.client_id === session.user.id) {
                setCurrentView('admin');
                window.location.hash = 'admin';
@@ -134,7 +135,7 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
          }
       }
       
-      if (!settingsErr && settingsData) {
+      if (settingsData) {
         setSiteSettings(settingsData);
       }
 
@@ -322,7 +323,7 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
     if (!user?.id) return alert('No client ID found (not logged in).');
     settings.client_id = user.id;
     // Try to update first
-    const { error: updateError, data: updateData } = await supabase.from('site_settings').update(settings).eq('id', 'default').eq('client_id', user.id).select();
+    const { error: updateError, data: updateData } = await supabase.from('site_settings').update(settings).eq('client_id', user.id).select();
     
     if (updateError) {
       console.error('Supabase settings update error:', updateError);

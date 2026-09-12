@@ -8,6 +8,12 @@ export default function WebsiteBuilderHub({ user }) {
   const [brands, setBrands] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     if (activeView === 'brand_selection') {
@@ -58,7 +64,7 @@ export default function WebsiteBuilderHub({ user }) {
       } else {
         // Insert
         const result = await supabase.from('site_settings').insert({
-          id: 'default',
+          id: user.id,
           client_id: user.id, // Primary linking key
           brand_id: selectedBrand,
           owner_email: user.email,
@@ -75,21 +81,33 @@ export default function WebsiteBuilderHub({ user }) {
 
       if (error) throw error;
       
-      alert("Website backend initialized successfully!");
+      showToast("Website backend initialized successfully!", "success");
       
       // Successfully registered the project type, move to GitHub CMS code
       setActiveView('no_code');
     } catch (error) {
       console.error("Error saving site_settings:", error);
-      alert(`Failed to initialize website creation: ${error.message || 'Unknown database error'}. Please check RLS policies.`);
+      showToast(`Failed to initialize website creation: ${error.message || 'Unknown database error'}. Please check RLS policies.`, "error");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const toastEl = toast && (
+    <div className={`fixed top-4 right-4 z-[9999] px-6 py-3 rounded-lg shadow-xl border font-medium flex items-center gap-2 transition-all animate-in fade-in slide-in-from-top-5 ${
+      toast.type === 'success' 
+        ? 'bg-emerald-500 border-emerald-400 text-white shadow-emerald-500/20' 
+        : 'bg-red-500 border-red-400 text-white shadow-red-500/20'
+    }`}>
+      <div className={`w-2 h-2 rounded-full bg-white animate-pulse`} />
+      {toast.message}
+    </div>
+  );
+
   if (activeView === 'no_code') {
     return (
-      <div className="h-[calc(100vh-100px)] overflow-y-auto w-full -mx-4 sm:mx-0 bg-slate-950 rounded-xl">
+      <div className="h-[calc(100vh-100px)] overflow-y-auto w-full -mx-4 sm:mx-0 bg-slate-950 rounded-xl relative">
+        {toastEl}
         <MySiteApp builderUser={user} />
       </div>
     );
@@ -97,7 +115,8 @@ export default function WebsiteBuilderHub({ user }) {
 
   if (activeView === 'brand_selection') {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto relative">
+        {toastEl}
         <button onClick={() => setActiveView('hub')} className="text-slate-400 hover:text-white mb-6 flex items-center gap-2">
           &larr; Back to Options
         </button>
@@ -169,7 +188,8 @@ export default function WebsiteBuilderHub({ user }) {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto relative">
+      {toastEl}
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-white mb-3">Website Builder Hub</h1>
         <p className="text-slate-400 max-w-2xl text-lg">
