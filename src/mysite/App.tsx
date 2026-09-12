@@ -8,7 +8,8 @@ import AdminPanel from './components/AdminPanel';
 import LazyAuthModal from './components/LazyAuthModal';
 import Footer from './components/Footer';
 
-export default function App({ builderUser }: { builderUser?: any } = {}) {
+export default function App(props: { builderUser?: any, activeSiteId?: string, onNavigateUpload?: () => void, onBackToHub?: () => void } = {}) {
+  const { builderUser, activeSiteId, onNavigateUpload } = props;
   // 1. Auth State
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -111,8 +112,21 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
       let settingsData = null;
       let targetClientId = null;
 
-      if (builderUser?.id) {
-         // In builder mode, load the client's own settings
+      if (activeSiteId) {
+         // Load by brand ID (which is the site_settings ID now)
+         const { data, error } = await supabase
+           .from('site_settings')
+           .select('*')
+           .eq('id', activeSiteId)
+           .limit(1)
+           .maybeSingle();
+           
+         if (!error && data) {
+           settingsData = data;
+           targetClientId = data.client_id;
+         }
+      } else if (builderUser?.id) {
+         // Legacy mode (first site for user)
          targetClientId = builderUser.id;
          const { data, error } = await supabase
            .from('site_settings')
@@ -405,6 +419,7 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
         currentView={currentView}
         onNavigateHome={handleNavigateHome}
         onNavigateAdmin={handleNavigateAdmin}
+        onBackToHub={props.onBackToHub}
       />
 
       {/* 2. Main Content Routing View */}
@@ -451,6 +466,7 @@ export default function App({ builderUser }: { builderUser?: any } = {}) {
             onSavePost={handleSavePost}
             onDeletePost={handleDeletePost}
             onBackToSite={handleNavigateHome}
+            onNavigateUpload={onNavigateUpload}
             userEmail={user?.email || 'admin@example.com'}
           />
         )}

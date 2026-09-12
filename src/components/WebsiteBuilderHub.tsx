@@ -9,11 +9,24 @@ export default function WebsiteBuilderHub({ user }) {
   const [selectedBrand, setSelectedBrand] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // New state for brand logic
+  const [brandSiteExists, setBrandSiteExists] = useState(false);
+  const [subdomain, setSubdomain] = useState('');
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
+
+  // Check if selected brand already has a site
+  useEffect(() => {
+    if (selectedBrand) {
+      supabase.from('site_settings').select('id').eq('id', selectedBrand).single().then(({data}) => {
+        setBrandSiteExists(!!data);
+      });
+    }
+  }, [selectedBrand]);
 
   useEffect(() => {
     if (activeView === 'brand_selection') {
@@ -41,49 +54,32 @@ export default function WebsiteBuilderHub({ user }) {
 
   const handleConfirmCreate = async () => {
     if (!selectedBrand || !user?.email) return;
+    if (!subdomain.trim()) {
+      showToast("Please enter a subdomain", "error");
+      return;
+    }
     
     setIsLoading(true);
     try {
-      // Check if row already exists
-      const { data: existingData } = await supabase
-        .from('site_settings')
-        .select('id')
-        .eq('client_id', user.id)
-        .single();
+      // Insert new site for the brand
+      const { error } = await supabase.from('site_settings').insert({
+        id: selectedBrand, // Use brand_id as the site_settings ID to keep it 1:1
+        client_id: user.id, // Primary linking key for the owner
+        brand_id: selectedBrand,
+        owner_email: user.email,
+        subdomain: `${subdomain.trim().toLowerCase()}.mecopay.space`,
+        project_type: 'create',
+        site_name: brands.find((b: any) => b.id === selectedBrand)?.name || 'My No-Code Site',
+        site_logo: '',
+        primary_color: '#3b82f6',
+        text_size: 'medium',
+        show_default_home: true,
+        default_home_content: 'Welcome to my site!',
+      });
       
-      let error;
-
-      if (existingData) {
-        // Update
-        const result = await supabase.from('site_settings').update({
-          brand_id: selectedBrand,
-          owner_email: user.email,
-          project_type: 'create',
-        }).eq('client_id', user.id);
-        error = result.error;
-      } else {
-        // Insert
-        const result = await supabase.from('site_settings').insert({
-          id: user.id,
-          client_id: user.id, // Primary linking key
-          brand_id: selectedBrand,
-          owner_email: user.email,
-          project_type: 'create',
-          site_name: 'My No-Code Site',
-          site_logo: '',
-          primary_color: '#3b82f6',
-          text_size: 'medium',
-          show_default_home: true,
-          default_home_content: 'Welcome to my site!',
-        });
-        error = result.error;
-      }
-
       if (error) throw error;
       
       showToast("Website backend initialized successfully!", "success");
-      
-      // Successfully registered the project type, move to GitHub CMS code
       setActiveView('no_code');
     } catch (error) {
       console.error("Error saving site_settings:", error);
@@ -91,6 +87,10 @@ export default function WebsiteBuilderHub({ user }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleManageSite = () => {
+    setActiveView('no_code');
   };
 
   const toastEl = toast && (
@@ -108,7 +108,7 @@ export default function WebsiteBuilderHub({ user }) {
     return (
       <div className="h-[calc(100vh-100px)] overflow-y-auto w-full -mx-4 sm:mx-0 bg-slate-950 rounded-xl relative">
         {toastEl}
-        <MySiteApp builderUser={user} />
+        <MySiteApp builderUser={user} activeSiteId={selectedBrand} onNavigateUpload={() => setActiveView('upload')} onBackToHub={() => setActiveView('hub')} />
       </div>
     );
   }
@@ -135,21 +135,54 @@ export default function WebsiteBuilderHub({ user }) {
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500 transition-colors mb-4"
               >
                 {brands.length === 0 && <option value="">No brands found - please create one first</option>}
-                {brands.map(brand => (
+                {brands.map((brand: any) => (
                   <option key={brand.id} value={brand.id}>{brand.name}</option>
                 ))}
               </select>
 
-              <button
-                disabled={!selectedBrand || isLoading}
-                onClick={handleConfirmCreate}
-                className="w-full mt-6 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-bold transition-all flex justify-center items-center gap-2"
-              >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm & Open Builder'}
-              </button>
+              {selectedBrand && brandSiteExists && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl mb-4 text-emerald-400 text-sm flex items-center justify-center">
+                  A website is already created for this brand.
+                </div>
+              )}
+
+              {selectedBrand && !brandSiteExists && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Subdomain</label>
+                  <div className="flex items-center">
+                    <input 
+                      type="text"
+                      value={subdomain}
+                      onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      placeholder="my-shop"
+                      className="w-full bg-slate-950 border border-r-0 border-slate-700 text-white rounded-l-lg px-4 py-3 focus:outline-none focus:border-cyan-500 transition-colors"
+                    />
+                    <div className="bg-slate-800 border border-l-0 border-slate-700 text-slate-400 px-4 py-3 rounded-r-lg whitespace-nowrap">
+                      .mecopay.space
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {brandSiteExists ? (
+                <button
+                  onClick={handleManageSite}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold transition-all flex justify-center items-center gap-2"
+                >
+                  Manage {brands.find((b: any) => b.id === selectedBrand)?.name || ''} Website
+                </button>
+              ) : (
+                <button
+                  disabled={!selectedBrand || !subdomain || isLoading}
+                  onClick={handleConfirmCreate}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-bold transition-all flex justify-center items-center gap-2"
+                >
+                  Create & Open Builder
+                </button>
+              )}
             </div>
           )}
         </div>

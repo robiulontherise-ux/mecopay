@@ -13,7 +13,8 @@ import {
   Database,
   ExternalLink,
   BookOpen,
-  Search
+  Search,
+  ArrowLeft
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -29,6 +30,7 @@ interface NavbarProps {
   currentView: 'home' | 'post-detail' | 'admin';
   onNavigateHome: () => void;
   onNavigateAdmin: () => void;
+  onBackToHub?: () => void;
   onSimulateLogin?: (email: string) => void;
 }
 
@@ -45,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentView,
   onNavigateHome,
   onNavigateAdmin,
+  onBackToHub,
 }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -132,19 +135,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Admin Dashboard CTA (Only shown if Admin Email matches) */}
             {isAdmin && (
-              <button
-                onClick={onNavigateAdmin}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-sm ${
-                  currentView === 'admin'
-                    ? 'bg-purple-600 text-white border-purple-400 shadow-purple-500/30'
-                    : 'bg-purple-950/60 text-purple-200 border-purple-700/60 hover:bg-purple-900/60'
-                }`}
-                title={`Admin CMS Panel for ${ADMIN_EMAIL}`}
-              >
-                <ShieldCheck className="w-4 h-4 text-purple-400" />
-                <span className="hidden sm:inline">Admin CMS Studio</span>
-                <span className="sm:hidden">Admin</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {currentView === 'admin' && onBackToHub && (
+                  <button
+                    onClick={onBackToHub}
+                    className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back to Hub</span>
+                  </button>
+                )}
+                <button
+                  onClick={onNavigateAdmin}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-sm ${
+                    currentView === 'admin'
+                      ? 'bg-purple-600 text-white border-purple-400 shadow-purple-500/30'
+                      : 'bg-purple-950/60 text-purple-200 border-purple-700/60 hover:bg-purple-900/60'
+                  }`}
+                  title={`Admin CMS Panel for ${ADMIN_EMAIL}`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-purple-400" />
+                  <span className="hidden sm:inline">Admin CMS Studio</span>
+                  <span className="sm:hidden">Admin</span>
+                </button>
+              </div>
             )}
 
             {/* Auth CTA / User Profile Menu */}

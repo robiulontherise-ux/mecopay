@@ -35,6 +35,7 @@ interface AdminPanelProps {
   onSavePost: (post: Post) => Promise<void>;
   onDeletePost: (postId: string) => Promise<void>;
   onBackToSite: () => void;
+  onNavigateUpload?: () => void;
   userEmail: string;
 }
 
@@ -48,6 +49,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onSavePost,
   onDeletePost,
   onBackToSite,
+  onNavigateUpload,
   userEmail,
 }) => {
   const [activeTab, setActiveTab] = useState<'posts' | 'pages' | 'categories' | 'new-post' | 'edit-post' | 'site-settings' | 'apps'>('posts');
@@ -431,7 +433,13 @@ ${postContent}`
               <span>Settings</span>
             </button>
             <button
-              onClick={() => setActiveTab('apps')}
+              onClick={() => {
+                if (onNavigateUpload) {
+                  onNavigateUpload();
+                } else {
+                  setActiveTab('apps');
+                }
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'apps'
                   ? 'bg-fuchsia-600 text-white shadow-sm shadow-fuchsia-600/30'
