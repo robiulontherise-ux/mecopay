@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, UploadCloud, ArrowRight, Code, Box, FolderGit2, Loader2 } from 'lucide-react';
+import { Globe, UploadCloud, ArrowRight, Code, Box, FolderGit2, Loader2, Plus, FileText } from 'lucide-react';
 import MySiteApp from '../mysite/App';
 import { supabase } from '../lib/supabase';
 
@@ -192,30 +192,92 @@ export default function WebsiteBuilderHub({ user }) {
 
   if (activeView === 'upload') {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <button onClick={() => setActiveView('hub')} className="text-slate-400 hover:text-white mb-6 flex items-center gap-2">
           &larr; Back to Options
         </button>
         
-        {/* The Hosted Projects UI copied exactly from GitHub logic */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-4">
-            <Box className="w-6 h-6 text-blue-400" />
-            Upload Custom Backend (Hosted Projects)
-          </h3>
-          <p className="text-sm text-slate-400 mb-6 max-w-3xl">
-            Upload your WordPress or Laravel source code (.zip). The system stores it in Supabase Storage and we will automatically route the domain to a dedicated Oracle Cloud VPS.
-          </p>
-          
-          <div className="flex-1 border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-xl p-10 flex flex-col items-center justify-center text-center hover:bg-slate-900/80 hover:border-blue-500/50 transition-all cursor-pointer group">
-            <FolderGit2 className="w-12 h-12 text-slate-600 mb-3 group-hover:text-blue-400 transition-colors" />
-            <h4 className="text-slate-300 font-semibold text-base mb-1">Drag & Drop project ZIP here</h4>
-            <p className="text-sm text-slate-500">or click to browse (Max 500MB)</p>
-            <button className="mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20">
-              Select ZIP File
-            </button>
+        <div className="space-y-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Box className="w-5 h-5 text-fuchsia-400" />
+                  App Hosting & BaaS (Cloudflare + Supabase)
+                </h2>
+                <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+                  Allow clients to upload their compiled frontend projects (React, Next.js, HTML/JS ZIP files). 
+                  They get a unique project ID to connect with your Supabase BaaS, and their uploaded files will be served via Cloudflare Workers.
+                </p>
+              </div>
+              <button
+                onClick={() => alert('New App Creation flow will go here!')}
+                className="px-4 py-2.5 rounded-xl text-sm font-bold bg-fuchsia-600 hover:bg-fuchsia-500 text-white flex items-center gap-2 shadow-md shadow-fuchsia-600/20 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create New Project</span>
+              </button>
+            </div>
+
+            {/* Empty State / Coming Soon Mockup */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                  <FolderGit2 className="w-32 h-32 text-fuchsia-500" />
+                </div>
+                
+                <h3 className="text-lg font-bold text-white mb-2 relative z-10">Upload Compiled Frontend</h3>
+                <p className="text-sm text-slate-400 mb-6 relative z-10 max-w-sm">
+                  Clients upload their `dist` or `out` folder as a ZIP file. The system stores it in Supabase Storage.
+                </p>
+
+                <div className="border-2 border-dashed border-slate-700 bg-slate-800/50 rounded-xl p-8 text-center relative z-10 flex flex-col items-center justify-center hover:bg-slate-800/80 hover:border-fuchsia-500/50 transition-all cursor-pointer">
+                  <UploadCloud className="w-10 h-10 text-slate-400 mb-3 group-hover:text-fuchsia-400 transition-colors" />
+                  <p className="text-sm font-medium text-slate-200">Drag & Drop project ZIP here</p>
+                  <p className="text-xs text-slate-500 mt-1">or click to browse</p>
+                  
+                  <button className="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                    Select ZIP File
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col">
+                <h3 className="text-lg font-bold text-white mb-4">Hosted Projects</h3>
+                
+                <div className="flex-1 border border-slate-800 bg-slate-950/50 rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                  <Box className="w-12 h-12 text-slate-700 mb-3" />
+                  <h4 className="text-slate-300 font-semibold text-sm">No projects hosted yet</h4>
+                  <p className="text-xs text-slate-500 max-w-[250px] mt-2">
+                    Create a project and generate a Project ID for a client so they can connect their frontend.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+            
+            <div className="bg-fuchsia-950/30 border border-fuchsia-900/50 rounded-2xl p-5">
+              <h4 className="text-sm font-bold text-fuchsia-300 mb-2">Supabase BaaS API (For Clients)</h4>
+              <p className="text-xs text-fuchsia-200/70 mb-4">
+                Clients can use your Supabase instance to store their data using their Project ID.
+              </p>
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <pre className="text-xs text-slate-300 overflow-x-auto">
+{`// Example Client Next.js Connection
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'YOUR_SUPABASE_URL'
+const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'
+export const supabase = createClient(supabaseUrl, supabaseKey)
+
+// Client saves their app data to your BaaS
+await supabase.from('client_app_data').insert([
+  { project_id: 'client-project-123', payload: { ... } }
+])`}
+                </pre>
+              </div>
+            </div>
           </div>
-        </div>
       </div>
     );
   }
