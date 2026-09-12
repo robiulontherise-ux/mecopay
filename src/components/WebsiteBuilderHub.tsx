@@ -38,21 +38,49 @@ export default function WebsiteBuilderHub({ user }) {
     
     setIsLoading(true);
     try {
-      // Upsert into site_settings tying the selected brand and owner email
-      const { error } = await supabase.from('site_settings').upsert({
-        client_id: user.id, // Primary linking key
-        brand_id: selectedBrand,
-        owner_email: user.email,
-        project_type: 'create',
-      }, { onConflict: 'client_id' });
+      // Check if row already exists
+      const { data: existingData } = await supabase
+        .from('site_settings')
+        .select('id')
+        .eq('client_id', user.id)
+        .single();
+      
+      let error;
+
+      if (existingData) {
+        // Update
+        const result = await supabase.from('site_settings').update({
+          brand_id: selectedBrand,
+          owner_email: user.email,
+          project_type: 'create',
+        }).eq('client_id', user.id);
+        error = result.error;
+      } else {
+        // Insert
+        const result = await supabase.from('site_settings').insert({
+          client_id: user.id, // Primary linking key
+          brand_id: selectedBrand,
+          owner_email: user.email,
+          project_type: 'create',
+          site_name: 'My No-Code Site',
+          site_logo: '',
+          primary_color: '#3b82f6',
+          text_size: 'medium',
+          show_default_home: true,
+          default_home_content: 'Welcome to my site!',
+        });
+        error = result.error;
+      }
 
       if (error) throw error;
+      
+      alert("Website backend initialized successfully!");
       
       // Successfully registered the project type, move to GitHub CMS code
       setActiveView('no_code');
     } catch (error) {
       console.error("Error saving site_settings:", error);
-      alert("Failed to initialize website creation. Please check database permissions.");
+      alert(`Failed to initialize website creation: ${error.message || 'Unknown database error'}. Please check RLS policies.`);
     } finally {
       setIsLoading(false);
     }
