@@ -444,6 +444,19 @@ async function startServer() {
     }
   });
 
+  // Custom Domain & Subdomain Routing Middleware
+  app.use((req, res, next) => {
+    const host = req.headers['x-forwarded-host'] || req.hostname || '';
+    // Define the main platform domains that should serve the Dashboard
+    const isPlatformDomain = host.includes('run.app') || host === 'mecopay.space' || host === 'www.mecopay.space' || host === 'localhost' || host === '127.0.0.1';
+    
+    // If it's a custom domain/subdomain, and not an API request, rewrite the URL internally to use the mysite app
+    if (!isPlatformDomain && !req.path.startsWith('/api') && !req.path.startsWith('/mysite')) {
+      req.url = '/mysite' + req.url;
+    }
+    next();
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
