@@ -452,7 +452,10 @@ async function startServer() {
     
     // If it's a custom domain/subdomain, and not an API request, rewrite the URL internally to use the mysite app
     if (!isPlatformDomain && !req.path.startsWith('/api') && !req.path.startsWith('/mysite')) {
-      req.url = '/mysite' + req.url;
+      const isAsset = /\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/i.test(req.path);
+      if (!isAsset) {
+        req.url = '/mysite' + req.url;
+      }
     }
     next();
   });
