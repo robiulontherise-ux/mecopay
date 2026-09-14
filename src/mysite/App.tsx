@@ -30,13 +30,11 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
   const [authModalContext, setAuthModalContext] = useState<string>('navbar');
   const [pendingAction, setPendingAction] = useState<{ type: 'buy_volume' | 'take_exam' | 'telegram'; post: Post } | null>(null);
 
-
-
-
   // 5. Meta CAPI Tracking Hook
 
   // Check if current user is Admin
-  const isAdmin = user && siteSettings?.client_id && user.id === siteSettings.client_id;
+  const isAdmin = (user && siteSettings?.client_id && user.id === siteSettings.client_id) || 
+                  (user && siteSettings?.owner_email && user.email === siteSettings.owner_email);
 
   // Fetch initial session & setup auth listener
   useEffect(() => {
@@ -45,6 +43,10 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       setAuthLoading(false);
       return;
     }
+  }, [builderUser]);
+
+  useEffect(() => {
+    if (builderUser) return;
     // Check real Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -78,10 +80,29 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
         }
         // Redirect to admin panel ONLY IF the user is the Admin
         if (_event === 'SIGNED_IN') {
-           // Fetch current site settings to see if the logged-in user is the owner
-           let domain = window.location.hostname;
-           supabase.from('site_settings').select('client_id').or(`client_id.eq.${session.user.id},domain.eq.${domain},subdomain.eq.${domain}`).limit(1).maybeSingle().then(({data}) => {
-             if (data && data.client_id === session.user.id) {
+           const params = new URLSearchParams(window.location.search);
+           const paramSubdomain = params.get('subdomain');
+           const paramCustomDomain = params.get('custom_domain');
+           let currentDomain = window.location.hostname;
+           
+           let query = supabase.from('site_settings').select('client_id, owner_email');
+           
+           if (paramSubdomain) {
+             query = query.eq('subdomain', paramSubdomain);
+           } else if (paramCustomDomain) {
+             query = query.eq('domain', paramCustomDomain);
+           } else {
+             let rawSubdomain = currentDomain.endsWith('.mecopay.space') ? currentDomain.replace('.mecopay.space', '') : null;
+             if (rawSubdomain && rawSubdomain !== 'www' && rawSubdomain !== 'mecopay.space') {
+               query = query.eq('subdomain', rawSubdomain);
+             } else {
+               query = query.or(`client_id.eq.${session.user.id},owner_email.eq.${session.user.email},domain.eq.${currentDomain},subdomain.eq.${currentDomain}`);
+             }
+           }
+
+           query.limit(1).maybeSingle().then(({data}) => {
+             const isClient = data && (data.client_id === session.user.id || data.owner_email === session.user.email);
+             if (isClient) {
                setCurrentView('admin');
                window.location.hash = 'admin';
              }

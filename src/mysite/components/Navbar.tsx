@@ -214,7 +214,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
                       {isAdmin && (
                         <span className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                          Super Admin Role
+                          Admin Role
                         </span>
                       )}
                     </div>
@@ -258,7 +258,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             ) : (
               <button
-                onClick={() => onOpenAuthModal('navbar')}
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: {
+                        redirectTo: window.location.origin,
+                      },
+                    });
+                    if (error) console.error("Error logging in:", error.message);
+                  } catch (err) {
+                    console.error('Google OAuth error:', err);
+                  }
+                }}
                 className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-[11px] sm:text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all cursor-pointer whitespace-nowrap shrink-0"
               >
                 <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" viewBox="0 0 24 24">

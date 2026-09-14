@@ -35,7 +35,22 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
 
   if (!isOpen) return null;
 
+  const getDomainName = () => {
+    const params = new URLSearchParams(window.location.search);
+    let domainName = params.get('subdomain') || params.get('custom_domain');
+    if (!domainName) {
+      let currentHost = window.location.hostname;
+      if (currentHost.endsWith('.mecopay.space')) {
+         domainName = currentHost.replace('.mecopay.space', '');
+      } else {
+         domainName = currentHost;
+      }
+    }
+    return domainName ? domainName.charAt(0).toUpperCase() + domainName.slice(1) : 'Our Platform';
+  };
+
   const getContextDescription = () => {
+    const brandName = getDomainName();
     switch (contextAction) {
       case 'buy_volume':
         return {
@@ -61,7 +76,7 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
         };
       default:
         return {
-          title: 'Join RSG EDU',
+          title: `Join ${brandName}`,
           subtitle: 'Sign in with Google to save your study progress, access model tests, and download admission materials.',
           badge: 'Student Portal',
         };
@@ -239,7 +254,7 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
           </button>
 
           <p className="mt-5 text-[11px] text-center text-slate-400">
-            By signing in, you agree to RSG EDU Terms of Service & Privacy Policy.
+            By signing in, you agree to {getDomainName()} Terms of Service & Privacy Policy.
           </p>
         </div>
       </div>
