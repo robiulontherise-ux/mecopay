@@ -136,13 +136,31 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
            .maybeSingle();
          if (!error && data) settingsData = data;
       } else {
+         // Read URL parameters passed by Cloudflare Worker
+         const params = new URLSearchParams(window.location.search);
+         const paramSubdomain = params.get('subdomain');
+         const paramCustomDomain = params.get('custom_domain');
+         
          let currentDomain = window.location.hostname;
-         const { data, error } = await supabase
-           .from('site_settings')
-           .select('*')
-           .or(`domain.eq.${currentDomain},subdomain.eq.${currentDomain}`)
-           .limit(1)
-           .maybeSingle();
+         
+         let query = supabase.from('site_settings').select('*');
+         
+         if (paramSubdomain) {
+           query = query.eq('subdomain', paramSubdomain);
+         } else if (paramCustomDomain) {
+           query = query.eq('domain', paramCustomDomain);
+         } else {
+           // Fallback if accessed directly or worker didn't pass params
+           let rawSubdomain = currentDomain.endsWith('.mecopay.space') ? currentDomain.replace('.mecopay.space', '') : null;
+           if (rawSubdomain && rawSubdomain !== 'www' && rawSubdomain !== 'mecopay.space') {
+             query = query.eq('subdomain', rawSubdomain);
+           } else {
+             query = query.or(`domain.eq.${currentDomain},subdomain.eq.${currentDomain}`);
+           }
+         }
+
+         const { data, error } = await query.limit(1).maybeSingle();
+         
          if (!error && data) {
            settingsData = data;
            targetClientId = data.client_id;
@@ -151,6 +169,24 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       
       if (settingsData) {
         setSiteSettings(settingsData);
+      }
+      
+      // Always set the browser tab title to the subdomain or custom domain, prioritizing the URL params
+      const params = new URLSearchParams(window.location.search);
+      const urlDomainName = params.get('subdomain') || params.get('custom_domain');
+      
+      if (urlDomainName) {
+        // Capitalize first letter for a professional look
+        document.title = urlDomainName.charAt(0).toUpperCase() + urlDomainName.slice(1);
+      } else {
+        // Fallback for direct access without params
+        let currentHost = window.location.hostname;
+        if (currentHost.endsWith('.mecopay.space')) {
+           let sub = currentHost.replace('.mecopay.space', '');
+           document.title = sub.charAt(0).toUpperCase() + sub.slice(1);
+        } else {
+           document.title = currentHost;
+        }
       }
 
       // Fetch categories

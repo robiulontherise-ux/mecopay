@@ -91,7 +91,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                   backgroundClip: siteSettings?.site_name_color ? 'unset' : 'text'
                 }}
               >
-                {siteSettings?.site_name || 'RSG SHOP'}
+                {(() => {
+                  const params = new URLSearchParams(window.location.search);
+                  let domainName = params.get('subdomain') || params.get('custom_domain');
+                  
+                  if (!domainName) {
+                    let currentHost = window.location.hostname;
+                    if (currentHost.endsWith('.mecopay.space')) {
+                       domainName = currentHost.replace('.mecopay.space', '');
+                    } else {
+                       domainName = currentHost;
+                    }
+                  }
+                  
+                  // Return capitalized version or fallback to 'RSG SHOP' if something goes wrong
+                  return domainName ? domainName.charAt(0).toUpperCase() + domainName.slice(1) : 'RSG SHOP';
+                })()}
               </span>
             </div>
           </div>
