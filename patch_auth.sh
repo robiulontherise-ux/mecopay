@@ -1,0 +1,2 @@
+sed -i 's/const \[loading, setLoading\] = useState(true);/const [loading, setLoading] = useState(true);\n  const [user, setUser] = useState<any>(null);/' src/components/checkout/CheckoutPage.tsx
+sed -i 's/const fetchData = async () => {/const fetchData = async () => {\n    const { data: { session } } = await supabase.auth.getSession();\n    setUser(session?.user || null);/' src/components/checkout/CheckoutPage.tsx

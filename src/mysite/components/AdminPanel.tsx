@@ -84,6 +84,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showThumbnail, setShowThumbnail] = useState(true);
   const [showFullPost, setShowFullPost] = useState(false);
   const [isCustomPage, setIsCustomPage] = useState(false);
+  const [productType, setProductType] = useState<'physical' | 'digital' | 'just_form'>('physical');
+  const [digitalSettings, setDigitalSettings] = useState<any>({ buttons: [] });
   const [isUploading, setIsUploading] = useState(false);
   const [editorCursorPos, setEditorCursorPos] = useState<number | null>(null);
 
@@ -264,6 +266,8 @@ ${defaultHomeContent}`
     setShowThumbnail(true);
     setShowFullPost(false);
     setIsCustomPage(isPage);
+    setProductType('physical');
+    setDigitalSettings({ buttons: [] });
     setPostContent(`# New Admission Module
 
 Write comprehensive lecture notes, problem sets, and key insights here.
@@ -290,6 +294,8 @@ Write comprehensive lecture notes, problem sets, and key insights here.
     setShowShareBtn(p.show_share_btn ?? true);
     setShowThumbnail(p.show_thumbnail ?? true);
     setShowFullPost(p.show_full_post ?? false);
+    setProductType(p.product_type || 'physical');
+    setDigitalSettings(p.digital_settings || { buttons: [] });
     setActiveTab('edit-post');
   };
 
@@ -324,6 +330,8 @@ ${postContent}`
       updated_at: new Date().toISOString(),
       views_count: editingPost?.views_count || 1,
       is_custom_page: isCustomPage,
+      product_type: productType,
+      digital_settings: digitalSettings,
       show_details_btn: showDetailsBtn,
       show_share_btn: showShareBtn,
       show_thumbnail: showThumbnail,
@@ -725,7 +733,7 @@ ${postContent}`
                     <span>{editingCategory ? 'Update Category' : 'Save to Navbar'}</span>
                   </button>
                 </div>
-              </form>
+          </form>
             </div>
 
             {/* Categories List */}
@@ -1230,6 +1238,106 @@ ${postContent}`
             </div>
 
 
+              {!isCustomPage && (
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg mt-6">
+                <h3 className="font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                  Product Delivery & Checkout Logic
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setProductType('physical')}
+                    className={`p-4 rounded-xl border text-left transition-all ${productType === 'physical' ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-950 hover:border-slate-700'}`}
+                  >
+                    <h4 className="font-semibold text-slate-200 text-sm">Physical Product</h4>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProductType('just_form')}
+                    className={`p-4 rounded-xl border text-left transition-all ${productType === 'just_form' ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-800 bg-slate-950 hover:border-slate-700'}`}
+                  >
+                    <h4 className="font-semibold text-slate-200 text-sm">Just Form (100% COD)</h4>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProductType('digital')}
+                    className={`p-4 rounded-xl border text-left transition-all ${productType === 'digital' ? 'border-fuchsia-500 bg-fuchsia-500/10' : 'border-slate-800 bg-slate-950 hover:border-slate-700'}`}
+                  >
+                    <h4 className="font-semibold text-slate-200 text-sm">Digital / Course</h4>
+                  </button>
+                </div>
+
+                {productType === 'digital' && (
+                  <div className="border-t border-slate-800 pt-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h4 className="font-semibold text-slate-200 text-sm">Dynamic Access Buttons</h4>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const btns = digitalSettings.buttons || [];
+                          setDigitalSettings({ ...digitalSettings, buttons: [...btns, { label: 'Take Exam', page_id: '' }] });
+                        }}
+                        className="text-xs px-3 py-1.5 bg-fuchsia-500/10 text-fuchsia-400 font-semibold rounded hover:bg-fuchsia-500/20 transition-colors"
+                      >
+                        + Add Button
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {(digitalSettings.buttons || []).map((btn: any, index: number) => (
+                        <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                          <div className="flex-1">
+                            <label className="text-xs text-slate-400 block mb-1">Button Label</label>
+                            <input 
+                              type="text" 
+                              value={btn.label}
+                              onChange={(e) => {
+                                const newBtns = [...(digitalSettings.buttons || [])];
+                                newBtns[index].label = e.target.value;
+                                setDigitalSettings({ ...digitalSettings, buttons: newBtns });
+                              }}
+                              className="w-full bg-slate-900 border border-slate-800 rounded-lg text-sm px-3 py-2 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" 
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-xs text-slate-400 block mb-1">Link to Secret Page</label>
+                            <select 
+                              value={btn.page_id}
+                              onChange={(e) => {
+                                const newBtns = [...(digitalSettings.buttons || [])];
+                                newBtns[index].page_id = e.target.value;
+                                setDigitalSettings({ ...digitalSettings, buttons: newBtns });
+                              }}
+                              className="w-full bg-slate-900 border border-slate-800 rounded-lg text-sm px-3 py-2 text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                            >
+                              <option value="">Select a page...</option>
+                              {posts.filter(p => p.is_custom_page).map(page => (
+                                <option key={page.id} value={page.id}>{page.title}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newBtns = [...(digitalSettings.buttons || [])];
+                              newBtns.splice(index, 1);
+                              setDigitalSettings({ ...digitalSettings, buttons: newBtns });
+                            }}
+                            className="mt-6 p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold rounded-lg"
+                            title="Remove Button"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </form>
         )}
       </div>

@@ -45,6 +45,10 @@ function App() {
       alert("Login Error: " + decodeURIComponent(hashParams.get('error_description') || ''));
     }
     
+    if (window.opener && window.location.hash.includes('access_token')) {
+      setTimeout(() => window.close(), 500);
+    }
+
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error("App getSession error:", error);

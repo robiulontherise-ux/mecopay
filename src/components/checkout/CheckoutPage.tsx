@@ -76,6 +76,7 @@ export default function CheckoutPage() {
   const [gateways, setGateways] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const [error, setError] = useState('');
   
   const [step, setStep] = useState(1);
@@ -218,6 +219,8 @@ export default function CheckoutPage() {
   }, [slug]);
 
   const fetchData = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setUser(session?.user || null);
     try {
       setLoading(true);
       setError('');

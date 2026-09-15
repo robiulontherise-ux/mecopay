@@ -7,6 +7,7 @@ import PostDetail from './components/PostDetail';
 import AdminPanel from './components/AdminPanel';
 import LazyAuthModal from './components/LazyAuthModal';
 import Footer from './components/Footer';
+import CustomerPortal from './components/CustomerPortal';
 
 export default function App(props: { builderUser?: any, activeSiteId?: string, onNavigateUpload?: () => void, onBackToHub?: () => void } = {}) {
   const { builderUser, activeSiteId, onNavigateUpload } = props;
@@ -22,7 +23,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   // 3. Routing / Navigation State
-  const [currentView, setCurrentView] = useState<'home' | 'post-detail' | 'admin'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'post-detail' | 'admin' | 'my-account'>('home');
   const [activePost, setActivePost] = useState<Post | null>(null);
 
   // 4. Modal Triggers & Context
@@ -105,6 +106,10 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
              if (isClient) {
                setCurrentView('admin');
                window.location.hash = 'admin';
+             } else {
+               // Non-admin customer logged in => go to their portal
+               setCurrentView('my-account');
+               window.location.hash = 'my-account';
              }
            });
         }
@@ -252,6 +257,8 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
         }
       } else if (hash === 'admin') {
         setCurrentView('admin');
+      } else if (hash === 'my-account') {
+        setCurrentView('my-account');
       } else if (hash.startsWith('category/')) {
         const catSlug = hash.replace('category/', '');
         const foundCat = categories.find((c) => c.slug === catSlug || c.id === catSlug);
@@ -509,7 +516,17 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
             user={user}
             onBack={handleNavigateHome}
             onSelectPost={handleSelectPost}
+            onOpenAuthModal={() => {
+              setAuthModalContext('checkout');
+              setAuthModalOpen(true);
+            }}
           />
+        )}
+        
+        {currentView === 'my-account' && user && !isAdmin && (
+          <React.Suspense fallback={<div className="p-8 text-center"><span className="animate-spin text-gray-500">Loading portal...</span></div>}>
+            <CustomerPortal siteSettings={siteSettings} user={user} />
+          </React.Suspense>
         )}
 
         {currentView === 'admin' && (

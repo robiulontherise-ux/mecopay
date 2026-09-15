@@ -1,0 +1,1 @@
+sed -i 's/onSelectPost={handleSelectPost}/onSelectPost={handleSelectPost}\n            onOpenAuthModal={() => {\n              setAuthModalContext('\''checkout'\'');\n              setAuthModalOpen(true);\n            }}/' src/mysite/App.tsx

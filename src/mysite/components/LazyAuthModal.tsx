@@ -95,6 +95,9 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
         options: {
           skipBrowserRedirect: true, 
           redirectTo: window.location.origin,
+          queryParams: {
+            prompt: 'select_account'
+          }
         },
       });
       if (error) throw error;

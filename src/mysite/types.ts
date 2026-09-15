@@ -30,6 +30,26 @@ export interface Post {
   show_thumbnail?: boolean;
   show_full_post?: boolean;
   is_custom_page?: boolean;
+  product_type?: 'physical' | 'digital' | 'just_form';
+  digital_settings?: {
+    buttons?: Array<{
+      label: string;
+      page_id: string; // The ID of the post/page that contains the content
+      icon?: string;
+    }>;
+  };
+}
+
+export interface Purchase {
+  id: string;
+  client_id: string;
+  customer_id: string;
+  post_id: string;
+  amount: number;
+  payment_status: 'pending' | 'paid' | 'failed';
+  fulfillment_status: 'pending' | 'shipped' | 'delivered';
+  created_at: string;
+  post?: Post;
 }
 
 export interface Profile {

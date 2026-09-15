@@ -1,3 +1,4 @@
+import { supabase } from '../../lib/supabase';
 import React, { useState, useEffect, useRef } from 'react';
 import { Category, Post, Profile } from '../types';
 import { 
@@ -33,6 +34,7 @@ interface PostDetailProps {
   user: Profile | null;
   onBack: () => void;
   onSelectPost: (post: Post) => void;
+  onOpenAuthModal: () => void;
 }
 
 const PostDetail: React.FC<PostDetailProps> = ({
@@ -42,6 +44,7 @@ const PostDetail: React.FC<PostDetailProps> = ({
   user,
   onBack,
   onSelectPost,
+  onOpenAuthModal,
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -124,6 +127,40 @@ const PostDetail: React.FC<PostDetailProps> = ({
 
             </div>
 
+            {post.product_type && (
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg mt-6 mb-8">
+                <h3 className="text-xl font-bold text-white mb-4">
+                  {post.product_type === 'physical' ? 'Order Physical Copy' :
+                   post.product_type === 'just_form' ? 'Cash on Delivery Order' :
+                   'Get Digital Access'}
+                </h3>
+                
+                <p className="text-sm text-slate-400 mb-6">
+                  {post.product_type === 'physical' ? 'Pay advance and complete order via cash on delivery.' :
+                   post.product_type === 'just_form' ? 'Fill out the form below to order via 100% Cash on Delivery.' :
+                   'Get instant digital access to this module.'}
+                </p>
+
+                {post.product_type === 'digital' && post.digital_settings?.buttons && (
+                  <div className="flex flex-wrap gap-4 mt-6 pt-6 border-t border-slate-800">
+                    {post.digital_settings.buttons.map((btn: any, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => onOpenAuthModal()}
+                        className="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/30 transition-all text-sm text-center"
+                      >
+                        {btn.label || 'Access Now'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {post.product_type !== 'digital' && (
+                   <button onClick={() => onOpenAuthModal()} className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-600/30 transition-all text-sm">
+                     Place Order Now
+                   </button>
+                )}
+              </div>
+            )}
             {/* Featured Image */}
             {post.thumbnail && post.show_thumbnail !== false && (
               <div className="rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-900">
