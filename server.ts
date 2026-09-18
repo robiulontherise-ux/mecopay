@@ -10,7 +10,7 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   // Add headers to allow iframe embedding anywhere
   app.use((req, res, next) => {
@@ -36,6 +36,25 @@ async function startServer() {
   const isAdmin = (req, res, next) => {
     next();
   };
+
+  // Favicon handlers
+  app.get('/favicon.ico', (req, res) => {
+    const icoPath = path.join(process.cwd(), 'public/favicon.ico');
+    if (fs.existsSync(icoPath)) {
+      res.sendFile(icoPath);
+    } else {
+      res.redirect('https://i.postimg.cc/cJk7YcMb/favicon.jpg');
+    }
+  });
+
+  app.get('/favicon.jpg', (req, res) => {
+    const jpgPath = path.join(process.cwd(), 'public/favicon.jpg');
+    if (fs.existsSync(jpgPath)) {
+      res.sendFile(jpgPath);
+    } else {
+      res.redirect('https://i.postimg.cc/cJk7YcMb/favicon.jpg');
+    }
+  });
 
   // API Routes
   app.get('/api/admin/users', isAdmin, async (req, res) => {
@@ -265,7 +284,7 @@ async function startServer() {
     }
   });
 
-  const SETTINGS_FILE = path.join(process.cwd(), 'system-settings.json');
+  const SETTINGS_FILE = process.env.K_SERVICE ? '/tmp/system-settings.json' : path.join(process.cwd(), 'system-settings.json');
 
   const defaultForwarderSettings = {
     sender_number: '',
@@ -354,24 +373,22 @@ async function startServer() {
     }
   });
 
-  app.post('/api/verify-live', async (req, res) => {
+  
+  app.post('/api/verify-payment', async (req, res) => {
     try {
       if (!supabaseAdmin) {
          return res.status(500).json({ error: "Service role key missing" });
       }
       
-      const { invoiceId, senderNumber, provider, userId } = req.body;
-      if (!invoiceId || !senderNumber || !userId) {
+      const { invoiceId, verifyMethod, trxId, senderNumber, provider, userId } = req.body;
+      if (!invoiceId || !userId || !verifyMethod) {
          return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Clean the customer number
-      const customerNum = (senderNumber || '').replace('+88', '');
-      
-      // 1. Fetch the invoice to get amount and time
+      // 1. Fetch the invoice to get amount, time, and redirect_link
       const { data: invoice, error: invError } = await supabaseAdmin
         .from('invoices')
-        .select('amount, created_at, brand_id')
+        .select('amount, created_at, brand_id, redirect_link, status')
         .eq('id', invoiceId)
         .single();
         
@@ -379,67 +396,115 @@ async function startServer() {
          return res.status(404).json({ error: "Invoice not found" });
       }
 
-      // 2. We ONLY want SMS events that arrived AFTER the invoice was created (strictly during the 10-minute live session).
-      const cutoffTime = invoice.created_at;
+      if (invoice.status === 'Completed') {
+         return res.json({ success: true, redirect_link: invoice.redirect_link });
+      }
 
-      // Look for pending SMS
-      const { data: smsEvents, error: smsError } = await supabaseAdmin
-        .from('sms_events')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'pending')
-        .gte('created_at', cutoffTime);
+      // 2. Fetch Brand overpayment setting
+      let allowOverpayment = false;
+      if (invoice.brand_id) {
+         const { data: brand } = await supabaseAdmin.from('brands').select('payment_amount_type').eq('id', invoice.brand_id).maybeSingle();
+         // Check if the setting implies allowing overpayment (usually 'equal' vs something else, depending on exact string used by user)
+         // The screenshot shows 'Equal Amount Only' but stored as 'equal' ? We will check if it's NOT 'equal' or explicitly allow.
+         // Let's assume 'equal' means exact. Anything else allows overpayment.
+         if (brand && brand.payment_amount_type !== 'equal' && brand.payment_amount_type !== 'Equal Amount Only') {
+             allowOverpayment = true;
+         }
+      }
 
-      if (smsError) throw smsError;
+      const expectedProvider = (provider || '').toLowerCase();
 
-      if (smsEvents && smsEvents.length > 0) {
-          const expectedProvider = (provider || '').toLowerCase();
-          for (const sms of smsEvents) {
-              const smsSender = (sms.sender || '').toLowerCase();
-              const msgText = (sms.message || '').toLowerCase();
+      // --- TrxID Verification ---
+      if (verifyMethod === 'trx_id') {
+          if (!trxId) return res.status(400).json({ error: "TrxID required" });
+          
+          const { data: smsEvents, error: smsError } = await supabaseAdmin
+            .from('sms_events')
+            .select('*')
+            .eq('user_id', userId)
+            .ilike('trx_id_extracted', `%${trxId}%`)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+          if (smsError) throw smsError;
+
+          if (smsEvents && smsEvents.length > 0) {
+              const sms = smsEvents[0];
               
-              if (customerNum.length >= 10 && msgText.includes(customerNum)) {
-                  let providerMatched = false;
-                  if (smsSender.includes(expectedProvider)) {
-                      providerMatched = true;
-                  } else if (expectedProvider === 'rocket' && smsSender.includes('16216')) {
-                      providerMatched = true;
-                  } else if (msgText.includes(expectedProvider)) {
-                      providerMatched = true;
-                  }
-                  
-                  if (providerMatched) {
-                      // Fetch Brand overpayment setting
-                      let allowOverpayment = false;
-                      if (invoice.brand_id) {
-                         const { data: brand } = await supabaseAdmin.from('brands').select('payment_amount_type').eq('id', invoice.brand_id).maybeSingle();
-                         if (brand && brand.payment_amount_type === 'allow_overpayment') {
-                             allowOverpayment = true;
-                         }
-                      }
+              // AMOUNT CHECK
+              if (!sms.amount_extracted || sms.amount_extracted < invoice.amount) {
+                  return res.json({ success: false, message: "Underpayment detected" });
+              }
+              if (!allowOverpayment && sms.amount_extracted > invoice.amount) {
+                  return res.json({ success: false, message: "Overpayment not allowed, must be exact amount" });
+              }
+              
+              // Match found!
+              await supabaseAdmin.from('invoices').update({ status: 'Completed', trx_id: trxId }).eq('id', invoiceId);
+              await supabaseAdmin.from('sms_events').update({ status: 'matched', invoice_id: invoiceId }).eq('id', sms.id);
+              
+              return res.json({ success: true, redirect_link: invoice.redirect_link });
+          } else {
+              return res.json({ success: false, message: "TrxID not found" });
+          }
+      }
 
-                      // AMOUNT CHECK
-                      if (!sms.amount_extracted || sms.amount_extracted < invoice.amount) {
-                          continue; // Underpayment
+      // --- 10 Min Live Session Verification ---
+      if (verifyMethod === 'live') {
+          if (!senderNumber) return res.status(400).json({ error: "Sender number required" });
+          const customerNum = senderNumber.replace('+88', '');
+          
+          const cutoffTime = invoice.created_at;
+          
+          const { data: smsEvents, error: smsError } = await supabaseAdmin
+            .from('sms_events')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', 'pending')
+            .gte('created_at', cutoffTime);
+            
+          if (smsError) throw smsError;
+          
+          if (smsEvents && smsEvents.length > 0) {
+              for (const sms of smsEvents) {
+                  const smsSender = (sms.sender || '').toLowerCase();
+                  const msgText = (sms.message || '').toLowerCase();
+                  
+                  if (customerNum.length >= 10 && msgText.includes(customerNum)) {
+                      let providerMatched = false;
+                      if (smsSender.includes(expectedProvider)) {
+                          providerMatched = true;
+                      } else if (expectedProvider === 'rocket' && smsSender.includes('16216')) {
+                          providerMatched = true;
+                      } else if (msgText.includes(expectedProvider)) {
+                          providerMatched = true;
                       }
                       
-                      if (!allowOverpayment && sms.amount_extracted > invoice.amount) {
-                          continue; // Overpayment not allowed, must be exact
+                      if (providerMatched) {
+                          // AMOUNT CHECK
+                          if (!sms.amount_extracted || sms.amount_extracted < invoice.amount) {
+                              continue; // Underpayment
+                          }
+                          if (!allowOverpayment && sms.amount_extracted > invoice.amount) {
+                              continue; // Overpayment not allowed, must be exact
+                          }
+                          
+                          // Match found!
+                          await supabaseAdmin.from('invoices').update({ status: 'Completed', sender_number: senderNumber }).eq('id', invoiceId);
+                          await supabaseAdmin.from('sms_events').update({ status: 'matched', invoice_id: invoiceId }).eq('id', sms.id);
+                          
+                          return res.json({ success: true, redirect_link: invoice.redirect_link });
                       }
-                      
-                      // Match found!
-                      await supabaseAdmin.from('invoices').update({ status: 'Completed' }).eq('id', invoiceId);
-                      await supabaseAdmin.from('sms_events').update({ status: 'matched', invoice_id: invoiceId }).eq('id', sms.id);
-                      
-                      return res.json({ matched: true });
                   }
               }
           }
+          return res.json({ success: false, message: "Payment not received yet" });
       }
-      
-      res.json({ matched: false });
+
+      return res.status(400).json({ error: "Invalid verifyMethod" });
     } catch (error) {
-      console.error('Error verifying live payment:', error);
+      console.error('Error verifying payment:', error);
       res.status(500).json({ error: error.message });
     }
   });

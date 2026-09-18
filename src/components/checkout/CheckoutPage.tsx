@@ -175,37 +175,54 @@ export default function CheckoutPage() {
     return () => clearInterval(timer);
   }, [step, verifyMethod, timeLeft]);
 
-  // Separate effect for Polling Timer (no dependency on timeLeft)
+  // Separate effect for Live SMS Event Subscription (No Polling)
   useEffect(() => {
-    let pollTimer: any;
-    if (step === 5 && verifyMethod === 'live') {
-      pollTimer = setInterval(async () => {
-        if (!invoiceId || !senderNumber || !linkData || !selectedGateway) return;
+    if (step !== 5 || verifyMethod !== 'live' || !invoiceId || !senderNumber || !linkData || !selectedGateway) return;
+
+    let isVerifyingRequest = false;
+
+    const channel = supabase
+      .channel(`sms_events_${invoiceId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'sms_events',
+        filter: `user_id=eq.${linkData.user_id}`
+      }, async (payload) => {
+        // When a new SMS is inserted for this merchant, check if it matches the customer's number
+        const cleanNumber = senderNumber.replace('+88', '');
+        const message = (payload.new.message || '').toLowerCase();
         
-        try {
-          const res = await fetch('/api/verify-live', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              invoiceId,
-              senderNumber,
-              provider: selectedGateway.provider,
-              userId: linkData.user_id
-            })
-          });
-          
-          if (res.ok) {
-            const data = await res.json();
-            if (data.matched) {
-               window.location.href = '/access/' + invoiceId;
-            }
-          }
-        } catch (err) {
-          console.error("Polling error:", err);
+        if (cleanNumber.length >= 10 && message.includes(cleanNumber) && !isVerifyingRequest) {
+           isVerifyingRequest = true;
+           try {
+             const res = await fetch('/api/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  invoiceId,
+                  senderNumber,
+                  verifyMethod: 'live',
+                  provider: selectedGateway.provider,
+                  userId: linkData.user_id
+                })
+             });
+             if (res.ok) {
+                const data = await res.json();
+                if (data.success) { window.location.href = data.redirect_url || data.delivery?.url || data.redirect_link || '/access/' + invoiceId; }
+             }
+           } catch (err) {
+             console.error("Verification error:", err);
+           } finally {
+             isVerifyingRequest = false;
+           }
         }
-      }, 3000);
-    }
-    return () => clearInterval(pollTimer);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [step, verifyMethod, invoiceId, senderNumber, linkData, selectedGateway]);
 
   const formatTime = (seconds: number) => {
@@ -217,6 +234,39 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetchData();
   }, [slug]);
+
+
+  // Device Presence Check (Realtime)
+  const [onlineDevices, setOnlineDevices] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!linkData?.user_id) return;
+    
+    const channel = supabase.channel('all_devices');
+    
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      let isOnline = false;
+      const devices: any[] = [];
+      
+      for (const id in state) {
+        for (const presence of state[id] as any[]) {
+          if (presence.client_id === linkData.user_id || presence.user_id === linkData.user_id) {
+            isOnline = true;
+            devices.push(presence);
+          }
+        }
+      }
+      setIsDeviceOnline(isOnline);
+      setOnlineDevices(devices);
+    });
+    
+    channel.subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [linkData]);
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -254,17 +304,7 @@ export default function CheckoutPage() {
       if (gwErr) throw gwErr;
       setGateways(gws || []);
 
-      // Check device online status using backend RPC (Heartbeat check)
-      let online = false;
-      const { data: onlineStatus, error: rpcError } = await supabase
-        .rpc('check_device_online', { p_user_id: link.user_id });
-
-      if (rpcError) {
-        console.error('Failed to check device status via RPC:', rpcError);
-      } else if (onlineStatus === true) {
-        online = true;
-      }
-      setIsDeviceOnline(online);
+      // Online status is now handled by Realtime Presence in a separate useEffect
       
     } catch (err: any) {
       console.error(err);
@@ -356,6 +396,7 @@ export default function CheckoutPage() {
   const handleSelectGateway = (gw: any) => {
     let activeNumber = gw.number;
     let fallbackUsed = false;
+    let activeDeviceName = gw.device_name || null;
     
     // Limits based on our analysis
     const limits = {
@@ -368,7 +409,7 @@ export default function CheckoutPage() {
     const limit = limits[gw.provider as keyof typeof limits];
     
     // Check if primary number crossed any limit
-    if (limit && gw.number_2) {
+    if (limit && (gw.number_2 || (gw.additional_numbers && gw.additional_numbers.length > 0))) {
       const dailyCount = gw.daily_count || 0;
       const dailyAmt = gw.daily_amount || 0;
       const monthlyCount = gw.monthly_count || 0;
@@ -384,11 +425,18 @@ export default function CheckoutPage() {
       if (isCrossed) {
         if (gw.number_2) {
           activeNumber = gw.number_2;
+          activeDeviceName = gw.device_name_2 || null;
           fallbackUsed = true;
         }
         if (gw.additional_numbers && Array.isArray(gw.additional_numbers) && gw.additional_numbers.length > 0) {
-          // If secondary is also full, ideally we'd check its volume, but for now we fallback to the next available
-          activeNumber = gw.additional_numbers[0];
+          // If secondary is also full, fallback to next available backup number
+          const firstAdd = gw.additional_numbers[0];
+          if (typeof firstAdd === 'object' && firstAdd !== null) {
+            if (firstAdd.number) activeNumber = firstAdd.number;
+            if (firstAdd.device_name) activeDeviceName = firstAdd.device_name;
+          } else if (typeof firstAdd === 'string') {
+            activeNumber = firstAdd;
+          }
           fallbackUsed = true;
         }
       }
@@ -400,7 +448,13 @@ export default function CheckoutPage() {
     const vTrxId = brandData?.redirect_links?.verify_trx_id ?? true;
     const vPhone = brandData?.redirect_links?.verify_phone ?? false;
 
-    if (!isDeviceOnline) {
+    // If gateway has a specific device_name, check if THAT device is online
+    let isThisGatewayOnline = isDeviceOnline;
+    if (activeDeviceName) {
+      isThisGatewayOnline = onlineDevices.some(d => d.device_name === activeDeviceName);
+    }
+
+    if (!isThisGatewayOnline) {
       setVerifyMethod('offline');
       setStep(4);
     } else {
@@ -462,136 +516,57 @@ export default function CheckoutPage() {
         }
       }
 
-      // Update invoice first
-      const { error } = await supabase
-        .from('invoices')
-        .update({
-          gateway_number: selectedGateway.activeNumber || selectedGateway.activeNumber || selectedGateway.number,
-          gateway_used: selectedGateway.provider,
-          trx_id: trxId,
-          status: 'Pending'
-        })
-        .eq('id', invoiceId);
-      if (error) throw error;
-
-      // Retroactive check: Did the SMS already arrive?
-      const { data: smsList } = await supabase
-        .from('sms_events')
-        .select('*')
-        .eq('user_id', linkData.user_id)
-        .ilike('trx_id_extracted', trxId)
-        .limit(1);
-      
-      const smsData = smsList && smsList.length > 0 ? smsList[0] : null;
-
-      if (smsData) {
-        // Check if SMS is older than 24 hours
-        if (smsData.created_at) {
-          const smsTime = new Date(smsData.created_at).getTime();
-          const now = new Date().getTime();
-          if ((now - smsTime) > 24 * 60 * 60 * 1000) {
-            await supabase.from('invoices').update({ metadata: { note: "TrxID expired (24h limit). Please contact support." } }).eq('id', invoiceId);
-            if (isDeviceOnline) {
-              setVerifyError("TrxID expired (24h limit). Please contact support.");
-              setIsVerifying(false);
-              return;
-            } else {
-              setVerifyError("TrxID expired (24h limit). Please contact support.");
-              setIsVerifying(false);
-              return;
-            }
-          }
-        }
-        
-        if (smsData.status === 'matched') {
-          await supabase.from('invoices').update({ metadata: { note: "This Transaction ID has already been used on another invoice!" } }).eq('id', invoiceId);
-          if (isDeviceOnline) {
-             setVerifyError("This Transaction ID has already been used!");
-             setIsVerifying(false);
-             return;
-          } else {
-             // If device offline, we could theoretically let them submit, but since we already KNOW it's used, 
-             // it's better to reject it anyway. But to maintain the offline behavior, we'll reject it regardless of online/offline status because we have proof it's used.
-             setVerifyError("This Transaction ID has already been used!");
-             setIsVerifying(false);
-             return;
-          }
-        }
-        
-        // CHECK AMOUNT
-        const isOverpaymentAllowed = brandData?.payment_amount_type === 'allow_overpayment';
-        
-        if (!smsData.amount_extracted || smsData.amount_extracted < checkoutAmounts.total) {
-          await supabase.from('invoices').update({ metadata: { note: "Amount mismatch! Paid amount is less than required." } }).eq('id', invoiceId);
-          setVerifyError("Amount mismatch! Paid amount is less than required.");
-          setIsVerifying(false);
-          return;
-        }
-        
-        if (!isOverpaymentAllowed && smsData.amount_extracted > checkoutAmounts.total) {
-          await supabase.from('invoices').update({ metadata: { note: "Amount mismatch! Overpayment is not allowed." } }).eq('id', invoiceId);
-          setVerifyError("Amount mismatch! Overpayment is not allowed. Please contact support.");
-          setIsVerifying(false);
-          return;
-        }
-        // Strict Provider Matching!
-        let providerMatched = false;
-        const smsSender = (smsData.sender || '').toLowerCase();
-        const expectedProvider = (selectedGateway.provider || '').toLowerCase();
-        
-        if (smsSender.includes(expectedProvider)) {
-            providerMatched = true; // matches 'bkash', 'nagad', 'upay'
-        } else if (expectedProvider === 'rocket' && smsSender.includes('16216')) {
-            providerMatched = true; // Rocket uses 16216
-        } else if (smsSender.match(/^(\+880|01)\d{9}$/)) {
-            // TEST MODE: If the SMS came from a personal number (like +88015...), 
-            // allow it ONLY if the message text contains the provider name!
-            const msgText = (smsData.message || '').toLowerCase();
-            if (msgText.includes(expectedProvider)) {
-                providerMatched = true;
-            } else if (msgText.includes('cash in') || msgText.includes('received')) {
-                // Generous fallback for their exact current testing if they don't include 'bkash' in test sms
-                // Actually, let's just allow it for testing if it's a personal number, to avoid breaking their demo.
-                // Or better, let's strictly require the message to contain the provider name OR just allow it.
-                // The user said: "jekono akat theke patahlei eta to ar proffesional na taina" (it's not professional if it verifies from anywhere)
-                // So let's force them to include the provider name in the test SMS!
-                if (msgText.includes(expectedProvider)) {
-                    providerMatched = true;
-                } else {
-                    providerMatched = false;
-                }
-            }
-        }
-
-        if (providerMatched) {
-          // Match found and verified instantly!
-          await supabase.from('invoices').update({ status: 'Completed' }).eq('id', invoiceId);
-          await supabase.from('sms_events').update({ status: 'matched', invoice_id: invoiceId }).eq('id', smsData.id);
+      // 2. If Device is Offline, bypass Edge function and save for Manual Verification
+      if (verifyMethod === 'offline') {
+        const { error: updateErr } = await supabase
+          .from('invoices')
+          .update({ trx_id: trxId, status: 'Manual Verification Pending' })
+          .eq('id', invoiceId);
           
-          // Redirect to secure access page immediately
-          window.location.href = '/access/' + invoiceId;
-          return;
-        } else {
-           await supabase.from('invoices').update({ metadata: { note: "Transaction ID found, but provider does not match. Verify manually." } }).eq('id', invoiceId);
-           if (isDeviceOnline) {
-             setVerifyError("Transaction ID not match! Please give accurate TrxID.");
-             setIsVerifying(false);
-             return;
-           }
-        }
-      } else {
-         await supabase.from('invoices').update({ metadata: { note: "No SMS event found for this transaction ID. Verify manually." } }).eq('id', invoiceId);
-         if (isDeviceOnline) {
-           setVerifyError("Transaction ID not match! Please give accurate TrxID.");
-           setIsVerifying(false);
-           return;
-         }
+        if (updateErr) throw updateErr;
+        setStep(6);
+        setIsVerifying(false);
+        return;
       }
 
-      setStep(6);
+      // 3. Pre-verify for Online Devices: Check if TrxID exists in sms_events
+      const { data: smsMatch, error: smsErr } = await supabase
+        .from('sms_events')
+        .select('id')
+        .eq('user_id', linkData.user_id)
+        .ilike('trx_id_extracted', `%${trxId}%`)
+        .eq('status', 'pending')
+        .limit(1);
+
+      if (smsErr || !smsMatch || smsMatch.length === 0) {
+        setVerifyError("TrxID not found or already used. Please wait a moment and try again.");
+        setIsVerifying(false);
+        return;
+      }
+
+      // 4. Securely verify via Edge Function (server.ts)
+      const res = await fetch('/api/verify-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId,
+          trxId,
+          verifyMethod: 'trx_id',
+          userId: linkData.user_id,
+          provider: selectedGateway.provider
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+         window.location.href = data.redirect_url || data.delivery?.url || data.redirect_link || '/access/' + invoiceId;
+      } else {
+         setVerifyError(data.message || "Invalid TrxID or amount mismatch. Please try again.");
+      }
+
     } catch (err: any) {
-      console.error(err);
-      showToast("Failed to submit verification: " + err.message, "error");
+      setVerifyError(err.message || 'Verification failed');
     } finally {
       setIsVerifying(false);
     }

@@ -90,20 +90,17 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
     setLoading(true);
     setErrorMsg(null);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          skipBrowserRedirect: true, 
-          redirectTo: window.location.origin,
+            
+          redirectTo: window.location.href,
           queryParams: {
             prompt: 'select_account'
           }
         },
       });
       if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, 'oauth_popup', 'width=500,height=600');
-      }
     } catch (err: any) {
       console.error('Google OAuth error:', err);
       setErrorMsg(err.message || 'Failed to initiate Google OAuth. You can use direct login below.');
@@ -122,7 +119,7 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
     try {
       if (passwordInput) {
         // Attempt sign in with password
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email: emailInput.trim(),
           password: passwordInput,
         });
