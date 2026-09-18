@@ -23,7 +23,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
   const [secondaryAccountNumber, setSecondaryAccountNumber] = useState('');
   const [deviceName, setDeviceName] = useState('');
   const [deviceName2, setDeviceName2] = useState('');
-  const [availableDevices, setAvailableDevices] = useState<any[]>([]);
+  const [availableDevices, setAvailableDevices] = useState<string[]>([]);
   const [additionalNumbers, setAdditionalNumbers] = useState<{ number: string; device_name: string }[]>([]);
   const [minAmount, setMinAmount] = useState('1');
   const [maxAmount, setMaxAmount] = useState('100000');
@@ -46,10 +46,28 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: devices } = await supabase.from('device_status').select('device_id, device_name').eq('user_id', user.id);
-        if (devices) setAvailableDevices(devices);
+        // Query devices from both device_status and sms_forwarder_settings
+        const [statusRes, forwarderRes] = await Promise.all([
+          supabase.from('device_status').select('device_id').eq('user_id', user.id),
+          supabase.from('sms_forwarder_settings').select('device_name').eq('user_id', user.id)
+        ]);
+
+        const devSet = new Set<string>();
+        (statusRes.data || []).forEach((d: any) => {
+          if (d.device_id && d.device_id !== 'android-app-1' && d.device_id !== 'default-device') {
+            devSet.add(d.device_id);
+          }
+        });
+        (forwarderRes.data || []).forEach((s: any) => {
+          if (s.device_name && s.device_name !== '__GLOBAL_CONFIG__') {
+            devSet.add(s.device_name);
+          }
+        });
+        setAvailableDevices(Array.from(devSet));
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Error fetching devices:", e);
+    }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -323,6 +341,11 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                                   )
                                 : [];
                               setAdditionalNumbers(parsedAdd);
+                              if (gw.device_name) setAvailableDevices(prev => Array.from(new Set([...prev, gw.device_name])));
+                              if (gw.device_name_2) setAvailableDevices(prev => Array.from(new Set([...prev, gw.device_name_2])));
+                              parsedAdd.forEach((pa: any) => {
+                                if (pa.device_name) setAvailableDevices(prev => Array.from(new Set([...prev, pa.device_name])));
+                              });
                               setMinAmount(gw.min_amount ? String(gw.min_amount) : '1');
                               setMaxAmount(gw.max_amount ? String(gw.max_amount) : '100000');
                               setIsCreating(true);
@@ -452,29 +475,64 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                 <div className="pt-4 border-t border-slate-800">
                   <h4 className="text-blue-400 font-medium mb-4">Credentials (Personal MFS)</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-slate-300 mb-1 flex items-center gap-1">
-                        <span className="text-blue-400">💰</span> Primary Account Number
-                      </label>
-                      <input 
-                        type="text" 
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
-                        placeholder="e.g. 01712345678"
-                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500"
-                      />
+                    <div className="p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-3">
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1 flex items-center gap-1 font-medium">
+                          <span className="text-blue-400">💰</span> Primary Account Number
+                        </label>
+                        <input 
+                          type="text" 
+                          value={accountNumber}
+                          onChange={(e) => setAccountNumber(e.target.value)}
+                          placeholder="e.g. 01712345678"
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1 flex items-center gap-1">
+                          <span className="text-blue-400">📱</span> Select App Device (Primary)
+                        </label>
+                        <select
+                          value={deviceName}
+                          onChange={(e) => setDeviceName(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="">Any Device / None</option>
+                          {availableDevices.map(dev => (
+                            <option key={dev} value={dev}>{dev}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm text-slate-300 mb-1 flex items-center gap-1">
-                        <span className="text-blue-400">📱</span> Secondary Account Number <span className="text-xs text-slate-500 ml-1">(Optional)</span>
-                      </label>
-                      <input 
-                        type="text" 
-                        value={secondaryAccountNumber}
-                        onChange={(e) => setSecondaryAccountNumber(e.target.value)}
-                        placeholder="e.g. 01812345678"
-                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500"
-                      />
+
+                    <div className="p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-3">
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1 flex items-center gap-1 font-medium">
+                          <span className="text-blue-400">📱</span> Secondary Account Number <span className="text-xs text-slate-500 ml-1">(Optional)</span>
+                        </label>
+                        <input 
+                          type="text" 
+                          value={secondaryAccountNumber}
+                          onChange={(e) => setSecondaryAccountNumber(e.target.value)}
+                          placeholder="e.g. 01812345678"
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1 flex items-center gap-1">
+                          <span className="text-blue-400">📱</span> Select App Device (Secondary)
+                        </label>
+                        <select
+                          value={deviceName2}
+                          onChange={(e) => setDeviceName2(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="">Any Device / None</option>
+                          {availableDevices.map(dev => (
+                            <option key={dev} value={dev}>{dev}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                   
@@ -540,8 +598,8 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                               className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
                             >
                               <option value="">Any Device / None</option>
-                              {availableDevices.map(d => (
-                                <option key={d.device_id} value={d.device_name}>{d.device_name} ({d.device_id})</option>
+                              {availableDevices.map(dev => (
+                                <option key={dev} value={dev}>{dev}</option>
                               ))}
                             </select>
                           </div>
@@ -553,43 +611,6 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                   <p className="text-xs text-slate-500 mt-3">
                     * If a number reaches its limit, the system will automatically route to the next available backup number in sequence. When the limit resets, it starts from the primary number again.
                   </p>
-                </div>
-
-                
-                <div className="pt-4 border-t border-slate-800">
-                  <h4 className="text-blue-400 font-medium mb-4">Device Assignment</h4>
-                  <div>
-                    <label className="block text-sm text-slate-300 mb-1 flex items-center gap-1">
-                      <span className="text-blue-400">📱</span> Select App Device (For Primary)
-                    </label>
-                    <select
-                      value={deviceName}
-                      onChange={(e) => setDeviceName(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">Any Device / None</option>
-                      {availableDevices.map(d => (
-                        <option key={d.device_id} value={d.device_name}>{d.device_name} ({d.device_id})</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm text-slate-300 mb-1 flex items-center gap-1">
-                      <span className="text-blue-400">📱</span> Select App Device (For Secondary)
-                    </label>
-                    <select
-                      value={deviceName2}
-                      onChange={(e) => setDeviceName2(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">Any Device / None</option>
-                      {availableDevices.map(d => (
-                        <option key={d.device_id} value={d.device_name}>{d.device_name} ({d.device_id})</option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-slate-500 mt-1">Assign these gateways to specific phones running the MecoPay app.</p>
-                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-800">
