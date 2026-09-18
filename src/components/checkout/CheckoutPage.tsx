@@ -275,14 +275,33 @@ export default function CheckoutPage() {
       setLoading(true);
       setError('');
       
-      const { data: link, error: linkErr } = await supabase
+      const targetSlug = slug ? decodeURIComponent(slug) : '';
+      
+      let { data: link, error: linkErr } = await supabase
         .from('payment_links')
         .select('*')
-        .eq('slug', slug)
-        .single();
+        .eq('slug', targetSlug)
+        .maybeSingle();
+
+      if (!link && slug && slug !== targetSlug) {
+        const { data: fallbackLink } = await supabase
+          .from('payment_links')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle();
+        if (fallbackLink) {
+          link = fallbackLink;
+          linkErr = null;
+        }
+      }
         
-      if (linkErr) throw linkErr;
-      if (!link) throw new Error("Payment link not found");
+      if (linkErr) {
+        console.error("Link fetch error:", linkErr);
+      }
+      if (!link) {
+        setError('Payment link not found or invalid.');
+        return;
+      }
       
       setLinkData(link);
       
@@ -290,9 +309,15 @@ export default function CheckoutPage() {
         .from('brands')
         .select('*')
         .eq('id', link.brand_id)
-        .single();
+        .maybeSingle();
         
-      if (brandErr) throw brandErr;
+      if (brandErr) {
+        console.error("Brand fetch error:", brandErr);
+      }
+      if (!brand) {
+        setError('Payment link brand not found.');
+        return;
+      }
       setBrandData(brand);
       
       const { data: gws, error: gwErr } = await supabase
@@ -648,11 +673,30 @@ export default function CheckoutPage() {
   }
 
   if (error) {
-    return <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-red-100 text-center text-red-500 max-w-sm w-full">
-        <p className="font-bold">{error}</p>
+    const isNotFound = error === 'not_found' || error.toLowerCase().includes('not found') || error.toLowerCase().includes('invalid') || error.toLowerCase().includes('coerce');
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-md w-full">
+          <div className="w-14 h-14 bg-amber-50 border border-amber-200 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+            <AlertTriangle className="w-7 h-7 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">
+            {isNotFound ? 'Invalid Payment Link' : 'Unable to Load Payment'}
+          </h2>
+          <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+            {isNotFound
+              ? 'This product or payment link does not exist, has expired, or the URL address is incorrect.'
+              : error}
+          </p>
+          <a
+            href="/"
+            className="inline-flex items-center justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm w-full"
+          >
+            Go to Homepage
+          </a>
+        </div>
       </div>
-    </div>;
+    );
   }
 
   const customFields = linkData?.custom_fields || [
