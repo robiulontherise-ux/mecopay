@@ -109,6 +109,21 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
     }
   };
   
+  const getGwDevice = (gw: any, type: 'primary' | 'secondary') => {
+    if (type === 'primary' && gw.device_name) return gw.device_name;
+    if (type === 'secondary' && gw.device_name_2) return gw.device_name_2;
+    if (Array.isArray(gw.additional_numbers)) {
+      const meta = gw.additional_numbers.find((x: any) => x && x._meta_type === type);
+      if (meta && meta.device_name) return meta.device_name;
+    }
+    return '';
+  };
+
+  const getRealBackupNumbers = (gw: any) => {
+    if (!Array.isArray(gw.additional_numbers)) return [];
+    return gw.additional_numbers.filter((x: any) => x && !x._meta_type && (typeof x === 'string' || x.number));
+  };
+
   const handleSave = async () => {
     if (!selectedBrandId || selectedProviders.length === 0 || !accountNumber) {
       showToast("Please fill required fields!", 'error');
@@ -121,8 +136,6 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       if (!user) throw new Error("No user found");
 
       for (const provider of selectedProviders) {
-        let error;
-        
         // Clean and sanitize additional_numbers to store number and device_name
         const sanitizedAdditionalNumbers = additionalNumbers
           .filter(item => item && item.number && item.number.trim() !== '')
@@ -131,11 +144,18 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
             device_name: item.device_name || null
           }));
 
-        const payload = {
+        // Embed device metadata in additional_numbers as dual-storage fallback
+        const enrichedAdditionalNumbers = [
+          ...sanitizedAdditionalNumbers,
+          ...(deviceName ? [{ _meta_type: 'primary', device_name: deviceName }] : []),
+          ...(deviceName2 ? [{ _meta_type: 'secondary', device_name: deviceName2 }] : [])
+        ];
+
+        const payloadWithColumns: any = {
           number: accountNumber,
           brand_id: selectedBrandId,
           number_2: secondaryAccountNumber || null,
-          additional_numbers: sanitizedAdditionalNumbers,
+          additional_numbers: enrichedAdditionalNumbers,
           min_amount: parseFloat(minAmount) || 1,
           max_amount: parseFloat(maxAmount) || 100000,
           provider: provider,
@@ -143,27 +163,63 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
           device_name_2: deviceName2 || null
         };
 
+        const payloadFallback: any = {
+          number: accountNumber,
+          brand_id: selectedBrandId,
+          number_2: secondaryAccountNumber || null,
+          additional_numbers: enrichedAdditionalNumbers,
+          min_amount: parseFloat(minAmount) || 1,
+          max_amount: parseFloat(maxAmount) || 100000,
+          provider: provider
+        };
+
+        let saveError: any = null;
+
         if (editingId) {
-          const { error: updateError } = await supabase
+          const res = await supabase
             .from('payment_numbers')
-            .update(payload)
+            .update(payloadWithColumns)
             .eq('id', editingId);
-          error = updateError;
+          
+          if (res.error && (res.error.code === '42703' || res.error.message?.includes('device_name'))) {
+            // Column device_name does not exist in table yet, fallback to saving without it
+            const fallbackRes = await supabase
+              .from('payment_numbers')
+              .update(payloadFallback)
+              .eq('id', editingId);
+            saveError = fallbackRes.error;
+          } else {
+            saveError = res.error;
+          }
         } else {
-          const { error: insertError } = await supabase
+          const res = await supabase
             .from('payment_numbers')
             .insert({
-              ...payload,
+              ...payloadWithColumns,
               user_id: user.id,
               type: 'personal',
               monthly_volume: 0
             });
-          error = insertError;
+          
+          if (res.error && (res.error.code === '42703' || res.error.message?.includes('device_name'))) {
+            // Column device_name does not exist in table yet, fallback to saving without it
+            const fallbackRes = await supabase
+              .from('payment_numbers')
+              .insert({
+                ...payloadFallback,
+                user_id: user.id,
+                type: 'personal',
+                monthly_volume: 0
+              });
+            saveError = fallbackRes.error;
+          } else {
+            saveError = res.error;
+          }
         }
 
-        if (error) {
-          console.error(`Error saving ${provider}:`, error);
-          throw new Error(`Failed to save ${provider}`);
+        if (saveError) {
+          console.error(`Error saving ${provider}:`, saveError);
+          throw new Error(saveError.message || `Failed to save ${provider}`);
         }
       }
 
@@ -175,7 +231,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       fetchGateways();
     } catch (err: any) {
       console.error("Save gateway error:", err);
-      showToast("Failed to save!", 'error');
+      showToast(err.message || "Failed to save!", 'error');
     } finally {
       setIsSaving(false);
     }
@@ -291,20 +347,28 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                             <div className="text-slate-400">Account 1:</div>
                             <div className="text-slate-300">
                               {gw.number}
-                              {gw.device_name && <span className="ml-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[10px]">{gw.device_name}</span>}
+                              {getGwDevice(gw, 'primary') && (
+                                <span className="ml-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[10px]">
+                                  {getGwDevice(gw, 'primary')}
+                                </span>
+                              )}
                             </div>
                             {gw.number_2 && (
                               <>
                                 <div className="text-slate-400 mt-1">Account 2:</div>
                                 <div className="text-slate-300">
                                   {gw.number_2}
-                                  {gw.device_name_2 && <span className="ml-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[10px]">{gw.device_name_2}</span>}
+                                  {getGwDevice(gw, 'secondary') && (
+                                    <span className="ml-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[10px]">
+                                      {getGwDevice(gw, 'secondary')}
+                                    </span>
+                                  )}
                                 </div>
                               </>
                             )}
-                            {Array.isArray(gw.additional_numbers) && gw.additional_numbers.length > 0 && (
+                            {getRealBackupNumbers(gw).length > 0 && (
                               <div className="text-slate-400 mt-1 text-[11px]">
-                                +{gw.additional_numbers.length} Backup Number(s)
+                                +{getRealBackupNumbers(gw).length} Backup Number(s)
                               </div>
                             )}
                           </td>
@@ -331,18 +395,18 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                               setSelectedBrandId(gw.brand_id);
                               setAccountNumber(gw.number);
                               setSecondaryAccountNumber(gw.number_2 || '');
-                              setDeviceName(gw.device_name || '');
-                              setDeviceName2(gw.device_name_2 || '');
-                              const parsedAdd = Array.isArray(gw.additional_numbers)
-                                ? gw.additional_numbers.map((item: any) =>
-                                    typeof item === 'object' && item !== null
-                                      ? { number: item.number || '', device_name: item.device_name || '' }
-                                      : { number: String(item || ''), device_name: '' }
-                                  )
-                                : [];
+                              const d1 = getGwDevice(gw, 'primary');
+                              const d2 = getGwDevice(gw, 'secondary');
+                              setDeviceName(d1);
+                              setDeviceName2(d2);
+                              const parsedAdd = getRealBackupNumbers(gw).map((item: any) =>
+                                typeof item === 'object' && item !== null
+                                  ? { number: item.number || '', device_name: item.device_name || '' }
+                                  : { number: String(item || ''), device_name: '' }
+                              );
                               setAdditionalNumbers(parsedAdd);
-                              if (gw.device_name) setAvailableDevices(prev => Array.from(new Set([...prev, gw.device_name])));
-                              if (gw.device_name_2) setAvailableDevices(prev => Array.from(new Set([...prev, gw.device_name_2])));
+                              if (d1) setAvailableDevices(prev => Array.from(new Set([...prev, d1])));
+                              if (d2) setAvailableDevices(prev => Array.from(new Set([...prev, d2])));
                               parsedAdd.forEach((pa: any) => {
                                 if (pa.device_name) setAvailableDevices(prev => Array.from(new Set([...prev, pa.device_name])));
                               });

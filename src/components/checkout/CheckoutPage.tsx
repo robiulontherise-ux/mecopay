@@ -396,7 +396,18 @@ export default function CheckoutPage() {
   const handleSelectGateway = (gw: any) => {
     let activeNumber = gw.number;
     let fallbackUsed = false;
-    let activeDeviceName = gw.device_name || null;
+
+    const getGwDevice = (type: 'primary' | 'secondary') => {
+      if (type === 'primary' && gw.device_name) return gw.device_name;
+      if (type === 'secondary' && gw.device_name_2) return gw.device_name_2;
+      if (Array.isArray(gw.additional_numbers)) {
+        const meta = gw.additional_numbers.find((x: any) => x && x._meta_type === type);
+        if (meta && meta.device_name) return meta.device_name;
+      }
+      return null;
+    };
+
+    let activeDeviceName = getGwDevice('primary');
     
     // Limits based on our analysis
     const limits = {
@@ -425,12 +436,15 @@ export default function CheckoutPage() {
       if (isCrossed) {
         if (gw.number_2) {
           activeNumber = gw.number_2;
-          activeDeviceName = gw.device_name_2 || null;
+          activeDeviceName = getGwDevice('secondary');
           fallbackUsed = true;
         }
-        if (gw.additional_numbers && Array.isArray(gw.additional_numbers) && gw.additional_numbers.length > 0) {
+        const realBackups = Array.isArray(gw.additional_numbers)
+          ? gw.additional_numbers.filter((x: any) => x && !x._meta_type)
+          : [];
+        if (realBackups.length > 0) {
           // If secondary is also full, fallback to next available backup number
-          const firstAdd = gw.additional_numbers[0];
+          const firstAdd = realBackups[0];
           if (typeof firstAdd === 'object' && firstAdd !== null) {
             if (firstAdd.number) activeNumber = firstAdd.number;
             if (firstAdd.device_name) activeDeviceName = firstAdd.device_name;

@@ -119,7 +119,7 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
     try {
       if (passwordInput) {
         // Attempt sign in with password
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: emailInput.trim(),
           password: passwordInput,
         });

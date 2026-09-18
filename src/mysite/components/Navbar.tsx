@@ -27,7 +27,7 @@ interface NavbarProps {
   user: any;
   isAdmin: boolean;
   onOpenAuthModal: (context?: string) => void;
-  currentView: 'home' | 'post-detail' | 'admin';
+  currentView: 'home' | 'post-detail' | 'my-account' | 'admin';
   onNavigateHome: () => void;
   onNavigateAdmin: () => void;
   onBackToHub?: () => void;
