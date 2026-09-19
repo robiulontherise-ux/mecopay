@@ -1,6 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import MySiteApp from '../mysite/App';
 import WebsiteBuilderHub from './WebsiteBuilderHub';
+import CustomDomainBuy from './mysite/CustomDomainBuy';
+import IntegrateCustomDomain from './mysite/IntegrateCustomDomain';
+import SmsServiceSettings from './mysite/SmsServiceSettings';
+import EmailServiceSettings from './mysite/EmailServiceSettings';
+import ServerSideTrackingSettings from './mysite/ServerSideTrackingSettings';
+import WebCustomAgent from './mysite/WebCustomAgent';
+import SocialCustomAgent from './mysite/SocialCustomAgent';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
 import { showConfirm } from '../lib/confirm';
@@ -8,6 +15,7 @@ import MfaSettings from './MfaSettings';
 import GatewaySettings from "./payment-hub/GatewaySettings";
 import PaymentLinks from "./payment-hub/PaymentLinks";
 import Invoices from "./payment-hub/Invoices";
+import CourierService from "./payment-hub/CourierService";
 import { useNavigate } from 'react-router-dom';
 import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book } from 'lucide-react';
 
@@ -754,11 +762,20 @@ export default function DashboardShell() {
     },
     payments: {
       title: 'Payments Hub',
-      items: ['Gateway Settings', 'Payment Links', 'Invoices', 'Transactions', 'Transaction Analysis', 'Analytics'],
+      items: ['Gateway Settings', 'Payment Links', 'Invoices', 'Courier Service', 'Transactions', 'Transaction Analysis', 'Analytics'],
     },
     site: {
       title: 'My Site',
-      items: ['Website Builder', 'Manage Posts', 'Custom Domain', 'SEO Settings'],
+      items: [
+        'Website Builder',
+        'Custom Domain Buy',
+        'Integrate Custom Domain',
+        'SMS Service',
+        'Email Service',
+        'Server Side Tracking',
+        'Web Custom Agent',
+        'Social Custom Agent'
+      ],
     },
     ...(isAdmin && {
       admin: {
@@ -1428,6 +1445,10 @@ export default function DashboardShell() {
       return <Invoices brands={brands} />;
     }
 
+    if (activeSubMenu === 'Courier Service') {
+      return <CourierService brands={brands} user={user} />;
+    }
+
     if (activeSubMenu === 'Plugins & Apps') {
       const apkDownloadUrl = "https://github.com/robiulontherise-ux/mecopay.apk/raw/refs/heads/main/app-release.apk";
       const pluginDownloadUrl = "https://github.com/robiulontherise-ux/mecopay-woocomerce-plugin.php/raw/refs/heads/main/mecopay_woocommerce_plugin.zip";
@@ -1988,6 +2009,62 @@ if (activeSubMenu === 'Webhook Settings') {
       return (
         <div className="w-full">
           <WebsiteBuilderHub user={user} />
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Custom Domain Buy') {
+      return (
+        <div className="w-full">
+          <CustomDomainBuy user={user} brands={brands} />
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Integrate Custom Domain' || activeSubMenu === 'Custom Domain') {
+      return (
+        <div className="w-full">
+          <IntegrateCustomDomain user={user} brands={brands} />
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'SMS Service') {
+      return (
+        <div className="w-full">
+          <SmsServiceSettings user={user} brands={brands} />
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Email Service') {
+      return (
+        <div className="w-full">
+          <EmailServiceSettings user={user} brands={brands} />
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Server Side Tracking') {
+      return (
+        <div className="w-full">
+          <ServerSideTrackingSettings user={user} brands={brands} />
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Web Custom Agent') {
+      return (
+        <div className="w-full">
+          <WebCustomAgent user={user} brands={brands} />
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Social Custom Agent') {
+      return (
+        <div className="w-full">
+          <SocialCustomAgent user={user} brands={brands} />
         </div>
       );
     }

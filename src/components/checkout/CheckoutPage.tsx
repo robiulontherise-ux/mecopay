@@ -78,6 +78,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [error, setError] = useState('');
+  const [clientHomeUrl, setClientHomeUrl] = useState<string>('/');
   
   const [step, setStep] = useState(1);
   const [lang, setLang] = useState<'EN' | 'BN'>('BN');
@@ -268,6 +269,119 @@ export default function CheckoutPage() {
     };
   }, [linkData]);
 
+  const resolveClientHome = async (brandId?: string, userId?: string) => {
+    try {
+      let site: { domain?: string | null; subdomain?: string | null } | null = null;
+
+      // 1. Direct query by brandId
+      if (brandId) {
+        const { data } = await supabase
+          .from('site_settings')
+          .select('domain, subdomain')
+          .or(`id.eq.${brandId},brand_id.eq.${brandId}`)
+          .maybeSingle();
+        if (data) site = data;
+      }
+
+      // 2. Direct query by userId
+      if (!site && userId) {
+        const { data } = await supabase
+          .from('site_settings')
+          .select('domain, subdomain')
+          .eq('client_id', userId)
+          .maybeSingle();
+        if (data) site = data;
+      }
+
+      // 3. Query params: ?brand=, ?brand_id=, ?domain=, ?subdomain=, ?ref=
+      if (!site && typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const qb = params.get('brand') || params.get('brand_id');
+        const qd = params.get('domain');
+        const qs = params.get('subdomain');
+        if (qb) {
+          const { data } = await supabase
+            .from('site_settings')
+            .select('domain, subdomain')
+            .or(`id.eq.${qb},brand_id.eq.${qb}`)
+            .maybeSingle();
+          if (data) site = data;
+        } else if (qd) {
+          const { data } = await supabase
+            .from('site_settings')
+            .select('domain, subdomain')
+            .eq('domain', qd)
+            .maybeSingle();
+          if (data) site = data;
+        } else if (qs) {
+          const { data } = await supabase
+            .from('site_settings')
+            .select('domain, subdomain')
+            .eq('subdomain', qs)
+            .maybeSingle();
+          if (data) site = data;
+        }
+      }
+
+      // 4. Check document.referrer (where the customer was redirected from)
+      let refOrigin = '';
+      if (!site && typeof document !== 'undefined' && document.referrer) {
+        try {
+          const refUrl = new URL(document.referrer);
+          const refHost = refUrl.hostname.toLowerCase();
+          refOrigin = `${refUrl.protocol}//${refUrl.host}`;
+
+          if (refHost && !refHost.includes('localhost') && refHost !== 'mecopay.space' && refHost !== 'www.mecopay.space') {
+            const rawSub = refHost.endsWith('.mecopay.space') ? refHost.replace('.mecopay.space', '') : refHost;
+            const { data } = await supabase
+              .from('site_settings')
+              .select('domain, subdomain')
+              .or(`domain.ilike.%${refHost}%,subdomain.ilike.%${rawSub}%,subdomain.ilike.%${refHost}%`)
+              .maybeSingle();
+            if (data) site = data;
+          }
+        } catch (e) {
+          console.warn('Error reading referrer:', e);
+        }
+      }
+
+      // 5. Evaluate domain & subdomain based on client rules:
+      // "Jodi domain subdomain 2 tai thake kabol domain er setar link oi homepage a anbe ok ar only subdomain thakle ba only domain thakle setar link oi hone page button e thakbe ok site_setrings table theke check kore nibe ok"
+      if (site) {
+        const dom = site.domain?.trim();
+        const sub = site.subdomain?.trim();
+
+        let finalUrl = '';
+        if (dom && dom.length > 0) {
+          // Both or only domain -> strictly use domain
+          finalUrl = dom;
+        } else if (sub && sub.length > 0) {
+          // Only subdomain
+          finalUrl = sub;
+          if (!finalUrl.includes('.') && !finalUrl.includes('mecopay.space')) {
+            finalUrl = `${finalUrl}.mecopay.space`;
+          }
+        }
+
+        if (finalUrl) {
+          if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+            finalUrl = `https://${finalUrl}`;
+          }
+          setClientHomeUrl(finalUrl);
+          return;
+        }
+      }
+
+      // 6. External referrer fallback
+      if (refOrigin && !refOrigin.includes('localhost') && !refOrigin.includes('mecopay.space')) {
+        setClientHomeUrl(refOrigin);
+        return;
+      }
+    } catch (err) {
+      console.error('Error resolving client home link:', err);
+    }
+  };
+
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     setUser(session?.user || null);
@@ -300,6 +414,7 @@ export default function CheckoutPage() {
       }
       if (!link) {
         setError('Payment link not found or invalid.');
+        await resolveClientHome();
         return;
       }
       
@@ -316,6 +431,7 @@ export default function CheckoutPage() {
       }
       if (!brand) {
         setError('Payment link brand not found.');
+        await resolveClientHome(link.brand_id, link.user_id);
         return;
       }
       setBrandData(brand);
@@ -334,6 +450,7 @@ export default function CheckoutPage() {
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to load checkout');
+      await resolveClientHome();
     } finally {
       setLoading(false);
     }
@@ -689,7 +806,7 @@ export default function CheckoutPage() {
               : error}
           </p>
           <a
-            href="/"
+            href={clientHomeUrl}
             className="inline-flex items-center justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm w-full"
           >
             Go to Homepage
