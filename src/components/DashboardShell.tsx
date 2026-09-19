@@ -345,9 +345,129 @@ export default function DashboardShell() {
     }
   };
 
+  // Fetch Webhooks from Supabase
+  const fetchWebhooks = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from("webhooks")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setWebhooks(data);
+      } else {
+        setWebhooks([]);
+      }
+    } catch (err) {
+      console.error("Error loading webhooks:", err);
+      setWebhooks([]);
+    }
+  };
+
+  const [isSavingWebhook, setIsSavingWebhook] = useState(false);
+
+  const handleSaveWebhookEndpoint = async () => {
+    if (!webhookForm.brand_id) {
+      showToast("Please select a brand", "error");
+      return;
+    }
+    if (!webhookForm.payload_url || !webhookForm.payload_url.trim()) {
+      showToast("Please enter a Payload URL", "error");
+      return;
+    }
+    const cleanUrl = webhookForm.payload_url.trim();
+    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+      showToast("Payload URL must start with http:// or https://", "error");
+      return;
+    }
+
+    const selectedBrand = brands.find(b => String(b.id) === String(webhookForm.brand_id));
+    const secret = webhookForm.webhook_secret || selectedBrand?.webhook_secret || '';
+
+    setIsSavingWebhook(true);
+    try {
+      const { data: existing } = await supabase
+        .from("webhooks")
+        .select("id")
+        .eq("brand_id", webhookForm.brand_id)
+        .maybeSingle();
+
+      if (existing?.id) {
+        const updatePayload: any = {
+          payload_url: cleanUrl,
+          webhook_secret: secret
+        };
+        let { error } = await supabase
+          .from("webhooks")
+          .update(updatePayload)
+          .eq("id", existing.id);
+
+        if (error && error.message?.includes("webhook_secret")) {
+          const retry = await supabase
+            .from("webhooks")
+            .update({ payload_url: cleanUrl })
+            .eq("id", existing.id);
+          error = retry.error;
+        }
+
+        if (error) {
+          showToast(error.message || "Failed to update webhook endpoint", "error");
+        } else {
+          showToast("Webhook endpoint updated successfully!", "success");
+          fetchWebhooks();
+        }
+      } else {
+        const insertPayload: any = {
+          user_id: user?.id,
+          brand_id: webhookForm.brand_id,
+          payload_url: cleanUrl,
+          webhook_secret: secret
+        };
+        let { error } = await supabase
+          .from("webhooks")
+          .insert([insertPayload]);
+
+        if (error && error.message?.includes("webhook_secret")) {
+          delete insertPayload.webhook_secret;
+          const retry = await supabase
+            .from("webhooks")
+            .insert([insertPayload]);
+          error = retry.error;
+        }
+
+        if (error) {
+          showToast(error.message || "Failed to save webhook endpoint", "error");
+        } else {
+          showToast("Webhook endpoint saved successfully!", "success");
+          fetchWebhooks();
+          setWebhookForm(prev => ({ ...prev, payload_url: '' }));
+        }
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to save endpoint", "error");
+    } finally {
+      setIsSavingWebhook(false);
+    }
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    try {
+      const { error } = await supabase.from("webhooks").delete().eq("id", id);
+      if (!error) {
+        showToast("Webhook endpoint deleted successfully", "success");
+        fetchWebhooks();
+      } else {
+        showToast("Failed to delete webhook", "error");
+      }
+    } catch (err) {
+      showToast("Error deleting webhook", "error");
+    }
+  };
 
   useEffect(() => {
     fetchBrands();
+    fetchWebhooks();
   }, [user, activeSubMenu]);
 
   // Handle Create / Edit Brand Modal
@@ -1897,7 +2017,7 @@ if (activeSubMenu === 'Webhook Settings') {
                   value={webhookForm.brand_id}
                   onChange={(e) => {
                     const selectedBrandId = e.target.value;
-                    const selectedBrand = brands.find(b => b.id === selectedBrandId || b.id === Number(selectedBrandId));
+                    const selectedBrand = brands.find(b => String(b.id) === String(selectedBrandId));
                     setWebhookForm({ 
                       ...webhookForm, 
                       brand_id: selectedBrandId,
@@ -1936,23 +2056,31 @@ if (activeSubMenu === 'Webhook Settings') {
                     <button 
                       onClick={() => {
                         if (webhookForm.webhook_secret) {
-                          navigator.clipboard.writeText(webhookForm.webhook_secret);
+                          handleCopy(webhookForm.webhook_secret, "webhook_secret");
                           showToast("Copied!", "success");
                         }
                       }}
-                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[44px]"
                       title="Copy Secret"
                       disabled={!webhookForm.webhook_secret}
                     >
-                      <Copy className="w-4 h-4" />
+                      {copiedField === 'webhook_secret' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
 
               <div className="pt-2 flex justify-end">
-                <button className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-all shadow-md flex items-center gap-2 text-sm font-medium">
-                  <Plus className="w-4 h-4" /> Save Endpoint
+                <button 
+                  onClick={handleSaveWebhookEndpoint}
+                  disabled={isSavingWebhook}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl transition-all shadow-md flex items-center gap-2 text-sm font-medium cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> {isSavingWebhook ? "Saving..." : "Save Endpoint"}
                 </button>
               </div>
             </div>
@@ -1980,22 +2108,30 @@ if (activeSubMenu === 'Webhook Settings') {
                       </td>
                     </tr>
                   ) : (
-                    webhooks.map((wh, idx) => (
-                      <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="px-6 py-4 text-sm font-medium text-white">{wh.brand_name}</td>
-                        <td className="px-6 py-4 text-sm text-slate-300 truncate max-w-xs">{wh.payload_url}</td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    webhooks.map((wh, idx) => {
+                      const matchedBrand = brands.find(b => String(b.id) === String(wh.brand_id));
+                      const brandName = matchedBrand?.name || wh.brand_name || 'Brand';
+                      return (
+                        <tr key={wh.id || idx} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-white">{brandName}</td>
+                          <td className="px-6 py-4 text-sm text-slate-300 truncate max-w-xs">{wh.payload_url}</td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button 
+                              onClick={() => handleDeleteWebhook(wh.id)}
+                              className="p-2 hover:bg-rose-500/10 hover:text-rose-400 rounded-lg text-slate-400 transition-colors"
+                              title="Delete Endpoint"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
