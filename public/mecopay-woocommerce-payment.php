@@ -19,10 +19,8 @@ if (!defined('ABSPATH')) {
 add_action('plugins_loaded', 'init_mecopay_woocommerce_gateway', 0);
 
 /**
- * 1. WooCommerce Cart Validation Guard
- * Checks cart items and restricts:
- * - Mixed Cart: Physical + Digital items together are strictly forbidden.
- * - Multiple Digital Items: Customer cannot order more than 1 digital item/course at once.
+ * ১. WooCommerce Cart Validation Guard
+ * কার্ট আইটেম চেক করে গ্রাহককে রিয়েল-টাইমে আটকে দেবে:
  */
 add_action('woocommerce_check_cart_items', 'mecopay_validate_woocommerce_cart');
 function mecopay_validate_woocommerce_cart() {
@@ -44,7 +42,7 @@ function mecopay_validate_woocommerce_cart() {
         }
     }
 
-    // Rule 1: Mixed Cart Prevention (ফিজিক্যাল ও ডিজিটাল পণ্য একসাথে অর্ডার নিষিদ্ধ)
+    // নিয়ম ১: মিক্সড কার্ট প্রতিরোধ (ফিজিক্যাল + ডিজিটাল একসাথে নিষিদ্ধ)
     if ($has_physical && $has_digital) {
         wc_add_notice(
             __('দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। অনুগ্রহ করে যেকোনো একটি ক্যাটাগরির পণ্য সিলেক্ট করে আলাদা আলাদা অর্ডার সম্পন্ন করুন।', 'mecopay-woocommerce'),
@@ -52,7 +50,7 @@ function mecopay_validate_woocommerce_cart() {
         );
     }
 
-    // Rule 2: Single Digital Course/Product Only (ডিজিটাল কোর্স বা পণ্য একবারে সর্বোচ্চ ১টি)
+    // নিয়ম ২: সিঙ্গেল ডিজিটাল কোর্স নিয়ম (একবারে সর্বোচ্চ ১টি)
     if ($digital_count > 1) {
         wc_add_notice(
             __('ডিজিটাল কোর্স ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা সম্ভব নয়। অনুগ্রহ করে কার্ট থেকে অতিরিক্ত ডিজিটাল পণ্য রিমুভ করে সর্বোচ্চ ১টি রেখে অর্ডার করুন।', 'mecopay-woocommerce'),

@@ -1612,7 +1612,11 @@ export default function DashboardShell() {
                 </p>
               </div>
               <div className="pt-2 space-y-3">
-                <a href={pluginDownloadUrl} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-sm">
+                <a 
+                  href={pluginDownloadUrl} 
+                  download="mecopay-woocommerce.zip"
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-sm"
+                >
                   <Download className="w-4 h-4" /> Download Plugin (.zip)
                 </a>
                 <a href={videoGuideUrl} target="_blank" rel="noopener noreferrer" className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-sm">
