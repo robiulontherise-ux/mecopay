@@ -16,13 +16,14 @@ import {
   ShieldCheck, 
   Layers, 
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Plug
 } from 'lucide-react';
 import { showToast } from '../lib/toast';
 
 export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'three-products' | 'laravel' | 'webhook'>('three-products');
+  const [activeTab, setActiveTab] = useState<'overview' | 'three-products' | 'wordpress' | 'laravel' | 'webhook'>('three-products');
   const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
   const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'nodejs' | 'curl'>('laravel');
 
@@ -101,6 +102,17 @@ export default function DeveloperDocs() {
         </button>
 
         <button
+          onClick={() => setActiveTab('wordpress')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
+            activeTab === 'wordpress'
+              ? 'border-emerald-500 text-emerald-400 bg-slate-900'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <Plug className="w-4 h-4" /> ২. WordPress (WooCommerce) প্লাগইন ও কোড
+        </button>
+
+        <button
           onClick={() => setActiveTab('laravel')}
           className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
             activeTab === 'laravel'
@@ -108,7 +120,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <FileCode2 className="w-4 h-4" /> ২. Laravel ও কাস্টম ওয়েবসাইট সেটআপ
+          <FileCode2 className="w-4 h-4" /> ৩. Laravel ও কাস্টম ওয়েবসাইট সেটআপ
         </button>
 
         <button
@@ -119,7 +131,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Webhook className="w-4 h-4" /> ৩. Webhook & অর্ডার অটো-আপডেট
+          <Webhook className="w-4 h-4" /> ৪. Webhook & অর্ডার অটো-আপডেট
         </button>
 
         <button
@@ -130,7 +142,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <ShieldCheck className="w-4 h-4" /> ৪. API Credentials & Base URL
+          <ShieldCheck className="w-4 h-4" /> ৫. API Credentials & Base URL
         </button>
       </div>
 
@@ -328,7 +340,77 @@ export default function DeveloperDocs() {
         </div>
       )}
 
-      {/* TAB 2: LARAVEL & CUSTOM WEBSITE INTEGRATION */}
+      {/* TAB 2: WORDPRESS (WOOCOMMERCE) & CART GUARD */}
+      {activeTab === 'wordpress' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-6">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20 mb-2">
+                  <Plug className="w-3.5 h-3.5" /> Official WooCommerce Gateway Plugin
+                </div>
+                <h3 className="text-xl font-bold text-white">
+                  MecoPay WooCommerce Plugin v2.5.1 (কার্ট গার্ড ও অটো ভ্যালিডেশন সহ)
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  এই প্লাগইনের ভেতরে সরাসরি গ্রাহকের কার্ট চেক করে ফিজিক্যাল-ডিজিটাল মিক্সড এবং একাধিক ডিজিটাল প্রোডাক্ট স্বয়ংক্রিয়ভাবে ব্লক করার কোড ইনবিল্ট রয়েছে।
+                </p>
+              </div>
+              <a 
+                href="/mecopay-woocommerce.zip" 
+                download="mecopay-woocommerce.zip"
+                className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2 text-xs sm:text-sm shrink-0"
+              >
+                <Download className="w-4 h-4" /> Download Updated Plugin (.zip)
+              </a>
+            </div>
+
+            {/* Rules Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-2">
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <Check className="w-4 h-4" /> কার্ট গার্ড ১: সিঙ্গেল ডিজিটাল কোর্স নিয়ম
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  গ্রাহক ১টির বেশি ডিজিটাল কোর্স কার্টে যুক্ত করলে প্লাগইন তাৎক্ষণিক চেকআউট ব্লক করে নোটিশ প্রদর্শন করবে: <br/>
+                  <span className="text-amber-300 font-mono block mt-1">"ডিজিটাল কোর্স ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা সম্ভব নয়। অনুগ্রহ করে কার্ট থেকে অতিরিক্ত ডিজিটাল পণ্য রিমুভ করে সর্বোচ্চ ১টি রেখে অর্ডার করুন।"</span>
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950 border border-rose-500/40 space-y-2">
+                <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" /> কার্ট গার্ড ২: মিক্সড কার্ট প্রতিরোধ
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  গ্রাহক কার্টে ফিজিক্যাল এবং ডিজিটাল প্রোডাক্ট একসাথে নিলে প্লাগইন স্বয়ংক্রিয়ভাবে চেকআউটে লাল এরর দেখাবে: <br/>
+                  <span className="text-amber-300 font-mono block mt-1">"দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। অনুগ্রহ করে যেকোনো একটি ক্যাটাগরির পণ্য সিলেক্ট করে আলাদা আলাদা অর্ডার সম্পন্ন করুন।"</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Plugin Internal PHP Hook Code */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                  <FileCode2 className="w-4 h-4 text-emerald-400" /> প্লাগইনে ব্যবহৃত কার্ট গার্ড PHP হুক কোড (mecopay-woocommerce.php)
+                </span>
+                <button
+                  onClick={() => handleCopy(wooCartHookSnippet, 99)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all border border-slate-700"
+                >
+                  {copiedIndex === 99 ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />} Copy Hook Code
+                </button>
+              </div>
+
+              <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto leading-relaxed">
+{wooCartHookSnippet}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: LARAVEL & CUSTOM WEBSITE INTEGRATION */}
       {activeTab === 'laravel' && (
         <div className="space-y-6">
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
@@ -747,5 +829,51 @@ class MecoPayWebhookController extends Controller
         }
 
         return response()->json(['status' => 'success'], 200);
+    }
+}`;
+
+const wooCartHookSnippet = `<?php
+/**
+ * MecoPay WooCommerce Cart Guard (mecopay-woocommerce.php)
+ * 1. Blocks mixed physical and digital products
+ * 2. Blocks ordering more than 1 digital course at a time
+ */
+
+// Hook into WooCommerce Cart & Checkout Validation
+add_action('woocommerce_check_cart_items', 'mecopay_validate_woocommerce_cart');
+
+function mecopay_validate_woocommerce_cart() {
+    if (!WC()->cart) return;
+
+    $has_physical = false;
+    $has_digital  = false;
+    $digital_count = 0;
+
+    foreach (WC()->cart->get_cart() as $cart_item) {
+        $product = $cart_item['data'];
+        $qty = isset($cart_item['quantity']) ? intval($cart_item['quantity']) : 1;
+        
+        if ($product && ($product->is_virtual() || $product->is_downloadable())) {
+            $has_digital = true;
+            $digital_count += $qty;
+        } else {
+            $has_physical = true;
+        }
+    }
+
+    // ১. মিক্সড কার্ট ব্লক (ফিজিক্যাল + ডিজিটাল একসাথে নিষিদ্ধ)
+    if ($has_physical && $has_digital) {
+        wc_add_notice(
+            __('দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। অনুগ্রহ করে যেকোনো একটি ক্যাটাগরির পণ্য সিলেক্ট করে আলাদা আলাদা অর্ডার সম্পন্ন করুন।', 'mecopay-woocommerce'),
+            'error'
+        );
+    }
+
+    // ২. মাল্টিপল ডিজিটাল প্রোডাক্ট ব্লক (কোর্স একবারে সর্বোচ্চ ১টি)
+    if ($digital_count > 1) {
+        wc_add_notice(
+            __('ডিজিটাল কোর্স ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা সম্ভব নয়। অনুগ্রহ করে কার্ট থেকে অতিরিক্ত ডিজিটাল পণ্য রিমুভ করে সর্বোচ্চ ১টি রেখে অর্ডার করুন।', 'mecopay-woocommerce'),
+            'error'
+        );
     }
 }`;
