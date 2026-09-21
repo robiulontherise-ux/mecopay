@@ -17,6 +17,17 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
   const [activeCategory, setActiveCategory] = useState<'Personal MFS' | 'Merchant' | 'Bangla QR'>('Personal MFS');
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [selectedMerchantProvider, setSelectedMerchantProvider] = useState<'bkash' | 'nagad' | null>(null);
+
+  // Merchant Credentials State
+  const [merchantAppKey, setMerchantAppKey] = useState('');
+  const [merchantAppSecret, setMerchantAppSecret] = useState('');
+  const [merchantUsername, setMerchantUsername] = useState('');
+  const [merchantPassword, setMerchantPassword] = useState('');
+  const [nagadMerchantId, setNagadMerchantId] = useState('');
+  const [nagadPublicKey, setNagadPublicKey] = useState('');
+  const [nagadPrivateKey, setNagadPrivateKey] = useState('');
+  const [merchantActive, setMerchantActive] = useState(true);
 
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -122,6 +133,168 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
   const getRealBackupNumbers = (gw: any) => {
     if (!Array.isArray(gw.additional_numbers)) return [];
     return gw.additional_numbers.filter((x: any) => x && !x._meta_type && (typeof x === 'string' || x.number));
+  };
+
+  const loadMerchantConfigForBrand = (brandId: string, provider: 'bkash' | 'nagad') => {
+    const brand = brands.find(b => b.id === brandId);
+    const mConf = brand?.merchant_config?.[provider] || {};
+    if (provider === 'bkash') {
+      setMerchantAppKey(mConf.app_key || brand?.merchant_config?.app_key || '');
+      setMerchantAppSecret(mConf.app_secret || brand?.merchant_config?.app_secret || '');
+      setMerchantUsername(mConf.username || brand?.merchant_config?.username || '');
+      setMerchantPassword(mConf.password || brand?.merchant_config?.password || '');
+      setMerchantActive(mConf.active !== false);
+    } else {
+      setNagadMerchantId(mConf.merchant_id || '');
+      setNagadPublicKey(mConf.public_key || '');
+      setNagadPrivateKey(mConf.private_key || '');
+      setMerchantActive(mConf.active !== false);
+    }
+  };
+
+  const handleSaveMerchant = async () => {
+    if (!selectedBrandId || !selectedMerchantProvider) {
+      showToast("Please select a brand and merchant provider", "error");
+      return;
+    }
+
+    if (selectedMerchantProvider === 'bkash') {
+      if (!merchantAppKey.trim() || !merchantAppSecret.trim() || !merchantUsername.trim() || !merchantPassword.trim()) {
+        showToast("Please fill all bKash merchant credential fields", "error");
+        return;
+      }
+    } else if (selectedMerchantProvider === 'nagad') {
+      if (!nagadMerchantId.trim() || !nagadPublicKey.trim() || !nagadPrivateKey.trim()) {
+        showToast("Please fill all Nagad merchant credential fields", "error");
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No user found");
+
+      const brand = brands.find(b => b.id === selectedBrandId);
+      const existingConfig = brand?.merchant_config || {};
+
+      const updatedMerchantConfig = {
+        ...existingConfig,
+        [selectedMerchantProvider]: selectedMerchantProvider === 'bkash' ? {
+          app_key: merchantAppKey.trim(),
+          app_secret: merchantAppSecret.trim(),
+          username: merchantUsername.trim(),
+          password: merchantPassword.trim(),
+          active: merchantActive
+        } : {
+          merchant_id: nagadMerchantId.trim(),
+          public_key: nagadPublicKey.trim(),
+          private_key: nagadPrivateKey.trim(),
+          active: merchantActive
+        }
+      };
+
+      // 1. Update Supabase brands table
+      const { error: brandErr } = await supabase
+        .from('brands')
+        .update({
+          merchant_api: merchantActive,
+          merchant_provider: selectedMerchantProvider,
+          merchant_config: updatedMerchantConfig
+        })
+        .eq('id', selectedBrandId);
+
+      if (brandErr) throw brandErr;
+
+      if (brand) {
+        brand.merchant_api = merchantActive;
+        brand.merchant_provider = selectedMerchantProvider;
+        brand.merchant_config = updatedMerchantConfig;
+      }
+
+      // 2. Upsert into payment_numbers table for unified gateways view
+      const displayIdentifier = selectedMerchantProvider === 'bkash'
+        ? `AppKey: ${merchantAppKey.trim().slice(0, 8)}...`
+        : `MerchantID: ${nagadMerchantId.trim()}`;
+
+      const existingGw = gateways.find(
+        g => g.brand_id === selectedBrandId && g.provider === selectedMerchantProvider && g.type === 'merchant'
+      );
+
+      if (existingGw) {
+        await supabase
+          .from('payment_numbers')
+          .update({
+            number: displayIdentifier,
+            min_amount: parseFloat(minAmount) || 1,
+            max_amount: parseFloat(maxAmount) || 100000,
+          })
+          .eq('id', existingGw.id);
+      } else {
+        await supabase
+          .from('payment_numbers')
+          .insert({
+            user_id: user.id,
+            brand_id: selectedBrandId,
+            provider: selectedMerchantProvider,
+            type: 'merchant',
+            number: displayIdentifier,
+            min_amount: parseFloat(minAmount) || 1,
+            max_amount: parseFloat(maxAmount) || 100000,
+            monthly_volume: 0
+          });
+      }
+
+      showToast(`${selectedMerchantProvider === 'bkash' ? 'bKash' : 'Nagad'} Merchant credentials saved for ${brand?.name || 'Brand'}!`, "success");
+      setIsCreating(false);
+      setSelectedMerchantProvider(null);
+      setSelectedProvider(null);
+      fetchGateways();
+    } catch (err: any) {
+      showToast("Failed to save merchant credentials: " + err.message, "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteMerchantGateway = async (brandId: string, provider: 'bkash' | 'nagad') => {
+    const res = await showConfirm({
+      msg: `Are you sure you want to remove ${provider === 'bkash' ? 'bKash' : 'Nagad'} Merchant credentials for this brand?`,
+      requireType: "delete"
+    });
+    if (!res || !res.confirmed) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const brand = brands.find(b => b.id === brandId);
+      const existingConfig = brand?.merchant_config || {};
+      const updatedConfig = { ...existingConfig };
+      delete updatedConfig[provider];
+
+      await supabase
+        .from('brands')
+        .update({
+          merchant_config: updatedConfig,
+          merchant_api: Object.keys(updatedConfig).length > 0
+        })
+        .eq('id', brandId);
+
+      await supabase
+        .from('payment_numbers')
+        .delete()
+        .eq('brand_id', brandId)
+        .eq('provider', provider)
+        .eq('type', 'merchant');
+
+      showToast("Merchant Gateway deleted successfully", "success");
+      setIsCreating(false);
+      setSelectedMerchantProvider(null);
+      fetchGateways();
+    } catch (e: any) {
+      showToast("Error deleting merchant gateway: " + e.message, "error");
+    }
   };
 
   const handleSave = async () => {
@@ -260,6 +433,21 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
     }
   ];
 
+  const merchantProviders = [
+    { 
+      id: 'bkash', 
+      name: 'bKash Merchant', 
+      badge: 'Tokenized API Gateway',
+      logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/bkash.png'
+    },
+    { 
+      id: 'nagad', 
+      name: 'Nagad Merchant', 
+      badge: 'Direct Official PGW',
+      logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/nagad.png'
+    }
+  ];
+
   return (
     <div className="max-w-6xl space-y-6">
       <div className="flex justify-between items-center mb-8">
@@ -278,6 +466,8 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
               setDeviceName('');
               setDeviceName2('');
               setAdditionalNumbers([]);
+              setSelectedProvider(null);
+              setSelectedMerchantProvider(null);
             }}
             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
           >
@@ -289,7 +479,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       {!isCreating ? (
         <div className="space-y-4">
           <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4 text-sm text-blue-400">
-            Showing wallets for all brands.
+            Showing wallets and merchant gateways for all brands.
           </div>
           
           <div className="bg-slate-900/40 border border-slate-800 rounded-xl flex flex-col h-[calc(100vh-250px)] min-h-[400px] w-full">
@@ -316,21 +506,24 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                     <tr><td colSpan={10} className="px-6 py-8 text-center text-slate-500">No gateways configured yet. Click "Add Gateways" to setup.</td></tr>
                   ) : (
                     gateways.map((gw, idx) => {
-                      const providerObj = mfsProviders.find(p => p.id === gw.provider);
+                      const providerObj = mfsProviders.find(p => p.id === gw.provider) || merchantProviders.find(p => p.id === gw.provider);
                       const brandObj = brands.find(b => b.id === gw.brand_id);
+                      const isMerchant = gw.type === 'merchant';
                       return (
                         <tr key={gw.id} className="hover:bg-slate-800/30 transition-colors">
                           <td className="px-6 py-4 font-bold text-white capitalize flex items-center gap-3">
                             {providerObj?.name || gw.provider}
                           </td>
-                          <td className="px-6 py-4 text-slate-400">mobile_banking</td>
+                          <td className="px-6 py-4 text-slate-400">
+                            {isMerchant ? 'merchant_pgw' : 'mobile_banking'}
+                          </td>
                           <td className="px-6 py-4">
-                            <span className="bg-blue-500/20 text-blue-400 px-2.5 py-1 rounded-full text-xs font-semibold">
-                              personal
+                            <span className={`${isMerchant ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-blue-500/20 text-blue-400'} px-2.5 py-1 rounded-full text-xs font-semibold uppercase`}>
+                              {gw.type || 'personal'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-slate-400">
-                              {(() => {
+                              {isMerchant ? 'Direct OTP / PIN' : (() => {
                                 if (gw.type !== 'personal' && gw.type) {
                                   return (gw.provider || 'API').toUpperCase();
                                 }
@@ -341,40 +534,50 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                                 if (vTrx) return "Manual";
                                 return "None";
                               })()}
-</td>
+                          </td>
                           <td className="px-6 py-4 text-slate-300">{brandObj?.name || 'Unknown'}</td>
                           <td className="px-6 py-4 text-xs">
-                            <div className="text-slate-400">Account 1:</div>
-                            <div className="text-slate-300">
-                              {gw.number}
-                              {getGwDevice(gw, 'primary') && (
-                                <span className="ml-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[10px]">
-                                  {getGwDevice(gw, 'primary')}
-                                </span>
-                              )}
-                            </div>
-                            {gw.number_2 && (
+                            {isMerchant ? (
+                              <div>
+                                <div className="text-slate-400">Identifier:</div>
+                                <div className="text-emerald-400 font-mono font-medium">{gw.number}</div>
+                                <div className="text-slate-500 text-[10px]">Official API Active</div>
+                              </div>
+                            ) : (
                               <>
-                                <div className="text-slate-400 mt-1">Account 2:</div>
+                                <div className="text-slate-400">Account 1:</div>
                                 <div className="text-slate-300">
-                                  {gw.number_2}
-                                  {getGwDevice(gw, 'secondary') && (
+                                  {gw.number}
+                                  {getGwDevice(gw, 'primary') && (
                                     <span className="ml-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[10px]">
-                                      {getGwDevice(gw, 'secondary')}
+                                      {getGwDevice(gw, 'primary')}
                                     </span>
                                   )}
                                 </div>
+                                {gw.number_2 && (
+                                  <>
+                                    <div className="text-slate-400 mt-1">Account 2:</div>
+                                    <div className="text-slate-300">
+                                      {gw.number_2}
+                                      {getGwDevice(gw, 'secondary') && (
+                                        <span className="ml-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[10px]">
+                                          {getGwDevice(gw, 'secondary')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                                {getRealBackupNumbers(gw).length > 0 && (
+                                  <div className="text-slate-400 mt-1 text-[11px]">
+                                    +{getRealBackupNumbers(gw).length} Backup Number(s)
+                                  </div>
+                                )}
                               </>
-                            )}
-                            {getRealBackupNumbers(gw).length > 0 && (
-                              <div className="text-slate-400 mt-1 text-[11px]">
-                                +{getRealBackupNumbers(gw).length} Backup Number(s)
-                              </div>
                             )}
                           </td>
                           <td className="px-6 py-4 text-xs text-slate-400">
-                            <div>Min: 1.00</div>
-                            <div>Max: 100000.00</div>
+                            <div>Min: {gw.min_amount || '1.00'}</div>
+                            <div>Max: {gw.max_amount || '100000.00'}</div>
                             <div>Fee: 0</div>
                           </td>
                           <td className="px-6 py-4">
@@ -390,8 +593,21 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <button className="text-blue-400 hover:text-blue-300 p-2" onClick={() => {
+                              if (isMerchant) {
+                                setActiveCategory('Merchant');
+                                setSelectedMerchantProvider(gw.provider as 'bkash' | 'nagad');
+                                setSelectedProvider(null);
+                                setSelectedBrandId(gw.brand_id);
+                                loadMerchantConfigForBrand(gw.brand_id, gw.provider as 'bkash' | 'nagad');
+                                setMinAmount(gw.min_amount ? String(gw.min_amount) : '1');
+                                setMaxAmount(gw.max_amount ? String(gw.max_amount) : '100000');
+                                setIsCreating(true);
+                                setEditingId(gw.id);
+                                return;
+                              }
                               setSelectedProvider(gw.provider);
                               setSelectedProviders([gw.provider]);
+                              setSelectedMerchantProvider(null);
                               setSelectedBrandId(gw.brand_id);
                               setAccountNumber(gw.number);
                               setSecondaryAccountNumber(gw.number_2 || '');
@@ -417,7 +633,13 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                             }}>
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button className="text-red-400 hover:text-red-300 p-2 ml-1" onClick={() => handleDeleteGatewayRow(gw.id, gw.provider, gw.brand_id)}>
+                            <button className="text-red-400 hover:text-red-300 p-2 ml-1" onClick={() => {
+                              if (isMerchant) {
+                                handleDeleteMerchantGateway(gw.brand_id, gw.provider as 'bkash' | 'nagad');
+                              } else {
+                                handleDeleteGatewayRow(gw.id, gw.provider, gw.brand_id);
+                              }
+                            }}>
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </td>
@@ -433,40 +655,319 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       ) : (
         <div>
           <button
-            onClick={() => { setIsCreating(false); setSelectedProvider(null); setSelectedProviders([]); showToast("Cancelled", "error"); }}
+            onClick={() => { 
+              setIsCreating(false); 
+              setSelectedProvider(null); 
+              setSelectedProviders([]); 
+              setSelectedMerchantProvider(null);
+              showToast("Cancelled", "error"); 
+            }}
             className="text-slate-400 hover:text-white mb-6 text-sm flex items-center gap-2"
           >
             ← Back to Gateways
           </button>
 
-          {!selectedProvider ? (
+          {!selectedProvider && !selectedMerchantProvider ? (
             <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <h3 className="text-lg font-bold text-white">Personal MFS</h3>
+              {/* Category Switcher Tabs */}
+              <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('Personal MFS')}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
+                    activeCategory === 'Personal MFS'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                      : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  Personal MFS
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('Merchant')}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
+                    activeCategory === 'Merchant'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                      : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                  Merchant (MFS / Bank / Card)
+                </button>
               </div>
+
+              {activeCategory === 'Personal MFS' ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <h3 className="text-lg font-bold text-white">Personal MFS Gateways</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {mfsProviders.map(provider => (
+                      <button
+                        key={provider.id}
+                        onClick={() => {
+                          setSelectedProvider(provider.id);
+                          setSelectedProviders([provider.id]);
+                          setAccountNumber('');
+                          setSecondaryAccountNumber('');
+                          setDeviceName('');
+                          setDeviceName2('');
+                          setAdditionalNumbers([]);
+                        }}
+                        className={`flex flex-col items-center justify-center p-6 bg-[#0f1523] border border-slate-800/80 rounded-xl hover:border-slate-600 transition-colors gap-5 h-36`}
+                      >
+                        <div className="h-10 flex items-center justify-center w-full">
+                          <img src={provider.logoUrl} alt={provider.name} className="h-full max-w-[100px] object-contain" />
+                        </div>
+                        <span className="font-bold text-slate-100 text-[15px]">{provider.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                    <h3 className="text-lg font-bold text-white">Merchant (MFS / Bank / Card) Gateways</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {merchantProviders.map(provider => (
+                      <button
+                        key={provider.id}
+                        onClick={() => {
+                          setSelectedMerchantProvider(provider.id as 'bkash' | 'nagad');
+                          if (selectedBrandId) {
+                            loadMerchantConfigForBrand(selectedBrandId, provider.id as 'bkash' | 'nagad');
+                          }
+                        }}
+                        className={`flex flex-col items-center justify-center p-6 bg-[#0f1523] border border-slate-800/80 rounded-xl hover:border-purple-500/50 hover:bg-slate-900/60 transition-all gap-4 h-36 relative group`}
+                      >
+                        <div className="h-10 flex items-center justify-center w-full">
+                          <img src={provider.logoUrl} alt={provider.name} className="h-full max-w-[100px] object-contain" />
+                        </div>
+                        <div className="text-center">
+                          <span className="font-bold text-slate-100 text-[15px] block">{provider.name}</span>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">{provider.badge}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : selectedMerchantProvider ? (
+            /* Merchant Setup Form */
+            <div className="bg-[#1a2234] border border-slate-800 rounded-xl p-6 relative max-w-3xl">
+              <button 
+                onClick={() => setSelectedMerchantProvider(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {mfsProviders.map(provider => (
-                  <button
-                    key={provider.id}
-                    onClick={() => {
-                      setSelectedProvider(provider.id);
-                      setSelectedProviders([provider.id]);
-                      setAccountNumber('');
-                      setSecondaryAccountNumber('');
-                      setDeviceName('');
-                      setDeviceName2('');
-                      setAdditionalNumbers([]);
+              <div className="flex items-center gap-3 mb-6">
+                <img
+                  src={selectedMerchantProvider === 'bkash' 
+                    ? 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/bkash.png'
+                    : 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/nagad.png'}
+                  alt={selectedMerchantProvider}
+                  className="h-8 object-contain"
+                />
+                <div>
+                  <h3 className="text-xl font-bold text-white capitalize">
+                    {selectedMerchantProvider === 'bkash' ? 'bKash Merchant' : 'Nagad Merchant'} Gateway Setup
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Direct automated OTP/PIN payment processing credentials.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Brand Selection Dropdown (Queried from brands table for client) */}
+                <div>
+                  <label className="block text-sm text-blue-400 font-medium mb-1.5 flex items-center gap-1.5">
+                    <span className="text-lg">🏢</span> Select Brand for this Merchant Gateway *
+                  </label>
+                  <select 
+                    value={selectedBrandId}
+                    onChange={(e) => {
+                      setSelectedBrandId(e.target.value);
+                      loadMerchantConfigForBrand(e.target.value, selectedMerchantProvider);
                     }}
-                    className={`flex flex-col items-center justify-center p-6 bg-[#0f1523] border border-slate-800/80 rounded-xl hover:border-slate-600 transition-colors gap-5 h-36`}
+                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 font-semibold"
                   >
-                    <div className="h-10 flex items-center justify-center w-full">
-                      <img src={provider.logoUrl} alt={provider.name} className="h-full max-w-[100px] object-contain" />
-                    </div>
-                    <span className="font-bold text-slate-100 text-[15px]">{provider.name}</span>
+                    {Array.isArray(brands) && brands.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Queried from your registered brands. Credentials will be securely tied to this brand.
+                  </p>
+                </div>
+
+                {/* Status Toggle */}
+                <div className="flex items-center justify-between p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl">
+                  <div>
+                    <div className="text-sm font-semibold text-white">Enable Gateway Status</div>
+                    <div className="text-xs text-slate-400">Allow customers to use this merchant gateway during checkout</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMerchantActive(!merchantActive)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      merchantActive 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {merchantActive ? 'ACTIVE (ON)' : 'INACTIVE (OFF)'}
                   </button>
-                ))}
+                </div>
+
+                {/* Provider-specific Credentials */}
+                {selectedMerchantProvider === 'bkash' ? (
+                  <div className="pt-4 border-t border-slate-800 space-y-4">
+                    <h4 className="text-blue-400 font-medium flex items-center gap-1.5">
+                      <span>🔑</span> bKash Tokenized API Credentials
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">bKash App Key *</label>
+                        <input
+                          type="text"
+                          value={merchantAppKey}
+                          onChange={e => setMerchantAppKey(e.target.value)}
+                          placeholder="e.g. 4f1a238b9c..."
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">bKash App Secret *</label>
+                        <input
+                          type="password"
+                          value={merchantAppSecret}
+                          onChange={e => setMerchantAppSecret(e.target.value)}
+                          placeholder="••••••••••••••••"
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Merchant Username *</label>
+                        <input
+                          type="text"
+                          value={merchantUsername}
+                          onChange={e => setMerchantUsername(e.target.value)}
+                          placeholder="sandboxTestUser / merchantUser"
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Merchant Password *</label>
+                        <input
+                          type="password"
+                          value={merchantPassword}
+                          onChange={e => setMerchantPassword(e.target.value)}
+                          placeholder="••••••••••••"
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-4 border-t border-slate-800 space-y-4">
+                    <h4 className="text-orange-400 font-medium flex items-center gap-1.5">
+                      <span>🔑</span> Nagad Official PGW Credentials
+                    </h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Nagad Merchant ID *</label>
+                        <input
+                          type="text"
+                          value={nagadMerchantId}
+                          onChange={e => setNagadMerchantId(e.target.value)}
+                          placeholder="e.g. 680123456789"
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Nagad PGW Public Key *</label>
+                        <textarea
+                          rows={3}
+                          value={nagadPublicKey}
+                          onChange={e => setNagadPublicKey(e.target.value)}
+                          placeholder="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500 font-mono resize-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Merchant Private Key *</label>
+                        <textarea
+                          rows={3}
+                          value={nagadPrivateKey}
+                          onChange={e => setNagadPrivateKey(e.target.value)}
+                          placeholder="MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC..."
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500 font-mono resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Limits */}
+                <div className="pt-4 border-t border-slate-800">
+                  <h4 className="text-blue-400 font-medium mb-4">Limits & Currency</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-1 flex items-center gap-1">
+                        <span className="text-blue-400">💲</span> Minimum Amount (BDT)
+                      </label>
+                      <input 
+                        type="number" 
+                        value={minAmount}
+                        onChange={(e) => setMinAmount(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-300 mb-1 flex items-center gap-1">
+                        <span className="text-blue-400">💲</span> Maximum Amount (BDT)
+                      </label>
+                      <input 
+                        type="number" 
+                        value={maxAmount}
+                        onChange={(e) => setMaxAmount(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-6 border-t border-slate-800 flex gap-4">
+                  {gateways.find(g => g.provider === selectedMerchantProvider && g.brand_id === selectedBrandId && g.type === 'merchant')?.id && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMerchantGateway(selectedBrandId, selectedMerchantProvider)}
+                      className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50 font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete Gateway
+                    </button>
+                  )}
+                  <button 
+                    type="button"
+                    onClick={handleSaveMerchant}
+                    disabled={isSaving}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
+                  >
+                    💾 {isSaving ? 'Saving...' : 'Save Merchant Gateway Credentials'}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (

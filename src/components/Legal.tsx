@@ -169,7 +169,7 @@ export const DeveloperDocsPage = () => (
   <LegalLayout title="API Documentation" icon={FileText} lastUpdated="August 2026">
     <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 space-y-4">
       <p className="text-lg text-white leading-relaxed">
-        লগইন করে আপনার প্রোফাইল ডিটেইলস সেভ করার পর, আপনি <strong>Your MecoPay</strong> সেকশন থেকে Developer Docs-এ custom (Python, Node.js) ইত্যাদি দিয়ে তৈরি ওয়েবসাইটের জন্য বিস্তারিত API Documentation দেখতে পারবেন।
+        লগইন করে আপনার প্রোফাইল ডিটেইলস সেভ করার পর, আপনি <strong>Your MecoPay</strong> সেকশন থেকে <strong>Documentation Docs</strong>-এ custom (Laravel, Node.js, Python) ইত্যাদি দিয়ে তৈরি ওয়েবসাইটের জন্য বিস্তারিত API Documentation ও JSON পে-লোড দেখতে পারবেন।
       </p>
       <p className="text-neutral-400 leading-relaxed">
         এছাড়া, WordPress/WooCommerce ওয়েবসাইট ইন্টিগ্রেশনের জন্য Plugin আপনি <strong>'Apps & Plugin'</strong> সেকশনে পাবেন এবং Personal MFS অটোমেশনের জন্য প্রয়োজনীয় <strong>'Sync App'</strong> ও ওখান থেকেই ডাউনলোড করতে পারবেন। আমাদের সাথে থাকার জন্য ধন্যবাদ!

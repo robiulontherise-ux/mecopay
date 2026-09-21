@@ -16,8 +16,9 @@ import GatewaySettings from "./payment-hub/GatewaySettings";
 import PaymentLinks from "./payment-hub/PaymentLinks";
 import Invoices from "./payment-hub/Invoices";
 import CourierService from "./payment-hub/CourierService";
+import DeveloperDocs from "./DeveloperDocs";
 import { useNavigate } from 'react-router-dom';
-import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book } from 'lucide-react';
+import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles } from 'lucide-react';
 
 export default function DashboardShell() {
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -878,7 +879,7 @@ export default function DashboardShell() {
   const menuData = {
     brand: {
       title: 'Your MecoPay',
-      items: ['Profile', 'Dashboard', 'Service & Billing', 'Brand', 'Webhook Settings', 'Plugins & Apps', 'Developer Docs'],
+      items: ['Profile', 'Dashboard', 'Service & Billing', 'Brand', 'Webhook Settings', 'Plugins & Apps', 'Documentation Docs'],
     },
     payments: {
       title: 'Payments Hub',
@@ -1928,74 +1929,11 @@ export default function DashboardShell() {
     }
 
     
-    if (activeSubMenu === 'Developer Docs') {
-      return (
-        <div className="max-w-4xl mx-auto">
-          <div className="mt-8 bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Book className="w-5 h-5 text-blue-400" /> Developer Documentation</h3>
-            <div className="space-y-6">
-              <div>
-                <h4 className="text-md font-semibold text-slate-200 mb-2">1. WordPress Plugin Integration</h4>
-                <p className="text-sm text-slate-400">If you are using WordPress/WooCommerce, simply download our official MecoPay Plugin from the <strong>Apps / Plugin</strong> section. Install it on your site and paste your Brand API Key in the plugin settings. After that, you will receive a Payload URL from the plugin. Copy and paste it into our website's Webhook Settings by selecting your brand. You will then receive a Secret Key—paste that back into your plugin settings, and you're done!</p>
-              </div>
-              <div className="border-t border-slate-800 pt-6">
-                <h4 className="text-md font-semibold text-slate-200 mb-2">2. Custom Website Integration (REST API)</h4>
-                <p className="text-sm text-slate-400 mb-4">For custom-coded websites (PHP, Node.js, Python, React, etc.), your developer needs to call our Checkout Edge Function to initiate a payment.</p>
-                
-                <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 mb-4">
-                  <p className="text-xs font-mono text-blue-400 mb-2">POST https://fwonuakvherzofqximno.supabase.co/functions/v1/check-out</p>
-                  <div className="text-xs text-slate-300 font-mono whitespace-pre-wrap overflow-x-auto">
-{`// Example Node.js Request
-const response = await fetch("https://fwonuakvherzofqximno.supabase.co/functions/v1/check-out", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer YOUR_API_KEY" // Pass your brand API Key here
-  },
-  body: JSON.stringify({
-    amount: 1500,
-    customer_name: "John Doe",
-    customer_phone: "017XXXXXXXX",
-    redirect_url: "https://yourwebsite.com/success"
-  })
-});
-
-const data = await response.json();
-// Redirect the user to data.checkout_url`}
-                  </div>
-                </div>
-                
-                <p className="text-sm text-slate-400">Our system will handle the UI, routing, and payment verification. Once the payment is successful, the user will be redirected back to your provided <code>redirect_url</code>.</p>
-              </div>
-              <div className="border-t border-slate-800 pt-6">
-                <h4 className="text-md font-semibold text-slate-200 mb-2">3. Verifying Payments via API (Optional)</h4>
-                <p className="text-sm text-slate-400 mb-4">If you need to verify a payment status server-side, you can call the verify-payment Edge Function with the Transaction ID (TrxID) or Invoice ID.</p>
-                
-                <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
-                  <p className="text-xs font-mono text-emerald-400 mb-2">POST https://fwonuakvherzofqximno.supabase.co/functions/v1/verify-payment</p>
-                  <div className="text-xs text-slate-300 font-mono whitespace-pre-wrap overflow-x-auto">
-{`// Example Request
-const response = await fetch("https://fwonuakvherzofqximno.supabase.co/functions/v1/verify-payment", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer YOUR_API_KEY"
-  },
-  body: JSON.stringify({
-    invoice_id: "INV-XXXXXXX", // or trx_id: "9J2K1L9M"
-  })
-});`}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
-        </div>
-      );
+    if (activeSubMenu === 'Documentation Docs' || activeSubMenu === 'Developer Docs') {
+      return <DeveloperDocs />;
     }
-if (activeSubMenu === 'Webhook Settings') {
+
+    if (activeSubMenu === 'Webhook Settings') {
       return (
         <div className="max-w-4xl space-y-8">
           <div>
