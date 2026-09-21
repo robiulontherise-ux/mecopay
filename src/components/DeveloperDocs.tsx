@@ -57,6 +57,36 @@ export default function DeveloperDocs() {
         </a>
       </div>
 
+      {/* Top Prominent Notice: Cart Policies for Laravel & All Custom Websites */}
+      <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 space-y-4 shadow-xl">
+        <div className="flex items-center gap-2.5 text-amber-400 font-bold text-base">
+          <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0" />
+          <span>বাধ্যতামূলক কার্ট নিয়মাবলী (WordPress, Laravel ও যেকোনো Custom Website):</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-2">
+            <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-emerald-400" /> ১. অনুমোদিত কার্ট নিয়ম (Allowed)
+            </div>
+            <ul className="text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1">
+              <li>• <strong className="text-white">ফিজিক্যাল প্রোডাক্ট:</strong> কার্টে একসাথে একাধিক (Multiple) ফিজিক্যাল পণ্য নিতে পারবে (যেমন: ২টি টি-শার্ট + ১টি ঘড়ি)।</li>
+              <li>• <strong className="text-white">ডিজিটাল প্রোডাক্ট (কোর্স):</strong> পাসকোড এবং প্রাইভেট চ্যানেল/গ্রুপ সুরক্ষার জন্য ডিজিটাল কোর্স <strong className="text-emerald-400">একবারে ১টি (Single)</strong> কেনা যাবে।</li>
+            </ul>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-950 border border-rose-500/40 space-y-2">
+            <div className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-rose-400" /> ২. সম্পূর্ণ নিষিদ্ধ (Forbidden)
+            </div>
+            <ul className="text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1">
+              <li>• <strong className="text-white">মিক্সড কার্ট (Physical + Digital):</strong> ১টি ফিজিক্যাল এবং ১টি ডিজিটাল প্রোডাক্ট একসাথে কার্টে রাখা <strong className="text-rose-400">সম্পূর্ণ নিষিদ্ধ</strong>।</li>
+              <li>• কাস্টমার চেকআউট করতে গেলে সাইট বা প্লাগইন অর্ডার আটকে দিয়ে নোটিশ দেখাবে: <em className="text-amber-200">"দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। আলাদা আলাদা অর্ডার করুন।"</em></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Navigation Tabs */}
       <div className="flex gap-2 border-b border-slate-800 pb-px overflow-x-auto">
         <button

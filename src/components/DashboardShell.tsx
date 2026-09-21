@@ -1572,7 +1572,7 @@ export default function DashboardShell() {
 
     if (activeSubMenu === 'Plugins & Apps') {
       const apkDownloadUrl = "https://github.com/robiulontherise-ux/mecopay.apk/raw/refs/heads/main/app-release.apk";
-      const pluginDownloadUrl = "https://github.com/robiulontherise-ux/mecopay-woocomerce-plugin.php/raw/refs/heads/main/mecopay_woocommerce_plugin.zip";
+      const pluginDownloadUrl = "/mecopay-woocommerce.zip";
       const videoGuideUrl = "#"; // Replace with actual URL later
       
       const userId = user?.id || "USER_ID";
@@ -1596,15 +1596,19 @@ export default function DashboardShell() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                    WooCommerce
+                    WooCommerce v2.5.1
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Mixed-Cart Blocker Included
                   </span>
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
                   <Plug className="w-5 h-5 text-blue-400" /> WordPress Plugin
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                  আপনার ওয়ার্ডপ্রেস সাইটে পেমেন্ট গেটওয়ে যুক্ত করতে এই প্লাগইনটি ডাউনলোড করুন। <br/><br/>
-                  <strong className="text-emerald-400">Documentation Docs</strong>-এ প্লাগইনের কয়েক ক্লিকে সেটআপ করার গাইড দেখুন।
+                <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                  আপনার ওয়ার্ডপ্রেস সাইটে পেমেন্ট গেটওয়ে যুক্ত করতে এই প্লাগইনটি ডাউনলোড করুন। <br/>
+                  <span className="text-amber-300 font-semibold block mt-1.5">• কার্টে ফিজিক্যাল ও ডিজিটাল প্রোডাক্ট একসাথে নিলে প্লাগইন নিজে থেকেই চেকআউট আটকে দিয়ে গ্রাহককে নোটিশ দেবে।</span>
+                  <span className="text-emerald-400 block mt-1">• ফিজিক্যাল প্রোডাক্ট মাল্টিপল নেওয়া যাবে, তবে ডিজিটাল কোর্স একবারে ১টি নেওয়ার নিয়ম।</span>
                 </p>
               </div>
               <div className="pt-2 space-y-3">
