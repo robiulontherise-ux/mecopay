@@ -60,6 +60,7 @@ export default function DashboardShell() {
     };
   }, []);
   const [activeSubMenu, setActiveSubMenu] = useState<string>('Profile');
+  const [appsSubTab, setAppsSubTab] = useState<'app' | 'plugin'>('app');
 
   useEffect(() => {
     setActiveBrandDropdown(null);
@@ -879,7 +880,7 @@ export default function DashboardShell() {
   const menuData = {
     brand: {
       title: 'Your MecoPay',
-      items: ['Profile', 'Dashboard', 'Service & Billing', 'Brand', 'Webhook Settings', 'Plugins & Apps', 'Documentation Docs'],
+      items: ['Profile', 'Dashboard', 'Service & Billing', 'Brand', 'Webhook Settings', 'Apps', 'Documentation Docs'],
     },
     payments: {
       title: 'Payments Hub',
@@ -1570,7 +1571,7 @@ export default function DashboardShell() {
       return <CourierService brands={brands} user={user} />;
     }
 
-    if (activeSubMenu === 'Plugins & Apps') {
+    if (activeSubMenu === 'Apps' || activeSubMenu === 'Plugins & Apps') {
       const apkDownloadUrl = "https://github.com/robiulontherise-ux/mecopay.apk/raw/refs/heads/main/app-release.apk";
       const pluginDownloadUrl = "/mecopay-woocommerce.zip";
       const videoGuideUrl = "#"; // Replace with actual URL later
@@ -1579,246 +1580,302 @@ export default function DashboardShell() {
       const displayHmac = hmacSecret || "HMAC_SECRET";
 
       return (
-        <div className="max-w-4xl space-y-8">
+        <div className="max-w-4xl space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                 <Smartphone className="w-7 h-7 text-emerald-400" />
-                Apps & Plugins
+                Apps & Integration
               </h2>
               <p className="text-sm text-slate-400">অ্যান্ড্রয়েড অ্যাপ ও ওয়ার্ডপ্রেস প্লাগইন ডাউনলোড এবং সেটআপ গাইড।</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Plugin Card */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                    WooCommerce v2.5.1
-                  </span>
-                  <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    Mixed-Cart Blocker Included
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                  <Plug className="w-5 h-5 text-blue-400" /> WordPress Plugin
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed mb-4">
-                  আপনার ওয়ার্ডপ্রেস সাইটে পেমেন্ট গেটওয়ে যুক্ত করতে এই প্লাগইনটি ডাউনলোড করুন। <br/>
-                  <span className="text-amber-300 font-semibold block mt-1.5">• কার্টে ফিজিক্যাল ও ডিজিটাল প্রোডাক্ট একসাথে নিলে প্লাগইন নিজে থেকেই চেকআউট আটকে দিয়ে গ্রাহককে নোটিশ দেবে।</span>
-                  <span className="text-emerald-400 block mt-1">• ফিজিক্যাল প্রোডাক্ট মাল্টিপল নেওয়া যাবে, তবে ডিজিটাল কোর্স একবারে ১টি নেওয়ার নিয়ম।</span>
-                </p>
-              </div>
-              <div className="pt-2 space-y-3">
-                <a 
-                  href={pluginDownloadUrl} 
-                  download="mecopay-woocommerce.zip"
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-sm"
-                >
-                  <Download className="w-4 h-4" /> Download Plugin (.zip)
-                </a>
-                <a href={videoGuideUrl} target="_blank" rel="noopener noreferrer" className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-sm">
-                  <Video className="w-4 h-4" /> Plugin Setup Guide Video
-                </a>
-              </div>
-            </div>
-
-            {/* App Card */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    Android App
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                  <Smartphone className="w-5 h-5 text-emerald-400" /> MecoPay Sync App
-                </h3>
-                <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                  আপনার মোবাইল থেকে পেমেন্ট ভেরিফাই করতে অ্যাপটি ডাউনলোড করুন। নিচের সেটআপ গাইড অনুযায়ী অ্যাপ কনফিগার করুন।
-                </p>
-              </div>
-              <div className="pt-2 space-y-3">
-                <a href={apkDownloadUrl} target="_blank" rel="noopener noreferrer" className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-sm">
-                  <Download className="w-4 h-4" /> Download App (APK)
-                </a>
-                <a href={videoGuideUrl} target="_blank" rel="noopener noreferrer" className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-sm">
-                  <Video className="w-4 h-4" /> App Setup Guide Video
-                </a>
-              </div>
-            </div>
+          {/* Sub Navigation Buttons under Apps */}
+          <div className="flex items-center gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl w-fit">
+            <button
+              onClick={() => setAppsSubTab('app')}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                appsSubTab === 'app'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Smartphone className="w-4 h-4" />
+              MecoPay Sync App (Android)
+            </button>
+            <button
+              onClick={() => setAppsSubTab('plugin')}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                appsSubTab === 'plugin'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Plug className="w-4 h-4" />
+              WordPress Plugin
+            </button>
           </div>
 
-          {/* Manual Setup Section */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Settings className="w-5 h-5 text-purple-400" /> 
-                Setup Link & Information (Dynamic App Config)
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <CheckCircle2 className="w-3 h-3" /> App Auto-Sync Active
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  User ID & HMAC Connected
-                </span>
-              </div>
-            </div>
-            
-            <div className="text-sm text-slate-300 leading-relaxed bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl space-y-1">
-              <p>
-                <strong>স্মার্ট অটো সিঙ্ক:</strong> অ্যাপে আপনার অ্যাকাউন্ট লগইন করলেই এই বক্সগুলোর তথ্য স্বয়ংক্রিয়ভাবে অ্যাপে সেট হয়ে যাবে। ম্যানুয়াল সেটআপের ক্ষেত্রে নিচের তথ্যগুলো কপি করে ব্যবহার করতে পারেন।
-              </p>
-              <p className="text-xs text-slate-400">
-                অ্যাডমিন প্যানেলে কোনো পরিবর্তন করা হলে আপনার অ্যাপ স্বয়ংক্রিয়ভাবে আপডেট গ্রহণ করবে।
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Sender Number (Box)</label>
-                  <span className="text-[11px] text-purple-400 font-medium">Dynamic Live Setting</span>
+          {/* TAB 1: ANDROID APP */}
+          {appsSubTab === 'app' && (
+            <div className="space-y-6">
+              {/* App Card */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      Official Android App v2.5
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-emerald-400" /> MecoPay Sync App
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                    আপনার মোবাইল থেকে পেমেন্ট ভেরিফাই করতে অ্যাপটি ডাউনলোড করুন। নিচের সেটআপ গাইড অনুযায়ী অ্যাপ কনফিগার করুন।
+                  </p>
                 </div>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
-                  <div className="text-slate-200 font-mono text-sm break-all">{forwarderSettings.sender_number }</div>
-                  <button onClick={() => handleCopy(forwarderSettings.sender_number , "sender")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
-                    {copiedField === 'sender' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
-                  </button>
+                <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                  <a href={apkDownloadUrl} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-sm">
+                    <Download className="w-4 h-4" /> Download App (APK)
+                  </a>
+                  <a href={videoGuideUrl} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-sm">
+                    <Video className="w-4 h-4" /> App Setup Guide Video
+                  </a>
                 </div>
               </div>
 
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Text Filter (Box)</label>
-                  <span className="text-[11px] text-purple-400 font-medium">Regex Pattern</span>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
-                  <div className="text-slate-200 font-mono text-sm break-all">{forwarderSettings.text_filter}</div>
-                  <button onClick={() => handleCopy(forwarderSettings.text_filter || "", "filter")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
-                    {copiedField === 'filter' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Webhook URL (Edge Function + User ID)</label>
-                  <span className="text-[11px] text-emerald-400 font-mono">Dynamic Live Sync</span>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
-                  <div className="text-emerald-400 font-mono text-sm break-all">{`${forwarderSettings.webhook_edge_url }?user_id=${userId}`}</div>
-                  <button onClick={() => handleCopy(`${forwarderSettings.webhook_edge_url }?user_id=${userId}`, "webhook")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
-                    {copiedField === 'webhook' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Headers (Box)</label>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
-                  <pre className="text-slate-200 font-mono text-sm overflow-x-auto m-0 whitespace-pre-wrap">
-                    {forwarderSettings.headers}
-                  </pre>
-                  <button onClick={() => handleCopy(forwarderSettings.headers || "", "headers")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
-                    {copiedField === 'headers' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">JSON Payload Template</label>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
-                  <pre className="text-slate-200 font-mono text-sm overflow-x-auto m-0 whitespace-pre-wrap">
-                    {forwarderSettings.json_payload_template || ""}
-                  </pre>
-                  <button onClick={() => handleCopy(forwarderSettings.json_payload_template || "", "payload")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
-                    {copiedField === 'payload' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1.5"><label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">HMAC Secret (Box)</label><button onClick={handleRegenerateHmac} className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded flex items-center gap-1 transition-colors"><RefreshCw className="w-3 h-3" /> Regenerate</button></div>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
-                  <div className="text-purple-400 font-mono text-sm break-all">{displayHmac}</div>
-                  <button onClick={() => handleCopy(displayHmac, "hmac")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
-                    {copiedField === 'hmac' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Heartbeat WebSocket URL (Realtime + Edge Functions)
-                  </label>
-                  <span className="text-[11px] text-emerald-400 font-mono">channel={forwarderSettings.ws_channel }</span>
+              {/* Manual Setup Section */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-purple-400" /> 
+                    Setup Link & Information (Dynamic App Config)
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <CheckCircle2 className="w-3 h-3" /> App Auto-Sync Active
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      User ID & HMAC Connected
+                    </span>
+                  </div>
                 </div>
                 
-                <div className="space-y-3 mb-4">
-                  {customDevices.length === 0 ? (
-                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800 text-center text-slate-400 text-sm">
-                      No devices added yet. Enter a phone name below to generate a Heartbeat URL and save to database.
-                    </div>
-                  ) : (
-                    customDevices.map((device, idx) => {
-                      const hostUrl = forwarderSettings.project_url ;
-                      const anonKey = forwarderSettings.anon_key ;
-                      const channel = forwarderSettings.ws_channel ;
-                      const edgeUrl = forwarderSettings.heartbeat_edge_url ;
-                      const wsHeartbeatUrl = `wss://${hostUrl}/realtime/v1/websocket?apikey=${anonKey}&vsn=1.0.0&channel=${channel}&user_id=${userId}&secret=${displayHmac}&device_id=${encodeURIComponent(device)}&edge_url=${edgeUrl}`;
-
-                      return (
-                        <div key={idx} className="bg-slate-950 p-3 rounded-lg border border-purple-500/30 flex items-center justify-between gap-3 group relative">
-                          <div className="overflow-hidden">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-bold text-purple-400">Device: {device}</span>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300">WebSocket</span>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300">Synced to DB</span>
-                            </div>
-                            <div className="text-emerald-400 font-mono text-xs md:text-sm break-all">{wsHeartbeatUrl}</div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => handleCopy(wsHeartbeatUrl, `heartbeat-${idx}`)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
-                              {copiedField === `heartbeat-${idx}` ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
-                            </button>
-                            <button onClick={() => handleDeleteDevice(device)} className="px-3 py-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors shrink-0 flex items-center justify-center" title="Delete Device">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                <div className="text-sm text-slate-300 leading-relaxed bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl space-y-1">
+                  <p>
+                    <strong>স্মার্ট অটো সিঙ্ক:</strong> অ্যাপে আপনার অ্যাকাউন্ট লগইন করলেই এই বক্সগুলোর তথ্য স্বয়ংক্রিয়ভাবে অ্যাপে সেট হয়ে যাবে। ম্যানুয়াল সেটআপের ক্ষেত্রে নিচের তথ্যগুলো কপি করে ব্যবহার করতে পারেন।
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    অ্যাডমিন প্যানেলে কোনো পরিবর্তন করা হলে আপনার অ্যাপ স্বয়ংক্রিয়ভাবে আপডেট গ্রহণ করবে।
+                  </p>
                 </div>
 
-                <div className="flex gap-2 mb-3">
-                  <input 
-                    type="text" 
-                    placeholder="Enter New Phone Name (e.g. Samsung S23, vivo15s)" 
-                    value={newDeviceInput}
-                    onChange={(e) => setNewDeviceInput(e.target.value)}
-                    onKeyDown={async (e) => {
-                      if (e.key === "Enter") {
-                        await handleAddDevice();
-                      }
-                    }}
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-                  />
-                  <button 
-                    onClick={handleAddDevice}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    Add Device
-                  </button>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Sender Number (Box)</label>
+                      <span className="text-[11px] text-purple-400 font-medium">Dynamic Live Setting</span>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
+                      <div className="text-slate-200 font-mono text-sm break-all">{forwarderSettings.sender_number }</div>
+                      <button onClick={() => handleCopy(forwarderSettings.sender_number , "sender")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
+                        {copiedField === 'sender' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Text Filter (Box)</label>
+                      <span className="text-[11px] text-purple-400 font-medium">Regex Pattern</span>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
+                      <div className="text-slate-200 font-mono text-sm break-all">{forwarderSettings.text_filter}</div>
+                      <button onClick={() => handleCopy(forwarderSettings.text_filter || "", "filter")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
+                        {copiedField === 'filter' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Webhook URL (Edge Function + User ID)</label>
+                      <span className="text-[11px] text-emerald-400 font-mono">Dynamic Live Sync</span>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
+                      <div className="text-emerald-400 font-mono text-sm break-all">{`${forwarderSettings.webhook_edge_url }?user_id=${userId}`}</div>
+                      <button onClick={() => handleCopy(`${forwarderSettings.webhook_edge_url }?user_id=${userId}`, "webhook")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
+                        {copiedField === 'webhook' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Headers (Box)</label>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
+                      <pre className="text-slate-200 font-mono text-sm overflow-x-auto m-0 whitespace-pre-wrap">
+                        {forwarderSettings.headers}
+                      </pre>
+                      <button onClick={() => handleCopy(forwarderSettings.headers || "", "headers")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
+                        {copiedField === 'headers' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">JSON Payload Template</label>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
+                      <pre className="text-slate-200 font-mono text-sm overflow-x-auto m-0 whitespace-pre-wrap">
+                        {forwarderSettings.json_payload_template || ""}
+                      </pre>
+                      <button onClick={() => handleCopy(forwarderSettings.json_payload_template || "", "payload")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
+                        {copiedField === 'payload' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5"><label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">HMAC Secret (Box)</label><button onClick={handleRegenerateHmac} className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded flex items-center gap-1 transition-colors"><RefreshCw className="w-3 h-3" /> Regenerate</button></div>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-3 group">
+                      <div className="text-purple-400 font-mono text-sm break-all">{displayHmac}</div>
+                      <button onClick={() => handleCopy(displayHmac, "hmac")} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
+                        {copiedField === 'hmac' ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        Heartbeat WebSocket URL (Realtime + Edge Functions)
+                      </label>
+                      <span className="text-[11px] text-emerald-400 font-mono">channel={forwarderSettings.ws_channel }</span>
+                    </div>
+                    
+                    <div className="space-y-3 mb-4">
+                      {customDevices.length === 0 ? (
+                        <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800 text-center text-slate-400 text-sm">
+                          No devices added yet. Enter a phone name below to generate a Heartbeat URL and save to database.
+                        </div>
+                      ) : (
+                        customDevices.map((device, idx) => {
+                          const hostUrl = forwarderSettings.project_url ;
+                          const anonKey = forwarderSettings.anon_key ;
+                          const channel = forwarderSettings.ws_channel ;
+                          const edgeUrl = forwarderSettings.heartbeat_edge_url ;
+                          const wsHeartbeatUrl = `wss://${hostUrl}/realtime/v1/websocket?apikey=${anonKey}&vsn=1.0.0&channel=${channel}&user_id=${userId}&secret=${displayHmac}&device_id=${encodeURIComponent(device)}&edge_url=${edgeUrl}`;
+
+                          return (
+                            <div key={idx} className="bg-slate-950 p-3 rounded-lg border border-purple-500/30 flex items-center justify-between gap-3 group relative">
+                              <div className="overflow-hidden">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-bold text-purple-400">Device: {device}</span>
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300">WebSocket</span>
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300">Synced to DB</span>
+                                </div>
+                                <div className="text-emerald-400 font-mono text-xs md:text-sm break-all">{wsHeartbeatUrl}</div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button onClick={() => handleCopy(wsHeartbeatUrl, `heartbeat-${idx}`)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
+                                  {copiedField === `heartbeat-${idx}` ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
+                                </button>
+                                <button onClick={() => handleDeleteDevice(device)} className="px-3 py-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors shrink-0 flex items-center justify-center" title="Delete Device">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 mb-3">
+                      <input 
+                        type="text" 
+                        placeholder="Enter New Phone Name (e.g. Samsung S23, vivo15s)" 
+                        value={newDeviceInput}
+                        onChange={(e) => setNewDeviceInput(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") {
+                            await handleAddDevice();
+                          }
+                        }}
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                      />
+                      <button 
+                        onClick={handleAddDevice}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Add Device
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* TAB 2: WORDPRESS PLUGIN */}
+          {appsSubTab === 'plugin' && (
+            <div className="space-y-6">
+              {/* Plugin Card */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                        WooCommerce v2.5.1
+                      </span>
+                      <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        Mixed-Cart Blocker Included
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Plug className="w-5 h-5 text-blue-400" /> MecoPay WooCommerce Plugin
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                      আপনার ওয়ার্ডপ্রেস সাইটে পেমেন্ট গেটওয়ে যুক্ত করতে এই প্লাগইনটি ডাউনলোড করুন। প্লাগইনের ভেতরে কার্ট গার্ড ও ভ্যালিডেশন কোড ইনবিল্ট রয়েছে।
+                    </p>
+                  </div>
+                  <a 
+                    href={pluginDownloadUrl} 
+                    download="mecopay-woocommerce.zip"
+                    className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-md flex items-center gap-2 text-xs sm:text-sm shrink-0"
+                  >
+                    <Download className="w-4 h-4" /> Download Plugin (.zip)
+                  </a>
+                </div>
+
+                {/* Validation Info in Plugin Tab */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-2">
+                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" /> ১. সিঙ্গেল ডিজিটাল কোর্স নিয়ম
+                    </span>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      ডিজিটাল কোর্স ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা নিষিদ্ধ। ১টির বেশি নিলে প্লাগইন চেকআউটে এরর দেবে।
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-rose-500/40 space-y-2">
+                    <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 text-rose-400" /> ২. মিক্সড কার্ট প্রতিরোধ (উভয় একসাথে নিষিদ্ধ)
+                    </span>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      কার্টে ফিজিক্যাল ও ডিজিটাল প্রোডাক্ট একসাথে নিলে প্লাগইন নিজে থেকেই চেকআউট আটকে দিয়ে গ্রাহককে যেকোনো একটি ক্যাটাগরি আলাদা অর্ডার করার নোটিশ দেবে।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <a href={videoGuideUrl} target="_blank" rel="noopener noreferrer" className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-sm">
+                    <Video className="w-4 h-4" /> Plugin Setup Guide Video
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       );

@@ -10,20 +10,18 @@ import {
   Package, 
   FileCode2, 
   CheckCheck, 
-  Download, 
   Sparkles, 
   Webhook, 
   ShieldCheck, 
   Layers, 
   ArrowRight,
-  ExternalLink,
-  Plug
+  ExternalLink
 } from 'lucide-react';
 import { showToast } from '../lib/toast';
 
 export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'three-products' | 'wordpress' | 'laravel' | 'webhook'>('three-products');
+  const [activeTab, setActiveTab] = useState<'overview' | 'three-products' | 'laravel' | 'webhook'>('three-products');
   const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
   const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'nodejs' | 'curl'>('laravel');
 
@@ -36,33 +34,26 @@ export default function DeveloperDocs() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 text-slate-200">
-      {/* Plugin Download Banner */}
+      {/* Top Banner */}
       <div className="bg-gradient-to-r from-emerald-950/60 via-slate-900/80 to-slate-900 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xl">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
-            <Sparkles className="w-3.5 h-3.5" /> Official Release v2.5
+            <Sparkles className="w-3.5 h-3.5" /> Official API Release v2.5
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
             MecoPay Multi-Product & Developer Docs
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-            Laravel, WordPress, Node.js বা কাস্টম সাইটের জন্য Digital (Telegram/FB/Drive), Physical Advance+COD এবং 100% COD ইন্টিগ্রেশন গাইড।
+            Laravel, Node.js বা যেকোনো কাস্টম ওয়েবসাইটের জন্য Digital (Telegram/FB/Drive), Physical Advance+COD এবং 100% COD ইন্টিগ্রেশন ও REST API গাইড।
           </p>
         </div>
-        <a 
-          href="/mecopay-woocommerce.zip" 
-          download="mecopay-woocommerce.zip"
-          className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2 text-xs sm:text-sm shrink-0"
-        >
-          <Download className="w-4 h-4" /> Download Plugin (.zip)
-        </a>
       </div>
 
       {/* Top Prominent Notice: Cart Policies for Laravel & All Custom Websites */}
       <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 space-y-4 shadow-xl">
         <div className="flex items-center gap-2.5 text-amber-400 font-bold text-base">
           <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0" />
-          <span>বাধ্যতামূলক কার্ট নিয়মাবলী (WordPress, Laravel ও যেকোনো Custom Website):</span>
+          <span>বাধ্যতামূলক কার্ট নিয়মাবলী (Laravel ও যেকোনো Custom Website):</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -82,7 +73,7 @@ export default function DeveloperDocs() {
             </div>
             <ul className="text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1">
               <li>• <strong className="text-white">মিক্সড কার্ট (Physical + Digital):</strong> ১টি ফিজিক্যাল এবং ১টি ডিজিটাল প্রোডাক্ট একসাথে কার্টে রাখা <strong className="text-rose-400">সম্পূর্ণ নিষিদ্ধ</strong>।</li>
-              <li>• কাস্টমার চেকআউট করতে গেলে সাইট বা প্লাগইন অর্ডার আটকে দিয়ে নোটিশ দেখাবে: <em className="text-amber-200">"দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। আলাদা আলাদা অর্ডার করুন।"</em></li>
+              <li>• কাস্টমার চেকআউট করতে গেলে ওয়েবসাইট বা কন্ট্রোলার অর্ডার আটকে দিয়ে নোটিশ দেখাবে: <em className="text-amber-200">"দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। আলাদা আলাদা অর্ডার করুন।"</em></li>
             </ul>
           </div>
         </div>
@@ -102,17 +93,6 @@ export default function DeveloperDocs() {
         </button>
 
         <button
-          onClick={() => setActiveTab('wordpress')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
-            activeTab === 'wordpress'
-              ? 'border-emerald-500 text-emerald-400 bg-slate-900'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          <Plug className="w-4 h-4" /> ২. WordPress (WooCommerce) প্লাগইন ও কোড
-        </button>
-
-        <button
           onClick={() => setActiveTab('laravel')}
           className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
             activeTab === 'laravel'
@@ -120,7 +100,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <FileCode2 className="w-4 h-4" /> ৩. Laravel ও কাস্টম ওয়েবসাইট সেটআপ
+          <FileCode2 className="w-4 h-4" /> ২. Laravel ও কাস্টম ওয়েবসাইট সেটআপ
         </button>
 
         <button
@@ -131,7 +111,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Webhook className="w-4 h-4" /> ৪. Webhook & অর্ডার অটো-আপডেট
+          <Webhook className="w-4 h-4" /> ৩. Webhook & অর্ডার অটো-আপডেট
         </button>
 
         <button
@@ -142,7 +122,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <ShieldCheck className="w-4 h-4" /> ৫. API Credentials & Base URL
+          <ShieldCheck className="w-4 h-4" /> ৪. API Credentials & Base URL
         </button>
       </div>
 
@@ -253,13 +233,13 @@ export default function DeveloperDocs() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
-                    Advance Charge + Cash on Delivery
+                    Partial Advance Delivery Charge
                   </span>
-                  <h3 className="text-lg font-bold text-white mt-1">ফিজিক্যাল প্রোডাক্ট (অগ্রিম ডেলিভারি চার্জ + বাকি COD)</h3>
+                  <h3 className="text-lg font-bold text-white mt-1">ফিজিক্যাল প্রোডাক্ট (অগ্রিম ডেলিভারি চার্জ + ক্যাশ অন ডেলিভারি)</h3>
                 </div>
                 <button
                   onClick={() => handleCopy(advanceJsonPayload, 2)}
-                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all"
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all"
                 >
                   {copiedIndex === 2 ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy JSON
                 </button>
@@ -275,19 +255,16 @@ export default function DeveloperDocs() {
                 </h4>
                 <ul className="space-y-2 text-slate-300 list-disc pl-5 leading-relaxed">
                   <li>
-                    <strong className="text-white font-mono">"product_type": "physical_advance"</strong> &rarr; চেকআউট পেজে কাস্টমার থেকে জেলা ও কুরিয়ার ফুল ডেলিভারি অ্যাড্রেস বাধ্যতামূলক গ্রহণ করবে।
-                  </li>
-                  <li>
-                    <strong className="text-white font-mono">"amount": 150</strong> &rarr; <span className="text-amber-400 font-bold">খুব গুরুত্বপূর্ণ:</span> এটি হলো সেই চার্জ যা গেটওয়ে কাস্টমারের বিকাশ/নগদ থেকে কেটে নেবে (অগ্রিম ডেলিভারি ফি)।
-                  </li>
-                  <li>
                     <strong className="text-white font-mono">"total_amount": 1250</strong> &rarr; পণ্যের আসল পূর্ণ মূল্য।
                   </li>
                   <li>
-                    <strong className="text-white font-mono">"cod_due": 1100</strong> &rarr; কুরিয়ার ম্যান যখন পার্সেল ডেলিভারি দেবে, তখন কাস্টমার থেকে কত টাকা ক্যাশ সংগ্রহ করবে (১২৫০ - ১৫০ = ১১০০ ৳)।
+                    <strong className="text-white font-mono">"amount": 150</strong> &rarr; <span className="text-amber-400 font-bold">ম্যাজিক ফিল্ড:</span> কাস্টমার চেকআউট স্ক্রিনে ১২৫০ টাকা দেখলেও গেটওয়ে শুধুমাত্র এই ১৫০ টাকা চার্জ করবে।
                   </li>
                   <li>
-                    <strong className="text-white font-mono">"fulfillment_type": "dropship" / "own_inventory"</strong> &rarr; ড্রপশিপিং হলে পেমেন্টের পর ৭ বা ১০ দিনের অটো-সেটেলমেন্ট টাইমার শুরু হবে। ওন ইনভেন্টরি হলে কুরিয়ার ডেলিভারি কনফার্মেশন পাওয়ার সাথে সাথে মূল ব্যালেন্সে যুক্ত হবে।
+                    <strong className="text-white font-mono">"cod_due": 1100</strong> &rarr; বাকি ১১০০ টাকা কুরিয়ারে ক্যাশ অন ডেলিভারি হিসেবে বকেয়া থাকবে।
+                  </li>
+                  <li>
+                    <strong className="text-white font-mono">"fulfillment_type": "dropship" | "own_inventory"</strong> &rarr; ড্রপশিপিং হলে ৭ বা ১০ দিন পর অটো-সেটেল হবে, নিজস্ব ইনভেন্টরি হলে কুরিয়ার API ডেলিভারি স্টেটাস পাওয়ার পর সেটেল হবে।
                   </li>
                 </ul>
               </div>
@@ -340,77 +317,7 @@ export default function DeveloperDocs() {
         </div>
       )}
 
-      {/* TAB 2: WORDPRESS (WOOCOMMERCE) & CART GUARD */}
-      {activeTab === 'wordpress' && (
-        <div className="space-y-6">
-          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-6">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20 mb-2">
-                  <Plug className="w-3.5 h-3.5" /> Official WooCommerce Gateway Plugin
-                </div>
-                <h3 className="text-xl font-bold text-white">
-                  MecoPay WooCommerce Plugin v2.5.1 (কার্ট গার্ড ও অটো ভ্যালিডেশন সহ)
-                </h3>
-                <p className="text-xs text-slate-300 mt-1">
-                  এই প্লাগইনের ভেতরে সরাসরি গ্রাহকের কার্ট চেক করে ফিজিক্যাল-ডিজিটাল মিক্সড এবং একাধিক ডিজিটাল প্রোডাক্ট স্বয়ংক্রিয়ভাবে ব্লক করার কোড ইনবিল্ট রয়েছে।
-                </p>
-              </div>
-              <a 
-                href="/mecopay-woocommerce.zip" 
-                download="mecopay-woocommerce.zip"
-                className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2 text-xs sm:text-sm shrink-0"
-              >
-                <Download className="w-4 h-4" /> Download Updated Plugin (.zip)
-              </a>
-            </div>
-
-            {/* Rules Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-2">
-                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                  <Check className="w-4 h-4" /> কার্ট গার্ড ১: সিঙ্গেল ডিজিটাল কোর্স নিয়ম
-                </span>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  গ্রাহক ১টির বেশি ডিজিটাল কোর্স কার্টে যুক্ত করলে প্লাগইন তাৎক্ষণিক চেকআউট ব্লক করে নোটিশ প্রদর্শন করবে: <br/>
-                  <span className="text-amber-300 font-mono block mt-1">"ডিজিটাল কোর্স ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা সম্ভব নয়। অনুগ্রহ করে কার্ট থেকে অতিরিক্ত ডিজিটাল পণ্য রিমুভ করে সর্বোচ্চ ১টি রেখে অর্ডার করুন।"</span>
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-950 border border-rose-500/40 space-y-2">
-                <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4" /> কার্ট গার্ড ২: মিক্সড কার্ট প্রতিরোধ
-                </span>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  গ্রাহক কার্টে ফিজিক্যাল এবং ডিজিটাল প্রোডাক্ট একসাথে নিলে প্লাগইন স্বয়ংক্রিয়ভাবে চেকআউটে লাল এরর দেখাবে: <br/>
-                  <span className="text-amber-300 font-mono block mt-1">"দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। অনুগ্রহ করে যেকোনো একটি ক্যাটাগরির পণ্য সিলেক্ট করে আলাদা আলাদা অর্ডার সম্পন্ন করুন।"</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Plugin Internal PHP Hook Code */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-200 flex items-center gap-2">
-                  <FileCode2 className="w-4 h-4 text-emerald-400" /> প্লাগইনে ব্যবহৃত কার্ট গার্ড PHP হুক কোড (mecopay-woocommerce.php)
-                </span>
-                <button
-                  onClick={() => handleCopy(wooCartHookSnippet, 99)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all border border-slate-700"
-                >
-                  {copiedIndex === 99 ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />} Copy Hook Code
-                </button>
-              </div>
-
-              <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto leading-relaxed">
-{wooCartHookSnippet}
-              </pre>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: LARAVEL & CUSTOM WEBSITE INTEGRATION */}
+      {/* TAB 2: LARAVEL & CUSTOM WEBSITE INTEGRATION */}
       {activeTab === 'laravel' && (
         <div className="space-y-6">
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
@@ -428,7 +335,9 @@ export default function DeveloperDocs() {
               <button
                 onClick={() => setFrameworkTab('laravel')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  frameworkTab === 'laravel' ? 'bg-emerald-600 text-slate-950 font-bold' : 'bg-slate-950 text-slate-400 border border-slate-800'
+                  frameworkTab === 'laravel'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
                 Laravel (PHP)
@@ -436,15 +345,19 @@ export default function DeveloperDocs() {
               <button
                 onClick={() => setFrameworkTab('nodejs')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  frameworkTab === 'nodejs' ? 'bg-emerald-600 text-slate-950 font-bold' : 'bg-slate-950 text-slate-400 border border-slate-800'
+                  frameworkTab === 'nodejs'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
-                Node.js / Express
+                Node.js (Express)
               </button>
               <button
                 onClick={() => setFrameworkTab('curl')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  frameworkTab === 'curl' ? 'bg-emerald-600 text-slate-950 font-bold' : 'bg-slate-950 text-slate-400 border border-slate-800'
+                  frameworkTab === 'curl'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
                 cURL (Direct Terminal)
@@ -829,51 +742,5 @@ class MecoPayWebhookController extends Controller
         }
 
         return response()->json(['status' => 'success'], 200);
-    }
-}`;
-
-const wooCartHookSnippet = `<?php
-/**
- * MecoPay WooCommerce Cart Guard (mecopay-woocommerce.php)
- * 1. Blocks mixed physical and digital products
- * 2. Blocks ordering more than 1 digital course at a time
- */
-
-// Hook into WooCommerce Cart & Checkout Validation
-add_action('woocommerce_check_cart_items', 'mecopay_validate_woocommerce_cart');
-
-function mecopay_validate_woocommerce_cart() {
-    if (!WC()->cart) return;
-
-    $has_physical = false;
-    $has_digital  = false;
-    $digital_count = 0;
-
-    foreach (WC()->cart->get_cart() as $cart_item) {
-        $product = $cart_item['data'];
-        $qty = isset($cart_item['quantity']) ? intval($cart_item['quantity']) : 1;
-        
-        if ($product && ($product->is_virtual() || $product->is_downloadable())) {
-            $has_digital = true;
-            $digital_count += $qty;
-        } else {
-            $has_physical = true;
-        }
-    }
-
-    // ১. মিক্সড কার্ট ব্লক (ফিজিক্যাল + ডিজিটাল একসাথে নিষিদ্ধ)
-    if ($has_physical && $has_digital) {
-        wc_add_notice(
-            __('দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। অনুগ্রহ করে যেকোনো একটি ক্যাটাগরির পণ্য সিলেক্ট করে আলাদা আলাদা অর্ডার সম্পন্ন করুন।', 'mecopay-woocommerce'),
-            'error'
-        );
-    }
-
-    // ২. মাল্টিপল ডিজিটাল প্রোডাক্ট ব্লক (কোর্স একবারে সর্বোচ্চ ১টি)
-    if ($digital_count > 1) {
-        wc_add_notice(
-            __('ডিজিটাল কোর্স ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা সম্ভব নয়। অনুগ্রহ করে কার্ট থেকে অতিরিক্ত ডিজিটাল পণ্য রিমুভ করে সর্বোচ্চ ১টি রেখে অর্ডার করুন।', 'mecopay-woocommerce'),
-            'error'
-        );
     }
 }`;

@@ -42,16 +42,14 @@ function mecopay_validate_woocommerce_cart() {
         }
     }
 
-    // নিয়ম ১: মিক্সড কার্ট প্রতিরোধ (ফিজিক্যাল + ডিজিটাল একসাথে নিষিদ্ধ)
+    // নিয়ম ১: মিক্সড কার্ট প্রতিরোধ (ফিজিক্যাল + ডিজিটাল একসাথে নিষিদ্ধ - সর্বোচ্চ অগ্রাধিকার)
     if ($has_physical && $has_digital) {
         wc_add_notice(
             __('দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। অনুগ্রহ করে যেকোনো একটি ক্যাটাগরির পণ্য সিলেক্ট করে আলাদা আলাদা অর্ডার সম্পন্ন করুন।', 'mecopay-woocommerce'),
             'error'
         );
-    }
-
-    // নিয়ম ২: সিঙ্গেল ডিজিটাল কোর্স নিয়ম (একবারে সর্বোচ্চ ১টি)
-    if ($digital_count > 1) {
+    } elseif ($digital_count > 1) {
+        // নিয়ম ২: সিঙ্গেল ডিজিটাল কোর্স নিয়ম (একবারে সর্বোচ্চ ১টি)
         wc_add_notice(
             __('ডিজিটাল কোর্স ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা সম্ভব নয়। অনুগ্রহ করে কার্ট থেকে অতিরিক্ত ডিজিটাল পণ্য রিমুভ করে সর্বোচ্চ ১টি রেখে অর্ডার করুন।', 'mecopay-woocommerce'),
             'error'
@@ -183,17 +181,15 @@ function init_mecopay_woocommerce_gateway() {
                 }
             }
 
-            // Strict Validation 1: Mixed Physical & Digital Cart Block
+            // Strict Validation 1: Mixed Physical & Digital Cart Block (Highest Priority)
             if ($has_physical && $has_digital) {
                 wc_add_notice(__('দুঃখিত! ফিজিক্যাল এবং ডিজিটাল পণ্য একসাথে অর্ডার করা সম্ভব নয়। অনুগ্রহ করে যেকোনো একটি ক্যাটাগরির পণ্য সিলেক্ট করে আলাদা আলাদা অর্ডার করুন।', 'mecopay-woocommerce'), 'error');
                 return array(
                     'result'   => 'failure',
                     'redirect' => wc_get_checkout_url()
                 );
-            }
-
-            // Strict Validation 2: Multiple Digital Courses / Products Block
-            if ($digital_item_count > 1) {
+            } elseif ($digital_item_count > 1) {
+                // Strict Validation 2: Multiple Digital Courses / Products Block
                 wc_add_notice(__('ডিজিটাল কোর্স ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা সম্ভব নয়। অনুগ্রহ করে ১টি রেখে বাকিগুলো রিমুভ করে অর্ডার করুন।', 'mecopay-woocommerce'), 'error');
                 return array(
                     'result'   => 'failure',
