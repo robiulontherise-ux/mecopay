@@ -445,24 +445,61 @@ Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name
             </div>
 
             {/* Webhook JSON Payload */}
-            <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-300">Webhook POST Payload Sample:</span>
-              <pre className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-400 overflow-x-auto">
+            <div className="space-y-4">
+              <span className="text-xs font-bold text-slate-300">Webhook POST Payload Samples (ক্যাটাগরি অনুযায়ী আলাদা পে-লোড):</span>
+              
+              {/* Product 1: Digital Webhook */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-blue-500/30 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-blue-400">১. ডিজিটাল প্রোডাক্টের Webhook Payload (কোর্স / ইবুক):</span>
+                  <span className="text-[10px] bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded font-mono">product_type: digital</span>
+                </div>
+                <pre className="text-xs font-mono text-blue-200 overflow-x-auto">
 {`{
   "event": "payment.completed",
   "invoice_number": "INV-2026-9812",
-  "product_type": "physical_advance",
-  "amount_paid": 150,
-  "total_amount": 1250,
-  "cod_due": 1100,
+  "product_name": "Fullstack AI Mastery Course",
+  "product_type": "digital",
+  "amount_paid": 1500,
+  "total_amount": 1500,
   "transaction_id": "9H72KA89P1",
   "customer_phone": "01712345678",
   "status": "Completed",
   "fb_passcode": "MC-8921",
+  "signature": "sha256_hash_security_token"
+}`}
+                </pre>
+                <p className="text-[11px] text-slate-400">
+                  * ডিজিটাল প্রোডাক্টের ক্ষেত্রে কুরিয়ার ট্র্যাকিং থাকবে না, কারণ এটি ডিজিটাল এক্সেস। এখানে শুধুমাত্র <code>fb_passcode</code> ও ১০০% পেইড অ্যামাউন্ট থাকবে।
+                </p>
+              </div>
+
+              {/* Product 2: Physical Advance Webhook */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-amber-500/30 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-amber-400">২. ফিজিক্যাল প্রোডাক্ট (Advance + COD) Webhook Payload:</span>
+                  <span className="text-[10px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded font-mono">product_type: physical_advance</span>
+                </div>
+                <pre className="text-xs font-mono text-amber-200 overflow-x-auto">
+{`{
+  "event": "payment.completed",
+  "invoice_number": "INV-2026-7734",
+  "product_name": "Wireless Noise Cancelling Headphones",
+  "product_type": "physical_advance",
+  "amount_paid": 150,
+  "total_amount": 1250,
+  "cod_due": 1100,
+  "transaction_id": "8M41XA99L2",
+  "customer_phone": "01812345678",
+  "status": "Completed",
   "courier_tracking_code": "STDF-981245",
   "signature": "sha256_hash_security_token"
 }`}
-              </pre>
+                </pre>
+                <p className="text-[11px] text-slate-400">
+                  * ফিজিক্যাল প্রোডাক্টে অগ্রিম ফি পরিশোধের পর কুরিয়ার ট্র্যাকিং আইডি ও বাকি COD অ্যামাউন্ট সহ পে-লোড যাবে। এতে কোনো <code>fb_passcode</code> থাকবে না।
+                </p>
+              </div>
             </div>
 
             {/* Laravel Webhook Code */}
@@ -723,13 +760,15 @@ class MecoPayWebhookController extends Controller
     {
         $event = $request->input('event');
         $invoiceNumber = $request->input('invoice_number');
+        $productName = $request->input('product_name'); // ক্লায়েন্ট ওয়েবসাইটে প্রোডাক্ট শনাক্ত করার জন্য
+        $productType = $request->input('product_type'); // 'digital' অথবা 'physical_advance'
         $status = $request->input('status');
         $trxId = $request->input('transaction_id');
         $fbPasscode = $request->input('fb_passcode'); // ডিজিটাল প্রোডাক্ট হলে
         $trackingCode = $request->input('courier_tracking_code'); // ফিজিক্যাল হলে
 
         if ($event === 'payment.completed' && $status === 'Completed') {
-            // আপনার ডাটাবেসে অর্ডার পেইড হিসেবে মার্ক করুন
+            // আপনার ডাটাবেসে ইনভয়েস নম্বর অথবা প্রোডাক্ট নেম মিলিয়ে অর্ডার পেইড হিসেবে মার্ক করুন
             $order = Order::where('invoice_number', $invoiceNumber)->first();
             if ($order) {
                 $order->update([
