@@ -19,13 +19,47 @@ export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'three-products' | 'laravel' | 'webhook' | 'worker-code' | 'overview'>('three-products');
   const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
-  const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'nodejs'>('laravel');
+  const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
 
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
     showToast('Code copied to clipboard!', 'success');
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const getFrameworkCode = () => {
+    switch (frameworkTab) {
+      case 'laravel':
+        return laravelFullController;
+      case 'php':
+        return rawPhpController;
+      case 'nodejs':
+        return nodeJsFullController;
+      case 'javascript':
+        return jsFetchController;
+      case 'python':
+        return pythonFullController;
+      default:
+        return laravelFullController;
+    }
+  };
+
+  const getFrameworkFileName = () => {
+    switch (frameworkTab) {
+      case 'laravel':
+        return 'app/Http/Controllers/PaymentController.php';
+      case 'php':
+        return 'process_payment.php (Core PHP)';
+      case 'nodejs':
+        return 'controllers/paymentController.js (Express)';
+      case 'javascript':
+        return 'checkout.js (Fetch API)';
+      case 'python':
+        return 'views.py / payment.py (Django / Flask)';
+      default:
+        return 'PaymentController.php';
+    }
   };
 
   return (
@@ -40,7 +74,7 @@ export default function DeveloperDocs() {
             MecoPay Multi-Product & Developer Docs
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-            Laravel, Node.js বা কাস্টম ওয়েবসাইটের জন্য Digital, Physical Advance + Courier Charge ও 100% Full COD ইন্টিগ্রেশন এবং Cloudflare Worker স্পেসিফিকেশন।
+            Laravel, Raw PHP, Node.js, JavaScript, Python এবং কাস্টম ওয়েবসাইটের জন্য Digital, Physical Advance ও 100% Full COD ইন্টিগ্রেশন স্পেসিফিকেশন।
           </p>
         </div>
       </div>
@@ -96,7 +130,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <FileCode2 className="w-4 h-4" /> ২. Laravel ও Custom Backend
+          <FileCode2 className="w-4 h-4" /> ২. Backend & Custom Code (PHP/JS/Python)
         </button>
 
         <button
@@ -410,104 +444,118 @@ export default function DeveloperDocs() {
         </div>
       )}
 
-      {/* TAB 2: LARAVEL & CUSTOM BACKEND */}
+      {/* TAB 2: BACKEND INTEGRATION CODE (LARAVEL, PHP, NODE.JS, JS, PYTHON) */}
       {activeTab === 'laravel' && (
         <div className="space-y-6">
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <FileCode2 className="w-5 h-5 text-emerald-400" /> Laravel ও কাস্টম ওয়েবসাইটে কোড কীভাবে ও কোথায় বসাবেন?
+                <FileCode2 className="w-5 h-5 text-emerald-400" /> যেকোনো কাস্টম ওয়েবসাইট ও ব্যাকএন্ড ইন্টিগ্রেশন কোড
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Courier Charge এবং ৩ ধরনের প্রোডাক্ট ভ্যালিডেশন সহ সম্পূর্ণ কন্ট্রোলার ইমপ্লিমেন্টেশন:
+                আপনার পছন্দের প্রোগ্রামিং ল্যাঙ্গুয়েজ বা ফ্রেমওয়ার্ক নির্বাচন করুন (Laravel, Raw PHP, Node.js, JavaScript, Python):
               </p>
             </div>
 
-            {/* Framework Switcher */}
-            <div className="flex gap-2">
+            {/* Language & Framework Switcher */}
+            <div className="flex gap-2 overflow-x-auto pb-1">
               <button
                 onClick={() => setFrameworkTab('laravel')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   frameworkTab === 'laravel'
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
                     : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
                 Laravel (PHP)
               </button>
               <button
-                onClick={() => setFrameworkTab('nodejs')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  frameworkTab === 'nodejs'
-                    ? 'bg-emerald-600 text-white'
+                onClick={() => setFrameworkTab('php')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  frameworkTab === 'php'
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
                     : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
-                Node.js (Express)
+                Raw PHP (cURL)
+              </button>
+              <button
+                onClick={() => setFrameworkTab('nodejs')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  frameworkTab === 'nodejs'
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                Node.js (Express / Axios)
+              </button>
+              <button
+                onClick={() => setFrameworkTab('javascript')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  frameworkTab === 'javascript'
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                JavaScript (Fetch API)
+              </button>
+              <button
+                onClick={() => setFrameworkTab('python')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  frameworkTab === 'python'
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                Python (Django / Flask / Requests)
               </button>
             </div>
 
-            {/* STEP 1: .env */}
+            {/* STEP 1: API Setup */}
             <div className="space-y-2">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-mono">1</span>
-                ধাপ ১: আপনার <code>.env</code> ফাইলে API Credentials যোগ করুন
+                ধাপ ১: API Endpoint ও Headers
               </h4>
               <pre className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-300">
-{`MECOPAY_API_KEY=your_brand_api_key_here
-MECOPAY_BASE_URL=https://api.mecopay.space/v1`}
+{`ENDPOINT: POST https://api.mecopay.space/v1/create-checkout
+HEADERS:
+  Authorization: Bearer <YOUR_BRAND_API_KEY>
+  Content-Type: application/json`}
               </pre>
               <p className="text-[11px] text-slate-400">
-                * অবস্থান: আপনার প্রোজেক্টের মূল রুটের <code>.env</code> ফাইলে এই ২টা লাইন পেস্ট করুন। কোনো Brand ID আলাদা পাস করার দরকার নেই—API Key থেকেই স্বয়ংক্রিয়ভাবে ব্র্যান্ড ডিটেক্ট হবে।
+                * কোনো Brand ID আলাদা পাস করার দরকার নেই—API Key থেকেই ক্লাউডফ্লেয়ার ওয়ার্কার সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে।
               </p>
             </div>
 
-            {/* STEP 2: Controller */}
+            {/* STEP 2: Code Implementation */}
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-center">
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-mono">2</span>
-                  ধাপ ২: <code>app/Http/Controllers/PaymentController.php</code> তৈরি করুন
+                  ধাপ ২: <code>{getFrameworkFileName()}</code> ফাইলে কোড বসান
                 </h4>
                 <button
-                  onClick={() => handleCopy(frameworkTab === 'laravel' ? laravelFullController : nodeJsFullController, 4)}
+                  onClick={() => handleCopy(getFrameworkCode(), 4)}
                   className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
                 >
                   {copiedIndex === 4 ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy Code
                 </button>
               </div>
 
-              <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed">
-{frameworkTab === 'laravel' ? laravelFullController : nodeJsFullController}
+              <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed max-h-[500px]">
+{getFrameworkCode()}
               </pre>
 
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-1.5 text-xs text-slate-300">
                 <h5 className="font-bold text-white">কোডটি কীভাবে কাজ করে?</h5>
                 <ol className="list-decimal pl-5 space-y-1">
-                  <li>কাস্টমার যখন চেকআউট বাটনে চাপ দেয়, কন্ট্রোলার রিকোয়েস্টটি ধরে।</li>
-                  <li><code>order_id</code> বা <code>product_name</code> এবং <code>courier_charge</code> হিসাব করে পে-লোড বানায়।</li>
+                  <li>কাস্টমার যখন চেকআউট বাটনে চাপ দেয়, কোড রিকোয়েস্টটি ধরে।</li>
+                  <li><code>order_id</code> বা <code>product_name</code> এবং <code>courier_charge</code> সহ পে-লোড বানায়।</li>
                   <li>MecoPay Worker-এর <code>https://api.mecopay.space/v1/create-checkout</code> এ পাঠায়।</li>
-                  <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয়।</li>
+                  <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
                 </ol>
               </div>
-            </div>
-
-            {/* STEP 3: routes/web.php */}
-            <div className="space-y-2 pt-2">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-mono">3</span>
-                ধাপ ৩: <code>routes/web.php</code>-তে রাউট বসিয়ে দিন (Laravel-এর জন্য)
-              </h4>
-              <pre className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-300">
-{`use App\\Http\\Controllers\\PaymentController;
-
-// পেমেন্ট ইনিশিয়ালাইজ করার রাউট
-Route::post('/checkout/pay', [PaymentController::class, 'initiatePayment'])->name('checkout.pay');
-
-// পেমেন্ট সফল বা বাতিল হলে কাস্টমারকে ফিরিয়ে আনার রাউট
-Route::get('/payment/callback', [PaymentController::class, 'paymentCallback'])->name('payment.callback');
-Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name('payment.cancel');`}
-              </pre>
             </div>
           </div>
         </div>
@@ -688,13 +736,13 @@ Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name
               <ShieldCheck className="w-5 h-5 text-emerald-400" /> Authentication & Production Base URL
             </h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              MecoPay REST API ব্যবহার করতে হলে প্রতিটি রিকোয়েস্টের হেডারে আপনার ব্র্যান্ডের <strong>API Key</strong> (<code>Authorization: Bearer &lt;API_KEY&gt;</code>) পাঠাতে হবে। ক্লাউডফ্লেয়ার ওয়ার্কার স্বয়ংক্রিয়ভাবে API Key থেকে সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে। আলাদা কোনো Brand ID পাঠানোর প্রয়োজন নেই।
+              MecoPay REST API ব্যবহার করতে হলে প্রতিটি রিকোয়েস্টের হেডারে আপনার ব্র্যান্ডের <strong>API Key</strong> (<code>Authorization: Bearer &lt;API_KEY&gt;</code>) পাঠাতে হবে। ক্লাউডফ্লেয়ার ওয়ার্কার স্বয়ংক্রিয়ভাবে API Key থেকে সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে। আলাদা কোনো Brand ID পাঠানোর প্রয়োজন নেই।
             </p>
 
             <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">Production Base URL (Custom Domain via Cloudflare Worker)</span>
-                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">mecopay.space</span>
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">api.mecopay.space</span>
               </div>
               <div className="font-mono text-xs text-emerald-400 bg-slate-900/90 p-3 rounded-xl border border-slate-800 select-all">
                 https://api.mecopay.space/v1
@@ -772,18 +820,18 @@ const codJsonPayload = `{
   "customer_address": "Chawkbazar, Chittagong"
 }`;
 
+// 1. Laravel Controller (PHP)
 const laravelFullController = `<?php
 
 namespace App\\Http\\Controllers;
 
 use Illuminate\\Http\\Request;
 use Illuminate\\Support\\Facades\\Http;
-use Illuminate\\Support\\Facades\\Cache;
 
 class PaymentController extends Controller
 {
     /**
-     * MecoPay চেকআউট সেশন ইনিশিয়ালাইজ করুন
+     * MecoPay চেকআউট ইনিশিয়ালাইজ করুন
      */
     public function initiatePayment(Request $request)
     {
@@ -791,29 +839,14 @@ class PaymentController extends Controller
         $orderId = $request->input('order_id');
         $productName = $request->input('product_name');
 
-        // =====================================================================
-        // ০. প্রাথমিক ভ্যালিডেশন (Order ID অথবা Product Name যেকোনো একটি আবশ্যক)
-        // =====================================================================
+        // ১. অর্ডার আইডেন্টিফায়ার চেক (যেকোনো একটি আবশ্যক)
         if (empty($orderId) && empty($productName)) {
-            return back()->with('error', 'অর্ডার আইডি অথবা প্রোডাক্টের নাম যেকোনো একটি পাঠানো আবশ্যক।');
+            return back()->with('error', 'অর্ডার আইডি অথবা প্রোডাক্টের নাম যেকোনো একটি আবশ্যক।');
         }
 
-        // =====================================================================
-        // ১. লোকাল ক্যাশ চেক (Zero-Waste Invocation Guard)
-        // =====================================================================
-        if ($productType === 'physical_cod') {
-            $isAutoCourierEnabled = Cache::get('mecopay_auto_courier', false);
-            if (!$isAutoCourierEnabled) {
-                return redirect()->route('order.success')->with('success', 'অর্ডার সফলভাবে গ্রহণ করা হয়েছে (লোকাল হ্যান্ডলিং)।');
-            }
-        }
+        $price = (float) $request->input('price', 0);
+        $courierCharge = (float) $request->input('courier_charge', 120);
 
-        $isGatewaysActive = Cache::get('mecopay_gateways_active', true);
-        if (!$isGatewaysActive && $productType !== 'physical_cod') {
-            return back()->with('error', 'বর্তমানে অনলাইন পেমেন্ট সাময়িকভাবে বন্ধ আছে।');
-        }
-
-        // ২. সাধারণ পে-লোড প্রস্তুত করুন
         $payload = [
             'order_id'         => $orderId ?: ('ORD-' . time()),
             'product_name'     => $productName ?: 'General Item',
@@ -825,38 +858,28 @@ class PaymentController extends Controller
             'cancel_url'       => route('payment.cancel'),
         ];
 
-        // ৩. প্রোডাক্ট টাইপ অনুযায়ী স্পেসিফিক ফিল্ড ও কুরিয়ার চার্জ হিসাব
-        $price = (float) $request->input('price', 0);
-        $courierCharge = (float) $request->input('courier_charge', 120); // ডিফল্ট কুরিয়ার চার্জ ১২০ ৳
-
         if ($productType === 'digital') {
-            $payload['amount'] = $price; // ১০০% পেমেন্ট
-            $payload['telegram_link'] = "https://t.me/+joinchat_secret";
-            $payload['facebook_group_link'] = "https://facebook.com/groups/vip";
-            $payload['google_drive_link'] = "https://drive.google.com/drive/folders/materials";
-        } 
-        elseif ($productType === 'physical_advance') {
-            $advanceAmount = (float) $request->input('advance_amount', 150); // অগ্রিম গেটওয়ে চার্জ
+            $payload['amount'] = $price;
+            $payload['telegram_link'] = "https://t.me/+secret_link";
+        } elseif ($productType === 'physical_advance') {
+            $advanceAmount = (float) $request->input('advance_amount', 150);
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
             $payload['amount']         = min($advanceAmount, $price);
             $payload['cod_due']        = max(0, ($price + $courierCharge) - $payload['amount']);
-            $payload['fulfillment_type'] = 'dropship';
-        } 
-        elseif ($productType === 'physical_cod') {
+        } else { // physical_cod
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
-            $payload['amount']         = 0; // গেটওয়েতে ০ ৳
+            $payload['amount']         = 0;
             $payload['cod_due']        = $price + $courierCharge;
         }
 
-        // ৪. MecoPay Worker API-তে রিকোয়েস্ট পাঠান
+        // MecoPay API Call
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . env('MECOPAY_API_KEY'),
             'Content-Type'  => 'application/json',
         ])->post('https://api.mecopay.space/v1/create-checkout', $payload);
 
-        // ৫. রেসপন্স হ্যান্ডলিং
         if ($response->successful()) {
             $data = $response->json();
             if (!empty($data['checkout_url'])) {
@@ -867,90 +890,252 @@ class PaymentController extends Controller
             }
         }
 
-        return back()->with('error', 'MecoPay Checkout Failed: ' . ($response['error'] ?? 'Unknown Error'));
-    }
-
-    public function paymentCallback(Request $request)
-    {
-        $invoiceId = $request->get('invoice_number');
-        return view('payment-success', compact('invoiceId'));
-    }
-
-    public function paymentCancel(Request $request)
-    {
-        return redirect()->route('checkout')->with('warning', 'আপনি পেমেন্ট বাতিল করেছেন।');
+        return back()->with('error', 'Checkout error: ' . ($response['error'] ?? 'Server error'));
     }
 }`;
 
-const nodeJsFullController = `const axios = require('axios');
+// 2. Raw PHP (cURL)
+const rawPhpController = `<?php
+/**
+ * Raw PHP (Core PHP) Integration for MecoPay
+ */
 
-exports.createCheckout = async (req, res) => {
+$apiKey = "YOUR_MECOPAY_API_KEY_HERE";
+$endpoint = "https://api.mecopay.space/v1/create-checkout";
+
+$productType = $_POST['product_type'] ?? 'digital'; // 'digital' | 'physical_advance' | 'physical_cod'
+$price = (float) ($_POST['price'] ?? 1500);
+$courierCharge = (float) ($_POST['courier_charge'] ?? 120);
+
+$payload = [
+    "order_id"         => $_POST['order_id'] ?? ("ORD-" . time()),
+    "product_name"     => $_POST['product_name'] ?? "E-Commerce Item",
+    "product_type"     => $productType,
+    "customer_name"    => $_POST['customer_name'] ?? "Customer Name",
+    "customer_phone"   => $_POST['customer_phone'] ?? "01700000000",
+    "customer_address" => $_POST['customer_address'] ?? "Dhaka, Bangladesh",
+    "callback_url"     => "https://yourwebsite.com/payment_success.php",
+    "cancel_url"       => "https://yourwebsite.com/checkout.php"
+];
+
+if ($productType === 'digital') {
+    $payload['amount'] = $price;
+    $payload['telegram_link'] = "https://t.me/+join_chat";
+} elseif ($productType === 'physical_advance') {
+    $advance = (float) ($_POST['advance_amount'] ?? 150);
+    $payload['total_amount']   = $price;
+    $payload['courier_charge'] = $courierCharge;
+    $payload['amount']         = $advance;
+    $payload['cod_due']        = ($price + $courierCharge) - $advance;
+} else { // physical_cod
+    $payload['total_amount']   = $price;
+    $payload['courier_charge'] = $courierCharge;
+    $payload['amount']         = 0;
+    $payload['cod_due']        = $price + $courierCharge;
+}
+
+// cURL Request
+$ch = curl_init($endpoint);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer " . $apiKey,
+    "Content-Type: application/json"
+]);
+
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+$result = json_decode($response, true);
+
+if ($httpCode === 200 && !empty($result['checkout_url'])) {
+    // রিডাইরেক্ট টু MecoPay চেকআউট পেজ
+    header("Location: " . $result['checkout_url']);
+    exit;
+} elseif ($httpCode === 200 && empty($result['requires_payment'])) {
+    // 100% COD অর্ডার সম্পন্ন
+    header("Location: https://yourwebsite.com/order_success.php?inv=" . $result['invoice_number']);
+    exit;
+} else {
+    echo "MecoPay Error: " . ($result['error'] ?? 'Connection Failed');
+}
+?>`;
+
+// 3. Node.js (Express / Axios)
+const nodeJsFullController = `const express = require('express');
+const axios = require('axios');
+const app = express();
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const MECOPAY_API_KEY = process.env.MECOPAY_API_KEY || 'your_api_key_here';
+const MECOPAY_ENDPOINT = 'https://api.mecopay.space/v1/create-checkout';
+
+app.post('/api/checkout', async (req, res) => {
   try {
     const { 
-      orderId, 
-      productName, 
-      productType, 
-      price, 
-      courierCharge = 120, 
-      advanceAmount = 150,
-      customerName, 
-      customerPhone, 
-      customerAddress 
+      order_id, 
+      product_name, 
+      product_type = 'digital', 
+      price = 0, 
+      courier_charge = 120, 
+      advance_amount = 150,
+      customer_name, 
+      customer_phone, 
+      customer_address 
     } = req.body;
 
-    // ১. অর্ডার আইডেন্টিফায়ার চেক (order_id অথবা product_name আবশ্যক)
-    if (!orderId && !productName) {
+    if (!order_id && !product_name) {
       return res.status(400).json({ error: 'order_id or product_name is required' });
     }
 
     const payload = {
-      order_id: orderId || \`ORD-\${Date.now()}\`,
-      product_name: productName || 'Standard Item',
-      product_type: productType,
-      customer_name: customerName,
-      customer_phone: customerPhone,
-      customer_address: customerAddress,
+      order_id: order_id || \`ORD-\${Date.now()}\`,
+      product_name: product_name || 'Item',
+      product_type,
+      customer_name,
+      customer_phone,
+      customer_address,
       callback_url: 'https://yourshop.com/payment/callback',
       cancel_url: 'https://yourshop.com/checkout'
     };
 
-    if (productType === 'digital') {
-      payload.amount = price;
-      payload.telegram_link = 'https://t.me/+joinchat_secret';
-      payload.facebook_group_link = 'https://facebook.com/groups/vip';
-      payload.google_drive_link = 'https://drive.google.com/drive/folders/sample';
-    } else if (productType === 'physical_advance') {
-      payload.total_amount = price;
-      payload.courier_charge = courierCharge;
-      payload.amount = advanceAmount;
-      payload.cod_due = (price + courierCharge) - advanceAmount;
-    } else {
-      payload.total_amount = price;
-      payload.courier_charge = courierCharge;
-      payload.amount = 0; // 100% COD
-      payload.cod_due = price + courierCharge;
+    if (product_type === 'digital') {
+      payload.amount = Number(price);
+      payload.telegram_link = 'https://t.me/+join_group';
+    } else if (product_type === 'physical_advance') {
+      payload.total_amount = Number(price);
+      payload.courier_charge = Number(courier_charge);
+      payload.amount = Number(advance_amount);
+      payload.cod_due = (Number(price) + Number(courier_charge)) - Number(advance_amount);
+    } else { // physical_cod
+      payload.total_amount = Number(price);
+      payload.courier_charge = Number(courier_charge);
+      payload.amount = 0;
+      payload.cod_due = Number(price) + Number(courier_charge);
     }
 
-    const response = await axios.post(
-      'https://api.mecopay.space/v1/create-checkout',
-      payload,
-      {
-        headers: {
-          Authorization: \`Bearer \${process.env.MECOPAY_API_KEY}\`,
-          'Content-Type': 'application/json'
-        }
+    const response = await axios.post(MECOPAY_ENDPOINT, payload, {
+      headers: {
+        Authorization: \`Bearer \${MECOPAY_API_KEY}\`,
+        'Content-Type': 'application/json'
       }
-    );
+    });
 
     if (response.data.checkout_url) {
       return res.redirect(response.data.checkout_url);
     }
 
-    return res.json({ success: true, message: 'Order placed via COD', data: response.data });
+    return res.json({ success: true, message: 'COD Order booked', data: response.data });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.response?.data?.error || error.message });
   }
-};`;
+});`;
+
+// 4. JavaScript (Fetch API - Frontend / Vanilla)
+const jsFetchController = `/**
+ * JavaScript (Fetch API) Implementation for MecoPay
+ */
+async function initiateMecoPayCheckout() {
+  const apiKey = "YOUR_MECOPAY_API_KEY_HERE";
+  
+  const payload = {
+    order_id: "ORD-" + Date.now(),
+    product_name: "Premium Wireless Earbuds",
+    product_type: "physical_advance", // 'digital' | 'physical_advance' | 'physical_cod'
+    total_amount: 1250,
+    courier_charge: 120,
+    amount: 150, // Advance Booking Fee
+    cod_due: 1220,
+    customer_name: "Tanvir Hasan",
+    customer_phone: "01812345678",
+    customer_address: "Uttara, Dhaka",
+    callback_url: "https://yourshop.com/order-success",
+    cancel_url: "https://yourshop.com/cart"
+  };
+
+  try {
+    const response = await fetch("https://api.mecopay.space/v1/create-checkout", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (data.success && data.checkout_url) {
+      // MecoPay চেকআউট পেজে রিডাইরেক্ট
+      window.location.href = data.checkout_url;
+    } else if (data.success && !data.requires_payment) {
+      // ১০০% ক্যাশ অন ডেলিভারি (লোকাল সাকসেস)
+      window.location.href = "/order-success?inv=" + data.invoice_number;
+    } else {
+      alert("Error: " + (data.error || "Failed to create checkout"));
+    }
+  } catch (error) {
+    console.error("MecoPay Request Failed:", error);
+  }
+}`;
+
+// 5. Python (Django / Flask / Requests)
+const pythonFullController = `import requests
+import time
+
+MECOPAY_API_KEY = "your_brand_api_key_here"
+MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
+
+def create_checkout_session(request_data):
+    product_type = request_data.get('product_type', 'digital') # 'digital' | 'physical_advance' | 'physical_cod'
+    price = float(request_data.get('price', 1500))
+    courier_charge = float(request_data.get('courier_charge', 120))
+
+    payload = {
+        "order_id": request_data.get('order_id', f"ORD-{int(time.time())}"),
+        "product_name": request_data.get('product_name', "Digital E-Book"),
+        "product_type": product_type,
+        "customer_name": request_data.get('customer_name', "Guest"),
+        "customer_phone": request_data.get('customer_phone', "01700000000"),
+        "customer_address": request_data.get('customer_address', "Dhaka"),
+        "callback_url": "https://yourwebsite.com/payment/callback",
+        "cancel_url": "https://yourwebsite.com/checkout"
+    }
+
+    if product_type == 'digital':
+        payload["amount"] = price
+        payload["telegram_link"] = "https://t.me/+vip_invite"
+    elif product_type == 'physical_advance':
+        advance = float(request_data.get('advance_amount', 150))
+        payload["total_amount"] = price
+        payload["courier_charge"] = courier_charge
+        payload["amount"] = advance
+        payload["cod_due"] = (price + courier_charge) - advance
+    else: # physical_cod
+        payload["total_amount"] = price
+        payload["courier_charge"] = courier_charge
+        payload["amount"] = 0
+        payload["cod_due"] = price + courier_charge
+
+    headers = {
+        "Authorization": f"Bearer {MECOPAY_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(MECOPAY_ENDPOINT, json=payload, headers=headers)
+    result = response.json()
+
+    if response.status_code == 200:
+        if result.get("checkout_url"):
+            return {"redirect": result["checkout_url"]}
+        return {"success": True, "invoice_number": result.get("invoice_number")}
+    else:
+        return {"error": result.get("error", "API request failed")}
+`;
 
 const laravelWebhookCode = `<?php
 
@@ -1318,3 +1503,4 @@ serve(async (req) => {
     });
   }
 });`;
+
