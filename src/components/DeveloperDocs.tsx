@@ -1456,7 +1456,7 @@ async function processBackgroundCourierBooking(env, brand, invoice) {
       booked_at: new Date().toISOString()
     };
 
-    const supabaseUrl = env.SUPABASE_URL || 'https://vwtzlyeukgkhukfomkzk.supabase.co';
+    const supabaseUrl = env.SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co';
     const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
 
     // ১. ইনভয়েস মেটাডাটাতে কুরিয়ার ট্র্যাকিং সংরক্ষণ
@@ -1533,7 +1533,7 @@ export default {
         });
       }
 
-      const supabaseUrl = env.SUPABASE_URL || 'https://vwtzlyeukgkhukfomkzk.supabase.co';
+      const supabaseUrl = env.SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co';
       const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
 
       const brandRes = await fetch(\`\${supabaseUrl}/rest/v1/brands?api_key=eq.\${apiKey}&select=*\`, {

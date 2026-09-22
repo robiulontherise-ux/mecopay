@@ -512,11 +512,20 @@ async function startServer() {
   // Custom Domain & Subdomain Routing Middleware
   app.use((req, res, next) => {
     const host = req.headers['x-forwarded-host'] || req.hostname || '';
-    // Define the main platform domains that should serve the Dashboard
-    const isPlatformDomain = host.includes('run.app') || host === 'mecopay.space' || host === 'www.mecopay.space' || host === 'localhost' || host === '127.0.0.1';
+    // Define the main platform domains that should serve the Dashboard & Checkout
+    const isPlatformDomain = 
+      host.includes('run.app') || 
+      host === 'mecopay.space' || 
+      host === 'www.mecopay.space' || 
+      host === 'checkout.mecopay.space' || 
+      host.startsWith('checkout.') ||
+      host === 'localhost' || 
+      host === '127.0.0.1';
     
+    const isCheckoutPath = req.path.startsWith('/pay') || req.path.startsWith('/checkout') || req.path.startsWith('/access');
+
     // If it's a custom domain/subdomain, and not an API request, rewrite the URL internally to use the mysite app
-    if (!isPlatformDomain && !req.path.startsWith('/api') && !req.path.startsWith('/mysite')) {
+    if (!isPlatformDomain && !isCheckoutPath && !req.path.startsWith('/api') && !req.path.startsWith('/mysite')) {
       const isAsset = /\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/i.test(req.path);
       if (!isAsset) {
         req.url = '/mysite' + req.url;

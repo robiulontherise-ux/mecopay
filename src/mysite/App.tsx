@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import CheckoutPage from '../components/checkout/CheckoutPage';
 import { supabase } from './lib/supabaseClient';
 import { Category, Post, SiteSettings } from './types';
 import Navbar from './components/Navbar';
@@ -11,6 +13,21 @@ import CustomerPortal from './components/CustomerPortal';
 
 export default function App(props: { builderUser?: any, activeSiteId?: string, onNavigateUpload?: () => void, onBackToHub?: () => void } = {}) {
   const { builderUser, activeSiteId, onNavigateUpload } = props;
+
+  // If this site app is loaded on checkout subdomain or checkout path/session, render the CheckoutPage directly
+  const isCheckoutRequest = 
+    window.location.hostname.startsWith('checkout.') || 
+    window.location.pathname.startsWith('/pay') || 
+    window.location.pathname.startsWith('/checkout') || 
+    window.location.search.includes('session=');
+
+  if (isCheckoutRequest && !builderUser && !activeSiteId) {
+    return (
+      <BrowserRouter>
+        <CheckoutPage />
+      </BrowserRouter>
+    );
+  }
   // 1. Auth State
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);

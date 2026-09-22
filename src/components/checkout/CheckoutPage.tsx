@@ -388,6 +388,139 @@ export default function CheckoutPage() {
     try {
       setLoading(true);
       setError('');
+
+      // 0. Check for Dynamic Stateless Session Token from API / Worker
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionToken = urlParams.get('session');
+      if (sessionToken) {
+        try {
+          const raw = decodeURIComponent(escape(atob(sessionToken)));
+          const sessionObj = JSON.parse(raw);
+
+          // Fetch real brand from Supabase
+          let brand = null;
+          if (sessionObj.brand_id) {
+            const { data: b } = await supabase
+              .from('brands')
+              .select('*')
+              .eq('id', sessionObj.brand_id)
+              .maybeSingle();
+            brand = b;
+          }
+
+          const dynamicLink = {
+            id: sessionObj.order_id || 'api_session',
+            brand_id: sessionObj.brand_id,
+            user_id: brand?.user_id || sessionObj.user_id,
+            title: sessionObj.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Checkout Item'),
+            price: sessionObj.payable_amount ?? sessionObj.amount ?? 0,
+            total_amount: sessionObj.total_amount,
+            courier_charge: sessionObj.courier_charge,
+            cod_due: sessionObj.cod_due,
+            product_type: sessionObj.product_type,
+            product_name: sessionObj.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Order Payment'),
+            redirect_link: sessionObj.callback_url || sessionObj.telegram_link || sessionObj.facebook_group_link || sessionObj.google_drive_link,
+            telegram_link: sessionObj.telegram_link,
+            facebook_group_link: sessionObj.facebook_group_link,
+            google_drive_link: sessionObj.google_drive_link,
+            callback_url: sessionObj.callback_url,
+            cancel_url: sessionObj.cancel_url,
+            is_dynamic_session: true,
+            invoice_number: sessionObj.invoice_number
+          };
+
+          setLinkData(dynamicLink);
+          if (brand) {
+            setBrandData(brand);
+          } else {
+            setBrandData({
+              id: sessionObj.brand_id,
+              name: sessionObj.brand_name || 'MecoPay Checkout',
+              logo_url: sessionObj.brand_logo || null
+            });
+          }
+
+          if (sessionObj.customer_name || sessionObj.customer_phone || sessionObj.customer_email || sessionObj.customer_address) {
+            setFormData({
+              'Name': sessionObj.customer_name || '',
+              'Phone': sessionObj.customer_phone || '',
+              'Email': sessionObj.customer_email || '',
+              'Address': sessionObj.customer_address || ''
+            });
+          }
+
+          if (sessionObj.brand_id) {
+            const { data: gws } = await supabase
+              .from('payment_numbers')
+              .select('*')
+              .eq('brand_id', sessionObj.brand_id)
+              .order('created_at', { ascending: true });
+            setGateways(gws || []);
+          }
+
+          setLoading(false);
+          return;
+        } catch (decodeErr) {
+          console.error("Session decode error:", decodeErr);
+        }
+      }
+
+      // Check for Invoice ID in query params (?inv=... or ?invoice_id=...)
+      const invoiceParam = urlParams.get('inv') || urlParams.get('invoice') || urlParams.get('invoice_id');
+      if (invoiceParam) {
+        try {
+          const { data: inv } = await supabase
+            .from('invoices')
+            .select('*, brands(*)')
+            .eq('id', invoiceParam)
+            .maybeSingle();
+
+          if (inv) {
+            setInvoiceId(inv.id);
+            const brand = inv.brands;
+            const dynamicLink = {
+              id: inv.id,
+              brand_id: inv.brand_id,
+              user_id: inv.user_id,
+              title: inv.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Checkout Item'),
+              price: inv.amount || 0,
+              product_name: inv.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Order Payment'),
+              redirect_link: inv.redirect_url || '',
+              invoice_number: inv.invoice_number,
+              is_dynamic_session: true
+            };
+            setLinkData(dynamicLink);
+            if (brand) setBrandData(brand);
+            if (inv.customer_name || inv.customer_phone) {
+              setFormData({
+                'Name': inv.customer_name || '',
+                'Phone': inv.customer_phone || '',
+                'Email': inv.customer_email || '',
+                'Address': inv.customer_address || ''
+              });
+            }
+            if (inv.brand_id) {
+              const { data: gws } = await supabase
+                .from('payment_numbers')
+                .select('*')
+                .eq('brand_id', inv.brand_id)
+                .order('created_at', { ascending: true });
+              setGateways(gws || []);
+            }
+            setLoading(false);
+            return;
+          }
+        } catch (invErr) {
+          console.error("Invoice fetch error:", invErr);
+        }
+      }
+
+      if (!slug) {
+        setError('Payment link not found or invalid.');
+        setLoading(false);
+        await resolveClientHome();
+        return;
+      }
       
       const targetSlug = slug ? decodeURIComponent(slug) : '';
       
@@ -493,7 +626,7 @@ export default function CheckoutPage() {
       const payload: any = {
         user_id: linkData.user_id,
         brand_id: linkData.brand_id,
-        payment_link_id: linkData.id,
+        payment_link_id: linkData.is_dynamic_session ? null : linkData.id,
         amount: checkoutAmounts.total,
         status: 'Pending',
         customer_name: primaryName,
@@ -867,7 +1000,7 @@ export default function CheckoutPage() {
             <div className="bg-[#0066FF] p-6 text-white flex items-center gap-4">
               <img src={linkData?.product_image || "https://i.postimg.cc/qqKpCcqV/BCO-3cfd8d70-7be6-4f9d-bcbe-c113f06c17da.png"} alt={linkData?.product_name || 'Product'} className="w-16 h-16 rounded-xl object-cover bg-slate-800 border border-slate-700" />
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-lg leading-tight mb-1 truncate" title={linkData?.product_name}>{linkData?.product_name}</h3>
+                <h3 className="font-bold text-lg leading-tight mb-1 truncate" title={linkData?.product_name || linkData?.title || 'Payment'}>{linkData?.product_name || linkData?.title || 'Payment'}</h3>
                 <div className="text-white font-bold text-xl flex flex-col items-start">
                   <div>৳ {checkoutAmounts.total}</div>
                   {checkoutAmounts.fee > 0 && (

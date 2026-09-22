@@ -87,7 +87,9 @@ function App() {
           />
           
           {/* Public Checkout */}
+          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/checkout/:slug" element={<CheckoutPage />} />
+          <Route path="/pay" element={<CheckoutPage />} />
           <Route path="/pay/:slug" element={<CheckoutPage />} />
           <Route path="/access/:invoiceId" element={<AccessPage />} />
 
@@ -108,6 +110,11 @@ function App() {
           {/* Redirect root based on auth status */}
           <Route 
             path="/" 
+            element={<Navigate to={session ? "/dashboard" : "/login"} replace />} 
+          />
+          {/* Catch-all for unknown routes */}
+          <Route 
+            path="*" 
             element={<Navigate to={session ? "/dashboard" : "/login"} replace />} 
           />
         </Routes>
