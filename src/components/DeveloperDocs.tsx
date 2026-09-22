@@ -820,26 +820,63 @@ const codJsonPayload = `{
   "customer_address": "Chawkbazar, Chittagong"
 }`;
 
-// 1. Laravel Controller (PHP)
+// 1. Laravel Controller (PHP) with Cart Integrity Guard & Gateway Cache Sync
 const laravelFullController = `<?php
 
 namespace App\\Http\\Controllers;
 
 use Illuminate\\Http\\Request;
 use Illuminate\\Support\\Facades\\Http;
+use Illuminate\\Support\\Facades\\Cache;
+use App\\Models\\Order;
 
 class PaymentController extends Controller
 {
     /**
-     * MecoPay চেকআউট ইনিশিয়ালাইজ করুন
+     * MecoPay চেকআউট ইনিশিয়ালাইজ করুন (Cart Integrity & Gateway Status Guard সহ)
      */
     public function initiatePayment(Request $request)
     {
+        // =========================================================================
+        // গার্ড ১: MecoPay গেটওয়ে সার্ভিস স্ট্যাটাস ক্যাশ চেক (Network Call রোধে)
+        // =========================================================================
+        $isGatewayActive = Cache::get('mecopay_gateways_active', true);
+        if (!$isGatewayActive) {
+            return back()->with('error', 'MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে স্থগিত আছে।');
+        }
+
+        // =========================================================================
+        // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Validation)
+        // =========================================================================
+        $cartItems = $request->input('cart_items', []); // e.g. [['id' => 1, 'type' => 'digital'], ...]
+        if (!empty($cartItems)) {
+            $digitalCount = 0;
+            $physicalCount = 0;
+
+            foreach ($cartItems as $item) {
+                if (($item['type'] ?? '') === 'digital') {
+                    $digitalCount++;
+                } else {
+                    $physicalCount++;
+                }
+            }
+
+            // রুল ১: মিক্সড কার্ট নিষিদ্ধ
+            if ($digitalCount > 0 && $physicalCount > 0) {
+                return back()->with('error', 'কার্ট পলিসি এরর: ডিজিটাল এবং ফিজিক্যাল প্রোডাক্ট একই অর্ডারে একসাথে কেনা নিষিদ্ধ। আলাদা অর্ডার করুন।');
+            }
+
+            // রুল ২: সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট
+            if ($digitalCount > 1) {
+                return back()->with('error', 'কার্ট পলিসি এরর: ডিজিটাল প্রোডাক্টের ক্ষেত্রে এক অর্ডারে সর্বোচ্চ ১টি প্রোডাক্ট নেওয়া যাবে।');
+            }
+        }
+
         $productType = $request->input('product_type', 'digital'); // 'digital' | 'physical_advance' | 'physical_cod'
         $orderId = $request->input('order_id');
         $productName = $request->input('product_name');
 
-        // ১. অর্ডার আইডেন্টিফায়ার চেক (যেকোনো একটি আবশ্যক)
+        // ৩. অর্ডার আইডেন্টিফায়ার চেক (যেকোনো একটি আবশ্যক)
         if (empty($orderId) && empty($productName)) {
             return back()->with('error', 'অর্ডার আইডি অথবা প্রোডাক্টের নাম যেকোনো একটি আবশ্যক।');
         }
@@ -874,7 +911,7 @@ class PaymentController extends Controller
             $payload['cod_due']        = $price + $courierCharge;
         }
 
-        // MecoPay API Call
+        // MecoPay Worker Endpoint এ একক সেন্ট্রাল POST Call
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . env('MECOPAY_API_KEY'),
             'Content-Type'  => 'application/json',
@@ -885,23 +922,42 @@ class PaymentController extends Controller
             if (!empty($data['checkout_url'])) {
                 return redirect()->away($data['checkout_url']);
             }
-            if (!empty($data['requires_payment']) === false) {
-                return redirect()->route('order.success')->with('success', 'অর্ডার সফলভাবে গ্রহণ করা হয়েছে!');
+            if (isset($data['requires_payment']) && $data['requires_payment'] === false) {
+                return redirect()->route('order.success')->with('success', 'ক্যাশ অন ডেলিভারি অর্ডার সফলভাবে কনফার্ম হয়েছে!');
             }
         }
 
-        return back()->with('error', 'Checkout error: ' . ($response['error'] ?? 'Server error'));
+        return back()->with('error', 'Checkout error: ' . ($response['error'] ?? 'MecoPay সার্ভারের সাথে সংযোগে ব্যর্থ হয়েছে।'));
     }
 }`;
 
-// 2. Raw PHP (cURL)
+// 2. Raw PHP (Core PHP) with Cart Guard
 const rawPhpController = `<?php
 /**
- * Raw PHP (Core PHP) Integration for MecoPay
+ * Raw PHP Integration for MecoPay (With Cart Guard & Gateway Check)
  */
+
+session_start();
 
 $apiKey = "YOUR_MECOPAY_API_KEY_HERE";
 $endpoint = "https://api.mecopay.space/v1/create-checkout";
+
+// ১. কার্ট গার্ড ভ্যালিডেশন
+$cart = $_SESSION['cart'] ?? [];
+if (!empty($cart)) {
+    $digitalCount = 0;
+    $physicalCount = 0;
+    foreach ($cart as $item) {
+        if (($item['type'] ?? '') === 'digital') $digitalCount++;
+        else $physicalCount++;
+    }
+    if ($digitalCount > 0 && $physicalCount > 0) {
+        die("কার্ট এরর: একই সাথে ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট কেনা যাবে না।");
+    }
+    if ($digitalCount > 1) {
+        die("কার্ট এরর: এক অর্ডারে সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট নেওয়া যাবে।");
+    }
+}
 
 $productType = $_POST['product_type'] ?? 'digital'; // 'digital' | 'physical_advance' | 'physical_cod'
 $price = (float) ($_POST['price'] ?? 1500);
@@ -934,7 +990,7 @@ if ($productType === 'digital') {
     $payload['cod_due']        = $price + $courierCharge;
 }
 
-// cURL Request
+// cURL রিকোয়েস্ট একক এন্ডপয়েন্টে
 $ch = curl_init($endpoint);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
@@ -951,11 +1007,9 @@ curl_close($ch);
 $result = json_decode($response, true);
 
 if ($httpCode === 200 && !empty($result['checkout_url'])) {
-    // রিডাইরেক্ট টু MecoPay চেকআউট পেজ
     header("Location: " . $result['checkout_url']);
     exit;
 } elseif ($httpCode === 200 && empty($result['requires_payment'])) {
-    // 100% COD অর্ডার সম্পন্ন
     header("Location: https://yourwebsite.com/order_success.php?inv=" . $result['invoice_number']);
     exit;
 } else {
@@ -963,7 +1017,7 @@ if ($httpCode === 200 && !empty($result['checkout_url'])) {
 }
 ?>`;
 
-// 3. Node.js (Express / Axios)
+// 3. Node.js (Express / Axios) with Cart Integrity Guard
 const nodeJsFullController = `const express = require('express');
 const axios = require('axios');
 const app = express();
@@ -974,8 +1028,16 @@ app.use(express.urlencoded({ extended: true }));
 const MECOPAY_API_KEY = process.env.MECOPAY_API_KEY || 'your_api_key_here';
 const MECOPAY_ENDPOINT = 'https://api.mecopay.space/v1/create-checkout';
 
+// মেমোরি ক্যাশ (Webhook দিয়ে সিঙ্ক হয়)
+let isMecoPayActive = true;
+
 app.post('/api/checkout', async (req, res) => {
   try {
+    // ১. গেটওয়ে স্ট্যাটাস গার্ড
+    if (!isMecoPayActive) {
+      return res.status(503).json({ error: 'MecoPay অনলাইন পেমেন্ট সাময়িকভাবে বন্ধ আছে।' });
+    }
+
     const { 
       order_id, 
       product_name, 
@@ -983,10 +1045,24 @@ app.post('/api/checkout', async (req, res) => {
       price = 0, 
       courier_charge = 120, 
       advance_amount = 150,
+      cart_items = [],
       customer_name, 
       customer_phone, 
       customer_address 
     } = req.body;
+
+    // ২. কার্ট গার্ড (Mixed Cart & Single Digital Product Guard)
+    if (cart_items.length > 0) {
+      const digitalCount = cart_items.filter(i => i.type === 'digital').length;
+      const physicalCount = cart_items.filter(i => i.type !== 'digital').length;
+
+      if (digitalCount > 0 && physicalCount > 0) {
+        return res.status(400).json({ error: 'মিক্সড কার্ট নিষিদ্ধ: ডিজিটাল ও ফিজিক্যাল পণ্য একসাথে কেনা যাবে না।' });
+      }
+      if (digitalCount > 1) {
+        return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।' });
+      }
+    }
 
     if (!order_id && !product_name) {
       return res.status(400).json({ error: 'order_id or product_name is required' });
