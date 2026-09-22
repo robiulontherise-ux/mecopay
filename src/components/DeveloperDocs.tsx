@@ -45,33 +45,32 @@ export default function DeveloperDocs() {
         </div>
       </div>
 
-      {/* Global Validation Rule Notice */}
-      <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-6 space-y-4 shadow-xl">
-        <div className="flex items-center gap-2.5 text-emerald-400 font-bold text-base">
-          <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span>MecoPay API পে-লোড যাচাইকরণ নীতিমালা (Global Payload Rules):</span>
+      {/* Cart Integrity & Prohibited Mixed Cart Banner */}
+      <div className="bg-slate-900/80 border-2 border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-xl">
+        <div className="flex items-center gap-2.5 text-amber-400 font-bold text-base">
+          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+          <span>প্রোডাক্ট অর্ডার ও কার্ট পলিসি (Cart Integrity & Prohibited Rules):</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-2">
-            <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-emerald-400" /> ১. সার্বজনীন আবশ্যকীয় ফিল্ড (Mandatory)
+          <div className="p-4 rounded-2xl bg-slate-950 border border-amber-500/20 space-y-2">
+            <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">১</span>
+              একই অর্ডারে সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট
             </div>
-            <ul className="text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1">
-              <li>• <strong className="text-white">Authorization Header:</strong> <code>Bearer &lt;API_KEY&gt;</code> (ব্র্যান্ড শনাক্ত করার জন্য)।</li>
-              <li>• <strong className="text-white">অর্ডার আইডেন্টিফায়ার:</strong> <code>order_id</code> অথবা <code>product_name</code> (যেকোনো একটি অথবা দুটিই পাঠানো <strong className="text-emerald-400">বাধ্যতামূলক</strong>)।</li>
-              <li>• <strong className="text-white">প্রোডাক্ট ক্যাটাগরি:</strong> <code>product_type</code> ('digital' | 'physical_advance' | 'physical_cod')।</li>
-            </ul>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              স্বয়ংক্রিয় পাসকোড, টেলিগ্রাম ইনভাইট ও ড্রাইভ লিংকের পূর্ণ নিরাপত্তা নিশ্চিত করতে গ্রাহক একবারে সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট কিনতে পারবে।
+            </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-950 border border-blue-500/30 space-y-2">
-            <div className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-blue-400" /> ২. স্মার্ট কাস্টমার প্রি-ফিল (Optional)
+          <div className="p-4 rounded-2xl bg-slate-950 border border-red-500/20 space-y-2">
+            <div className="text-xs font-bold text-red-400 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-[10px]">২</span>
+              মিক্সড কার্ট সম্পূর্ণ নিষিদ্ধ (Mixed Cart Prohibited)
             </div>
-            <ul className="text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1">
-              <li>• কাস্টমারের নাম (<code>customer_name</code>), ফোন (<code>customer_phone</code>) বা ঠিকানা পাঠালে চেকআউট পেজে অটো-ফিল হবে।</li>
-              <li>• সাইট থেকে না পাঠালে সমস্যা নেই—কাস্টমার MecoPay চেকআউট পেজে নিজ হাতে ইনপুট দেবে।</li>
-            </ul>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              ডিজিটাল এবং ফিজিক্যাল প্রোডাক্ট একই সাথে এক অর্ডারে কেনা যাবে না। কারণ ডিজিটাল পণ্যে তাৎক্ষণিক ১০০% পেমেন্ট লাগে, আর ফিজিক্যাল পণ্যে কুরিয়ার ও অ্যাডভান্স হ্যান্ডলিং প্রয়োজন।
+            </p>
           </div>
         </div>
       </div>
@@ -1242,12 +1241,32 @@ serve(async (req) => {
     // =========================================================================
     // CASE ২: Digital বা Advance COD (কোনো DB ইনসার্ট নেই - প্রি-পেমেন্ট সেশন URL রিটার্ন)
     // =========================================================================
-    // ডিজিটাল প্রোডাক্ট হলে callback_url আবশ্যক
-    if (product_type === 'digital' && !callback_url) {
-      return new Response(JSON.stringify({ success: false, error: "Validation Error: 'callback_url' is mandatory for digital products." }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
+    if (product_type === 'digital') {
+      if (!amount || typeof amount !== 'number' || amount <= 0) {
+        return new Response(JSON.stringify({ success: false, error: "Validation Error: 'amount' (100% price) is mandatory for digital products." }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+      if (!callback_url) {
+        return new Response(JSON.stringify({ success: false, error: "Validation Error: 'callback_url' is mandatory for digital products." }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+    } else if (product_type === 'physical_advance') {
+      if (!total_amount || typeof total_amount !== 'number' || total_amount <= 0) {
+        return new Response(JSON.stringify({ success: false, error: "Validation Error: 'total_amount' is mandatory for physical_advance." }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+      if (!amount || typeof amount !== 'number' || amount <= 0) {
+        return new Response(JSON.stringify({ success: false, error: "Validation Error: 'amount' (advance fee) is mandatory for physical_advance." }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
     }
 
     // স্টেটলেস সিকিউর সেশন পে-লোড (ডাটাবেসে ফেক বা আবর্জনা ইনভয়েস জমার অপচয় রোধে)
