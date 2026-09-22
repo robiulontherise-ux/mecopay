@@ -1205,9 +1205,7 @@ class MecoPayWebhookController extends Controller
     }
 }`;
 
-const cloudflareWorkerCode = `import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-
+const cloudflareWorkerCode = `// Cloudflare Worker (worker.js) - 100% Native & Zero-Dependency
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -1215,9 +1213,9 @@ const corsHeaders = {
 };
 
 // =========================================================================
-// ব্যাকগ্রাউন্ড কুরিয়ার বুকিং প্রসেসর (Non-blocking Background Task)
+// ব্যাকগ্রাউন্ড কুরিয়ার বুকিং প্রসেসর (Cloudflare ctx.waitUntil Background Task)
 // =========================================================================
-async function processBackgroundCourierBooking(supabase: any, brand: any, invoice: any) {
+async function processBackgroundCourierBooking(env, brand, invoice) {
   try {
     if (!brand.auto_courier_on_full_cod || !brand.courier_api_key) {
       console.log('Manual Mode: কুরিয়ার অটোমেশন বন্ধ থাকায় বুকিং পেন্ডিং রাখা হয়েছে।');
@@ -1259,23 +1257,38 @@ async function processBackgroundCourierBooking(supabase: any, brand: any, invoic
       booked_at: new Date().toISOString()
     };
 
-    // ইনভয়েস মেটাডাটাতে কুরিয়ার ট্র্যাকিং সংরক্ষণ
-    await supabase.from('invoices').update({
-      metadata: {
-        ...invoice.metadata,
-        courier: courierInfo
-      }
-    }).eq('id', invoice.id);
+    const supabaseUrl = env.SUPABASE_URL || 'https://vwtzlyeukgkhukfomkzk.supabase.co';
+    const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
 
-    // মার্চেন্টের সাইটে Webhook পাঠানো
-    const { data: webhook } = await supabase
-      .from('webhooks')
-      .select('*')
-      .eq('brand_id', brand.id)
-      .maybeSingle();
+    // ১. ইনভয়েস মেটাডাটাতে কুরিয়ার ট্র্যাকিং সংরক্ষণ
+    await fetch(\`\${supabaseUrl}/rest/v1/invoices?id=eq.\${invoice.id}\`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': \`Bearer \${supabaseKey}\`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        metadata: {
+          ...(invoice.metadata || {}),
+          courier: courierInfo
+        }
+      })
+    });
+
+    // ২. মার্চেন্টের সাইটে Webhook পাঠানো
+    const webhookRes = await fetch(\`\${supabaseUrl}/rest/v1/webhooks?brand_id=eq.\${brand.id}&select=*\`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': \`Bearer \${supabaseKey}\`
+      }
+    });
+    const webhooks = await webhookRes.json();
+    const webhook = Array.isArray(webhooks) && webhooks.length > 0 ? webhooks[0] : null;
 
     if (webhook?.payload_url) {
-      fetch(webhook.payload_url, {
+      await fetch(webhook.payload_url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1294,213 +1307,220 @@ async function processBackgroundCourierBooking(supabase: any, brand: any, invoic
 }
 
 // =========================================================================
-// মেইন সার্ভার হ্যান্ডলার (POST /v1/create-checkout)
+// ক্লাউডফ্লেয়ার ওয়ার্কার মেইন হ্যান্ডলার (POST /v1/create-checkout)
 // =========================================================================
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+export default {
+  async fetch(request, env, ctx) {
+    if (request.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
+    }
 
-  try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    let payload: any = {};
     try {
-      payload = await req.json();
-    } catch (_) {
-      throw new Error('Invalid JSON payload');
-    }
+      let payload = {};
+      try {
+        payload = await request.json();
+      } catch (_) {
+        throw new Error('Invalid JSON payload');
+      }
 
-    // ১. ব্র্যান্ড অথেন্টিকেশন
-    const authHeader = req.headers.get('Authorization');
-    const apiKey = authHeader ? authHeader.replace(/Bearer\\s+/i, '').trim() : payload.api_key;
+      // ১. ব্র্যান্ড অথেন্টিকেশন (Bearer Token)
+      const authHeader = request.headers.get('Authorization');
+      const apiKey = authHeader ? authHeader.replace(/Bearer\\s+/i, '').trim() : payload.api_key;
 
-    if (!apiKey) {
-      return new Response(JSON.stringify({ success: false, error: 'Missing Brand API Key in Authorization header.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
+      if (!apiKey) {
+        return new Response(JSON.stringify({ success: false, error: 'Missing Brand API Key in Authorization header.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        });
+      }
+
+      const supabaseUrl = env.SUPABASE_URL || 'https://vwtzlyeukgkhukfomkzk.supabase.co';
+      const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+
+      const brandRes = await fetch(\`\${supabaseUrl}/rest/v1/brands?api_key=eq.\${apiKey}&select=*\`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': \`Bearer \${supabaseKey}\`,
+          'Content-Type': 'application/json'
+        }
       });
-    }
+      const brands = await brandRes.json();
+      const brand = Array.isArray(brands) && brands.length > 0 ? brands[0] : null;
 
-    const { data: brand, error: brandError } = await supabaseClient
-      .from('brands')
-      .select('*')
-      .eq('api_key', apiKey)
-      .maybeSingle();
+      if (!brand) {
+        return new Response(JSON.stringify({ success: false, error: 'Invalid Brand API Key.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        });
+      }
 
-    if (brandError || !brand) {
-      return new Response(JSON.stringify({ success: false, error: 'Invalid Brand API Key.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 403,
-      });
-    }
+      const {
+        order_id,
+        product_name,
+        product_type = 'digital',
+        amount = 0,
+        total_amount = 0,
+        courier_charge = 0,
+        cod_due = 0,
+        callback_url,
+        cancel_url,
+        customer_name = 'Guest Customer',
+        customer_phone = '',
+        customer_email = '',
+        customer_address = '',
+        telegram_link,
+        facebook_group_link,
+        google_drive_link,
+        metadata = {}
+      } = payload;
 
-    const {
-      order_id,
-      product_name,
-      product_type = 'digital',
-      amount = 0,
-      total_amount = 0,
-      courier_charge = 0,
-      cod_due = 0,
-      callback_url,
-      cancel_url,
-      customer_name = 'Guest Customer',
-      customer_phone = '',
-      customer_email = '',
-      customer_address = '',
-      telegram_link,
-      facebook_group_link,
-      google_drive_link,
-      metadata = {}
-    } = payload;
+      // ২. সার্বজনীন ফিল্ড ভ্যালিডেশন
+      if (!order_id && !product_name) {
+        return new Response(JSON.stringify({ success: false, error: "Validation Error: At least one of 'order_id' or 'product_name' is mandatory." }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
 
-    // ২. সার্বজনীন ফিল্ড ভ্যালিডেশন
-    if (!order_id && !product_name) {
-      return new Response(JSON.stringify({ success: false, error: "Validation Error: At least one of 'order_id' or 'product_name' is mandatory." }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    }
+      const invoiceNumber = 'INV-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
 
-    const invoiceNumber = 'INV-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
+      // =========================================================================
+      // CASE ১: ১০০% Full COD (সরাসরি DB ইনসার্ট + অটো কুরিয়ার বুকিং + নো চেকআউট লিঙ্ক)
+      // =========================================================================
+      if (product_type === 'physical_cod' || amount === 0) {
+        const insertRes = await fetch(\`\${supabaseUrl}/rest/v1/invoices\`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': \`Bearer \${supabaseKey}\`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            user_id: brand.user_id,
+            brand_id: brand.id,
+            invoice_number: invoiceNumber,
+            customer_name,
+            customer_phone,
+            customer_email,
+            customer_address,
+            amount: total_amount || amount || 0,
+            status: 'cod_confirmed',
+            product_type: 'physical_cod',
+            metadata: {
+              ...metadata,
+              order_id: order_id || ('ORD-' + Date.now()),
+              product_name: product_name || 'General COD Order',
+              courier_charge: courier_charge || 120,
+              cod_total: (total_amount || 0) + (courier_charge || 120)
+            }
+          })
+        });
 
-    // =========================================================================
-    // CASE ১: ১০০% Full COD (সরাসরি DB ইনসার্ট + অটো কুরিয়ার বুকিং + নো চেকআউট লিঙ্ক)
-    // =========================================================================
-    if (product_type === 'physical_cod' || amount === 0) {
-      const { data: codInvoice, error: codErr } = await supabaseClient
-        .from('invoices')
-        .insert({
-          user_id: brand.user_id,
-          brand_id: brand.id,
-          invoice_number: invoiceNumber,
-          customer_name,
-          customer_phone,
-          customer_email,
-          customer_address,
-          amount: total_amount || amount || 0,
-          status: 'cod_confirmed',
+        const insertedInvoices = await insertRes.json();
+        const codInvoice = Array.isArray(insertedInvoices) && insertedInvoices.length > 0 
+          ? insertedInvoices[0] 
+          : { id: 'temp', invoice_number: invoiceNumber };
+
+        const response = new Response(JSON.stringify({
+          success: true,
           product_type: 'physical_cod',
-          metadata: {
-            ...metadata,
-            order_id: order_id || ('ORD-' + Date.now()),
-            product_name: product_name || 'General COD Order',
-            courier_charge: courier_charge || 120,
-            cod_total: (total_amount || 0) + (courier_charge || 120)
-          }
-        })
-        .select()
-        .single();
+          status: 'cod_confirmed',
+          invoice_id: codInvoice.id,
+          invoice_number: codInvoice.invoice_number,
+          requires_payment: false
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
 
-      if (codErr) throw codErr;
+        // ব্যাকগ্রাউন্ডে নন-ব্লকিং কুরিয়ার বুকিং রান করা
+        if (ctx && ctx.waitUntil) {
+          ctx.waitUntil(processBackgroundCourierBooking(env, brand, codInvoice));
+        }
 
-      // কাস্টমারকে কোনো ল্যাগ ছাড়াই ০ms তাৎক্ষণিক রেসপন্স দেওয়া
-      const response = new Response(JSON.stringify({
+        return response;
+      }
+
+      // =========================================================================
+      // CASE ২: Digital বা Advance COD (কোনো DB ইনসার্ট নেই - প্রি-পেমেন্ট সেশন URL রিটার্ন)
+      // =========================================================================
+      if (product_type === 'digital') {
+        if (!amount || typeof amount !== 'number' || amount <= 0) {
+          return new Response(JSON.stringify({ success: false, error: "Validation Error: 'amount' (100% price) is mandatory for digital products." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
+        }
+        if (!callback_url) {
+          return new Response(JSON.stringify({ success: false, error: "Validation Error: 'callback_url' is mandatory for digital products." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
+        }
+      } else if (product_type === 'physical_advance') {
+        if (!total_amount || typeof total_amount !== 'number' || total_amount <= 0) {
+          return new Response(JSON.stringify({ success: false, error: "Validation Error: 'total_amount' is mandatory for physical_advance." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
+        }
+        if (!amount || typeof amount !== 'number' || amount <= 0) {
+          return new Response(JSON.stringify({ success: false, error: "Validation Error: 'amount' (advance fee) is mandatory for physical_advance." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
+        }
+      }
+
+      // স্টেটলেস সিকিউর সেশন পে-লোড
+      const sessionData = {
+        brand_id: brand.id,
+        brand_name: brand.name,
+        brand_logo: brand.logo_url,
+        order_id: order_id || ('ORD-' + Date.now()),
+        product_name: product_name || 'Item',
+        product_type,
+        payable_amount: amount,
+        total_amount: total_amount || amount,
+        courier_charge: courier_charge || 0,
+        cod_due: cod_due || 0,
+        callback_url: callback_url || null,
+        cancel_url: cancel_url || null,
+        customer_name,
+        customer_phone,
+        customer_email,
+        customer_address,
+        telegram_link: telegram_link || null,
+        facebook_group_link: facebook_group_link || null,
+        google_drive_link: google_drive_link || null,
+        invoice_number: invoiceNumber,
+        created_at: Date.now()
+      };
+
+      // সেশন টোকেন এনকোড
+      const sessionToken = btoa(unescape(encodeURIComponent(JSON.stringify(sessionData))));
+      const appOrigin = env.APP_URL || 'https://checkout.mecopay.space';
+      const checkoutUrl = \`\${appOrigin}/pay?session=\${sessionToken}\`;
+
+      return new Response(JSON.stringify({
         success: true,
-        product_type: 'physical_cod',
-        status: 'cod_confirmed',
-        invoice_id: codInvoice.id,
-        invoice_number: codInvoice.invoice_number,
-        requires_payment: false
+        product_type,
+        invoice_number: invoiceNumber,
+        payable_amount: amount,
+        checkout_url: checkoutUrl,
+        requires_payment: true
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
 
-      // ব্যাকগ্রাউন্ডে নন-ব্লকিং কুরিয়ার বুকিং রান করা
-      // @ts-ignore
-      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-        // @ts-ignore
-        EdgeRuntime.waitUntil(processBackgroundCourierBooking(supabaseClient, brand, codInvoice));
-      } else {
-        processBackgroundCourierBooking(supabaseClient, brand, codInvoice).catch(() => {});
-      }
-
-      return response;
+    } catch (error) {
+      return new Response(JSON.stringify({ success: false, error: error.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
     }
-
-    // =========================================================================
-    // CASE ২: Digital বা Advance COD (কোনো DB ইনসার্ট নেই - প্রি-পেমেন্ট সেশন URL রিটার্ন)
-    // =========================================================================
-    if (product_type === 'digital') {
-      if (!amount || typeof amount !== 'number' || amount <= 0) {
-        return new Response(JSON.stringify({ success: false, error: "Validation Error: 'amount' (100% price) is mandatory for digital products." }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-      if (!callback_url) {
-        return new Response(JSON.stringify({ success: false, error: "Validation Error: 'callback_url' is mandatory for digital products." }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-    } else if (product_type === 'physical_advance') {
-      if (!total_amount || typeof total_amount !== 'number' || total_amount <= 0) {
-        return new Response(JSON.stringify({ success: false, error: "Validation Error: 'total_amount' is mandatory for physical_advance." }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-      if (!amount || typeof amount !== 'number' || amount <= 0) {
-        return new Response(JSON.stringify({ success: false, error: "Validation Error: 'amount' (advance fee) is mandatory for physical_advance." }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-    }
-
-    // স্টেটলেস সিকিউর সেশন পে-লোড (ডাটাবেসে ফেক বা আবর্জনা ইনভয়েস জমার অপচয় রোধে)
-    const sessionData = {
-      brand_id: brand.id,
-      brand_name: brand.name,
-      brand_logo: brand.logo_url,
-      order_id: order_id || ('ORD-' + Date.now()),
-      product_name: product_name || 'Item',
-      product_type,
-      payable_amount: amount,
-      total_amount: total_amount || amount,
-      courier_charge: courier_charge || 0,
-      cod_due: cod_due || 0,
-      callback_url: callback_url || null,
-      cancel_url: cancel_url || null,
-      customer_name,
-      customer_phone,
-      customer_email,
-      customer_address,
-      telegram_link: telegram_link || null,
-      facebook_group_link: facebook_group_link || null,
-      google_drive_link: google_drive_link || null,
-      invoice_number: invoiceNumber,
-      created_at: Date.now()
-    };
-
-    // সেশন টোকেন এনকোড
-    const sessionToken = btoa(unescape(encodeURIComponent(JSON.stringify(sessionData))));
-    const appOrigin = Deno.env.get('APP_URL') || 'https://checkout.mecopay.space';
-    const checkoutUrl = \`\${appOrigin}/pay?session=\${sessionToken}\`;
-
-    return new Response(JSON.stringify({
-      success: true,
-      product_type,
-      invoice_number: invoiceNumber,
-      payable_amount: amount,
-      checkout_url: checkoutUrl,
-      requires_payment: true
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
-
-  } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    });
   }
-});`;
+};`;
 
