@@ -731,35 +731,40 @@ HEADERS:
       {/* TAB 5: API CREDENTIALS & BASE URL */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-400" /> Authentication & Production Base URL
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              MecoPay REST API ব্যবহার করতে হলে প্রতিটি রিকোয়েস্টের হেডারে আপনার ব্র্যান্ডের <strong>API Key</strong> (<code>Authorization: Bearer &lt;API_KEY&gt;</code>) পাঠাতে হবে। ক্লাউডফ্লেয়ার ওয়ার্কার স্বয়ংক্রিয়ভাবে API Key থেকে সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে। আলাদা কোনো Brand ID পাঠানোর প্রয়োজন নেই।
-            </p>
-
-            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">Production Base URL (Custom Domain via Cloudflare Worker)</span>
-                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">api.mecopay.space</span>
+          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20 mb-2">
+                <ShieldCheck className="w-3.5 h-3.5" /> Authentication & Single Central Base URL
               </div>
-              <div className="font-mono text-xs text-emerald-400 bg-slate-900/90 p-3 rounded-xl border border-slate-800 select-all">
-                https://api.mecopay.space/v1
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                * ডেভেলপাররা <code>https://api.mecopay.space/v1/create-checkout</code> এন্ডপয়েন্টে POST রিকোয়েস্ট পাঠিয়ে চেকআউট সেশন তৈরি করবেন।
+              <h3 className="text-lg font-bold text-white">
+                MecoPay Production API Endpoint
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed mt-1">
+                ডেভেলপারদের জন্য সিস্টেমে একটি মাত্র সেন্ট্রাল এন্ডপয়েন্ট রয়েছে। আপনার ব্যাকএন্ড/কন্ট্রোলার থেকে এই একক URL-এ POST রিকোয়েস্ট পাঠাবেন, ক্লাউডফ্লেয়ার ওয়ার্কার বাকি সব প্রোডাক্ট টাইপ ও রাউটিং হ্যান্ডেল করবে।
               </p>
             </div>
 
-            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">Required Headers</span>
-              <pre className="font-mono text-xs text-slate-300 bg-slate-900/90 p-3 rounded-xl border border-slate-800 overflow-x-auto">
+            <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Production Base URL</span>
+              <div className="font-mono text-sm sm:text-base font-bold text-emerald-400 bg-slate-900/90 p-4 rounded-xl border border-emerald-500/30 select-all flex items-center justify-between">
+                <span>https://api.mecopay.space/v1/create-checkout</span>
+                <button
+                  onClick={() => handleCopy('https://api.mecopay.space/v1/create-checkout', 99)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg flex items-center gap-1 font-sans transition-all border border-slate-700"
+                >
+                  {copiedIndex === 99 ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />} Copy URL
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Required Headers</span>
+              <pre className="font-mono text-xs text-slate-300 bg-slate-900/90 p-4 rounded-xl border border-slate-800 overflow-x-auto">
 {`Content-Type: application/json
 Authorization: Bearer <YOUR_BRAND_API_KEY>`}
               </pre>
-              <p className="text-[11px] text-slate-400">
-                * আপনার ব্র্যান্ডের API Key পেতে ড্যাশবোর্ডের বাম পাশের মেনু থেকে <strong>Brand</strong> সেকশনে যান।
+              <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
+                * ব্র্যান্ডের API Key পেতে ড্যাশবোর্ডের মেনু থেকে <strong>Brand</strong> সেকশনে যান। কোনো Brand ID আলাদা পাস করতে হবে না, API Key থেকে ওয়ার্কার অটো ব্র্যান্ড ডিটেক্ট করবে।
               </p>
             </div>
           </div>
@@ -820,7 +825,7 @@ const codJsonPayload = `{
   "customer_address": "Chawkbazar, Chittagong"
 }`;
 
-// 1. Laravel Controller (PHP) with Cart Integrity Guard & Gateway Cache Sync
+// 1. Laravel Controller (PHP) with 3 Architecture Guards
 const laravelFullController = `<?php
 
 namespace App\\Http\\Controllers;
@@ -833,7 +838,7 @@ use App\\Models\\Order;
 class PaymentController extends Controller
 {
     /**
-     * MecoPay চেকআউট ইনিশিয়ালাইজ করুন (Cart Integrity & Gateway Status Guard সহ)
+     * MecoPay চেকআউট ইনিশিয়ালাইজ করুন (3-Level Guard Architecture সহ)
      */
     public function initiatePayment(Request $request)
     {
@@ -846,7 +851,7 @@ class PaymentController extends Controller
         }
 
         // =========================================================================
-        // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Validation)
+        // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
         // =========================================================================
         $cartItems = $request->input('cart_items', []); // e.g. [['id' => 1, 'type' => 'digital'], ...]
         if (!empty($cartItems)) {
@@ -861,22 +866,24 @@ class PaymentController extends Controller
                 }
             }
 
-            // রুল ১: মিক্সড কার্ট নিষিদ্ধ
+            // রুল ১: মিক্সড কার্ট সম্পূর্ণ নিষিদ্ধ (ডিজিটাল + ফিজিক্যাল একসাথে নয়)
             if ($digitalCount > 0 && $physicalCount > 0) {
-                return back()->with('error', 'কার্ট পলিসি এরর: ডিজিটাল এবং ফিজিক্যাল প্রোডাক্ট একই অর্ডারে একসাথে কেনা নিষিদ্ধ। আলাদা অর্ডার করুন।');
+                return back()->with('error', 'কার্ট পলিসি এরর: ডিজিটাল এবং ফিজিক্যাল প্রোডাক্ট একই সাথে এক কার্টে কেনা নিষিদ্ধ। অনুগ্রহ করে আলাদা অর্ডার করুন।');
             }
 
-            // রুল ২: সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট
+            // রুল ২: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে
             if ($digitalCount > 1) {
                 return back()->with('error', 'কার্ট পলিসি এরর: ডিজিটাল প্রোডাক্টের ক্ষেত্রে এক অর্ডারে সর্বোচ্চ ১টি প্রোডাক্ট নেওয়া যাবে।');
             }
         }
 
+        // =========================================================================
+        // গার্ড ৩: ৩ ধরনের প্রোডাক্টের আবশ্যিক ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+        // =========================================================================
         $productType = $request->input('product_type', 'digital'); // 'digital' | 'physical_advance' | 'physical_cod'
         $orderId = $request->input('order_id');
         $productName = $request->input('product_name');
 
-        // ৩. অর্ডার আইডেন্টিফায়ার চেক (যেকোনো একটি আবশ্যক)
         if (empty($orderId) && empty($productName)) {
             return back()->with('error', 'অর্ডার আইডি অথবা প্রোডাক্টের নাম যেকোনো একটি আবশ্যক।');
         }
@@ -888,23 +895,34 @@ class PaymentController extends Controller
             'order_id'         => $orderId ?: ('ORD-' . time()),
             'product_name'     => $productName ?: 'General Item',
             'product_type'     => $productType,
-            'customer_name'    => $request->input('customer_name'),
-            'customer_phone'   => $request->input('customer_phone'),
-            'customer_address' => $request->input('customer_address'),
+            'customer_name'    => $request->input('customer_name', 'Guest Customer'),
+            'customer_phone'   => $request->input('customer_phone', ''),
+            'customer_address' => $request->input('customer_address', ''),
             'callback_url'     => route('payment.callback'),
             'cancel_url'       => route('payment.cancel'),
         ];
 
         if ($productType === 'digital') {
+            // ডিজিটাল: ১০০% পেমেন্ট ও রিটার্ন URL আবশ্যক
+            if ($price <= 0) {
+                return back()->with('error', 'ডিজিটাল প্রোডাক্টের জন্য মূল্য (price) আবশ্যক।');
+            }
             $payload['amount'] = $price;
-            $payload['telegram_link'] = "https://t.me/+secret_link";
+            $payload['telegram_link'] = $request->input('telegram_link', 'https://t.me/+secret_link');
+            $payload['facebook_group_link'] = $request->input('facebook_group_link');
+            $payload['google_drive_link'] = $request->input('google_drive_link');
         } elseif ($productType === 'physical_advance') {
+            // ফিজিক্যাল অ্যাডভান্স: টোটাল এমাউন্ট, কুরিয়ার চার্জ এবং অ্যাডভান্স ফি
+            if ($price <= 0) {
+                return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য টোটাল মূল্য আবশ্যক।');
+            }
             $advanceAmount = (float) $request->input('advance_amount', 150);
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
             $payload['amount']         = min($advanceAmount, $price);
             $payload['cod_due']        = max(0, ($price + $courierCharge) - $payload['amount']);
         } else { // physical_cod
+            // ১০০% ক্যাশ অন ডেলিভারি: গেটওয়ে চার্জ ০ এবং বাকি টাকা কুরিয়ার ডিউ
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
             $payload['amount']         = 0;
@@ -931,10 +949,10 @@ class PaymentController extends Controller
     }
 }`;
 
-// 2. Raw PHP (Core PHP) with Cart Guard
+// 2. Raw PHP (Core PHP) with 3 Architecture Guards
 const rawPhpController = `<?php
 /**
- * Raw PHP Integration for MecoPay (With Cart Guard & Gateway Check)
+ * Raw PHP Integration for MecoPay (With 3 Guards: Gateway Status, Cart Rules & 3-Product Validation)
  */
 
 session_start();
@@ -942,30 +960,50 @@ session_start();
 $apiKey = "YOUR_MECOPAY_API_KEY_HERE";
 $endpoint = "https://api.mecopay.space/v1/create-checkout";
 
-// ১. কার্ট গার্ড ভ্যালিডেশন
+// =========================================================================
+// গার্ড ১: গেটওয়ে সার্ভিস স্ট্যাটাস চেক (ক্যাশ বা সেশন থেকে)
+// =========================================================================
+$isGatewayActive = $_SESSION['mecopay_gateways_active'] ?? true;
+if (!$isGatewayActive) {
+    die("MecoPay পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।");
+}
+
+// =========================================================================
+// গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
+// =========================================================================
 $cart = $_SESSION['cart'] ?? [];
 if (!empty($cart)) {
     $digitalCount = 0;
     $physicalCount = 0;
     foreach ($cart as $item) {
-        if (($item['type'] ?? '') === 'digital') $digitalCount++;
-        else $physicalCount++;
+        if (($item['type'] ?? '') === 'digital') {
+            $digitalCount++;
+        } else {
+            $physicalCount++;
+        }
     }
+    // রুল ১: মিক্সড কার্ট সম্পূর্ণ নিষিদ্ধ
     if ($digitalCount > 0 && $physicalCount > 0) {
-        die("কার্ট এরর: একই সাথে ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট কেনা যাবে না।");
+        die("কার্ট পলিসি এরর: একই সাথে ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট কেনা যাবে না।");
     }
+    // রুল ২: ডিজিটাল সর্বোচ্চ ১টি
     if ($digitalCount > 1) {
-        die("কার্ট এরর: এক অর্ডারে সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট নেওয়া যাবে।");
+        die("কার্ট পলিসি এরর: এক অর্ডারে সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট নেওয়া যাবে।");
     }
 }
 
+// =========================================================================
+// গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+// =========================================================================
 $productType = $_POST['product_type'] ?? 'digital'; // 'digital' | 'physical_advance' | 'physical_cod'
+$orderId = $_POST['order_id'] ?? ("ORD-" . time());
+$productName = $_POST['product_name'] ?? "E-Commerce Product";
 $price = (float) ($_POST['price'] ?? 1500);
 $courierCharge = (float) ($_POST['courier_charge'] ?? 120);
 
 $payload = [
-    "order_id"         => $_POST['order_id'] ?? ("ORD-" . time()),
-    "product_name"     => $_POST['product_name'] ?? "E-Commerce Item",
+    "order_id"         => $orderId,
+    "product_name"     => $productName,
     "product_type"     => $productType,
     "customer_name"    => $_POST['customer_name'] ?? "Customer Name",
     "customer_phone"   => $_POST['customer_phone'] ?? "01700000000",
@@ -975,6 +1013,7 @@ $payload = [
 ];
 
 if ($productType === 'digital') {
+    if ($price <= 0) die("ডিজিটাল পণ্যের মূল্য আবশ্যক।");
     $payload['amount'] = $price;
     $payload['telegram_link'] = "https://t.me/+join_chat";
 } elseif ($productType === 'physical_advance') {
@@ -1017,7 +1056,7 @@ if ($httpCode === 200 && !empty($result['checkout_url'])) {
 }
 ?>`;
 
-// 3. Node.js (Express / Axios) with Cart Integrity Guard
+// 3. Node.js (Express / Axios) with 3 Architecture Guards
 const nodeJsFullController = `const express = require('express');
 const axios = require('axios');
 const app = express();
@@ -1028,14 +1067,16 @@ app.use(express.urlencoded({ extended: true }));
 const MECOPAY_API_KEY = process.env.MECOPAY_API_KEY || 'your_api_key_here';
 const MECOPAY_ENDPOINT = 'https://api.mecopay.space/v1/create-checkout';
 
-// মেমোরি ক্যাশ (Webhook দিয়ে সিঙ্ক হয়)
+// মেমোরি ক্যাশ (Webhook দিয়ে রিয়েল-টাইমে সিঙ্ক হয়)
 let isMecoPayActive = true;
 
 app.post('/api/checkout', async (req, res) => {
   try {
-    // ১. গেটওয়ে স্ট্যাটাস গার্ড
+    // =========================================================================
+    // গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
+    // =========================================================================
     if (!isMecoPayActive) {
-      return res.status(503).json({ error: 'MecoPay অনলাইন পেমেন্ট সাময়িকভাবে বন্ধ আছে।' });
+      return res.status(503).json({ error: 'MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।' });
     }
 
     const { 
@@ -1051,38 +1092,45 @@ app.post('/api/checkout', async (req, res) => {
       customer_address 
     } = req.body;
 
-    // ২. কার্ট গার্ড (Mixed Cart & Single Digital Product Guard)
+    // =========================================================================
+    // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
+    // =========================================================================
     if (cart_items.length > 0) {
       const digitalCount = cart_items.filter(i => i.type === 'digital').length;
       const physicalCount = cart_items.filter(i => i.type !== 'digital').length;
 
       if (digitalCount > 0 && physicalCount > 0) {
-        return res.status(400).json({ error: 'মিক্সড কার্ট নিষিদ্ধ: ডিজিটাল ও ফিজিক্যাল পণ্য একসাথে কেনা যাবে না।' });
+        return res.status(400).json({ error: 'কার্ট পলিসি এরর: ডিজিটাল ও ফিজিক্যাল পণ্য একসাথে এক অর্ডারে কেনা যাবে না।' });
       }
       if (digitalCount > 1) {
-        return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।' });
+        return res.status(400).json({ error: 'কার্ট পলিসি এরর: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।' });
       }
     }
 
+    // =========================================================================
+    // গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+    // =========================================================================
     if (!order_id && !product_name) {
-      return res.status(400).json({ error: 'order_id or product_name is required' });
+      return res.status(400).json({ error: 'order_id অথবা product_name যেকোনো একটি ফিল্ড আবশ্যক।' });
     }
 
     const payload = {
       order_id: order_id || \`ORD-\${Date.now()}\`,
       product_name: product_name || 'Item',
       product_type,
-      customer_name,
-      customer_phone,
-      customer_address,
+      customer_name: customer_name || 'Guest Customer',
+      customer_phone: customer_phone || '',
+      customer_address: customer_address || '',
       callback_url: 'https://yourshop.com/payment/callback',
       cancel_url: 'https://yourshop.com/checkout'
     };
 
     if (product_type === 'digital') {
+      if (!price || price <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
       payload.amount = Number(price);
       payload.telegram_link = 'https://t.me/+join_group';
     } else if (product_type === 'physical_advance') {
+      if (!price || price <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
       payload.total_amount = Number(price);
       payload.courier_charge = Number(courier_charge);
       payload.amount = Number(advance_amount);
@@ -1111,30 +1159,78 @@ app.post('/api/checkout', async (req, res) => {
   }
 });`;
 
-// 4. JavaScript (Fetch API - Frontend / Vanilla)
+// 4. JavaScript (Fetch API - Frontend / Vanilla) with 3 Architecture Guards
 const jsFetchController = `/**
  * JavaScript (Fetch API) Implementation for MecoPay
+ * With 3 Guards: Gateway Status, Cart Rules & 3-Product Validation
  */
-async function initiateMecoPayCheckout() {
+async function initiateMecoPayCheckout(orderData) {
   const apiKey = "YOUR_MECOPAY_API_KEY_HERE";
-  
+  const endpoint = "https://api.mecopay.space/v1/create-checkout";
+
+  // =========================================================================
+  // গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
+  // =========================================================================
+  const isGatewayActive = localStorage.getItem('mecopay_gateways_active') !== 'false';
+  if (!isGatewayActive) {
+    alert("MecoPay পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।");
+    return;
+  }
+
+  // =========================================================================
+  // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
+  // =========================================================================
+  const cartItems = orderData.cart_items || [];
+  if (cartItems.length > 0) {
+    const digitalCount = cartItems.filter(i => i.type === 'digital').length;
+    const physicalCount = cartItems.filter(i => i.type !== 'digital').length;
+
+    if (digitalCount > 0 && physicalCount > 0) {
+      alert("কার্ট এরর: একই সাথে ডিজিটাল এবং ফিজিক্যাল প্রোডাক্ট কেনা নিষিদ্ধ। আলাদা অর্ডার করুন।");
+      return;
+    }
+    if (digitalCount > 1) {
+      alert("কার্ট এরর: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।");
+      return;
+    }
+  }
+
+  // =========================================================================
+  // গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+  // =========================================================================
+  const productType = orderData.product_type || 'digital';
+  const price = Number(orderData.price || 0);
+  const courierCharge = Number(orderData.courier_charge || 120);
+
   const payload = {
-    order_id: "ORD-" + Date.now(),
-    product_name: "Premium Wireless Earbuds",
-    product_type: "physical_advance", // 'digital' | 'physical_advance' | 'physical_cod'
-    total_amount: 1250,
-    courier_charge: 120,
-    amount: 150, // Advance Booking Fee
-    cod_due: 1220,
-    customer_name: "Tanvir Hasan",
-    customer_phone: "01812345678",
-    customer_address: "Uttara, Dhaka",
+    order_id: orderData.order_id || ("ORD-" + Date.now()),
+    product_name: orderData.product_name || "Premium Item",
+    product_type: productType,
+    customer_name: orderData.customer_name || "Customer Name",
+    customer_phone: orderData.customer_phone || "01812345678",
+    customer_address: orderData.customer_address || "Dhaka, Bangladesh",
     callback_url: "https://yourshop.com/order-success",
     cancel_url: "https://yourshop.com/cart"
   };
 
+  if (productType === 'digital') {
+    payload.amount = price;
+    payload.telegram_link = orderData.telegram_link || "https://t.me/+vip_invite";
+  } else if (productType === 'physical_advance') {
+    const advance = Number(orderData.advance_amount || 150);
+    payload.total_amount = price;
+    payload.courier_charge = courierCharge;
+    payload.amount = advance;
+    payload.cod_due = (price + courierCharge) - advance;
+  } else { // physical_cod
+    payload.total_amount = price;
+    payload.courier_charge = courierCharge;
+    payload.amount = 0;
+    payload.cod_due = price + courierCharge;
+  }
+
   try {
-    const response = await fetch("https://api.mecopay.space/v1/create-checkout", {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + apiKey,
@@ -1159,14 +1255,39 @@ async function initiateMecoPayCheckout() {
   }
 }`;
 
-// 5. Python (Django / Flask / Requests)
+// 5. Python (Django / Flask / Requests) with 3 Architecture Guards
 const pythonFullController = `import requests
 import time
 
 MECOPAY_API_KEY = "your_brand_api_key_here"
 MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
 
+# লোকাল ক্যাশ ফ্ল্যাগ (Webhook এর মাধ্যমে রিয়েল-টাইমে আপডেট হয়)
+is_mecopay_active = True
+
 def create_checkout_session(request_data):
+    # =========================================================================
+    # গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
+    # =========================================================================
+    if not is_mecopay_active:
+        return {"error": "MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।"}
+
+    # =========================================================================
+    # গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
+    # =========================================================================
+    cart_items = request_data.get('cart_items', [])
+    if cart_items:
+        digital_count = sum(1 for item in cart_items if item.get('type') == 'digital')
+        physical_count = sum(1 for item in cart_items if item.get('type') != 'digital')
+
+        if digital_count > 0 and physical_count > 0:
+            return {"error": "কার্ট পলিসি এরর: একই সাথে ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট কেনা নিষিদ্ধ।"}
+        if digital_count > 1:
+            return {"error": "কার্ট পলিসি এরর: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।"}
+
+    # =========================================================================
+    # গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+    # =========================================================================
     product_type = request_data.get('product_type', 'digital') # 'digital' | 'physical_advance' | 'physical_cod'
     price = float(request_data.get('price', 1500))
     courier_charge = float(request_data.get('courier_charge', 120))
@@ -1183,6 +1304,8 @@ def create_checkout_session(request_data):
     }
 
     if product_type == 'digital':
+        if price <= 0:
+            return {"error": "ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।"}
         payload["amount"] = price
         payload["telegram_link"] = "https://t.me/+vip_invite"
     elif product_type == 'physical_advance':
