@@ -15,13 +15,18 @@ import {
   ShieldCheck, 
   Layers, 
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Database,
+  Puzzle,
+  Zap,
+  Download
 } from 'lucide-react';
 import { showToast } from '../lib/toast';
+import { WORDPRESS_PLUGIN_PHP_CODE, downloadWordPressPluginZip } from '../lib/wordpressPluginSource';
 
 export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'three-products' | 'laravel' | 'webhook'>('three-products');
+  const [activeTab, setActiveTab] = useState<'overview' | 'three-products' | 'laravel' | 'wordpress' | 'webhook' | 'sql'>('three-products');
   const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
   const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'nodejs' | 'curl'>('laravel');
 
@@ -89,7 +94,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Layers className="w-4 h-4" /> ১. ৩ ধরনের প্রোডাক্ট ও JSON পে-লোড
+          <Layers className="w-4 h-4" /> ১. ৩ ধরনের প্রোডাক্ট ও JSON
         </button>
 
         <button
@@ -100,7 +105,18 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <FileCode2 className="w-4 h-4" /> ২. Laravel ও কাস্টম ওয়েবসাইট সেটআপ
+          <FileCode2 className="w-4 h-4" /> ২. Laravel ও Custom Backend
+        </button>
+
+        <button
+          onClick={() => setActiveTab('wordpress')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
+            activeTab === 'wordpress'
+              ? 'border-emerald-500 text-emerald-400 bg-slate-900'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <Puzzle className="w-4 h-4 text-emerald-400" /> ৩. WooCommerce Plugin
         </button>
 
         <button
@@ -111,7 +127,18 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Webhook className="w-4 h-4" /> ৩. Webhook & অর্ডার অটো-আপডেট
+          <Webhook className="w-4 h-4" /> ৪. Webhook & রিয়েল-টাইম সিঙ্ক
+        </button>
+
+        <button
+          onClick={() => setActiveTab('sql')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
+            activeTab === 'sql'
+              ? 'border-emerald-500 text-emerald-400 bg-slate-900'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <Database className="w-4 h-4 text-emerald-400" /> ৫. Database SQL Migration
         </button>
 
         <button
@@ -122,7 +149,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <ShieldCheck className="w-4 h-4" /> ৪. API Credentials & Base URL
+          <ShieldCheck className="w-4 h-4" /> ৬. API Credentials & Base URL
         </button>
       </div>
 
@@ -457,6 +484,7 @@ Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name
                 <pre className="text-xs font-mono text-blue-200 overflow-x-auto">
 {`{
   "event": "payment.completed",
+  "order_id": "ORD-9812",
   "invoice_number": "INV-2026-9812",
   "product_name": "Fullstack AI Mastery Course",
   "product_type": "digital",
@@ -470,7 +498,7 @@ Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name
 }`}
                 </pre>
                 <p className="text-[11px] text-slate-400">
-                  * ডিজিটাল প্রোডাক্টের ক্ষেত্রে কুরিয়ার ট্র্যাকিং থাকবে না, কারণ এটি ডিজিটাল এক্সেস। এখানে শুধুমাত্র <code>fb_passcode</code> ও ১০০% পেইড অ্যামাউন্ট থাকবে।
+                  * ডিজিটাল প্রোডাক্টের ক্ষেত্রে কুরিয়ার ট্র্যাকিং থাকবে না, কারণ এটি ডিজিটাল এক্সেস। এখানে শুধুমাত্র <code>fb_passcode</code>, <code>order_id</code> ও ১০০% পেইড অ্যামাউন্ট থাকবে।
                 </p>
               </div>
 
@@ -483,6 +511,7 @@ Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name
                 <pre className="text-xs font-mono text-amber-200 overflow-x-auto">
 {`{
   "event": "payment.completed",
+  "order_id": "ORD-7734",
   "invoice_number": "INV-2026-7734",
   "product_name": "Wireless Noise Cancelling Headphones",
   "product_type": "physical_advance",
@@ -498,6 +527,63 @@ Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name
                 </pre>
                 <p className="text-[11px] text-slate-400">
                   * ফিজিক্যাল প্রোডাক্টে অগ্রিম ফি পরিশোধের পর কুরিয়ার ট্র্যাকিং আইডি ও বাকি COD অ্যামাউন্ট সহ পে-লোড যাবে। এতে কোনো <code>fb_passcode</code> থাকবে না।
+                </p>
+              </div>
+
+              {/* Product 3: Physical 100% COD Webhook */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-emerald-500/30 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-emerald-400">৩. ফিজিক্যাল প্রোডাক্ট (১০০% Full COD / Just Form) Webhook Payload:</span>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded font-mono">product_type: physical_cod</span>
+                </div>
+                <pre className="text-xs font-mono text-emerald-200 overflow-x-auto">
+{`{
+  "event": "order.courier_booked",
+  "order_id": "ORD-5519",
+  "invoice_number": "INV-2026-5519",
+  "product_name": "Leather Executive Wallet",
+  "product_type": "physical_cod",
+  "amount_paid": 0,
+  "total_amount": 1200,
+  "cod_due": 1200,
+  "transaction_id": "COD-ORDER",
+  "customer_name": "Mohammad Ali",
+  "customer_phone": "01912345678",
+  "customer_address": "Chawkbazar, Chittagong",
+  "status": "cod_confirmed",
+  "courier": {
+    "provider": "steadfast",
+    "tracking_code": "STDF-883109",
+    "tracking_url": "https://steadfast.com.bd/tracking/STDF-883109"
+  },
+  "signature": "sha256_hash_security_token"
+}`}
+                </pre>
+                <p className="text-[11px] text-slate-400">
+                  * ১০০% Full COD অর্ডারের ক্ষেত্রে গ্রাহকের দেওয়া তথ্য দিয়ে কুরিয়ার বুকিং নিশ্চিত হওয়ার পর কুরিয়ার ট্র্যাকিং কোড এবং গ্রাহক থেকে কুরিয়ার ডেলিভারিতে মোট কত টাকা (<code>cod_due: 1200</code>) আদায় করবে তা সহ পে-লোড পাঠানো হয়।
+                </p>
+              </div>
+
+              {/* Event 4: Brand Settings Real-time Sync Webhook */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-purple-500/30 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-purple-400">৪. ব্র্যান্ড সেটিংস ও সার্ভিস অন/অফ রিয়েল-টাইম সিঙ্ক Webhook:</span>
+                  <span className="text-[10px] bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded font-mono">event: brand.settings_updated</span>
+                </div>
+                <pre className="text-xs font-mono text-purple-200 overflow-x-auto">
+{`{
+  "event": "brand.settings_updated",
+  "brand_id": "your-brand-uuid",
+  "payment_gateways_active": true,
+  "auto_courier_on_full_cod": false,
+  "courier_provider": "steadfast",
+  "status": "active",
+  "timestamp": 1774239876,
+  "signature": "sha256_hash_security_token"
+}`}
+                </pre>
+                <p className="text-[11px] text-slate-400">
+                  * মার্চেন্ট MecoPay ড্যাশবোর্ডে যখনই কুরিয়ার অটোমেশন বা পেমেন্ট সার্ভিস অন/অফ করবে, সাথে সাথে এই Webhook মার্চেন্টের ওয়েবসাইটে চলে যাবে। এর ফলে মার্চেন্টের Laravel/প্লাগইন লোকাল ক্যাশ আপডেট করে রাখবে এবং অপ্রয়োজনীয় API রিকোয়েস্ট আটকে দিয়ে <strong>০% ইনভোকেশন অপচয়</strong> নিশ্চিত করবে।
                 </p>
               </div>
             </div>
@@ -524,7 +610,163 @@ Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name
         </div>
       )}
 
-      {/* TAB 4: API CREDENTIALS & BASE URL */}
+      {/* TAB 3: WOOCOMMERCE WORDPRESS PLUGIN */}
+      {activeTab === 'wordpress' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+                  <Puzzle className="w-3.5 h-3.5" /> Official WordPress Plugin (mecopay-gateway.php)
+                </div>
+                <h3 className="text-lg font-bold text-white">MecoPay Smart Dual-Gateway WooCommerce Plugin</h3>
+                <p className="text-xs text-slate-300">
+                  ডিজিটাল প্রোডাক্টে ফুল পেমেন্ট, ফিজিক্যাল প্রোডাক্টে অ্যাডভান্স চার্জ এবং ১০০% Full COD-তে জিরো-ইনভোকেশন ফিল্টারিং সম্পন্ন করে।
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                <button
+                  onClick={() => downloadWordPressPluginZip()}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-md cursor-pointer"
+                >
+                  <Download className="w-4 h-4" /> Download Plugin (.zip)
+                </button>
+                <button
+                  onClick={() => handleCopy(WORDPRESS_PLUGIN_PHP_CODE, 8)}
+                  className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  {copiedIndex === 8 ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} Copy PHP Code
+                </button>
+              </div>
+            </div>
+
+            {/* Feature Highlights */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                  <Zap className="w-4 h-4" /> Zero-Waste Full COD Guard
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  যদি ড্যাশবোর্ডে কুরিয়ার সার্ভিস বন্ধ থাকে, প্লাগইন কোনো API কল পাঠাবে না। অর্ডার সরাসরি লোকাল WooCommerce-এ সেভ হবে।
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="flex items-center gap-2 text-blue-400 font-bold text-xs">
+                  <Layers className="w-4 h-4" /> Auto Cart Scanning
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  কার্টে থাকা প্রোডাক্ট ডিজিটাল নাকি ফিজিক্যাল তা স্বয়ংক্রিয়ভাবে ডিটেক্ট করে সঠিক পে-লোড এবং অ্যাডভান্স পেমেন্ট প্রসেস করে।
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="flex items-center gap-2 text-purple-400 font-bold text-xs">
+                  <Webhook className="w-4 h-4" /> Instant Transient Cache
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  MecoPay Webhook থেকে <code>brand.settings_updated</code> ইভেন্ট এলে ইনস্ট্যান্ট WordPress <code>set_transient</code> আপডেট হয়।
+                </p>
+              </div>
+            </div>
+
+            {/* Plugin Installation Steps */}
+            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+              <span className="text-xs font-bold text-slate-300">ইন্সটলেশন ও সেটআপ নির্দেশিকা:</span>
+              <ol className="text-xs text-slate-400 space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>আপনার WordPress-এর <code>wp-content/plugins/</code> ফোল্ডারে <code>mecopay-gateway</code> নামে একটি ফোল্ডার বানান।</li>
+                <li>তার ভেতর <code>mecopay-gateway.php</code> ফাইল তৈরি করে নিচের পুরো কোডটি পেস্ট করুন।</li>
+                <li>WordPress Admin &gt; Plugins থেকে <strong>MecoPay Gateway</strong> সক্রিয় করুন।</li>
+                <li>WooCommerce &gt; Settings &gt; Payments &gt; <strong>MecoPay Gateway</strong>-তে গিয়ে আপনার MecoPay <strong>API Key</strong> দিন।</li>
+              </ol>
+            </div>
+
+            {/* Full Plugin Code Box */}
+            <div className="space-y-2 pt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-300">mecopay-gateway.php Source Code:</span>
+                <button
+                  onClick={() => handleCopy(WORDPRESS_PLUGIN_PHP_CODE, 8)}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
+                >
+                  {copiedIndex === 8 ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy PHP Code
+                </button>
+              </div>
+              <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed max-h-[500px]">
+{WORDPRESS_PLUGIN_PHP_CODE}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: DATABASE SQL MIGRATION */}
+      {activeTab === 'sql' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+                  <Database className="w-3.5 h-3.5" /> Supabase / PostgreSQL SQL Migration
+                </div>
+                <h3 className="text-lg font-bold text-white">MecoPay Brands Table SQL Schema Update</h3>
+                <p className="text-xs text-slate-300">
+                  <code>brands</code> টেবিলে রিয়েল-টাইম কুরিয়ার ও পেমেন্ট অন/অফ সিঙ্ক করার জন্য নিচের কলামগুলো যোগ করুন।
+                </p>
+              </div>
+
+              <button
+                onClick={() => handleCopy(sqlMigrationCode, 9)}
+                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 transition-all shrink-0 self-start sm:self-auto"
+              >
+                {copiedIndex === 9 ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} Copy SQL Migration
+              </button>
+            </div>
+
+            {/* SQL Explanation */}
+            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+              <span className="text-xs font-bold text-slate-300">নতুন কলামসমূহের বিবরণ:</span>
+              <ul className="text-xs text-slate-400 space-y-2 leading-relaxed">
+                <li>
+                  <code className="text-emerald-400 font-mono">auto_courier_on_full_cod (BOOLEAN DEFAULT FALSE)</code>: 
+                  ১০০% Full COD অর্ডারে অটো কুরিয়ার বুকিং ইনভোকেশন যাবে কিনা তা নিয়ন্ত্রণ করে।
+                </li>
+                <li>
+                  <code className="text-emerald-400 font-mono">payment_gateways_active (BOOLEAN DEFAULT TRUE)</code>: 
+                  ব্র্যান্ডের সার্বিক পেমেন্ট গেটওয়ে সক্রিয় আছে কিনা। বন্ধ থাকলে কন্ট্রোলার ও প্লাগইন API কল ব্লক করবে।
+                </li>
+                <li>
+                  <code className="text-emerald-400 font-mono">courier_credentials (JSONB DEFAULT '{}')</code>: 
+                  Steadfast ও Pathao API Keys এনক্রিপ্টেড আকারে সংরক্ষণ।
+                </li>
+                <li>
+                  <code className="text-emerald-400 font-mono">checkout_url (TEXT)</code>: 
+                  কাস্টম ডোমেইন বা ডিফল্ট চেকআউট গেটওয়ে URL (<code>https://checkout.mecopay.space/pay</code>)।
+                </li>
+              </ul>
+            </div>
+
+            {/* SQL Code Box */}
+            <div className="space-y-2 pt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-300">Execute in Supabase SQL Editor:</span>
+                <button
+                  onClick={() => handleCopy(sqlMigrationCode, 9)}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
+                >
+                  {copiedIndex === 9 ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy SQL
+                </button>
+              </div>
+              <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto leading-relaxed">
+{sqlMigrationCode}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: API CREDENTIALS & BASE URL */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4">
@@ -532,14 +774,20 @@ Route::get('/payment/cancel', [PaymentController::class, 'paymentCancel'])->name
               <ShieldCheck className="w-5 h-5 text-emerald-400" /> Authentication & Production Base URL
             </h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              MecoPay REST API ব্যবহার করতে হলে প্রতিটি রিকোয়েস্টে আপনার ব্র্যান্ডের <strong>API Key</strong> এবং <strong>Brand ID</strong> পাঠাতে হবে।
+              MecoPay REST API ব্যবহার করতে হলে প্রতিটি রিকোয়েস্টের হেডারে আপনার ব্র্যান্ডের <strong>API Key</strong> (<code>Authorization: Bearer &lt;API_KEY&gt;</code>) পাঠাতে হবে। ক্লাউডফ্লেয়ার ওয়ার্কার স্বয়ংক্রিয়ভাবে API Key থেকে সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে।
             </p>
 
             <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">Production Base URL</span>
-              <div className="font-mono text-xs text-emerald-400 bg-slate-900/90 p-3 rounded-xl border border-slate-800 select-all">
-                https://fwonuakvherzofqximno.supabase.co/functions/v1
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">Production Base URL (Custom Domain via Cloudflare Worker)</span>
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">mecopay.space</span>
               </div>
+              <div className="font-mono text-xs text-emerald-400 bg-slate-900/90 p-3 rounded-xl border border-slate-800 select-all">
+                https://api.mecopay.space/v1
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                * ডেভেলপাররা <code>https://api.mecopay.space/v1/create-checkout</code> এন্ডপয়েন্টে POST রিকোয়েস্ট পাঠিয়ে চেকআউট সেশন তৈরি করবেন।
+              </p>
             </div>
 
             <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
@@ -562,7 +810,7 @@ Authorization: Bearer <YOUR_BRAND_API_KEY>`}
 // ================= CODE PAYLOADS =================
 
 const digitalJsonPayload = `{
-  "brand_id": "your-brand-uuid",
+  "order_id": "ORD-9812",
   "product_type": "digital",
   "product_name": "Fullstack AI Mastery Course",
   "amount": 1500,
@@ -578,7 +826,7 @@ const digitalJsonPayload = `{
 }`;
 
 const advanceJsonPayload = `{
-  "brand_id": "your-brand-uuid",
+  "order_id": "ORD-7734",
   "product_type": "physical_advance",
   "product_name": "Wireless Noise Cancelling Headphones",
   "total_amount": 1250,
@@ -594,7 +842,7 @@ const advanceJsonPayload = `{
 }`;
 
 const codJsonPayload = `{
-  "brand_id": "your-brand-uuid",
+  "order_id": "ORD-5519",
   "product_type": "physical_cod",
   "product_name": "Leather Executive Wallet",
   "total_amount": 1200,
@@ -614,6 +862,7 @@ namespace App\\Http\\Controllers;
 
 use Illuminate\\Http\\Request;
 use Illuminate\\Support\\Facades\\Http;
+use Illuminate\\Support\\Facades\\Cache;
 
 class PaymentController extends Controller
 {
@@ -623,10 +872,31 @@ class PaymentController extends Controller
     public function initiatePayment(Request $request)
     {
         $productType = $request->input('product_type', 'digital'); // 'digital' | 'physical_advance' | 'physical_cod'
+        $orderId = $request->input('order_id', 'ORD-' . time());
 
-        // ১. সাধারণ পে-লোড প্রস্তুত করুন
+        // =====================================================================
+        // ০. লোকাল ক্যাশ চেক (Zero-Waste Invocation Guard)
+        // Webhook থেকে সিঙ্ক হওয়া স্ট্যাটাস দেখে অপ্রয়োজনীয় API কল আগেই ব্লক করুন
+        // =====================================================================
+        
+        // কেস A: Full COD কিন্তু MecoPay ড্যাশবোর্ডে কুরিয়ার বন্ধ থাকলে API কল ব্লক করুন
+        if ($productType === 'physical_cod') {
+            $isAutoCourierEnabled = Cache::get('mecopay_auto_courier', false);
+            if (!$isAutoCourierEnabled) {
+                // সরাসরি আপনার লোকাল ওয়েবসাইটে অর্ডার সংরক্ষণ করে Thank You পেজে রিডাইরেক্ট করুন
+                return redirect()->route('order.success')->with('success', 'অর্ডার সফলভাবে গ্রহণ করা হয়েছে (লোকাল হ্যান্ডলিং)।');
+            }
+        }
+
+        // কেস B: ব্র্যান্ডের পেমেন্ট গেটওয়ে সার্ভিস বন্ধ থাকলে (Personal ও Merchant উভয়ই অফ)
+        $isGatewaysActive = Cache::get('mecopay_gateways_active', true);
+        if (!$isGatewaysActive && $productType !== 'physical_cod') {
+            return back()->with('error', 'বর্তমানে অনলাইন পেমেন্ট সাময়িকভাবে বন্ধ আছে। অনুগ্রহ করে ক্যাশ অন ডেলিভারি বেছে নিন।');
+        }
+
+        // ১. সাধারণ পে-লোড প্রস্তুত করুন (brand_id প্রয়োজন নেই, API Key দিয়েই স্বয়ংক্রিয়ভাবে অথেন্টিকেশন হবে)
         $payload = [
-            'brand_id'        => env('MECOPAY_BRAND_ID'),
+            'order_id'        => $orderId,
             'product_type'    => $productType,
             'product_name'    => $request->input('product_name'),
             'customer_name'   => $request->input('customer_name'),
@@ -655,15 +925,23 @@ class PaymentController extends Controller
             $payload['cod_due'] = $request->input('price');
         }
 
-        // ৩. MecoPay API-তে রিকোয়েস্ট পাঠান
+        // ৩. MecoPay API-তে রিকোয়েস্ট পাঠান (Authorization হেডারে শুধু API Key পাঠালেই হবে)
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . env('MECOPAY_API_KEY'),
             'Content-Type'  => 'application/json',
-        ])->post(env('MECOPAY_BASE_URL') . '/create-checkout', $payload);
+        ])->post('https://api.mecopay.space/v1/create-checkout', $payload);
 
         // ৪. রেসপন্স পেলে কাস্টমারকে চেকআউট পেজে রিডাইরেক্ট করুন
-        if ($response->successful() && isset($response['checkout_url'])) {
-            return redirect()->away($response['checkout_url']);
+        if ($response->successful()) {
+            $data = $response->json();
+            // ডিজিটাল বা অ্যাডভান্স হলে ফ্রন্টএন্ড পেমেন্ট পেজে রিডাইরেক্ট হবে
+            if (!empty($data['checkout_url'])) {
+                return redirect()->away($data['checkout_url']);
+            }
+            // ১০০% Full COD হলে সরাসরি লোকাল Thank You পেজে দেখাবে
+            if (!empty($data['requires_payment']) === false) {
+                return redirect()->route('order.success')->with('success', 'অর্ডার সফলভাবে গ্রহণ করা হয়েছে!');
+            }
         }
 
         return back()->with('error', 'MecoPay Checkout Connection Failed: ' . ($response['error'] ?? 'Unknown Error'));
@@ -685,10 +963,10 @@ const nodeJsFullController = `const axios = require('axios');
 
 exports.createCheckout = async (req, res) => {
   try {
-    const { productType, productName, price, customerName, customerPhone, customerAddress } = req.body;
+    const { orderId, productType, productName, price, customerName, customerPhone, customerAddress } = req.body;
 
     const payload = {
-      brand_id: process.env.MECOPAY_BRAND_ID,
+      order_id: orderId || \`ORD-\${Date.now()}\`,
       product_type: productType,
       product_name: productName,
       customer_name: customerName,
@@ -714,7 +992,7 @@ exports.createCheckout = async (req, res) => {
     }
 
     const response = await axios.post(
-      \`\${process.env.MECOPAY_BASE_URL}/create-checkout\`,
+      'https://api.mecopay.space/v1/create-checkout',
       payload,
       {
         headers: {
@@ -724,17 +1002,23 @@ exports.createCheckout = async (req, res) => {
       }
     );
 
-    return res.redirect(response.data.checkout_url);
+    // ডিজিটাল/অ্যাডভান্স হলে পেমেন্ট URL-এ রিডাইরেক্ট হবে
+    if (response.data.checkout_url) {
+      return res.redirect(response.data.checkout_url);
+    }
+
+    // Full COD হলে লোকাল সাকসেস মেসেজ
+    return res.json({ success: true, message: 'Order placed via COD', data: response.data });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 };`;
 
-const curlSampleCode = `curl -X POST https://fwonuakvherzofqximno.supabase.co/functions/v1/create-checkout \\
+const curlSampleCode = `curl -X POST https://api.mecopay.space/v1/create-checkout \\
   -H "Authorization: Bearer YOUR_BRAND_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "brand_id": "YOUR_BRAND_UUID",
+    "order_id": "ORD-7734",
     "product_type": "physical_advance",
     "product_name": "Premium T-Shirt",
     "total_amount": 1200,
@@ -752,6 +1036,7 @@ const laravelWebhookCode = `<?php
 namespace App\\Http\\Controllers;
 
 use Illuminate\\Http\\Request;
+use Illuminate\\Support\\Facades\\Cache;
 use App\\Models\\Order;
 
 class MecoPayWebhookController extends Controller
@@ -759,27 +1044,92 @@ class MecoPayWebhookController extends Controller
     public function handle(Request $request)
     {
         $event = $request->input('event');
-        $invoiceNumber = $request->input('invoice_number');
-        $productName = $request->input('product_name'); // ক্লায়েন্ট ওয়েবসাইটে প্রোডাক্ট শনাক্ত করার জন্য
-        $productType = $request->input('product_type'); // 'digital' অথবা 'physical_advance'
-        $status = $request->input('status');
-        $trxId = $request->input('transaction_id');
-        $fbPasscode = $request->input('fb_passcode'); // ডিজিটাল প্রোডাক্ট হলে
-        $trackingCode = $request->input('courier_tracking_code'); // ফিজিক্যাল হলে
 
+        // =====================================================================
+        // কেস ০: ব্র্যান্ড সেটিংস রিয়েল-টাইম সিঙ্ক (পেমেন্ট বা কুরিয়ার অন/অফ হলে)
+        // =====================================================================
+        if ($event === 'brand.settings_updated') {
+            $autoCourier = $request->input('auto_courier_on_full_cod', false);
+            $gatewaysActive = $request->input('payment_gateways_active', true);
+
+            // লোকাল ক্যাশে সেভ রাখুন (যাতে অপ্রয়োজনীয় API কল কন্ট্রোলারে আটকে দেওয়া যায়)
+            Cache::forever('mecopay_auto_courier', $autoCourier);
+            Cache::forever('mecopay_gateways_active', $gatewaysActive);
+
+            return response()->json(['status' => 'settings_synced'], 200);
+        }
+
+        $orderId = $request->input('order_id'); // ক্লায়েন্ট ওয়েবসাইটের নিজস্ব Order ID
+        $invoiceNumber = $request->input('invoice_number');
+        $productName = $request->input('product_name');
+        $productType = $request->input('product_type');
+        $status = $request->input('status');
+
+        // আপনার ডাটাবেসে order_id অথবা invoice_number দিয়ে অর্ডার খুঁজুন
+        $order = Order::where('id', $orderId)
+                      ->orWhere('invoice_number', $invoiceNumber)
+                      ->first();
+
+        if (!$order) {
+            return response()->json(['error' => 'Order not found'], 404);
+        }
+
+        // =====================================================================
+        // কেস ১: ডিজিটাল বা অ্যাডভান্স পেমেন্ট সফল হওয়া
+        // =====================================================================
         if ($event === 'payment.completed' && $status === 'Completed') {
-            // আপনার ডাটাবেসে ইনভয়েস নম্বর অথবা প্রোডাক্ট নেম মিলিয়ে অর্ডার পেইড হিসেবে মার্ক করুন
-            $order = Order::where('invoice_number', $invoiceNumber)->first();
-            if ($order) {
-                $order->update([
-                    'status' => 'paid',
-                    'transaction_id' => $trxId,
-                    'fb_passcode' => $fbPasscode,
-                    'courier_tracking' => $trackingCode
-                ]);
-            }
+            $trxId = $request->input('transaction_id');
+            $fbPasscode = $request->input('fb_passcode'); // ডিজিটাল প্রোডাক্ট হলে
+            $trackingCode = $request->input('courier_tracking_code'); // ফিজিক্যাল অ্যাডভান্স হলে
+
+            $order->update([
+                'payment_status'   => 'paid',
+                'transaction_id'   => $trxId,
+                'fb_passcode'      => $fbPasscode,
+                'courier_tracking' => $trackingCode,
+            ]);
+        }
+
+        // =====================================================================
+        // কেস ২: ১০০% Full COD অর্ডারে কুরিয়ার বুকিং নিশ্চিত হওয়া
+        // =====================================================================
+        if ($event === 'order.courier_booked') {
+            $courierData = $request->input('courier');
+            $order->update([
+                'status'           => 'processing',
+                'courier_provider' => $courierData['provider'] ?? 'steadfast',
+                'courier_tracking' => $courierData['tracking_code'] ?? null,
+                'tracking_url'     => $courierData['tracking_url'] ?? null,
+            ]);
         }
 
         return response()->json(['status' => 'success'], 200);
     }
 }`;
+
+const sqlMigrationCode = `-- =========================================================================
+-- MecoPay Supabase SQL Migration: Brands Table Update for Zero-Waste Sync
+-- =========================================================================
+
+-- ১. auto_courier_on_full_cod: ১০০% Full COD অর্ডারে অটো কুরিয়ার বুকিং সক্রিয় কিনা
+ALTER TABLE public.brands 
+ADD COLUMN IF NOT EXISTS auto_courier_on_full_cod BOOLEAN DEFAULT FALSE;
+
+-- ২. payment_gateways_active: ব্র্যান্ডের গেটওয়ে অন/অফ স্ট্যাটাস
+ALTER TABLE public.brands 
+ADD COLUMN IF NOT EXISTS payment_gateways_active BOOLEAN DEFAULT TRUE;
+
+-- ৩. courier_credentials: কুরিয়ার API ক্রেডেনশিয়ালস
+ALTER TABLE public.brands 
+ADD COLUMN IF NOT EXISTS courier_credentials JSONB DEFAULT '{}'::jsonb;
+
+-- ৪. checkout_url: কাস্টম বা ডিফল্ট চেকআউট গেটওয়ে URL
+ALTER TABLE public.brands 
+ADD COLUMN IF NOT EXISTS checkout_url TEXT DEFAULT 'https://checkout.mecopay.space/pay';
+
+-- ৫. পারফরম্যান্স ও ফাস্ট লুকআপের জন্য api_key ও user_id ইনডেক্স নিশ্চিত করুন
+CREATE INDEX IF NOT EXISTS idx_brands_api_key ON public.brands(api_key);
+CREATE INDEX IF NOT EXISTS idx_brands_user_id ON public.brands(user_id);
+
+-- ৬. রিয়েল-টাইম সাবস্ক্রিপশন সক্ষম করুন (Supabase Realtime)
+ALTER PUBLICATION supabase_realtime ADD TABLE public.brands;`;

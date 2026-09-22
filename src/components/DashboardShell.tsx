@@ -17,6 +17,7 @@ import PaymentLinks from "./payment-hub/PaymentLinks";
 import Invoices from "./payment-hub/Invoices";
 import CourierService from "./payment-hub/CourierService";
 import DeveloperDocs from "./DeveloperDocs";
+import { downloadWordPressPluginZip } from '../lib/wordpressPluginSource';
 import { useNavigate } from 'react-router-dom';
 import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles } from 'lucide-react';
 
@@ -1824,13 +1825,13 @@ export default function DashboardShell() {
                     আপনার ওয়ার্ডপ্রেস সাইটে পেমেন্ট গেটওয়ে যুক্ত করতে এই প্লাগইনটি ডাউনলোড করুন। প্লাগইনের ভেতরে কার্ট গার্ড ও ভ্যালিডেশন কোড ইনবিল্ট রয়েছে।
                   </p>
                 </div>
-                <a 
-                  href={pluginDownloadUrl} 
-                  download="mecopay-woocommerce.zip"
-                  className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-md flex items-center gap-2 text-xs sm:text-sm shrink-0"
+                <button 
+                  type="button"
+                  onClick={() => downloadWordPressPluginZip()}
+                  className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-md flex items-center gap-2 text-xs sm:text-sm shrink-0 cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Download Plugin (.zip)
-                </a>
+                </button>
               </div>
 
               {/* Validation Info in Plugin Tab */}

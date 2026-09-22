@@ -12,9 +12,11 @@ import {
   ArrowRight,
   ShieldCheck,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import { showToast } from '../../lib/toast';
+import { supabase } from '../../lib/supabase';
 
 interface CourierServiceProps {
   brands?: any[];
@@ -25,13 +27,14 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'parcels' | 'settings'>('parcels');
 
-  // Courier API Keys
+  // Courier API Keys & Brand Automation Settings
   const [courierProvider, setCourierProvider] = useState<'steadfast' | 'pathao' | 'redx'>('steadfast');
   const [steadfastApiKey, setSteadfastApiKey] = useState('');
   const [steadfastSecretKey, setSteadfastSecretKey] = useState('');
   const [pathaoClientId, setPathaoClientId] = useState('');
   const [pathaoClientSecret, setPathaoClientSecret] = useState('');
   const [pathaoStoreId, setPathaoStoreId] = useState('');
+  const [autoCourierOnFullCod, setAutoCourierOnFullCod] = useState(false);
   const [savingKeys, setSavingKeys] = useState(false);
 
   // New Parcel Booking Form Modal
@@ -91,6 +94,16 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   }, [brands]);
 
   useEffect(() => {
+    // Load from brand object if exists in Supabase brands table
+    const currentBrand = brands.find(b => b.id === selectedBrandId);
+    if (currentBrand) {
+      if (typeof currentBrand.auto_courier_on_full_cod === 'boolean') {
+        setAutoCourierOnFullCod(currentBrand.auto_courier_on_full_cod);
+      } else if (currentBrand.redirect_links && typeof currentBrand.redirect_links.auto_courier_on_full_cod === 'boolean') {
+        setAutoCourierOnFullCod(currentBrand.redirect_links.auto_courier_on_full_cod);
+      }
+    }
+
     const saved = localStorage.getItem(`mecopay_courier_${selectedBrandId || 'default'}`);
     if (saved) {
       try {
@@ -101,14 +114,16 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
         if (p.pathaoClientId) setPathaoClientId(p.pathaoClientId);
         if (p.pathaoClientSecret) setPathaoClientSecret(p.pathaoClientSecret);
         if (p.pathaoStoreId) setPathaoStoreId(p.pathaoStoreId);
+        if (typeof p.autoCourierOnFullCod === 'boolean') setAutoCourierOnFullCod(p.autoCourierOnFullCod);
       } catch (e) {}
     }
-  }, [selectedBrandId]);
+  }, [selectedBrandId, brands]);
 
-  const handleSaveKeys = (e: React.FormEvent) => {
+  const handleSaveKeys = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingKeys(true);
-    setTimeout(() => {
+    try {
+      // 1. Save locally
       localStorage.setItem(
         `mecopay_courier_${selectedBrandId || 'default'}`,
         JSON.stringify({
@@ -117,12 +132,54 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
           steadfastSecretKey,
           pathaoClientId,
           pathaoClientSecret,
-          pathaoStoreId
+          pathaoStoreId,
+          autoCourierOnFullCod
         })
       );
+
+      // 2. Update Supabase brands table with auto_courier_on_full_cod
+      if (selectedBrandId) {
+        const currentBrand = brands.find(b => b.id === selectedBrandId);
+        const updatedRedirectLinks = {
+          ...(currentBrand?.redirect_links || {}),
+          auto_courier_on_full_cod: autoCourierOnFullCod,
+          courier_provider: courierProvider
+        };
+
+        // Try updating both column and jsonb fallback
+        const updatePayload: any = {
+          redirect_links: updatedRedirectLinks
+        };
+        // If column exists, it updates smoothly
+        updatePayload.auto_courier_on_full_cod = autoCourierOnFullCod;
+
+        const { error } = await supabase
+          .from('brands')
+          .update(updatePayload)
+          .eq('id', selectedBrandId);
+
+        if (error) {
+          // Retry with just redirect_links if auto_courier_on_full_cod column is not yet present
+          console.warn("Retrying brand update with redirect_links:", error.message);
+          await supabase
+            .from('brands')
+            .update({ redirect_links: updatedRedirectLinks })
+            .eq('id', selectedBrandId);
+        }
+
+        if (currentBrand) {
+          currentBrand.auto_courier_on_full_cod = autoCourierOnFullCod;
+          currentBrand.redirect_links = updatedRedirectLinks;
+        }
+      }
+
+      showToast('Courier settings and Real-time Webhook sync saved successfully!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast('Settings saved locally: ' + (err.message || ''), 'success');
+    } finally {
       setSavingKeys(false);
-      showToast('Courier API credentials saved successfully!', 'success');
-    }, 400);
+    }
   };
 
   const handleBookParcel = (e: React.FormEvent) => {
@@ -395,6 +452,34 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                 </div>
               </div>
             )}
+
+            {/* Zero-Waste Sync Toggle: Auto Courier Booking on 100% Full COD */}
+            <div className="pt-4 border-t border-slate-800">
+              <div className="p-4 bg-slate-950/80 border border-emerald-500/30 rounded-2xl flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-bold text-white">Auto Courier Booking on 100% Full COD</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                      Webhook Real-time Synced
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                    অন থাকলে: WordPress বা কাস্টম সাইট থেকে ১০০% COD ফর্ম সাবমিট হলে MecoPay স্বয়ংক্রিয়ভাবে কুরিয়ার বুকিং সম্পন্ন করবে।<br />
+                    অফ থাকলে: ক্লায়েন্টের Laravel/WooCommerce সাইট লোকাল ক্যাশ দেখে MecoPay API কল ব্লক করবে (<strong>০% ইনভোকেশন অপচয়</strong>)।
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                  <input
+                    type="checkbox"
+                    checked={autoCourierOnFullCod}
+                    onChange={(e) => setAutoCourierOnFullCod(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+            </div>
           </div>
 
           <button
