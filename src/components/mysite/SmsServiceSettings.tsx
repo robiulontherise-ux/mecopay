@@ -57,10 +57,10 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
       <div>
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
           <MessageSquare className="w-6 h-6 text-emerald-400" />
-          SMS Notification Service
+          SMS + WhatsApp Service
         </h2>
         <p className="text-slate-400 text-sm mt-1">
-          Connect your SMS gateway to send instant automated order confirmations and payment alerts to customers.
+          Connect your SMS & WhatsApp gateway to send instant automated order confirmations and payment alerts to customers.
         </p>
       </div>
 

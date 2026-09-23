@@ -884,7 +884,7 @@ export default function DashboardShell() {
     },
     payments: {
       title: 'Payments Hub',
-      items: ['Gateway Settings', 'Payment Links', 'Invoices', 'Courier Service', 'Transactions', 'Transaction Analysis', 'Analytics'],
+      items: ['Gateway Settings', 'Payment Links', 'Invoices', 'Courier Service', 'SMS + WhatsApp Service', 'Transactions', 'Transaction Analysis', 'Analytics'],
     },
     site: {
       title: 'My Site',
@@ -892,7 +892,6 @@ export default function DashboardShell() {
         'Website Builder',
         'Custom Domain Buy',
         'Integrate Custom Domain',
-        'SMS Service',
         'Email Service',
         'Server Side Tracking',
         'Web Custom Agent',
@@ -2153,7 +2152,7 @@ export default function DashboardShell() {
       );
     }
 
-    if (activeSubMenu === 'SMS Service') {
+    if (activeSubMenu === 'SMS + WhatsApp Service' || activeSubMenu === 'SMS Service') {
       return (
         <div className="w-full">
           <SmsServiceSettings user={user} brands={brands} />
