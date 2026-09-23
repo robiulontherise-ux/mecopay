@@ -11,7 +11,8 @@ import {
   ShieldCheck, 
   Layers,
   Cpu,
-  AlertCircle
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { showToast } from '../lib/toast';
 
@@ -253,14 +254,14 @@ export default function DeveloperDocs() {
                     <tr className="bg-slate-950 text-slate-300 font-semibold border-b border-slate-800">
                       <th className="p-3">ফিল্ড নেম</th>
                       <th className="p-3">স্ট্যাটাস</th>
-                      <th className="p-3">বিবরণ</th>
+                      <th className="p-3">বিবরণ ও সার্ভিস গাইডলাইন</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
                       <td className="p-3 font-mono text-blue-300">order_id বা product_name</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">যেকোনো একটি অবশ্যই পাঠাতে হবে (দুটোই পাঠালে আরও ভালো)।</td>
+                      <td className="p-3 text-slate-300">যেকোনো একটি অবশ্যই পাঠাতে হবে (দুটোই পাঠালে ট্র্যাকিংয়ের জন্য সর্বোত্তম)।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-blue-300">product_type</td>
@@ -275,7 +276,7 @@ export default function DeveloperDocs() {
                     <tr>
                       <td className="p-3 font-mono text-blue-300">callback_url</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">পেমেন্ট সফল হলে আপনার ওয়েবসাইটের যে পেজে কাস্টমার ফিরে যাবে।</td>
+                      <td className="p-3 text-slate-300">পেমেন্ট সফল হলে আপনার ওয়েবসাইটের যে পেজে কাস্টমারকে রিডাইরেক্ট করা হবে।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-blue-300">telegram_link / facebook_group_link / google_drive_link</td>
@@ -283,12 +284,33 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">১টি, ২টি, ৩টি লিংক পাঠাতে পারেন অথবা কোনো লিংক না পাঠালেও চলবে।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-blue-300">customer_name / customer_phone / customer_email</td>
-                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
-                      <td className="p-3 text-slate-300">না পাঠালে কাস্টমার চেকআউট পেজে পূরণ করবে।</td>
+                      <td className="p-3 font-mono text-blue-300">customer_phone</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold">ঐচ্ছিক (সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">গ্রাহকের মোবাইল নম্বর। আপনার ব্র্যান্ডে যদি <strong>SMS বা WhatsApp নোটিফিকেশন সার্ভিস অন</strong> থাকে, তবে অর্ডার সফল হওয়ার পর ফোনে নিশ্চিতকরণ মেসেজ ও পাসকোড পাঠাতে এই নম্বর পাঠানো <strong>আবশ্যক</strong> (অন্যথায় কোন নম্বরে সাকসেস মেসেজ যাবে?)। সার্ভিস সক্রিয় না থাকলে না পাঠালেও কোনো সমস্যা নেই।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-blue-300">customer_email</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold">ঐচ্ছিক (সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">গ্রাহকের ইমেইল। ব্র্যান্ডে যদি <strong>Email সার্ভিস অন</strong> থাকে, তবে ডিজিটাল এক্সেস লিঙ্ক ও ডিজিটাল ইনভয়েস গ্রাহকের ইনবক্সে পৌঁছাতে ইমেইল পাঠানো <strong>আবশ্যক</strong>। SMS ও Email উভয় সার্ভিস অন থাকলে দুটি ফিল্ডই পাঠাতে হবে। কোনো সার্ভিস চালু না থাকলে না পাঠালেও চলবে।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-blue-300">customer_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (সুপারিশকৃত)</span></td>
+                      <td className="p-3 text-slate-300">গ্রাহকের নাম (ড্যাশবোর্ড ইনভয়েস ও মেসেজে ব্যক্তিগতকরণের জন্য সুপারিশকৃত)।</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* Service Policy Notice Box for Digital */}
+              <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-blue-400">
+                  <Info className="w-4 h-4 shrink-0" />
+                  <span>সার্ভিস ইন্টিগ্রেশন নোট (Digital Products):</span>
+                </div>
+                <p className="text-slate-400 leading-relaxed text-[11px]">
+                  ডিজিটাল পণ্যের ক্ষেত্রে ক্লায়েন্টের ওয়েবসাইটে গ্রাহক ইতিমধ্যে লগইন বা রেজিস্টার্ড অবস্থায় থাকতে পারেন। MecoPay কোর গেটওয়েতে নাম, ফোন বা ইমেইল পাঠানো বাধ্যতামূলক নয়। তবে আপনার ব্র্যান্ডে যদি <strong>SMS / WhatsApp / Email সার্ভিস</strong> সক্রিয় করা থাকে, তবে সেই সার্ভিসগুলোর মাধ্যমে সফল ডেলিভারি নিশ্চিত করতে সংশ্লিষ্ট ফিল্ডগুলো পাঠাতে হবে। কোনো সার্ভিস সক্রিয় না থাকলে এগুলো ছাড়া শুধু <code>order_id</code>, <code>amount</code> ও <code>callback_url</code> পাঠালেই চলবে।
+                </p>
               </div>
             </div>
           )}
@@ -325,7 +347,7 @@ export default function DeveloperDocs() {
                     <tr className="bg-slate-950 text-slate-300 font-semibold border-b border-slate-800">
                       <th className="p-3">ফিল্ড নেম</th>
                       <th className="p-3">স্ট্যাটাস</th>
-                      <th className="p-3">বিবরণ ও হিসাব</th>
+                      <th className="p-3">বিবরণ ও সার্ভিস গাইডলাইন</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
@@ -360,12 +382,43 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">কুরিয়ার ডেলিভারিতে কালেকশন = <code>(total_amount + courier_charge) - amount</code> = ১২২০ ৳।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">callback_url / customer_address</td>
+                      <td className="p-3 font-mono text-amber-300">callback_url</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
-                      <td className="p-3 text-slate-300">না পাঠালে ডিফল্ট রিটার্ন ও চেকআউট পেজে ঠিকানা ইনপুট নেওয়া হবে।</td>
+                      <td className="p-3 text-slate-300">পেমেন্ট সফল হলে আপনার ওয়েবসাইটের অর্ডার সাকসেস পেজে রিডাইরেক্ট করার URL।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-amber-300">customer_address</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-semibold">ঐচ্ছিক (কুরিয়ার সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">গ্রাহকের সম্পূর্ণ ডেলিভারি ঠিকানা। আপনি যদি MecoPay ড্যাশবোর্ডে <strong>অটো কুরিয়ার বুকিং (Auto Courier / 1-Click Booking)</strong> সার্ভিস অন রাখেন, তবে কুরিয়ার সিস্টেমে পার্সেল বুক করার জন্য গ্রাহকের সম্পূর্ণ ঠিকানা পাঠানো <strong>আবশ্যক</strong>। অটো কুরিয়ার সার্ভিস ব্যবহার না করলে এটি না পাঠালেও চলবে।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-amber-300">customer_phone</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold">ঐচ্ছিক (সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">কুরিয়ার ডেলিভারিম্যানের সাথে যোগাযোগ এবং SMS/WhatsApp নোটিফিকেশন সার্ভিস অন থাকলে মোবাইল নম্বর পাঠানো <strong>আবশ্যক</strong>। সার্ভিস চালু না থাকলে না পাঠালেও কোনো সমস্যা নেই।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-amber-300">customer_email</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold">ঐচ্ছিক (সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">গ্রাহককে ডিজিটাল ইনভয়েস ও ট্র্যাকিং রসিদ পাঠাতে ইমেইল সার্ভিস অন থাকলে গ্রাহকের ইমেইল পাঠানো <strong>আবশ্যক</strong>।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-amber-300">customer_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">পার্সেল রিসিভারের নাম (কুরিয়ার শিপমেন্ট লেবেল ও ইনভয়েসের জন্য)।</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* Service Policy Notice Box for Physical Advance */}
+              <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-400">
+                  <Info className="w-4 h-4 shrink-0" />
+                  <span>সার্ভিস ইন্টিগ্রেশন নোট (Advance + COD):</span>
+                </div>
+                <p className="text-slate-400 leading-relaxed text-[11px]">
+                  ক্লায়েন্টের ওয়েবসাইটে চেকআউটের সময় কাস্টমার ইতোমধ্যে তার নাম, ফোন ও ঠিকানা পূরণ করে থাকেন। আপনার ব্র্যান্ডে যদি <strong>অটো কুরিয়ার বুকিং</strong> চালু থাকে, তবে কুরিয়ার বুকিং সফল করতে <code>customer_address</code> এবং <code>customer_phone</code> পাঠানো আবশ্যক। একইভাবে <strong>SMS বা Email নোটিফিকেশন</strong> চালু থাকলে স্বয়ংক্রিয় মেসেজ প্রেরণের জন্য ফোন বা ইমেইল পাঠাবেন। সার্ভিসগুলো বন্ধ থাকলে ফিল্ডগুলো না পাঠালেও সিস্টেম স্বাভাবিকভাবে কাজ করবে।
+                </p>
               </div>
             </div>
           )}
@@ -402,7 +455,7 @@ export default function DeveloperDocs() {
                     <tr className="bg-slate-950 text-slate-300 font-semibold border-b border-slate-800">
                       <th className="p-3">ফিল্ড নেম</th>
                       <th className="p-3">স্ট্যাটাস</th>
-                      <th className="p-3">বিবরণ ও হিসাব</th>
+                      <th className="p-3">বিবরণ ও সার্ভিস গাইডলাইন</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
@@ -436,8 +489,39 @@ export default function DeveloperDocs() {
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">মান হবে <code>0</code> (যেহেতু কোনো গেটওয়ে পেমেন্ট নেই)।</td>
                     </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-emerald-300">customer_address</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-semibold">ঐচ্ছিক (কুরিয়ার সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">গ্রাহকের পূর্ণ ডেলিভারি ঠিকানা। ক্লায়েন্ট যদি MecoPay ড্যাশবোর্ডে <strong>অটো কুরিয়ার বুকিং (Auto Courier / 1-Click Booking)</strong> সার্ভিস সক্রিয় রাখেন, তবে কুরিয়ার সিস্টেমে পার্সেল বুক করার জন্য গ্রাহকের সম্পূর্ণ ঠিকানা পাঠানো <strong>আবশ্যক</strong>। কুরিয়ার সার্ভিস ব্যবহার না করলে এটি না পাঠালেও চলবে।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-emerald-300">customer_phone</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold">ঐচ্ছিক (সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">কুরিয়ার ডেলিভারিম্যানের সাথে যোগাযোগ এবং SMS/WhatsApp নোটিফিকেশন সার্ভিস অন থাকলে মোবাইল নম্বর পাঠানো <strong>আবশ্যক</strong>। সার্ভিস চালু না থাকলে না পাঠালেও সমস্যা নেই।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-emerald-300">customer_email</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold">ঐচ্ছিক (সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">গ্রাহককে ডিজিটাল অর্ডার ইনভয়েস ও রসিদ পাঠাতে ইমেইল সার্ভিস অন থাকলে গ্রাহকের ইমেইল পাঠানো <strong>আবশ্যক</strong>।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-emerald-300">customer_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">পার্সেল রিসিভারের নাম (কুরিয়ার শিপমেন্ট পার্সেল ও ইনভয়েসের জন্য)।</td>
+                    </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* Service Policy Notice Box for Full COD */}
+              <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-emerald-400">
+                  <Info className="w-4 h-4 shrink-0" />
+                  <span>সার্ভিস ইন্টিগ্রেশন নোট (100% COD / Just Form):</span>
+                </div>
+                <p className="text-slate-400 leading-relaxed text-[11px]">
+                  ১০০% ক্যাশ অন ডেলিভারি (Just Form) অর্ডারের ক্ষেত্রে গ্রাহক ক্লায়েন্টের ওয়েবসাইটে ইতিমধ্যে নাম, ফোন ও ঠিকানা ইনপুট দিয়ে থাকেন। আপনি যদি MecoPay ড্যাশবোর্ডের মাধ্যমে <strong>অটো কুরিয়ার বুকিং</strong> করতে চান, তবে কুরিয়ার পার্সেল বুকিং নিশ্চিত করতে গ্রাহকের সম্পূর্ণ ঠিকানা ও মোবাইল নম্বর পাঠানো আবশ্যক। একইভাবে <strong>SMS, WhatsApp বা Email নোটিফিকেশন</strong> সক্রিয় থাকলে সংশ্লিষ্ট নম্বর ও ইমেইল পাঠাবেন। সার্ভিসগুলো বন্ধ থাকলে এগুলোর কোনোটিই বাধ্যতামূলক নয়।
+                </p>
               </div>
             </div>
           )}
@@ -783,7 +867,6 @@ const digitalJsonPayload = `{
   "amount": 1500,
   "callback_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
-  "gateway_routing": "both",
   "customer_name": "Rahim Ahmed",
   "customer_phone": "01712345678",
   "customer_email": "rahim@example.com",
@@ -803,9 +886,9 @@ const advanceJsonPayload = `{
   "fulfillment_type": "dropship",
   "callback_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
-  "gateway_routing": "both",
   "customer_name": "Tanvir Hasan",
   "customer_phone": "01812345678",
+  "customer_email": "tanvir@example.com",
   "customer_address": "House 12, Road 4, Sector 7, Uttara, Dhaka"
 }`;
 
@@ -822,6 +905,7 @@ const codJsonPayload = `{
   "cancel_url": "https://yourwebsite.com/checkout",
   "customer_name": "Mohammad Ali",
   "customer_phone": "01912345678",
+  "customer_email": "ali@example.com",
   "customer_address": "Chawkbazar, Chittagong"
 }`;
 
@@ -1533,8 +1617,8 @@ export default {
         });
       }
 
-      const supabaseUrl = env.SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co';
-      const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+      const supabaseUrl = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co').replace(/\/+$/, '');
+      const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY || env.SUPABASE_KEY || env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3b251YWt2aGVyem9mcXhpbW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MzA5MDEsImV4cCI6MjEwMDQwNjkwMX0.29mIqf8zwUczPXIfIILw6ybJRKJ_l8HUttNU-6s-cL0';
 
       const brandRes = await fetch(\`\${supabaseUrl}/rest/v1/brands?api_key=eq.\${apiKey}&select=*\`, {
         headers: {
@@ -1543,11 +1627,18 @@ export default {
           'Content-Type': 'application/json'
         }
       });
+      if (!brandRes.ok) {
+        const errText = await brandRes.text();
+        return new Response(JSON.stringify({ success: false, error: \`Supabase query failed (\${brandRes.status}): \${errText}\` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        });
+      }
       const brands = await brandRes.json();
       const brand = Array.isArray(brands) && brands.length > 0 ? brands[0] : null;
 
       if (!brand) {
-        return new Response(JSON.stringify({ success: false, error: 'Invalid Brand API Key.' }), {
+        return new Response(JSON.stringify({ success: false, error: 'Invalid Brand API Key. No brand matched this key.' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 403,
         });
@@ -1672,11 +1763,11 @@ export default {
         }
       }
 
-      // স্টেটলেস সিকিউর সেশন পে-লোড
+      // স্টেটলেস সিকিউর সেশন পে-লোড (বেস৬৪ লোগো বাদ দিয়ে কমপ্যাক্ট URL তৈরি)
       const sessionData = {
         brand_id: brand.id,
         brand_name: brand.name,
-        brand_logo: brand.logo_url,
+        brand_logo: brand.logo_url?.startsWith('http') ? brand.logo_url : undefined,
         order_id: order_id || ('ORD-' + Date.now()),
         product_name: product_name || 'Item',
         product_type,
