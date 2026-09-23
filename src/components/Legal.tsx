@@ -165,6 +165,7 @@ export const CustomerRightsAndAntiFraud = () => (
     </div>
   </LegalLayout>
 );
+
 export const DeveloperDocsPage = () => (
   <LegalLayout title="API Documentation" icon={FileText} lastUpdated="August 2026">
     <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 space-y-4">
