@@ -87,20 +87,30 @@ export default function DeveloperDocs() {
           <span>প্রোডাক্ট অর্ডার ও কার্ট পলিসি (Cart Integrity & Prohibited Rules):</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 rounded-2xl bg-slate-950 border border-amber-500/20 space-y-2">
             <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">১</span>
               একই অর্ডারে সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              স্বয়ংক্রিয় পাসকোড, টেলিগ্রাম ইনভাইট ও ড্রাইভ লিংকের পূর্ণ নিরাপত্তা নিশ্চিত করতে গ্রাহক একবারে সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট কিনতে পারবে।
+              স্বয়ংক্রিয় পাসকোড, টেলিগ্রাম ইনভাইট ও ড্রাইভ লিংকের পূর্ণ নিরাপত্তা নিশ্চিত করতে গ্রাহক একবারে সর্বোচ্চ ১টি ডিজিটাল প্রোডাক্ট কিনতে পারবেন।
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/20 space-y-2">
+            <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">২</span>
+              একাধিক ফিজিক্যাল প্রোডাক্ট কার্ট অনুমোদন (Allowed)
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              গ্রাহক চাইলে কার্টে যত ইচ্ছা একাধিক ফিজিক্যাল প্রোডাক্ট একসাথে যুক্ত করে অর্ডার করতে পারবেন। কার্টের মোট পণ্যের মূল্য ও কুরিয়ার ফি একত্রিত করে অ্যাডভান্স বা COD প্রসেস হবে।
             </p>
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-950 border border-red-500/20 space-y-2">
             <div className="text-xs font-bold text-red-400 flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-[10px]">২</span>
+              <span className="w-4 h-4 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-[10px]">৩</span>
               মিক্সড কার্ট সম্পূর্ণ নিষিদ্ধ (Mixed Cart Prohibited)
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
