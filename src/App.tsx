@@ -7,6 +7,7 @@ import DashboardRoute from './components/DashboardRoute';
 import CheckoutPage from './components/checkout/CheckoutPage';
 import AccessPage from './components/checkout/AccessPage';
 import { PrivacyPolicy, TermsConditions, RefundPolicy, CustomerRightsAndAntiFraud, DeveloperDocsPage } from './components/Legal';
+import TimeSpentBeaconTracker from './components/analytics/TimeSpentBeaconTracker';
 
 interface EBProps { children?: React.ReactNode; }
 interface EBState { hasError: boolean; error: any; }
@@ -79,6 +80,7 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <TimeSpentBeaconTracker />
         <Routes>
           {/* Authentication */}
           <Route

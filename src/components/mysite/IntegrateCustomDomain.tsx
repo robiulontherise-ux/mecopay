@@ -101,6 +101,24 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       }
 
       setCustomDomain(cleanDomain);
+
+      // Sync to Cloudflare Edge Worker KV cache
+      if (cleanDomain) {
+        try {
+          await fetch('/api/internal/sync-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              hostname: cleanDomain,
+              client_id: user.id,
+              brand_id: selectedBrandId,
+              app_type: activeTab === 'nocode' ? 'no_code' : activeTab,
+              domain: cleanDomain
+            })
+          });
+        } catch (e) {}
+      }
+
       showToast('Custom domain integrated and saved successfully!', 'success');
     } catch (err: any) {
       console.error(err);
