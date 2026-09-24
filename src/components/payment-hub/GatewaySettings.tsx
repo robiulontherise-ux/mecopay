@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 import { showConfirm } from '../../lib/confirm';
+import { notifyMerchantWebhook } from '../../lib/webhookDispatcher';
 import { CheckCircle2, ArrowUp, ArrowDown, Edit, Trash2 } from 'lucide-react';
 
 interface GatewaySettingsProps {
@@ -250,6 +251,14 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       setSelectedMerchantProvider(null);
       setSelectedProvider(null);
       fetchGateways();
+
+      // Dispatch Webhook (Method 1) to notify merchant's WordPress/Laravel/Custom site cache
+      notifyMerchantWebhook(selectedBrandId, 'brand.settings_updated', {
+        brand_id: selectedBrandId,
+        personal_api_active: brand?.personal_api ?? true,
+        merchant_api_active: true,
+        auto_courier_on_full_cod: brand?.auto_courier_on_full_cod ?? false
+      });
     } catch (err: any) {
       showToast("Failed to save merchant credentials: " + err.message, "error");
     } finally {
@@ -292,6 +301,14 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       setIsCreating(false);
       setSelectedMerchantProvider(null);
       fetchGateways();
+
+      // Dispatch Webhook (Method 1) to notify merchant's WordPress/Laravel/Custom site cache
+      notifyMerchantWebhook(brandId, 'brand.settings_updated', {
+        brand_id: brandId,
+        personal_api_active: brand?.personal_api ?? true,
+        merchant_api_active: Object.keys(updatedConfig).length > 0,
+        auto_courier_on_full_cod: brand?.auto_courier_on_full_cod ?? false
+      });
     } catch (e: any) {
       showToast("Error deleting merchant gateway: " + e.message, "error");
     }
@@ -402,6 +419,16 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       setIsCreating(false);
       setEditingId(null);
       fetchGateways();
+
+      if (selectedBrandId) {
+        const brand = brands.find(b => b.id === selectedBrandId);
+        notifyMerchantWebhook(selectedBrandId, 'brand.settings_updated', {
+          brand_id: selectedBrandId,
+          personal_api_active: true,
+          merchant_api_active: brand?.merchant_api ?? false,
+          auto_courier_on_full_cod: brand?.auto_courier_on_full_cod ?? false
+        });
+      }
     } catch (err: any) {
       console.error("Save gateway error:", err);
       showToast(err.message || "Failed to save!", 'error');

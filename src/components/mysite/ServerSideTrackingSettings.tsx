@@ -156,12 +156,18 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
       // 2. Also keep localStorage as client cache backup
       localStorage.setItem(`mecopay_tracking_config_${user?.id}`, JSON.stringify(payload));
 
-      // 3. Immediately trigger Edge Worker KV Cache Sync
+      // 3. Immediately trigger Edge Worker KV Cache Sync with Auth Token
       if (activeDomain) {
         try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const authToken = sessionData?.session?.access_token || '';
+
           await fetch('/api/internal/sync-cache', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+            },
             body: JSON.stringify({
               hostname: activeDomain,
               client_id: user.id,

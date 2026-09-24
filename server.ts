@@ -4,6 +4,7 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -373,7 +374,93 @@ async function startServer() {
     }
   });
 
-  
+  // Webhook Dispatcher: Secure Server-to-Server Cache & Event Notification (Method 1)
+  app.post('/api/dispatch-webhook', async (req, res) => {
+    try {
+      const { brand_id, event, data } = req.body;
+      if (!brand_id || !event) {
+        return res.status(400).json({ error: 'brand_id and event are required' });
+      }
+
+      if (!supabaseAdmin) {
+        return res.status(500).json({ error: 'Supabase admin client not initialized' });
+      }
+
+      // Fetch registered webhooks for this brand
+      const { data: webhooks, error: whError } = await supabaseAdmin
+        .from('webhooks')
+        .select('payload_url, webhook_secret')
+        .eq('brand_id', brand_id);
+
+      if (whError) {
+        console.warn('Error fetching webhooks for brand:', whError);
+        return res.status(500).json({ error: whError.message });
+      }
+
+      if (!webhooks || webhooks.length === 0) {
+        return res.json({ success: true, delivered: false, message: 'No webhook endpoint registered for this brand' });
+      }
+
+      const payload = {
+        event: event,
+        timestamp: new Date().toISOString(),
+        data: data || {},
+        ...(data || {})
+      };
+      const payloadString = JSON.stringify(payload);
+
+      const deliveryResults = [];
+
+      for (const wh of webhooks) {
+        if (!wh.payload_url) continue;
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'User-Agent': 'MecoPay-Webhook-Dispatcher/1.0',
+          'X-MecoPay-Event': event
+        };
+
+        if (wh.webhook_secret) {
+          const signature = crypto
+            .createHmac('sha256', wh.webhook_secret)
+            .update(payloadString)
+            .digest('hex');
+          headers['X-MecoPay-Signature'] = signature;
+        }
+
+        try {
+          const dispatchRes = await fetch(wh.payload_url, {
+            method: 'POST',
+            headers,
+            body: payloadString,
+            signal: AbortSignal.timeout(6000)
+          });
+
+          deliveryResults.push({
+            url: wh.payload_url,
+            status: dispatchRes.status,
+            ok: dispatchRes.ok
+          });
+        } catch (err: any) {
+          console.warn(`Failed to dispatch webhook to ${wh.payload_url}:`, err.message);
+          deliveryResults.push({
+            url: wh.payload_url,
+            error: err.message
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        delivered: deliveryResults.some(r => r.ok),
+        results: deliveryResults
+      });
+    } catch (e: any) {
+      console.error('Error dispatching webhook:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post('/api/verify-payment', async (req, res) => {
     try {
       if (!supabaseAdmin) {

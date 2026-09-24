@@ -11,7 +11,10 @@ import {
   Flame,
   Layers,
   Server,
-  Code2
+  Code2,
+  ExternalLink,
+  Check,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
@@ -22,6 +25,7 @@ interface IntegrateCustomDomainProps {
 }
 
 export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCustomDomainProps) {
+  const [brandList, setBrandList] = useState<any[]>(brands);
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [currentSubdomain, setCurrentSubdomain] = useState<string>('');
   const [customDomain, setCustomDomain] = useState<string>('');
@@ -30,34 +34,93 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const [copied, setCopied] = useState<string | false>(false);
   const [activeTab, setActiveTab] = useState<'wordpress' | 'laravel' | 'nocode'>('wordpress');
 
+  // URL normalizer helper: strips protocol, www, trailing slashes, path, and port
+  const normalizeDomain = (url: string): string => {
+    if (!url) return '';
+    return url
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//i, '')
+      .replace(/^www\./i, '')
+      .replace(/\/+$/, '')
+      .split('/')[0]
+      .split(':')[0]
+      .trim();
+  };
+
+  // Sync / fetch brands
   useEffect(() => {
-    if (brands && brands.length > 0 && !selectedBrandId) {
-      setSelectedBrandId(brands[0].id);
+    if (brands && brands.length > 0) {
+      setBrandList(brands);
+      if (!selectedBrandId) {
+        setSelectedBrandId(brands[0].id);
+      }
+    } else if (user?.id) {
+      fetchBrands();
     }
-  }, [brands]);
+  }, [brands, user]);
+
+  const fetchBrands = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('brands')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      if (!error && data && data.length > 0) {
+        setBrandList(data);
+        if (!selectedBrandId) {
+          setSelectedBrandId(data[0].id);
+        }
+      }
+    } catch (e) {
+      console.warn('Error fetching brands for custom domain:', e);
+    }
+  };
 
   useEffect(() => {
-    fetchDomainSettings();
+    if (selectedBrandId) {
+      fetchDomainSettings();
+    }
   }, [user, selectedBrandId]);
 
   const fetchDomainSettings = async () => {
-    if (!user) return;
+    if (!user || !selectedBrandId) return;
     try {
       setLoading(true);
-      let query = supabase.from('site_settings').select('*');
-      if (selectedBrandId) {
-        query = query.or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`);
-      } else {
-        query = query.eq('client_id', user.id);
-      }
+      // Look up site_settings for this specific brand (id = brand_id or brand_id = selectedBrandId)
+      let query = supabase
+        .from('site_settings')
+        .select('*')
+        .or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`);
 
       const { data, error } = await query.maybeSingle();
+
       if (!error && data) {
         setCurrentSubdomain(data.subdomain || '');
         setCustomDomain(data.domain || '');
+        if (data.app_type) {
+          setActiveTab(data.app_type === 'no_code' ? 'nocode' : (data.app_type as any));
+        }
       } else {
-        setCustomDomain('');
-        setCurrentSubdomain('');
+        // Fallback: check by client_id if brand row not created yet
+        const { data: fallbackData } = await supabase
+          .from('site_settings')
+          .select('*')
+          .eq('client_id', user.id)
+          .maybeSingle();
+
+        if (fallbackData) {
+          setCurrentSubdomain(fallbackData.subdomain || '');
+          setCustomDomain(fallbackData.domain || '');
+          if (fallbackData.app_type) {
+            setActiveTab(fallbackData.app_type === 'no_code' ? 'nocode' : (fallbackData.app_type as any));
+          }
+        } else {
+          setCustomDomain('');
+          setCurrentSubdomain('');
+        }
       }
     } catch (err) {
       console.error('Error fetching domain settings:', err);
@@ -66,60 +129,128 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
     }
   };
 
+  // Find currently selected brand
+  const selectedBrand = brandList.find((b) => b.id === selectedBrandId) || brandList[0];
+  const brandPrimaryWebsite = selectedBrand?.website_url || '';
+  const cleanBrandWebsite = normalizeDomain(brandPrimaryWebsite);
+  const cleanInputDomain = normalizeDomain(customDomain);
+
+  // Exact matching status
+  const hasBrandWebsite = Boolean(cleanBrandWebsite);
+  const isDomainMatching = hasBrandWebsite && cleanInputDomain === cleanBrandWebsite;
+
   const handleSaveDomain = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (!selectedBrand) {
+      showToast('Please select a Brand first!', 'error');
+      return;
+    }
+
+    // 100% Matching Rule with Brand's Primary Website
+    if (!hasBrandWebsite) {
+      showToast(
+        `Brand "${selectedBrand.name}" has no Primary Website set! Please configure it first in Your MecoPay > Brands.`,
+        'error'
+      );
+      return;
+    }
+
+    if (!cleanInputDomain) {
+      showToast('Please enter your custom domain name!', 'error');
+      return;
+    }
+
+    if (cleanInputDomain !== cleanBrandWebsite) {
+      showToast(
+        `Domain mismatch! The domain must 100% match the registered Primary Website (${cleanBrandWebsite}) of brand "${selectedBrand.name}"!`,
+        'error'
+      );
+      return;
+    }
+
     try {
       setSaving(true);
-      const cleanDomain = customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
 
-      let query = supabase.from('site_settings').select('id');
-      if (selectedBrandId) {
-        query = query.or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`);
-      } else {
-        query = query.eq('client_id', user.id);
+      // Check existing row in site_settings for this brand
+      let { data: existing } = await supabase
+        .from('site_settings')
+        .select('*')
+        .or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`)
+        .maybeSingle();
+
+      if (!existing) {
+        // Also check by client_id
+        const { data: clientExisting } = await supabase
+          .from('site_settings')
+          .select('*')
+          .eq('client_id', user.id)
+          .maybeSingle();
+        existing = clientExisting;
       }
-      const { data: existing } = await query.maybeSingle();
 
       if (existing) {
+        // UPDATE THAT EXACT ROW in site_settings:
+        // Keeps the existing subdomain in its column and updates the domain column!
         const { error } = await supabase
           .from('site_settings')
-          .update({ domain: cleanDomain || null })
+          .update({
+            domain: cleanInputDomain,
+            brand_id: selectedBrandId || existing.brand_id,
+            app_type: activeTab === 'nocode' ? 'no_code' : activeTab
+          })
           .eq('id', existing.id);
+
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('site_settings')
-          .insert({
-            id: selectedBrandId || user.id,
-            brand_id: selectedBrandId || null,
-            client_id: user.id,
-            domain: cleanDomain || null,
-            subdomain: `${user.id.slice(0, 8)}.mecopay.space`
-          });
+        // INSERT new row tied to this brand
+        const autoSub = `${(selectedBrand.name || user.id)
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
+          .slice(0, 10)}.mecopay.space`;
+
+        const { error } = await supabase.from('site_settings').insert({
+          id: selectedBrandId || user.id,
+          brand_id: selectedBrandId || null,
+          client_id: user.id,
+          site_name: selectedBrand.name || 'My Store',
+          domain: cleanInputDomain,
+          subdomain: autoSub,
+          app_type: activeTab === 'nocode' ? 'no_code' : activeTab
+        });
+
         if (error) throw error;
       }
 
-      setCustomDomain(cleanDomain);
+      setCustomDomain(cleanInputDomain);
 
-      // Sync to Cloudflare Edge Worker KV cache
-      if (cleanDomain) {
-        try {
-          await fetch('/api/internal/sync-cache', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              hostname: cleanDomain,
-              client_id: user.id,
-              brand_id: selectedBrandId,
-              app_type: activeTab === 'nocode' ? 'no_code' : activeTab,
-              domain: cleanDomain
-            })
-          });
-        } catch (e) {}
+      // Sync to Cloudflare Edge Worker KV cache with Auth Token
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const authToken = sessionData?.session?.access_token || '';
+
+        await fetch('/api/internal/sync-cache', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+          },
+          body: JSON.stringify({
+            hostname: cleanInputDomain,
+            subdomain: currentSubdomain || existing?.subdomain || '',
+            domain: cleanInputDomain,
+            client_id: user.id,
+            brand_id: selectedBrandId,
+            app_type: activeTab === 'nocode' ? 'no_code' : activeTab
+          })
+        });
+      } catch (e) {
+        console.warn('Edge KV sync skipped in local dev:', e);
       }
 
-      showToast('Custom domain integrated and saved successfully!', 'success');
+      showToast(`Custom domain (${cleanInputDomain}) integrated and saved successfully!`, 'success');
+      fetchDomainSettings();
     } catch (err: any) {
       console.error(err);
       showToast(err.message || 'Failed to save domain', 'error');
@@ -148,21 +279,61 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
             Connect your branded domain with automatic SSL, high-speed edge caching, and enterprise bot protection.
           </p>
         </div>
-        {brands && brands.length > 1 && (
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
-            <span className="text-xs text-slate-400">Brand:</span>
-            <select
-              value={selectedBrandId}
-              onChange={(e) => setSelectedBrandId(e.target.value)}
-              className="bg-transparent text-sm text-white font-medium focus:outline-none cursor-pointer"
-            >
-              {brands.map((b) => (
-                <option key={b.id} value={b.id} className="bg-slate-900 text-white">
-                  {b.name}
-                </option>
-              ))}
-            </select>
+
+        {/* Brand Dropdown (Always visible and synced to brands table) */}
+        <div className="flex items-center gap-2.5 bg-slate-900 border border-slate-800 px-4 py-2 rounded-2xl shrink-0">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Brand:</span>
+          <select
+            value={selectedBrandId}
+            onChange={(e) => setSelectedBrandId(e.target.value)}
+            className="bg-transparent text-sm text-white font-bold focus:outline-none cursor-pointer"
+          >
+            {brandList.map((b) => (
+              <option key={b.id} value={b.id} className="bg-slate-950 text-white font-medium">
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Brand Primary Website Banner & Status */}
+      <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <Globe className="w-5 h-5" />
           </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Brand Primary Website (Your MecoPay):
+              </span>
+              <span className="text-xs font-bold text-white bg-slate-800 px-2 py-0.5 rounded-md">
+                {selectedBrand?.name || 'Selected Brand'}
+              </span>
+            </div>
+            <p className="text-sm font-mono text-emerald-400 font-semibold mt-0.5">
+              {brandPrimaryWebsite ? (
+                brandPrimaryWebsite
+              ) : (
+                <span className="text-amber-400 flex items-center gap-1 font-sans text-xs">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Not configured in Your MecoPay &gt; Brands. Please enter Primary Website URL first!
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {hasBrandWebsite && (
+          <button
+            type="button"
+            onClick={() => setCustomDomain(cleanBrandWebsite)}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+          >
+            <Check className="w-3.5 h-3.5" />
+            Auto-fill Brand Website
+          </button>
         )}
       </div>
 
@@ -209,20 +380,25 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         </div>
       </div>
 
-      {/* Free Subdomain Status */}
+      {/* Active Subdomain in the same site_settings row */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Default Active Subdomain</span>
+            <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+              No-Code Active Subdomain (Same Brand Row)
+            </span>
             <p className="text-lg font-bold text-white mt-1 font-mono">
               {currentSubdomain ? (
                 currentSubdomain.includes('.') ? currentSubdomain : `${currentSubdomain}.mecopay.space`
               ) : (
-                'store.mecopay.space'
+                <span className="text-slate-500 text-sm">Will be linked automatically</span>
               )}
             </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Custom Domain যুক্ত হলেও এই সাবডোমেনটি আপনার ডাটাবেস রো-তে সুরক্ষিত থাকবে।
+            </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 self-start sm:self-auto">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Active & SSL Secured
           </span>
@@ -231,9 +407,29 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
 
       {/* Connect Custom Domain Form */}
       <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-2">Connect Your Branded Custom Domain</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+          <h3 className="text-lg font-bold text-white">Connect Your Branded Custom Domain</h3>
+          {cleanInputDomain && (
+            <div className="flex items-center gap-1.5 text-xs font-semibold">
+              {isDomainMatching ? (
+                <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  100% Matches Brand Website
+                </span>
+              ) : (
+                <span className="text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  Must match: {cleanBrandWebsite || 'Brand Primary URL'}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         <p className="text-sm text-slate-400 mb-6">
-          Enter your custom domain or subdomain (e.g. <span className="text-slate-300">yourbrand.com</span> or <span className="text-slate-300">shop.yourbrand.com</span>).
+          Enter your website domain (e.g. <span className="text-slate-300 font-mono">yourbrand.com</span>). MecoPay
+          নিরাপত্তা নিশ্চিত করতে এটি অবশ্যই{' '}
+          <strong className="text-white">Your MecoPay &gt; Brands</strong>-এর প্রাইমারি ওয়েবসাইটের সাথে ১০০% একই হতে হবে।
         </p>
 
         <form onSubmit={handleSaveDomain} className="space-y-4">
@@ -243,19 +439,43 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 type="text"
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
-                placeholder="e.g. shop.yourdomain.com"
-                className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none transition-colors text-sm font-medium"
+                placeholder={cleanBrandWebsite ? `e.g. ${cleanBrandWebsite}` : 'e.g. yourstore.com'}
+                className={`w-full bg-slate-950 border ${
+                  cleanInputDomain && !isDomainMatching
+                    ? 'border-rose-500 focus:border-rose-400'
+                    : cleanInputDomain && isDomainMatching
+                    ? 'border-emerald-500 focus:border-emerald-400'
+                    : 'border-slate-800 focus:border-emerald-500'
+                } rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none transition-colors text-sm font-mono`}
               />
             </div>
             <button
               type="submit"
-              disabled={saving}
-              className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+              disabled={saving || !isDomainMatching}
+              className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-              Save & Connect Domain
+              Save &amp; Connect Domain
             </button>
           </div>
+
+          {/* Validation Notice Box */}
+          {cleanInputDomain && !isDomainMatching && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <div>
+                <strong>ভুল ডোমেইন প্রবেশ করানো হয়েছে:</strong> আপনি দিয়েছেন{' '}
+                <code className="font-mono text-white bg-rose-950/80 px-1.5 py-0.5 rounded">
+                  {cleanInputDomain}
+                </code>
+                , কিন্তু <span className="font-bold">{selectedBrand?.name}</span> ব্র্যান্ডের প্রাইমারি ওয়েবসাইট হলো{' '}
+                <code className="font-mono text-emerald-400 bg-slate-950 px-1.5 py-0.5 rounded">
+                  {cleanBrandWebsite || 'খালি (Not Set)'}
+                </code>
+                । দুটি ১০০% এক না হলে সেভ করা সম্ভব নয়।
+              </div>
+            </div>
+          )}
         </form>
       </div>
 
@@ -266,7 +486,8 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           DNS Records Configuration (Point to MecoPay)
         </h3>
         <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-          Log in to your DNS provider (Cloudflare, Namecheap, GoDaddy, cPanel) and add this CNAME record. All SSL certificates and bot protection will be provisioned automatically within minutes:
+          Log in to your DNS provider (Cloudflare, Namecheap, GoDaddy, cPanel) and add this CNAME record. All SSL
+          certificates and bot protection will be provisioned automatically within minutes:
         </p>
 
         <div className="overflow-x-auto mb-6">
@@ -345,17 +566,24 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-xl text-xs text-slate-300 leading-relaxed">
             {activeTab === 'wordpress' && (
               <p>
-                <strong>WordPress / WooCommerce:</strong> You do not need to purchase separate SSL or WAF plugins. Once your domain CNAME points to MecoPay, your site benefits from Cloudflare DDoS bot protection and fast static caching automatically. Install the MecoPay WooCommerce plugin from Payments Hub to enable Dual Gateway checkout.
+                <strong>WordPress / WooCommerce:</strong> You do not need to purchase separate SSL or WAF plugins. Once
+                your domain CNAME points to MecoPay, your site benefits from Cloudflare DDoS bot protection and fast
+                static caching automatically. Install the MecoPay WooCommerce plugin from Payments Hub to enable Dual
+                Gateway checkout.
               </p>
             )}
             {activeTab === 'laravel' && (
               <p>
-                <strong>Laravel / Custom Backend:</strong> Send checkout requests via REST API with your brand domain. Our edge servers protect your checkout URLs and routes from bot attacks, so your server never experiences traffic overload during flash sales.
+                <strong>Laravel / Custom Backend:</strong> Send checkout requests via REST API with your brand domain. Our
+                edge servers protect your checkout URLs and routes from bot attacks, so your server never experiences
+                traffic overload during flash sales.
               </p>
             )}
             {activeTab === 'nocode' && (
               <p>
-                <strong>MecoPay No-Code Store:</strong> Your store is hosted directly on Cloudflare Edge with zero hosting fees. Connecting this custom domain will instantly display your store with full SSL protection and 100% COD or Advance payment forms.
+                <strong>MecoPay No-Code Website:</strong> Hosted directly on our global edge network. Subdomain এবং
+                Custom Domain উভয়ই আপনার একই ব্র্যান্ড রো-তে সিঙ্ক হয়ে থাকে। কাস্টম ডোমেইন পয়েন্ট করার সাথে সাথে এটি
+                অটোমেটিক এসএসএল সার্টিফিকেটসহ লাইভ হয়ে যাবে।
               </p>
             )}
           </div>

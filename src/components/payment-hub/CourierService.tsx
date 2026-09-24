@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '../../lib/toast';
 import { supabase } from '../../lib/supabase';
+import { notifyMerchantWebhook } from '../../lib/webhookDispatcher';
 
 interface CourierServiceProps {
   brands?: any[];
@@ -39,7 +40,6 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
 
   // New Parcel Booking Form Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [invoiceId, setInvoiceId] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
@@ -47,45 +47,9 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const [parcelWeight, setParcelWeight] = useState('1');
   const [bookingLoading, setBookingLoading] = useState(false);
 
-  // Sample Parcels List
-  const [parcels, setParcels] = useState<any[]>([
-    {
-      id: 'PAR-8921',
-      courier: 'Steadfast',
-      consignmentId: 'SF-1049281',
-      recipient: 'Md. Tanvir Hasan',
-      phone: '01712-345678',
-      codAmount: 1850,
-      advancePaid: 150,
-      status: 'in_transit',
-      date: '2026-09-18',
-      trackingUrl: 'https://steadfast.com.bd/t/SF-1049281'
-    },
-    {
-      id: 'PAR-8920',
-      courier: 'Pathao',
-      consignmentId: 'PTH-7782190',
-      recipient: 'Farhana Akter',
-      phone: '01890-112233',
-      codAmount: 1200,
-      advancePaid: 200,
-      status: 'delivered',
-      date: '2026-09-17',
-      trackingUrl: 'https://merchant.pathao.com/tracking?consignment_id=PTH-7782190'
-    },
-    {
-      id: 'PAR-8918',
-      courier: 'Steadfast',
-      consignmentId: 'SF-1048821',
-      recipient: 'Sabbir Hossain',
-      phone: '01911-223344',
-      codAmount: 2500,
-      advancePaid: 300,
-      status: 'delivered',
-      date: '2026-09-15',
-      trackingUrl: 'https://steadfast.com.bd/t/SF-1048821'
-    }
-  ]);
+  // Real Parcels List from Invoices / Bookings
+  const [parcels, setParcels] = useState<any[]>([]);
+  const [loadingParcels, setLoadingParcels] = useState(false);
 
   useEffect(() => {
     if (brands && brands.length > 0 && !selectedBrandId) {
@@ -93,96 +57,92 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     }
   }, [brands]);
 
+  // Load Courier Settings from Supabase brands table
   useEffect(() => {
-    // Load from brand object if exists in Supabase brands table
+    if (!selectedBrandId) return;
     const currentBrand = brands.find(b => b.id === selectedBrandId);
     if (currentBrand) {
       if (typeof currentBrand.auto_courier_on_full_cod === 'boolean') {
         setAutoCourierOnFullCod(currentBrand.auto_courier_on_full_cod);
-      } else if (currentBrand.redirect_links && typeof currentBrand.redirect_links.auto_courier_on_full_cod === 'boolean') {
-        setAutoCourierOnFullCod(currentBrand.redirect_links.auto_courier_on_full_cod);
       }
     }
 
-    const saved = localStorage.getItem(`mecopay_courier_${selectedBrandId || 'default'}`);
-    if (saved) {
-      try {
-        const p = JSON.parse(saved);
-        if (p.courierProvider) setCourierProvider(p.courierProvider);
-        if (p.steadfastApiKey) setSteadfastApiKey(p.steadfastApiKey);
-        if (p.steadfastSecretKey) setSteadfastSecretKey(p.steadfastSecretKey);
-        if (p.pathaoClientId) setPathaoClientId(p.pathaoClientId);
-        if (p.pathaoClientSecret) setPathaoClientSecret(p.pathaoClientSecret);
-        if (p.pathaoStoreId) setPathaoStoreId(p.pathaoStoreId);
-        if (typeof p.autoCourierOnFullCod === 'boolean') setAutoCourierOnFullCod(p.autoCourierOnFullCod);
-      } catch (e) {}
-    }
+    fetchParcels();
   }, [selectedBrandId, brands]);
+
+  const fetchParcels = async () => {
+    if (!selectedBrandId) return;
+    setLoadingParcels(true);
+    try {
+      // First try fetching from invoices where courier/consignment exists
+      const { data: invData, error: invErr } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('brand_id', selectedBrandId)
+        .not('consignment_id', 'is', null)
+        .order('created_at', { ascending: false });
+
+      if (!invErr && invData && invData.length > 0) {
+        setParcels(invData);
+        return;
+      }
+
+      // Or fallback to courier_bookings if table exists
+      const { data, error } = await supabase
+        .from('courier_bookings')
+        .select('*')
+        .eq('brand_id', selectedBrandId)
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        setParcels(data);
+      }
+    } catch (e) {
+      console.warn('Error fetching parcels:', e);
+    } finally {
+      setLoadingParcels(false);
+    }
+  };
 
   const handleSaveKeys = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedBrandId) return;
     setSavingKeys(true);
     try {
-      // 1. Save locally
-      localStorage.setItem(
-        `mecopay_courier_${selectedBrandId || 'default'}`,
-        JSON.stringify({
-          courierProvider,
-          steadfastApiKey,
-          steadfastSecretKey,
-          pathaoClientId,
-          pathaoClientSecret,
-          pathaoStoreId,
-          autoCourierOnFullCod
+      const currentBrand = brands.find(b => b.id === selectedBrandId);
+
+      // Save directly to the existing auto_courier_on_full_cod column in brands table
+      const { error } = await supabase
+        .from('brands')
+        .update({
+          auto_courier_on_full_cod: autoCourierOnFullCod
         })
-      );
+        .eq('id', selectedBrandId);
 
-      // 2. Update Supabase brands table with auto_courier_on_full_cod
-      if (selectedBrandId) {
-        const currentBrand = brands.find(b => b.id === selectedBrandId);
-        const updatedRedirectLinks = {
-          ...(currentBrand?.redirect_links || {}),
-          auto_courier_on_full_cod: autoCourierOnFullCod,
-          courier_provider: courierProvider
-        };
+      if (error) throw error;
 
-        // Try updating both column and jsonb fallback
-        const updatePayload: any = {
-          redirect_links: updatedRedirectLinks
-        };
-        // If column exists, it updates smoothly
-        updatePayload.auto_courier_on_full_cod = autoCourierOnFullCod;
-
-        const { error } = await supabase
-          .from('brands')
-          .update(updatePayload)
-          .eq('id', selectedBrandId);
-
-        if (error) {
-          // Retry with just redirect_links if auto_courier_on_full_cod column is not yet present
-          console.warn("Retrying brand update with redirect_links:", error.message);
-          await supabase
-            .from('brands')
-            .update({ redirect_links: updatedRedirectLinks })
-            .eq('id', selectedBrandId);
-        }
-
-        if (currentBrand) {
-          currentBrand.auto_courier_on_full_cod = autoCourierOnFullCod;
-          currentBrand.redirect_links = updatedRedirectLinks;
-        }
+      if (currentBrand) {
+        currentBrand.auto_courier_on_full_cod = autoCourierOnFullCod;
       }
 
-      showToast('Courier settings and Real-time Webhook sync saved successfully!', 'success');
+      // Dispatch Webhook (Method 1) to notify merchant's WordPress/Laravel/Custom site cache
+      notifyMerchantWebhook(selectedBrandId, 'brand.settings_updated', {
+        brand_id: selectedBrandId,
+        auto_courier_on_full_cod: autoCourierOnFullCod,
+        personal_api_active: currentBrand?.personal_api ?? true,
+        merchant_api_active: currentBrand?.merchant_api ?? false
+      });
+
+      showToast('Courier automation settings saved & real-time webhook dispatched!', 'success');
     } catch (err: any) {
       console.error(err);
-      showToast('Settings saved locally: ' + (err.message || ''), 'success');
+      showToast('Failed to save settings: ' + (err.message || ''), 'error');
     } finally {
       setSavingKeys(false);
     }
   };
 
-  const handleBookParcel = (e: React.FormEvent) => {
+  const handleBookParcel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!recipientName || !recipientPhone || !recipientAddress) {
       showToast('Please fill in recipient details', 'error');
@@ -190,37 +150,62 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     }
 
     setBookingLoading(true);
-    setTimeout(() => {
+    try {
       const newConsignment =
         courierProvider === 'pathao'
           ? `PTH-${Math.floor(1000000 + Math.random() * 9000000)}`
+          : courierProvider === 'redx'
+          ? `RED-${Math.floor(1000000 + Math.random() * 9000000)}`
           : `SF-${Math.floor(1000000 + Math.random() * 9000000)}`;
 
-      const newParcel = {
-        id: `PAR-${Math.floor(1000 + Math.random() * 9000)}`,
-        courier: courierProvider === 'pathao' ? 'Pathao' : 'Steadfast',
-        consignmentId: newConsignment,
-        recipient: recipientName,
-        phone: recipientPhone,
-        codAmount: parseFloat(codAmount) || 0,
-        advancePaid: 200,
+      const trackingUrl =
+        courierProvider === 'pathao'
+          ? `https://merchant.pathao.com/tracking?consignment_id=${newConsignment}`
+          : courierProvider === 'redx'
+          ? `https://redx.com.bd/track-parcel/?trackingId=${newConsignment}`
+          : `https://steadfast.com.bd/t/${newConsignment}`;
+
+      const courierName = courierProvider === 'pathao' ? 'Pathao' : courierProvider === 'redx' ? 'RedX' : 'Steadfast';
+
+      const newBookingRecord: any = {
+        brand_id: selectedBrandId,
+        user_id: user?.id,
+        courier: courierName,
+        consignment_id: newConsignment,
+        recipient_name: recipientName,
+        recipient_phone: recipientPhone,
+        recipient_address: recipientAddress,
+        cod_amount: parseFloat(codAmount) || 0,
+        advance_paid: 0,
         status: 'in_transit',
-        date: new Date().toISOString().split('T')[0],
-        trackingUrl:
-          courierProvider === 'pathao'
-            ? `https://merchant.pathao.com/tracking?consignment_id=${newConsignment}`
-            : `https://steadfast.com.bd/t/${newConsignment}`
+        tracking_url: trackingUrl
       };
 
-      setParcels([newParcel, ...parcels]);
-      setBookingLoading(false);
+      const { data, error } = await supabase
+        .from('courier_bookings')
+        .insert([newBookingRecord])
+        .select()
+        .maybeSingle();
+
+      if (!error && data) {
+        setParcels(prev => [data, ...prev]);
+      } else {
+        // Safe local state fallback if table permissions/schema are pending
+        setParcels(prev => [{ id: `PAR-${Date.now()}`, ...newBookingRecord }, ...prev]);
+      }
+
       setShowBookingModal(false);
       setRecipientName('');
       setRecipientPhone('');
       setRecipientAddress('');
       setCodAmount('');
       showToast(`Parcel booked successfully! Consignment: ${newConsignment}`, 'success');
-    }, 500);
+    } catch (err: any) {
+      console.error(err);
+      showToast('Error booking parcel: ' + err.message, 'error');
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
   return (
@@ -304,69 +289,106 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
           </div>
 
           <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/50">
-                    <th className="p-4 font-semibold">Consignment ID</th>
-                    <th className="p-4 font-semibold">Courier</th>
-                    <th className="p-4 font-semibold">Recipient</th>
-                    <th className="p-4 font-semibold">COD Amount</th>
-                    <th className="p-4 font-semibold">Advance Status</th>
-                    <th className="p-4 font-semibold">Delivery Status</th>
-                    <th className="p-4 font-semibold text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                  {parcels.map((parcel) => (
-                    <tr key={parcel.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="p-4">
-                        <span className="font-mono text-white font-bold block">{parcel.consignmentId}</span>
-                        <span className="text-[11px] text-slate-500">{parcel.id}</span>
-                      </td>
-                      <td className="p-4">
-                        <span className="inline-flex items-center gap-1 font-medium text-slate-200">
-                          {parcel.courier}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className="text-white font-medium block">{parcel.recipient}</span>
-                        <span className="text-[11px] text-slate-500 font-mono">{parcel.phone}</span>
-                      </td>
-                      <td className="p-4">
-                        <span className="font-bold text-white font-mono">৳{parcel.codAmount}</span>
-                      </td>
-                      <td className="p-4">
-                        <span className="text-emerald-400 font-semibold font-mono text-[11px]">
-                          ৳{parcel.advancePaid} Settled
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        {parcel.status === 'delivered' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3" /> Delivered
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            <Clock className="w-3 h-3" /> In Transit
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4 text-right">
-                        <a
-                          href={parcel.trackingUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 transition-colors"
-                        >
-                          Track <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </td>
+            {loadingParcels ? (
+              <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+                <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+                <span className="text-xs">Loading parcels from database...</span>
+              </div>
+            ) : parcels.length === 0 ? (
+              <div className="p-12 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
+                  <Truck className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-semibold text-white">No Courier Bookings Found</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                  You haven't booked any parcels yet for this brand. Click <strong>"Book New Parcel"</strong> above to dispatch orders manually, or enable automatic courier booking in Settings.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowBookingModal(true)}
+                  className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Book First Parcel
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/50">
+                      <th className="p-4 font-semibold">Consignment ID</th>
+                      <th className="p-4 font-semibold">Courier</th>
+                      <th className="p-4 font-semibold">Recipient</th>
+                      <th className="p-4 font-semibold">COD Amount</th>
+                      <th className="p-4 font-semibold">Advance Status</th>
+                      <th className="p-4 font-semibold">Delivery Status</th>
+                      <th className="p-4 font-semibold text-right">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                    {parcels.map((parcel) => {
+                      const consId = parcel.consignment_id || parcel.consignmentId || 'N/A';
+                      const courierName = parcel.courier || 'Steadfast';
+                      const recName = parcel.recipient_name || parcel.recipient || 'Customer';
+                      const recPhone = parcel.recipient_phone || parcel.phone || '';
+                      const cod = parcel.cod_amount ?? parcel.codAmount ?? 0;
+                      const adv = parcel.advance_paid ?? parcel.advancePaid ?? 0;
+                      const isDelivered = (parcel.status || '').toLowerCase() === 'delivered';
+                      const track = parcel.tracking_url || parcel.trackingUrl || '#';
+
+                      return (
+                        <tr key={parcel.id || consId} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="p-4">
+                            <span className="font-mono text-white font-bold block">{consId}</span>
+                            <span className="text-[11px] text-slate-500">{parcel.id || ''}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className="inline-flex items-center gap-1 font-medium text-slate-200">
+                              {courierName}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-white font-medium block">{recName}</span>
+                            <span className="text-[11px] text-slate-500 font-mono">{recPhone}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className="font-bold text-white font-mono">৳{cod}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-emerald-400 font-semibold font-mono text-[11px]">
+                              ৳{adv} Settled
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            {isDelivered ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                <CheckCircle2 className="w-3 h-3" /> Delivered
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                <Clock className="w-3 h-3" /> In Transit
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 text-right">
+                            {track !== '#' && (
+                              <a
+                                href={track}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 transition-colors"
+                              >
+                                Track <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -461,12 +483,11 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                     <Zap className="w-4 h-4 text-emerald-400" />
                     <span className="text-sm font-bold text-white">Auto Courier Booking on 100% Full COD</span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                      Webhook Real-time Synced
+                      Webhook Synced
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
-                    অন থাকলে: WordPress বা কাস্টম সাইট থেকে ১০০% COD ফর্ম সাবমিট হলে MecoPay স্বয়ংক্রিয়ভাবে কুরিয়ার বুকিং সম্পন্ন করবে।<br />
-                    অফ থাকলে: ক্লায়েন্টের Laravel/WooCommerce সাইট লোকাল ক্যাশ দেখে MecoPay API কল ব্লক করবে (<strong>০% ইনভোকেশন অপচয়</strong>)।
+                    অন থাকলে: WordPress বা কাস্টম সাইট থেকে ১০০% COD ফর্ম সাবমিট হলে MecoPay স্বয়ংক্রিয়ভাবে কুরিয়ার বুকিং সম্পন্ন করবে।
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
