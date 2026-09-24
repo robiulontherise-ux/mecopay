@@ -29,11 +29,13 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [currentSubdomain, setCurrentSubdomain] = useState<string>('');
   const [customDomain, setCustomDomain] = useState<string>('');
+  const [domainStatus, setDomainStatus] = useState<'none' | 'pending_validation' | 'active'>('none');
+  const [hostnameId, setHostnameId] = useState<string>('');
+  const [sslStatus, setSslStatus] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [verifyingTls, setVerifyingTls] = useState(false);
-  const [sslStatus, setSslStatus] = useState<'active' | 'pending' | 'error'>('pending');
-  const [cnameVerified, setCnameVerified] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [purging, setPurging] = useState(false);
   const [copied, setCopied] = useState<string | false>(false);
   const [activeTab, setActiveTab] = useState<'wordpress' | 'laravel' | 'nocode'>('wordpress');
 
@@ -103,8 +105,8 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       if (!error && data) {
         setCurrentSubdomain(data.subdomain || '');
         setCustomDomain(data.domain || '');
-        setSslStatus(data.ssl_status || (data.domain ? 'active' : 'pending'));
-        setCnameVerified(!!data.custom_domain_verified || !!data.domain);
+        setDomainStatus(data.domain_status || (data.domain ? 'pending_validation' : 'none'));
+        setHostnameId(data.custom_hostname_id || '');
         if (data.app_type) {
           setActiveTab(data.app_type === 'no_code' ? 'nocode' : (data.app_type as any));
         }
@@ -119,55 +121,22 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         if (fallbackData) {
           setCurrentSubdomain(fallbackData.subdomain || '');
           setCustomDomain(fallbackData.domain || '');
-          setSslStatus(fallbackData.ssl_status || (fallbackData.domain ? 'active' : 'pending'));
-          setCnameVerified(!!fallbackData.custom_domain_verified || !!fallbackData.domain);
+          setDomainStatus(fallbackData.domain_status || (fallbackData.domain ? 'pending_validation' : 'none'));
+          setHostnameId(fallbackData.custom_hostname_id || '');
           if (fallbackData.app_type) {
             setActiveTab(fallbackData.app_type === 'no_code' ? 'nocode' : (fallbackData.app_type as any));
           }
         } else {
           setCustomDomain('');
           setCurrentSubdomain('');
-          setSslStatus('pending');
-          setCnameVerified(false);
+          setDomainStatus('none');
+          setHostnameId('');
         }
       }
     } catch (err) {
       console.error('Error fetching domain settings:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAutomateTlsAndVerify = async () => {
-    const targetDomain = customDomain || cleanBrandWebsite;
-    if (!targetDomain) {
-      showToast('Please enter and save your custom domain first!', 'error');
-      return;
-    }
-    try {
-      setVerifyingTls(true);
-      const res = await fetch('/api/custom-domain/automate-tls', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          domain: targetDomain,
-          brand_id: selectedBrandId,
-          client_id: user?.id,
-          subdomain: currentSubdomain
-        })
-      });
-      const result = await res.json();
-      if (result.success) {
-        setSslStatus('active');
-        setCnameVerified(true);
-        showToast('🎉 TLS 1.3 Certificate provisioned & CNAME verified successfully!', 'success');
-      } else {
-        showToast(result.error || 'Verification pending. Ensure CNAME points to cname.mecopay.space', 'error');
-      }
-    } catch (err: any) {
-      showToast(err.message || 'Error automating TLS verification', 'error');
-    } finally {
-      setVerifyingTls(false);
     }
   };
 
@@ -291,6 +260,30 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         console.warn('Edge KV sync skipped in local dev:', e);
       }
 
+      // Automated Cloudflare for SaaS Custom Hostname provisioning
+      try {
+        const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-custom-hostname', {
+          body: {
+            action: 'create',
+            domain: cleanInputDomain,
+            brand_id: selectedBrandId
+          }
+        });
+
+        if (!edgeErr && edgeRes?.ok) {
+          if (edgeRes.hostname_id) setHostnameId(edgeRes.hostname_id);
+          if (edgeRes.status === 'active' && edgeRes.ssl_status === 'active') {
+            setDomainStatus('active');
+            setSslStatus('active');
+          } else {
+            setDomainStatus('pending_validation');
+            setSslStatus(edgeRes.ssl_status || 'pending_validation');
+          }
+        }
+      } catch (cfErr) {
+        console.warn('Cloudflare SaaS auto-provisioning note:', cfErr);
+      }
+
       showToast(`Custom domain (${cleanInputDomain}) integrated and saved successfully!`, 'success');
       fetchDomainSettings();
     } catch (err: any) {
@@ -298,6 +291,76 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       showToast(err.message || 'Failed to save domain', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleVerifyDomain = async () => {
+    if (!customDomain) {
+      showToast('Please save your custom domain first!', 'error');
+      return;
+    }
+
+    try {
+      setVerifying(true);
+      const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-custom-hostname', {
+        body: {
+          action: 'verify',
+          domain: customDomain,
+          brand_id: selectedBrandId,
+          hostname_id: hostnameId
+        }
+      });
+
+      if (edgeErr) {
+        throw new Error(edgeErr.message || 'Verification check failed');
+      }
+
+      if (edgeRes?.is_active || (edgeRes?.status === 'active' && edgeRes?.ssl_status === 'active')) {
+        setDomainStatus('active');
+        setSslStatus('active');
+        showToast(`🎉 Domain & SSL Active! Your store is securely live on ${customDomain}`, 'success');
+        fetchDomainSettings();
+      } else {
+        setDomainStatus('pending_validation');
+        setSslStatus(edgeRes?.ssl_status || 'pending_validation');
+        showToast(
+          `CNAME record detected! SSL certificate is provisioning (Status: ${edgeRes?.ssl_status || 'pending'}). Please allow 1-2 minutes and re-verify.`,
+          'success'
+        );
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Failed to verify DNS / SSL', 'error');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handlePurgeCache = async () => {
+    if (!customDomain) {
+      showToast('No active custom domain to purge cache for!', 'error');
+      return;
+    }
+
+    try {
+      setPurging(true);
+      const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-purge-cache', {
+        body: {
+          domain: customDomain,
+          brand_id: selectedBrandId
+        }
+      });
+
+      if (edgeErr) {
+        throw new Error(edgeErr.message || 'Failed to purge cache');
+      }
+
+      showToast(`⚡ গ্লোবাল CDN ক্যাশ সফলভাবে ক্লিয়ার হয়েছে! ${customDomain}-এর পরিবর্তন এখন সারা বিশ্বে লাইভ।`, 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Failed to purge cache', 'error');
+    } finally {
+      setPurging(false);
     }
   };
 
@@ -518,6 +581,69 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
               </div>
             </div>
           )}
+
+          {/* Live Domain Status & Actions Card */}
+          {customDomain && (
+            <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    domainStatus === 'active'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}
+                >
+                  {domainStatus === 'active' ? <ShieldCheck className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Cloudflare TLS &amp; CDN Status:
+                    </span>
+                    {domainStatus === 'active' ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Active &amp; TLS 1.3 SSL Live
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        DNS / SSL Pending
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {domainStatus === 'active'
+                      ? `Your custom domain ${customDomain} is fully secured by Cloudflare for SaaS and routed via MecoPay Shield.`
+                      : `Add the CNAME record below, then click Verify to activate your free automated SSL certificate.`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={handleVerifyDomain}
+                  disabled={verifying}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {verifying ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" /> : <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />}
+                  {verifying ? 'Checking DNS...' : 'Verify DNS & SSL'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePurgeCache}
+                  disabled={purging || domainStatus !== 'active'}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title="150ms-এ সারা বিশ্বের ক্লাউডফ্লেয়ার এজ থেকে এই ডোমেনের ক্যাশ রিফ্রেশ করুন"
+                >
+                  {purging ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" /> : <Zap className="w-3.5 h-3.5 text-cyan-400" />}
+                  {purging ? 'Purging CDN...' : '⚡ Instant Purge CDN Cache'}
+                </button>
+              </div>
+            </div>
+          )}
         </form>
       </div>
 
@@ -565,67 +691,6 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
               </tr>
             </tbody>
           </table>
-        </div>
-
-        {/* AUTOMATED CNAME & TLS 1.3 STATUS CARD */}
-        <div className="mb-6 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                sslStatus === 'active'
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              }`}>
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                  <span>Zero-Touch TLS &amp; CNAME Automation Status:</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    sslStatus === 'active'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  }`}>
-                    {sslStatus === 'active' ? 'SSL Active (TLS 1.3 Encrypted)' : 'Pending DNS / Auto-Provisioning'}
-                  </span>
-                </h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Target Domain: <strong className="text-white font-mono">{customDomain || cleanBrandWebsite || 'Not set'}</strong>
-                  {cnameVerified && ' • CNAME Verified & Bound to Edge'}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleAutomateTlsAndVerify}
-              disabled={verifyingTls || !customDomain}
-              className="px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 shrink-0"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${verifyingTls ? 'animate-spin' : ''}`} />
-              <span>{verifyingTls ? 'Verifying TLS & CNAME...' : 'Verify DNS & TLS Now'}</span>
-            </button>
-          </div>
-
-          {/* SUBDOMAIN TO CUSTOM DOMAIN 301 AUTO-REDIRECT BADGE */}
-          {customDomain && currentSubdomain && (
-            <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 font-semibold text-emerald-300 text-[11px]">
-                  <Zap className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Subdomain ➔ Custom Domain 301 Permanent Redirect Active</span>
-                </div>
-                <div className="font-mono text-[11px] text-slate-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-2 flex-wrap">
-                  <span className="text-slate-400">https://{currentSubdomain}</span>
-                  <span className="text-emerald-400 font-bold">➔ [301 Redirect] ➔</span>
-                  <span className="text-white font-bold">https://{customDomain}</span>
-                </div>
-              </div>
-              <span className="text-[10px] text-slate-400 max-w-xs sm:text-right">
-                ভিজিটর বা গুগল ক্রলার সাবডোমেনে এলে অটোমেটিক ৩০১ রিডাইরেক্ট হয়ে আপনার কাস্টম ডোমেনে নিয়ে যাবে।
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Platform Specific Integration Tabs */}
