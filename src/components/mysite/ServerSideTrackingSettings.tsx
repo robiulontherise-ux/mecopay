@@ -22,6 +22,19 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
   const [tiktokPixelId, setTiktokPixelId] = useState('');
   const [tiktokAccessToken, setTiktokAccessToken] = useState('');
 
+  // Twitter / X CAPI
+  const [twitterPixelId, setTwitterPixelId] = useState('');
+  const [twitterToken, setTwitterToken] = useState('');
+
+  // LinkedIn CAPI
+  const [linkedinPartnerId, setLinkedinPartnerId] = useState('');
+  const [linkedinAccessToken, setLinkedinAccessToken] = useState('');
+
+  // Pinterest CAPI
+  const [pinterestTagId, setPinterestTagId] = useState('');
+  const [pinterestAccessToken, setPinterestAccessToken] = useState('');
+  const [pinterestAdAccountId, setPinterestAdAccountId] = useState('');
+
   const [trackPageView, setTrackPageView] = useState(true);
   const [trackInitiateCheckout, setTrackInitiateCheckout] = useState(true);
   const [trackPurchase, setTrackPurchase] = useState(true);
@@ -77,6 +90,13 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
         setGa4ApiSecret(data.ga4_api_secret || '');
         setTiktokPixelId(data.tiktok_pixel_id || '');
         setTiktokAccessToken(data.tiktok_access_token || '');
+        setTwitterPixelId(data.twitter_pixel_id || '');
+        setTwitterToken(data.twitter_token || '');
+        setLinkedinPartnerId(data.linkedin_partner_id || '');
+        setLinkedinAccessToken(data.linkedin_access_token || '');
+        setPinterestTagId(data.pinterest_tag_id || '');
+        setPinterestAccessToken(data.pinterest_access_token || '');
+        setPinterestAdAccountId(data.pinterest_ad_account_id || '');
         if (data.track_page_view !== undefined) setTrackPageView(data.track_page_view);
         if (data.track_checkout !== undefined) setTrackInitiateCheckout(data.track_checkout);
         if (data.track_purchase !== undefined) setTrackPurchase(data.track_purchase);
@@ -93,6 +113,13 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
             setGa4ApiSecret(p.ga4ApiSecret || '');
             setTiktokPixelId(p.tiktokPixelId || '');
             setTiktokAccessToken(p.tiktokAccessToken || '');
+            setTwitterPixelId(p.twitterPixelId || '');
+            setTwitterToken(p.twitterToken || '');
+            setLinkedinPartnerId(p.linkedinPartnerId || '');
+            setLinkedinAccessToken(p.linkedinAccessToken || '');
+            setPinterestTagId(p.pinterestTagId || '');
+            setPinterestAccessToken(p.pinterestAccessToken || '');
+            setPinterestAdAccountId(p.pinterestAdAccountId || '');
           } catch (e) {}
         } else {
           setMetaPixelId('');
@@ -102,6 +129,13 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
           setGa4ApiSecret('');
           setTiktokPixelId('');
           setTiktokAccessToken('');
+          setTwitterPixelId('');
+          setTwitterToken('');
+          setLinkedinPartnerId('');
+          setLinkedinAccessToken('');
+          setPinterestTagId('');
+          setPinterestAccessToken('');
+          setPinterestAdAccountId('');
         }
       }
     } catch (err) {
@@ -130,6 +164,16 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
       tiktok_enabled: Boolean(tiktokPixelId && tiktokAccessToken),
       tiktok_pixel_id: tiktokPixelId.trim(),
       tiktok_access_token: tiktokAccessToken.trim(),
+      twitter_enabled: Boolean(twitterPixelId && twitterToken),
+      twitter_pixel_id: twitterPixelId.trim(),
+      twitter_token: twitterToken.trim(),
+      linkedin_enabled: Boolean(linkedinPartnerId && linkedinAccessToken),
+      linkedin_partner_id: linkedinPartnerId.trim(),
+      linkedin_access_token: linkedinAccessToken.trim(),
+      pinterest_enabled: Boolean(pinterestTagId && pinterestAccessToken),
+      pinterest_tag_id: pinterestTagId.trim(),
+      pinterest_access_token: pinterestAccessToken.trim(),
+      pinterest_ad_account_id: pinterestAdAccountId.trim(),
       track_page_view: trackPageView,
       track_time_spent: true,
       track_checkout: trackInitiateCheckout,
@@ -343,6 +387,113 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
                   value={tiktokAccessToken}
                   onChange={(e) => setTiktokAccessToken(e.target.value)}
                   placeholder="Enter TikTok API token"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Twitter / X Conversions API */}
+          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+              Twitter / X Conversions API (v12)
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Pixel / Measurement ID</label>
+                <input
+                  type="text"
+                  value={twitterPixelId}
+                  onChange={(e) => setTwitterPixelId(e.target.value)}
+                  placeholder="e.g. o0xxx"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">API Bearer Token</label>
+                <input
+                  type="password"
+                  value={twitterToken}
+                  onChange={(e) => setTwitterToken(e.target.value)}
+                  placeholder="Enter Twitter/X Conversions Token"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* LinkedIn Conversions API */}
+          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+              LinkedIn Conversions API (REST v202401)
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Partner / Conversion ID</label>
+                <input
+                  type="text"
+                  value={linkedinPartnerId}
+                  onChange={(e) => setLinkedinPartnerId(e.target.value)}
+                  placeholder="e.g. 1234567"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">OAuth 2.0 Access Token</label>
+                <input
+                  type="password"
+                  value={linkedinAccessToken}
+                  onChange={(e) => setLinkedinAccessToken(e.target.value)}
+                  placeholder="Enter LinkedIn Access Token"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pinterest Conversions API */}
+          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+              Pinterest Conversions API (v5)
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Tag / Advertiser ID</label>
+                <input
+                  type="text"
+                  value={pinterestTagId}
+                  onChange={(e) => setPinterestTagId(e.target.value)}
+                  placeholder="e.g. 2612345678901"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Ad Account ID (Optional)</label>
+                <input
+                  type="text"
+                  value={pinterestAdAccountId}
+                  onChange={(e) => setPinterestAdAccountId(e.target.value)}
+                  placeholder="Default: 'me'"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">API Access Token</label>
+                <input
+                  type="password"
+                  value={pinterestAccessToken}
+                  onChange={(e) => setPinterestAccessToken(e.target.value)}
+                  placeholder="pina_..."
                   className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
                 />
               </div>

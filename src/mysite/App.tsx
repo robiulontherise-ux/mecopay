@@ -212,6 +212,17 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       
       if (settingsData) {
         setSiteSettings(settingsData);
+
+        // Subdomain to Custom Domain 301/Canonical Redirect:
+        // If the brand has a custom domain configured and user hits the free subdomain outside iframe:
+        if (settingsData.domain && !builderUser && typeof window !== 'undefined' && window.self === window.top) {
+          const currentHost = window.location.hostname.toLowerCase().trim();
+          const targetDomain = settingsData.domain.toLowerCase().trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+          if (targetDomain && currentHost !== targetDomain && currentHost.endsWith('.mecopay.space')) {
+            window.location.replace(`https://${targetDomain}${window.location.pathname}${window.location.search}`);
+            return;
+          }
+        }
       }
       
       // Always set the browser tab title to the subdomain or custom domain, prioritizing the URL params

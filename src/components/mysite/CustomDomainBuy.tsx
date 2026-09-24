@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Search, CheckCircle2, ShieldCheck, Zap, Globe, Sparkles, ExternalLink, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Search, CheckCircle2, ShieldCheck, Zap, Globe, Sparkles, ExternalLink, ArrowRight, AlertCircle, X, Mail } from 'lucide-react';
 import { showToast } from '../../lib/toast';
 
 interface CustomDomainBuyProps {
@@ -12,6 +12,8 @@ export default function CustomDomainBuy({ user, brands = [] }: CustomDomainBuyPr
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [selectedTld, setSelectedTld] = useState('.com');
+  const [showBuyNotice, setShowBuyNotice] = useState(false);
+  const [targetDomain, setTargetDomain] = useState('');
 
   const domainExtensions = [
     { tld: '.com', price: '৳1,250/yr', popular: true, desc: 'Global Commercial Standard' },
@@ -37,6 +39,11 @@ export default function CustomDomainBuy({ user, brands = [] }: CustomDomainBuyPr
 
   const cleanName = searchTerm.trim().toLowerCase().replace(/\.[a-z.]+$/, '').replace(/[^a-z0-9-]/g, '');
 
+  const triggerBuyWarning = (domainStr: string) => {
+    setTargetDomain(domainStr);
+    setShowBuyNotice(true);
+  };
+
   return (
     <div className="max-w-4xl space-y-6">
       <div>
@@ -47,6 +54,24 @@ export default function CustomDomainBuy({ user, brands = [] }: CustomDomainBuyPr
         <p className="text-slate-400 text-sm mt-1">
           Search, register, and automatically link premium custom domains directly to your MecoPay store.
         </p>
+      </div>
+
+      {/* Notice Banner */}
+      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-start gap-3.5">
+        <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+          <AlertCircle className="w-5 h-5" />
+        </div>
+        <div className="text-xs leading-relaxed space-y-1">
+          <p className="font-bold text-amber-200 text-sm">
+            প্রিয় মার্চেন্ট, দ্রুতই আমাদের ইন-হাউস অটোমেটেড ডোমেইন রেজিস্ট্রেশন সার্ভিস যুক্ত হতে যাচ্ছে!
+          </p>
+          <p className="text-slate-300">
+            আপাতত আপনি যেকোনো ডোমেইন প্রোভাইডার (যেমন: Namecheap, GoDaddy, Porkbun) থেকে ডোমেইন কিনে সহজে CNAME দিয়ে কানেক্ট করতে পারেন।
+          </p>
+          <p className="text-slate-300">
+            আপনার যদি ডুয়াল কারেন্সি কার্ড না থাকে বা ডোমেইন কিনতে সমস্যা হয়, তবে সরাসরি আমাদের সাথে যোগাযোগ করুন: <a href="mailto:support@mecopay.space" className="text-amber-300 underline font-semibold">support@mecopay.space</a> — আমাদের টিম আপনার নামে ডোমেইন কিনে সেটআপ করে দেবে।
+          </p>
+        </div>
       </div>
 
       {/* Domain Search Box */}
@@ -102,8 +127,8 @@ export default function CustomDomainBuy({ user, brands = [] }: CustomDomainBuyPr
                   <span className="text-xs text-slate-400 block">/ 1 Year</span>
                 </div>
                 <button
-                  onClick={() => showToast(`Selected ${cleanName}.com for checkout. Connecting payment gateway...`, 'success')}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs transition-all flex items-center gap-1.5"
+                  onClick={() => triggerBuyWarning(`${cleanName}.com`)}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   Buy Now <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -119,8 +144,8 @@ export default function CustomDomainBuy({ user, brands = [] }: CustomDomainBuyPr
                     <span className="text-xs text-slate-400 block">Available</span>
                   </div>
                   <button
-                    onClick={() => showToast(`Selected ${cleanName}${tld} for purchase`, 'success')}
-                    className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/20"
+                    onClick={() => triggerBuyWarning(`${cleanName}${tld}`)}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/20 cursor-pointer"
                   >
                     Select
                   </button>
@@ -178,6 +203,72 @@ export default function CustomDomainBuy({ user, brands = [] }: CustomDomainBuyPr
           </div>
         </div>
       </div>
+
+      {/* Domain Buy Notice Modal */}
+      {showBuyNotice && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 sm:p-7 max-w-lg w-full shadow-2xl relative space-y-4">
+            <button
+              onClick={() => setShowBuyNotice(false)}
+              className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-white">
+                ডোমেইন রেজিস্ট্রেশন নোটিশ {targetDomain ? `(${targetDomain})` : ''}
+              </h3>
+              <p className="text-xs text-amber-400 font-medium mt-0.5">
+                MecoPay Automated Domain Service
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-950 border border-amber-500/30 rounded-xl text-slate-200 text-sm leading-relaxed space-y-2">
+              <p className="font-semibold text-amber-300">
+                প্রিয় মার্চেন্ট,
+              </p>
+              <p>
+                দ্রুতই আমাদের ইন-হাউস অটোমেটেড ডোমেইন রেজিস্ট্রেশন সার্ভিস যুক্ত হতে যাচ্ছে।
+              </p>
+              <p className="text-xs text-slate-300">
+                আপাতত আপনি যেকোনো ডোমেইন প্রোভাইডার (যেমন: Namecheap, GoDaddy, Porkbun) থেকে ডোমেইন কিনে সহজে CNAME দিয়ে কানেক্ট করতে পারেন।
+              </p>
+              <p className="text-xs text-slate-300">
+                আপনার যদি ডুয়াল কারেন্সি কার্ড না থাকে বা ডোমেইন কিনতে সমস্যা হয়, তবে সরাসরি আমাদের সাথে যোগাযোগ করুন:
+              </p>
+              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <span className="font-mono text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <Mail className="w-4 h-4 text-emerald-400" />
+                  support@mecopay.space
+                </span>
+                <a
+                  href="mailto:support@mecopay.space?subject=Need help purchasing custom domain"
+                  className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded text-xs transition-all"
+                >
+                  ইমেইল করুন
+                </a>
+              </div>
+              <p className="text-[11px] text-slate-400 italic">
+                * আমাদের টিম আপনার নামে যেকোনো ডোমেইন কিনে সম্পূর্ণ সেটআপ করে দেবে।
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowBuyNotice(false)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-sm transition-all"
+              >
+                বন্ধ করুন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

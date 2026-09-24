@@ -1608,6 +1608,35 @@ export default {
       return new Response('ok', { headers: corsHeaders });
     }
 
+    const url = new URL(request.url);
+    const host = (request.headers.get('host') || '').toLowerCase().trim();
+
+    // =========================================================================
+    // ১. সাবডোমেন টু কাস্টম ডোমেন ৩০১ অটো-রিডাইরেক্ট (Canonical SEO Engine)
+    // =========================================================================
+    // ক্লায়েন্টের যদি ফ্রি সাবডোমেন এবং নিজস্ব কাস্টম ডোমেন ২টাই থাকে, সাবডোমেনে ভিজিটর এলে
+    // এই ইঞ্জিন স্বয়ংক্রিয়ভাবে ৩০১ পার্মানেন্ট রিডাইরেক্ট করে কাস্টম ডোমেনে পাঠিয়ে দেবে।
+    if (host.endsWith('.mecopay.space') && !host.startsWith('api.') && !host.startsWith('checkout.') && host !== 'mecopay.space' && host !== 'www.mecopay.space') {
+      try {
+        const subSlug = host.replace('.mecopay.space', '').trim();
+        const supabaseUrl = (env.SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co').replace(/\\/+$/, '');
+        const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3b251YWt2aGVyem9mcXhpbW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MzA5MDEsImV4cCI6MjEwMDQwNjkwMX0.29mIqf8zwUczPXIfIILw6ybJRKJ_l8HUttNU-6s-cL0';
+        
+        const siteCheck = await fetch(\`\${supabaseUrl}/rest/v1/site_settings?subdomain=eq.\${subSlug}&select=domain,canonical_domain&limit=1\`, {
+          headers: { 'apikey': supabaseKey, 'Authorization': \`Bearer \${supabaseKey}\` }
+        });
+        if (siteCheck.ok) {
+          const siteList = await siteCheck.json();
+          const targetDomain = siteList?.[0]?.domain || siteList?.[0]?.canonical_domain;
+          if (targetDomain && targetDomain !== host) {
+            return Response.redirect(\`https://\${targetDomain}\${url.pathname}\${url.search}\`, 301);
+          }
+        }
+      } catch (redirectErr) {
+        console.warn('Subdomain canonical redirect check failed:', redirectErr);
+      }
+    }
+
     try {
       let payload = {};
       try {

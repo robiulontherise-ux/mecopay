@@ -31,6 +31,9 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const [customDomain, setCustomDomain] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [verifyingTls, setVerifyingTls] = useState(false);
+  const [sslStatus, setSslStatus] = useState<'active' | 'pending' | 'error'>('pending');
+  const [cnameVerified, setCnameVerified] = useState(false);
   const [copied, setCopied] = useState<string | false>(false);
   const [activeTab, setActiveTab] = useState<'wordpress' | 'laravel' | 'nocode'>('wordpress');
 
@@ -100,6 +103,8 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       if (!error && data) {
         setCurrentSubdomain(data.subdomain || '');
         setCustomDomain(data.domain || '');
+        setSslStatus(data.ssl_status || (data.domain ? 'active' : 'pending'));
+        setCnameVerified(!!data.custom_domain_verified || !!data.domain);
         if (data.app_type) {
           setActiveTab(data.app_type === 'no_code' ? 'nocode' : (data.app_type as any));
         }
@@ -114,18 +119,55 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         if (fallbackData) {
           setCurrentSubdomain(fallbackData.subdomain || '');
           setCustomDomain(fallbackData.domain || '');
+          setSslStatus(fallbackData.ssl_status || (fallbackData.domain ? 'active' : 'pending'));
+          setCnameVerified(!!fallbackData.custom_domain_verified || !!fallbackData.domain);
           if (fallbackData.app_type) {
             setActiveTab(fallbackData.app_type === 'no_code' ? 'nocode' : (fallbackData.app_type as any));
           }
         } else {
           setCustomDomain('');
           setCurrentSubdomain('');
+          setSslStatus('pending');
+          setCnameVerified(false);
         }
       }
     } catch (err) {
       console.error('Error fetching domain settings:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAutomateTlsAndVerify = async () => {
+    const targetDomain = customDomain || cleanBrandWebsite;
+    if (!targetDomain) {
+      showToast('Please enter and save your custom domain first!', 'error');
+      return;
+    }
+    try {
+      setVerifyingTls(true);
+      const res = await fetch('/api/custom-domain/automate-tls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: targetDomain,
+          brand_id: selectedBrandId,
+          client_id: user?.id,
+          subdomain: currentSubdomain
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setSslStatus('active');
+        setCnameVerified(true);
+        showToast('🎉 TLS 1.3 Certificate provisioned & CNAME verified successfully!', 'success');
+      } else {
+        showToast(result.error || 'Verification pending. Ensure CNAME points to cname.mecopay.space', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error automating TLS verification', 'error');
+    } finally {
+      setVerifyingTls(false);
     }
   };
 
@@ -523,6 +565,67 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
               </tr>
             </tbody>
           </table>
+        </div>
+
+        {/* AUTOMATED CNAME & TLS 1.3 STATUS CARD */}
+        <div className="mb-6 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                sslStatus === 'active'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              }`}>
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                  <span>Zero-Touch TLS &amp; CNAME Automation Status:</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    sslStatus === 'active'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  }`}>
+                    {sslStatus === 'active' ? 'SSL Active (TLS 1.3 Encrypted)' : 'Pending DNS / Auto-Provisioning'}
+                  </span>
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Target Domain: <strong className="text-white font-mono">{customDomain || cleanBrandWebsite || 'Not set'}</strong>
+                  {cnameVerified && ' • CNAME Verified & Bound to Edge'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAutomateTlsAndVerify}
+              disabled={verifyingTls || !customDomain}
+              className="px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 shrink-0"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${verifyingTls ? 'animate-spin' : ''}`} />
+              <span>{verifyingTls ? 'Verifying TLS & CNAME...' : 'Verify DNS & TLS Now'}</span>
+            </button>
+          </div>
+
+          {/* SUBDOMAIN TO CUSTOM DOMAIN 301 AUTO-REDIRECT BADGE */}
+          {customDomain && currentSubdomain && (
+            <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 font-semibold text-emerald-300 text-[11px]">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Subdomain ➔ Custom Domain 301 Permanent Redirect Active</span>
+                </div>
+                <div className="font-mono text-[11px] text-slate-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-2 flex-wrap">
+                  <span className="text-slate-400">https://{currentSubdomain}</span>
+                  <span className="text-emerald-400 font-bold">➔ [301 Redirect] ➔</span>
+                  <span className="text-white font-bold">https://{customDomain}</span>
+                </div>
+              </div>
+              <span className="text-[10px] text-slate-400 max-w-xs sm:text-right">
+                ভিজিটর বা গুগল ক্রলার সাবডোমেনে এলে অটোমেটিক ৩০১ রিডাইরেক্ট হয়ে আপনার কাস্টম ডোমেনে নিয়ে যাবে।
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Platform Specific Integration Tabs */}

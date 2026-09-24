@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, UploadCloud, ArrowRight, Code, Box, FolderGit2, Loader2, Plus, FileText } from 'lucide-react';
+import { Globe, UploadCloud, ArrowRight, Code, Box, FolderGit2, Loader2, Plus, FileText, Server, AlertCircle, X } from 'lucide-react';
 import MySiteApp from '../mysite/App';
 import { supabase } from '../lib/supabase';
 
@@ -9,6 +9,7 @@ export default function WebsiteBuilderHub({ user }) {
   const [selectedBrand, setSelectedBrand] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showHostingModal, setShowHostingModal] = useState(false);
   
   // New state for brand logic
   const [brandSiteExists, setBrandSiteExists] = useState(false);
@@ -311,23 +312,76 @@ await supabase.from('client_app_data').insert([
           </div>
         </div>
 
-        {/* Option 2: Upload */}
+        {/* Option 2: Hosting + Cloud VPS */}
         <div 
-          onClick={() => setActiveView('upload')}
-          className="bg-slate-900 border border-slate-800 p-8 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.15)] transition-all group"
+          onClick={() => setShowHostingModal(true)}
+          className="bg-slate-900 border border-slate-800 p-8 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.15)] transition-all group relative"
         >
           <div className="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-            <Code className="w-7 h-7 text-blue-400" />
+            <Server className="w-7 h-7 text-blue-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-3">Upload Custom Backend</h2>
-          <p className="text-slate-400 mb-6 line-clamp-3">
-            Already have a WordPress or Laravel site? Upload your .zip file. We'll automatically route the domain to a dedicated Oracle Cloud VPS.
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[11px] font-semibold mb-2">
+            WooCommerce, Laravel & All Custom Websites
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">
+            Hosting + MecoPay Cloud VPS
+          </h2>
+          <p className="text-slate-400 mb-6 line-clamp-3 text-sm leading-relaxed">
+            Already have a WooCommerce, WordPress, Laravel, or custom backend? Deploy your code on our high-speed MecoPay Dedicated Hosting + Cloud VPS infrastructure with instant SSL and global CDN.
           </p>
-          <div className="flex items-center text-blue-400 font-medium group-hover:gap-2 transition-all">
-            Upload .zip File <ArrowRight className="w-4 h-4 ml-1" />
+          <div className="flex items-center text-blue-400 font-medium group-hover:gap-2 transition-all text-sm">
+            Deploy on Cloud VPS <ArrowRight className="w-4 h-4 ml-1" />
           </div>
         </div>
       </div>
+
+      {/* Hosting + VPS Coming Soon Warning Modal */}
+      {showHostingModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 sm:p-7 max-w-lg w-full shadow-2xl relative space-y-4">
+            <button
+              onClick={() => setShowHostingModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-white">
+                MecoPay High-Speed Hosting + Cloud VPS
+              </h3>
+              <p className="text-xs text-amber-400 font-medium mt-0.5">
+                WooCommerce, WordPress, Laravel & All Custom Websites
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-950 border border-amber-500/30 rounded-xl text-slate-200 text-sm leading-relaxed space-y-2">
+              <p className="font-semibold text-amber-300">
+                প্রিয় মার্চেন্ট,
+              </p>
+              <p>
+                খুব দ্রুতই আমাদের <strong>MecoPay Dedicated Hosting + Cloud VPS</strong> সার্ভিস পুরোদমে চালু হতে যাচ্ছে।
+              </p>
+              <p className="text-xs text-slate-300">
+                খুব শীঘ্রই আপনি সরাসরি আপনার WooCommerce, WordPress, Laravel সহ যেকোনো কাস্টম সাইটের জিপ ফাইল এখানে ডিপ্লয় করতে পারবেন এবং ডেডিকেটেড হাই-স্পিড সার্ভারের সুবিধা উপভোগ করতে পারবেন।
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowHostingModal(false)}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition-all"
+              >
+                বুঝেছি, ধন্যবাদ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
