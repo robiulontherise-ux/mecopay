@@ -183,7 +183,7 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
       showToast('Server-Side Tracking settings saved & edge synced!', 'success');
     } catch (err: any) {
       console.error('Error saving tracking settings:', err);
-      showToast(err.message || 'Saved locally, but database sync had an issue.', 'warning');
+      showToast(err.message || 'Saved locally, but database sync had an issue.', 'error');
     } finally {
       setSaving(false);
     }
@@ -198,7 +198,7 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
             Server-Side Tracking (CAPI & Analytics)
           </h2>
           <p className="text-slate-400 text-sm mt-1">
-            Bypass browser ad-blockers and iOS privacy restrictions with Cloudflare Edge Server-Side Tracking.
+            Bypass browser ad-blockers and iOS privacy restrictions with MecoPay Server-Side Tracking Engine.
           </p>
         </div>
 
@@ -225,7 +225,7 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs text-emerald-300">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <span>
-            Connected Domain: <strong className="text-white underline">{activeDomain}</strong>. Events will be tracked via Cloudflare Edge CAPI.
+            Connected Domain: <strong className="text-white underline">{activeDomain}</strong>. Events will be tracked via MecoPay Server CAPI Engine.
           </span>
         </div>
       )}

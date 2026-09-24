@@ -38,6 +38,8 @@ export interface Post {
       icon?: string;
     }>;
   };
+  summary?: string;
+  tags?: string[];
 }
 
 export interface Purchase {

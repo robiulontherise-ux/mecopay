@@ -618,7 +618,7 @@ HEADERS:
   Content-Type: application/json`}
               </pre>
               <p className="text-[11px] text-slate-400">
-                * কোনো Brand ID আলাদা পাস করার দরকার নেই—API Key থেকেই ক্লাউডফ্লেয়ার ওয়ার্কার সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে।
+                * কোনো Brand ID আলাদা পাস করার দরকার নেই—API Key থেকেই MecoPay Server Engine সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে।
               </p>
             </div>
 
@@ -834,7 +834,7 @@ HEADERS:
                 MecoPay Production API Endpoint
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed mt-1">
-                ডেভেলপারদের জন্য সিস্টেমে একটি মাত্র সেন্ট্রাল এন্ডপয়েন্ট রয়েছে। আপনার ব্যাকএন্ড/কন্ট্রোলার থেকে এই একক URL-এ POST রিকোয়েস্ট পাঠাবেন, ক্লাউডফ্লেয়ার ওয়ার্কার বাকি সব প্রোডাক্ট টাইপ ও রাউটিং হ্যান্ডেল করবে।
+                ডেভেলপারদের জন্য সিস্টেমে একটি মাত্র সেন্ট্রাল এন্ডপয়েন্ট রয়েছে। আপনার ব্যাকএন্ড/কন্ট্রোলার থেকে এই একক URL-এ POST রিকোয়েস্ট পাঠাবেন, MecoPay Server Engine বাকি সব প্রোডাক্ট টাইপ ও রাউটিং হ্যান্ডেল করবে।
               </p>
             </div>
 
@@ -858,7 +858,7 @@ HEADERS:
 Authorization: Bearer <YOUR_BRAND_API_KEY>`}
               </pre>
               <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
-                * ব্র্যান্ডের API Key পেতে ড্যাশবোর্ডের মেনু থেকে <strong>Brand</strong> সেকশনে যান। কোনো Brand ID আলাদা পাস করতে হবে না, API Key থেকে ওয়ার্কার অটো ব্র্যান্ড ডিটেক্ট করবে।
+                * ব্র্যান্ডের API Key পেতে ড্যাশবোর্ডের মেনু থেকে <strong>Brand</strong> সেকশনে যান। কোনো Brand ID আলাদা পাস করতে হবে না, API Key থেকে MecoPay Server Engine অটো ব্র্যান্ড ডিটেক্ট করবে।
               </p>
             </div>
           </div>
@@ -1600,7 +1600,7 @@ async function processBackgroundCourierBooking(env, brand, invoice) {
 }
 
 // =========================================================================
-// ক্লাউডফ্লেয়ার ওয়ার্কার মেইন হ্যান্ডলার (POST /v1/create-checkout)
+// MecoPay Server Engine মেইন হ্যান্ডলার (POST /v1/create-checkout)
 // =========================================================================
 export default {
   async fetch(request, env, ctx) {

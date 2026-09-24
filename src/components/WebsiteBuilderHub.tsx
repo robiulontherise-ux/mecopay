@@ -202,11 +202,11 @@ export default function WebsiteBuilderHub({ user }) {
               <div>
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Box className="w-5 h-5 text-fuchsia-400" />
-                  App Hosting & BaaS (Cloudflare + Supabase)
+                  App Hosting & BaaS (MecoPay Cloud Infrastructure)
                 </h2>
                 <p className="text-xs text-slate-400 mt-1 max-w-2xl">
                   Allow clients to upload their compiled frontend projects (React, Next.js, HTML/JS ZIP files). 
-                  They get a unique project ID to connect with your Supabase BaaS, and their uploaded files will be served via Cloudflare Workers.
+                  They get a unique project ID to connect with your BaaS, and their uploaded files will be served via MecoPay Global Edge Network.
                 </p>
               </div>
               <button
@@ -288,7 +288,7 @@ await supabase.from('client_app_data').insert([
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-white mb-3">Website Builder Hub</h1>
         <p className="text-slate-400 max-w-2xl text-lg">
-          Choose how you want to build your platform. Use our lightning-fast No-Code builder hosted on Cloudflare, or upload your own custom backend infrastructure.
+          Choose how you want to build your platform. Use our lightning-fast No-Code builder powered by MecoPay Cloud, or upload your own custom backend infrastructure.
         </p>
       </div>
       <div className="grid md:grid-cols-2 gap-6">
@@ -304,7 +304,7 @@ await supabase.from('client_app_data').insert([
             Build No-Code Website
           </h2>
           <p className="text-slate-400 mb-6 line-clamp-3">
-            Create a professional storefront in minutes. Zero coding required. Hosted instantly on our global Cloudflare Edge network for infinite scalability.
+            Create a professional storefront in minutes. Zero coding required. Hosted instantly on our global MecoPay Edge Network for infinite scalability.
           </p>
           <div className="flex items-center text-cyan-400 font-medium group-hover:gap-2 transition-all">
             Start Building <ArrowRight className="w-4 h-4 ml-1" />

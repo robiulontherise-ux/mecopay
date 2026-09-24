@@ -355,7 +355,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           </div>
           <h4 className="text-sm font-bold text-white mb-1">Website Fast CDN</h4>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Global Cloudflare edge caching serves your store at lightning speed with 99.99% uptime.
+            Global MecoPay High-Speed edge caching serves your store at lightning speed with 99.99% uptime.
           </p>
         </div>
 
@@ -567,7 +567,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
             {activeTab === 'wordpress' && (
               <p>
                 <strong>WordPress / WooCommerce:</strong> You do not need to purchase separate SSL or WAF plugins. Once
-                your domain CNAME points to MecoPay, your site benefits from Cloudflare DDoS bot protection and fast
+                your domain CNAME points to MecoPay, your site benefits from MecoPay Shield DDoS bot protection and fast
                 static caching automatically. Install the MecoPay WooCommerce plugin from Payments Hub to enable Dual
                 Gateway checkout.
               </p>

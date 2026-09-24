@@ -598,7 +598,7 @@ async function startServer() {
 
   // Custom Domain & Subdomain Routing Middleware
   app.use((req, res, next) => {
-    const host = req.headers['x-forwarded-host'] || req.hostname || '';
+    const host = String(req.headers['x-forwarded-host'] || req.hostname || '');
     // Define the main platform domains that should serve the Dashboard & Checkout
     const isPlatformDomain = 
       host.includes('run.app') || 

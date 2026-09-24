@@ -24,7 +24,11 @@ import {
   DollarSign,
   AlertCircle,
   Maximize2,
-  Minimize2
+  Minimize2,
+  HelpCircle,
+  X,
+  Search,
+  Globe
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -88,6 +92,79 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [digitalSettings, setDigitalSettings] = useState<any>({ buttons: [] });
   const [isUploading, setIsUploading] = useState(false);
   const [editorCursorPos, setEditorCursorPos] = useState<number | null>(null);
+
+  // SEO & Social Meta States
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
+  const [seoKeywords, setSeoKeywords] = useState('');
+  const [activeGuideModal, setActiveGuideModal] = useState<null | {
+    title: string;
+    subtitle: string;
+    whyNeeded: string;
+    howToWrite: string;
+    examples: string[];
+    tips: string;
+  }>(null);
+
+  const guideDictionary = {
+    overview: {
+      title: 'Google ও সোশ্যাল মিডিয়া SEO গাইডলাইন',
+      subtitle: 'কীভাবে আপনার পোস্টটি গুগলের প্রথম পাতায় আনবেন',
+      whyNeeded: 'সঠিক এসইও (Search Engine Optimization) ছাড়া গুগল বা ফেসবুকে মানুষ সার্চ করলে আপনার সাইটের পোস্ট খুঁজে পাবে না। ভালো টাইটেল ও ডেসক্রিপশন থাকলে সার্চে আসা মানুষদের লিংকে ক্লিক করার সম্ভাবনা ৩০০% বেড়ে যায়।',
+      howToWrite: '১. আকর্ষণীয় ও পরিষ্কার টাইটেল দিন (৫০-৬০ অক্ষরের মধ্যে)।\n২. মেটা ডেসক্রিপশনে প্রোডাক্টের দাম, ছাড় এবং প্রধান সুবিধা সংক্ষেপে তুলে ধরুন (১২০-১৫০ অক্ষরের মধ্যে)।\n৩. কাস্টমার যেসব শব্দ লিখে সার্চ দেয় সেগুলো কি-ওয়ার্ড হিসেবে কমা দিয়ে লিখুন।',
+      examples: [
+        'টাইটেল: T500 Smart Watch - Best Price in BD | Free Delivery',
+        'ডেসক্রিপশন: অরিজিনাল T500 ওয়াটারপ্রুফ স্মার্ট ওয়াচ কিনুন আকর্ষণীয় অফারে। ৭ দিনের রিপ্লেসমেন্ট এবং দ্রুত ক্যাশ অন ডেলিভারি!',
+        'কি-ওয়ার্ডস: smart watch price bd, t500 watch, waterproof smartwatch'
+      ],
+      tips: 'পোস্ট হিডেন বা কাস্টম পেজ রাখলে গুগল কখনোই তা ইনডেক্স করবে না। পাবলিকলি র‍্যাঙ্ক করাতে চাইলে নিশ্চিত করুন "Make this a Custom Hidden Page" টিক চিহ্নটি আনচেক করা আছে।'
+    },
+    seoTitle: {
+      title: 'গুগল সার্চ টাইটেল (SEO Title) গাইডলাইন',
+      subtitle: 'গুগল সার্চে নীল রঙের যে প্রধান শিরোনামটি ভেসে ওঠে',
+      whyNeeded: 'গুগল সার্চে মানুষ যখন কিছু খোঁজে, তখন সবার আগে এই বড় নীল লেখাটি তাদের চোখে পড়ে। এটি দেখেই মানুষ সিদ্ধান্ত নেয় তারা ভেতরে ক্লিক করবে কি না।',
+      howToWrite: 'প্রধান কি-ওয়ার্ড দিয়ে শুরু করুন। ৫০ থেকে ৬০ অক্ষরের মধ্যে রাখুন যাতে গুগলের সার্চ রেজাল্টে টাইটেল কেটে না যায় (ডট ডট না হয়)। ব্র্যান্ডের নাম শেষে যুক্ত করুন।',
+      examples: [
+        'T500 Smart Watch - 40% Discount in BD | MecoPay Store',
+        'BUET Admission Math Solution Guide 2026',
+        'Organic Honey 500g - 100% Pure & Lab Tested'
+      ],
+      tips: 'টাইটেল ফাঁকা রাখলে স্বয়ংক্রিয়ভাবে পোস্টের সাধারণ টাইটেলটিই গুগল ব্যবহার করবে।'
+    },
+    seoDescription: {
+      title: 'গুগল মেটা ডেসক্রিপশন (Meta Description / Snippet) গাইডলাইন',
+      subtitle: 'সার্চ রেজাল্টের নিচে যে ২ লাইন সারাংশ লেখা থাকে',
+      whyNeeded: 'এটি আপনার প্রোডাক্ট বা পোস্টের একটি বিজ্ঞাপন স্লোগানের মতো কাজ করে। এটি পড়ে কাস্টমার সাথে সাথে বুঝতে পারে এই পেজে ঢুকলে সে কী সুবিধা পাবে।',
+      howToWrite: '১২০ থেকে ১৬০ অক্ষরের মধ্যে লিখুন। প্রোডাক্টের অফার, সুবিধা, দাম বা অ্যাকশন নেওয়ার আহ্বান (Call to Action যেমন: এখনই অর্ডার করুন) লিখুন।',
+      examples: [
+        'মাত্র ৯৯০ টাকায় পান অরিজিনাল ওয়াটারপ্রুফ স্মার্ট ওয়াচ। সাথে ৭ দিনের গ্যারান্টি ও ফ্রি ক্যাশ অন ডেলিভারি সুবিধা। স্টক সীমিত, এখনই অর্ডার করুন!',
+        'এইচএসসি ও বুয়েট ভর্তি পরীক্ষার জন্য সম্পূর্ণ গণিত প্রশ্নব্যাংক ও সমাধান। সহজে শিখতে আজই রেজিস্টার করুন।'
+      ],
+      tips: '💡 অটো-স্নাইপেট সুবিধা: আপনি যদি ব্যস্ত থাকেন এবং এই ফিল্ডটি ফাঁকা রেখে পোস্ট পাবলিশ করেন, আমাদের সিস্টেম স্বয়ংক্রিয়ভাবে আপনার পোস্টের কন্টেন্টের প্রথম ১০০-১২০টি ফ্রেশ অক্ষর নিয়ে গুগলের উপযোগী ডেসক্রিপশন তৈরি করে দেবে!'
+    },
+    seoKeywords: {
+      title: 'ফোকাস কি-ওয়ার্ডস ও ট্যাগ (Keywords / Tags) গাইডলাইন',
+      subtitle: 'সার্চ বটদের আপনার পোস্টের বিষয়বস্তু সহজে বোঝাতে',
+      whyNeeded: 'গুগল সার্চ বট যখন আপনার পেজটি ইনডেক্স করে, তখন এই কি-ওয়ার্ডগুলো পড়ে সে পেজটির মূল বিষয়বস্তু ক্যাটাগরি অনুযায়ী সাজিয়ে নেয়।',
+      howToWrite: 'মানুষ যেসব শব্দ গুগলে লিখে সার্চ করতে পারে সেগুলো কমা ( , ) দিয়ে আলাদা করে লিখুন। খুব বেশি শব্দ না দিয়ে প্রধান ৩ থেকে ৫টি প্রাসঙ্গিক কি-ওয়ার্ড দিন।',
+      examples: [
+        'smart watch bd, t500 smartwatch price, bluetooth watch, men watch online',
+        'buet math, admission test tips, engineering question bank'
+      ],
+      tips: 'কি-ওয়ার্ডের সাথে মূল কন্টেন্টের সামঞ্জস্য থাকা জরুরি।'
+    }
+  };
+
+  const extractSnippet = (contentStr: string) => {
+    if (!contentStr) return '';
+    const clean = contentStr
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/[#*`_~\[\]()!]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return clean.length > 120 ? clean.substring(0, 117) + '...' : clean;
+  };
 
   useEffect(() => {
     if (siteSettings) {
@@ -266,6 +343,9 @@ ${defaultHomeContent}`
     setShowThumbnail(true);
     setShowFullPost(false);
     setIsCustomPage(isPage);
+    setSeoTitle('');
+    setSeoDescription('');
+    setSeoKeywords('');
     setProductType('physical');
     setDigitalSettings({ buttons: [] });
     setPostContent(`# New Admission Module
@@ -290,6 +370,9 @@ Write comprehensive lecture notes, problem sets, and key insights here.
     setPostThumbnail(p.thumbnail);
     setPostContent(p.content);
     setIsCustomPage(p.is_custom_page ?? false);
+    setSeoTitle(p.title || '');
+    setSeoDescription(p.summary || '');
+    setSeoKeywords(Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || ''));
     setShowDetailsBtn(p.show_details_btn ?? true);
     setShowShareBtn(p.show_share_btn ?? true);
     setShowThumbnail(p.show_thumbnail ?? true);
@@ -319,9 +402,16 @@ Write comprehensive lecture notes, problem sets, and key insights here.
 ${postContent}`
       : postContent;
 
+    // Calculate effective SEO summary and tags
+    const effectiveSummary = seoDescription.trim() || extractSnippet(postContent);
+    const tagsArray = seoKeywords
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean);
+
     const newOrUpdatedPost: Post = {
       id: editingPost?.id || `post_${Date.now()}`,
-      title: postTitle.trim(),
+      title: (seoTitle.trim() || postTitle.trim()),
       slug: postSlug.trim() || `post-${Date.now()}`,
       content: finalContent,
       category_id: postCategory || categories[0]?.id || 'cat-ssc',
@@ -336,6 +426,8 @@ ${postContent}`
       show_share_btn: showShareBtn,
       show_thumbnail: showThumbnail,
       show_full_post: showFullPost,
+      summary: effectiveSummary,
+      tags: tagsArray,
     };
     // Note: We are no longer adding format_type or code_language to the payload to avoid schema errors on Supabase.
 
@@ -1118,6 +1210,198 @@ ${postContent}`
               )}
             </div>
 
+            {/* SEO & SEARCH ENGINE OPTIMIZATION SECTION */}
+            {isCustomPage ? (
+              <div className="p-4 rounded-xl bg-slate-900/90 border border-amber-500/30 text-amber-300">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-amber-200">🔒 কাস্টম হিডেন পেজ (Auto No-Index সক্রিয়)</h4>
+                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                      এই পোস্টটি একটি গোপন বা কাস্টম পেজ হিসেবে চিহ্নিত। এটি ওয়েবসাইটের পাবলিক ফিডে থাকবে না এবং আমাদের MecoPay Server SEO Engine স্বয়ংক্রিয়ভাবে <code className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 font-mono text-[11px]">&lt;meta name="robots" content="noindex, nofollow" /&gt;</code> ট্যাগ যুক্ত করে দেবে। ফলে কোনো সার্চ ইঞ্জিন (Google, Bing) এটি ইনডেক্স বা পাবলিক সার্চে আনবে না।
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-1.5">
+                      💡 আপনি যদি এটিকে গুগলে র‍্যাঙ্ক করাতে চান এবং সার্চে প্রদর্শন করতে চান, তবে ওপরের ডিসপ্লে সেটিংস থেকে <strong>"Make this a Custom Hidden Page"</strong> অপশনটির টিক তুলে দিন।
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5 shadow-lg">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <Sparkles className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        গুগল সার্চ ও সোশ্যাল এসইও অপটিমাইজেশন (SEO & Social Preview)
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          Auto-Index Active
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-400">গুগল ও সোশ্যাল মিডিয়ায় কাস্টমাররা আপনার এই পোস্টটি ঠিক কেমন দেখবে তা নিয়ন্ত্রণ করুন।</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGuideModal(guideDictionary.overview)}
+                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 cursor-pointer bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition-colors hover:bg-indigo-500/20"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>SEO গাইডলাইন</span>
+                  </button>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-5">
+                  {/* Left Column: Form Inputs */}
+                  <div className="space-y-4">
+                    {/* 1. SEO Meta Title */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                          <span>গুগল সার্চ টাইটেল (SEO Title)</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveGuideModal(guideDictionary.seoTitle)}
+                            className="text-indigo-400 hover:text-indigo-300 p-0.5 rounded hover:bg-slate-800 cursor-pointer"
+                            title="কীভাবে লিখবেন তা দেখুন"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </label>
+                        <span className={`text-[10px] ${seoTitle.length > 60 ? 'text-amber-400' : 'text-slate-500'}`}>
+                          {seoTitle.length}/60 অক্ষর
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder={postTitle || "যেমন: T500 Smart Watch - 40% Off in Bangladesh"}
+                        value={seoTitle}
+                        onChange={(e) => setSeoTitle(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">ফাঁকা রাখলে স্বয়ংক্রিয়ভাবে মূল পোস্টের টাইটেলটি ব্যবহৃত হবে।</p>
+                    </div>
+
+                    {/* 2. Meta Description */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                          <span>গুগল মেটা ডেসক্রিপশন (Meta Description)</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveGuideModal(guideDictionary.seoDescription)}
+                            className="text-indigo-400 hover:text-indigo-300 p-0.5 rounded hover:bg-slate-800 cursor-pointer"
+                            title="কীভাবে লিখবেন তা দেখুন"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </label>
+                        <span className={`text-[10px] ${seoDescription.length > 160 ? 'text-amber-400' : 'text-slate-500'}`}>
+                          {seoDescription.length}/160 অক্ষর
+                        </span>
+                      </div>
+                      <textarea
+                        rows={3}
+                        placeholder="যেমন: অরিজিনাল T500 স্মার্ট ওয়াচ পান মাত্র ৯৯০ টাকায়। ৭ দিনের রিপ্লেসমেন্ট ওয়ারেন্টি ও সারাদেশে ক্যাশ অন ডেলিভারি সুবিধা..."
+                        value={seoDescription}
+                        onChange={(e) => setSeoDescription(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-emerald-400/90">
+                        <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                        <span>খালি রাখলে কন্টেন্টের প্রথম ১০০ অক্ষর স্বয়ংক্রিয়ভাবে ডেসক্রিপশন হিসেবে যুক্ত হবে।</span>
+                      </div>
+                    </div>
+
+                    {/* 3. Keywords / Tags */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                          <span>ফোকাস কি-ওয়ার্ডস ও ট্যাগ (Keywords / Tags)</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveGuideModal(guideDictionary.seoKeywords)}
+                            className="text-indigo-400 hover:text-indigo-300 p-0.5 rounded hover:bg-slate-800 cursor-pointer"
+                            title="কীভাবে লিখবেন তা দেখুন"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </label>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="smart watch, t500, online shopping, mecopay"
+                        value={seoKeywords}
+                        onChange={(e) => setSeoKeywords(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs font-mono focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">শব্দগুলোর মাঝে কমা ( , ) ব্যবহার করে কি-ওয়ার্ড লিখুন।</p>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Real-Time Live Google Search Simulator Preview */}
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5 text-blue-400" />
+                        <span>গুগল সার্চে যেমন দেখাবে (Google Search Live Preview)</span>
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                        Live Simulator
+                      </span>
+                    </div>
+
+                    {/* Simulated Google Search Result Card */}
+                    <div className="p-4 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-md flex-1 flex flex-col justify-center font-sans">
+                      {/* Favicon + Breadcrumb URL */}
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
+                          {siteLogo ? (
+                            <img src={siteLogo} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] font-bold text-indigo-600">M</span>
+                          )}
+                        </div>
+                        <div className="overflow-hidden text-[12px] leading-tight text-slate-700">
+                          <div className="font-medium text-slate-900 truncate">{siteName || "MecoPay Store"}</div>
+                          <div className="text-[11px] text-slate-500 truncate">
+                            {window.location.origin}/post/{postSlug || "your-post-slug"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <h4 className="text-base sm:text-lg font-medium text-[#1a0dab] hover:underline cursor-pointer line-clamp-1 leading-snug">
+                        {seoTitle.trim() || postTitle.trim() || "পোস্টের আকর্ষণীয় শিরোনাম এখানে দেখতে পাবেন"}
+                      </h4>
+
+                      {/* Snippet / Description */}
+                      <p className="text-xs text-[#4d5156] mt-1 line-clamp-2 leading-relaxed">
+                        {seoDescription.trim() || extractSnippet(postContent) || "এখানে আপনার পোস্ট বা প্রোডাক্টের সংক্ষিপ্ত বিবরণ দেখা যাবে, যা পড়ে গুগলের কাস্টমাররা লিংকে ক্লিক করবে..."}
+                      </p>
+
+                      {/* Simulated Rich Snippet for Product */}
+                      {productType && productType !== 'just_form' && (
+                        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-3 text-[11px] text-emerald-700 font-medium">
+                          <span>✓ ইন স্টক (In stock)</span>
+                          <span>•</span>
+                          <span>দ্রুত হোম ডেলিভারি</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <p className="text-[11px] text-slate-400 mt-2 text-center">
+                      💡 এটি ড্যাশবোর্ডের লাইভ প্রিভিউ। পোস্ট পাবলিশ হলে গুগলের সার্চ রেজাল্টেও মানুষ ঠিক এভাবেই দেখতে পাবে।
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Content Editor / Preview */}
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -1341,6 +1625,80 @@ ${postContent}`
           </form>
         )}
       </div>
+
+      {/* Interactive SEO Guide Modal */}
+      {activeGuideModal && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => setActiveGuideModal(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div className="pr-8">
+                <h3 className="text-base font-bold text-white leading-snug">{activeGuideModal.title}</h3>
+                <p className="text-xs text-indigo-300 mt-0.5">{activeGuideModal.subtitle}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 text-xs text-slate-300">
+              {/* Why needed */}
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">
+                  🎯 কেন এটি পূরণ করবেন?
+                </span>
+                <p className="leading-relaxed text-slate-300">{activeGuideModal.whyNeeded}</p>
+              </div>
+
+              {/* How to write */}
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">
+                  ✍️ কীভাবে লিখবেন?
+                </span>
+                <p className="leading-relaxed text-slate-300 whitespace-pre-line">{activeGuideModal.howToWrite}</p>
+              </div>
+
+              {/* Examples */}
+              {activeGuideModal.examples && activeGuideModal.examples.length > 0 && (
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
+                    🌟 বাস্তব উদাহরণ (Examples)
+                  </span>
+                  <div className="space-y-1">
+                    {activeGuideModal.examples.map((ex, i) => (
+                      <div key={i} className="p-1.5 rounded bg-slate-900 border border-slate-800 font-mono text-[11px] text-slate-200">
+                        {ex}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tips */}
+              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-[11px] leading-relaxed flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong>প্রো-টিপস:</strong> {activeGuideModal.tips}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveGuideModal(null)}
+              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+            >
+              বুঝেছি, ধন্যবাদ!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
