@@ -34,7 +34,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
   const [activeServiceTab, setActiveServiceTab] = useState<'inbox' | 'accounts' | 'delivery'>('inbox');
 
   // Business Email Creator State
-  const [emailPrefix, setEmailPrefix] = useState('support');
+  const [emailPrefix, setEmailPrefix] = useState('');
   const [createdEmails, setCreatedEmails] = useState<string[]>([]);
   const [creatingEmail, setCreatingEmail] = useState(false);
 
@@ -120,16 +120,24 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
-        setCreatedEmails(JSON.parse(saved));
-      } catch (e) {
-        setCreatedEmails([`support@${domain}`, `info@${domain}`]);
-      }
-    } else {
-      // Default initial mailboxes for new custom domain
-      const defaults = [`support@${domain}`, `info@${domain}`];
-      setCreatedEmails(defaults);
-      localStorage.setItem(key, JSON.stringify(defaults));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Clean up old auto-injected defaults if present
+          const isOldDummySet = parsed.length === 2 && 
+            parsed.includes(`support@${domain}`) && 
+            parsed.includes(`info@${domain}`);
+          if (isOldDummySet) {
+            localStorage.removeItem(key);
+            setCreatedEmails([]);
+            return;
+          }
+          setCreatedEmails(parsed);
+          return;
+        }
+      } catch (e) {}
     }
+    // No mailboxes by default until user creates one
+    setCreatedEmails([]);
   };
 
   // Handle Brand Change
