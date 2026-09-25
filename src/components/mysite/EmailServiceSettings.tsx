@@ -215,7 +215,48 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
     setCreatingEmail(true);
     try {
-      // 1. Invoke Supabase Edge Function to configure specific literal rule on Cloudflare
+      // 1. First persist to brand_mailboxes table directly
+      if (user?.id) {
+        const insertPayload: any = {
+          client_id: user.id,
+          domain: activeDomain,
+          email_address: newFullEmail,
+          status: 'active'
+        };
+        
+        if (selectedBrandId) {
+          insertPayload.brand_id = selectedBrandId;
+        }
+
+        const { data: dbSaved, error: insertErr } = await supabase
+          .from('brand_mailboxes')
+          .upsert(insertPayload, { onConflict: 'email_address' })
+          .select();
+
+        if (insertErr) {
+          console.error('Mailbox DB initial insert error:', insertErr);
+          // If foreign key failed on brand_id, retry without brand_id
+          if (insertErr.message?.includes('foreign key') || insertErr.code === '23503') {
+            delete insertPayload.brand_id;
+            const { error: retryErr } = await supabase
+              .from('brand_mailboxes')
+              .upsert(insertPayload, { onConflict: 'email_address' })
+              .select();
+            if (retryErr) {
+              console.error('Mailbox DB retry insert error:', retryErr);
+              showToast(`ডাটাবেস সংরক্ষণ ব্যর্থ: ${retryErr.message}`, 'error');
+            } else {
+              console.log('Mailbox saved to DB without brand_id constraint');
+            }
+          } else {
+            showToast(`ডাটাবেস টেবিল ত্রুটি: ${insertErr.message}`, 'error');
+          }
+        } else {
+          console.log('Mailbox successfully saved to brand_mailboxes:', dbSaved);
+        }
+      }
+
+      // 2. Invoke Supabase Edge Function to configure specific literal rule on Cloudflare
       const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-email-routing', {
         body: {
           action: 'create',
@@ -227,38 +268,14 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
       if (edgeErr) {
         console.warn('Edge function notice:', edgeErr);
-      }
-
-      // 2. Persist to brand_mailboxes table for cross-device sync
-      if (user?.id) {
+      } else if (edgeRes?.rule_id && user?.id) {
+        // Update cloudflare_rule_id in database
         try {
-          const insertPayload: any = {
-            client_id: user.id,
-            domain: activeDomain,
-            email_address: newFullEmail,
-            cloudflare_rule_id: edgeRes?.rule_id || null,
-            status: 'active'
-          };
-          
-          if (selectedBrandId) {
-            insertPayload.brand_id = selectedBrandId;
-          }
-
-          const { error: insertErr } = await supabase
+          await supabase
             .from('brand_mailboxes')
-            .upsert(insertPayload, { onConflict: 'email_address' });
-
-          if (insertErr) {
-            console.warn('Mailbox DB insert warning:', insertErr.message);
-            // If foreign key constraint failed on brand_id, retry without brand_id
-            if (insertErr.message?.includes('foreign key') || insertErr.code === '23503') {
-              delete insertPayload.brand_id;
-              await supabase.from('brand_mailboxes').upsert(insertPayload, { onConflict: 'email_address' });
-            }
-          }
-        } catch (dbErr) {
-          console.warn('Mailbox DB insert notice:', dbErr);
-        }
+            .update({ cloudflare_rule_id: edgeRes.rule_id })
+            .eq('email_address', newFullEmail);
+        } catch (e) {}
       }
 
       const updated = [...createdEmails, newFullEmail];
@@ -266,16 +283,11 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
       localStorage.setItem(`mecopay_biz_emails_${user?.id}_${selectedBrandId}`, JSON.stringify(updated));
       setEmailPrefix('');
       
-      const successNote = edgeRes?.message || `⚡ ${newFullEmail} বিজনেজ ইমেইল সফলভাবে তৈরি হয়েছে! MecoPay Webmail ইনকামিং ইমেইল রিসিভ করার জন্য প্রস্তুত।`;
+      const successNote = edgeRes?.message || `⚡ ${newFullEmail} বিজনেজ ইমেইল তৈরি হয়েছে এবং ডাটাবেসে সেভ হয়েছে!`;
       showToast(successNote, 'success');
     } catch (err: any) {
-      console.error('Error invoking cloudflare-email-routing:', err);
-      // Fallback local save
-      const updated = [...createdEmails, newFullEmail];
-      setCreatedEmails(updated);
-      localStorage.setItem(`mecopay_biz_emails_${user?.id}_${selectedBrandId}`, JSON.stringify(updated));
-      setEmailPrefix('');
-      showToast(`⚡ ${newFullEmail} সফলভাবে সক্রিয় হয়েছে!`, 'success');
+      console.error('Error in handleCreateBusinessEmail:', err);
+      showToast(err.message || 'ইমেইল তৈরিতে সমস্যা হয়েছে।', 'error');
     } finally {
       setCreatingEmail(false);
     }

@@ -162,6 +162,22 @@ serve(async (req) => {
     // ACTION: CREATE SPECIFIC LITERAL RULE (e.g. support@domain.com -> Worker)
     // =========================================================================
     if (action === 'create') {
+      // 0. 🔥 [100% AUTO-ONBOARD]: Ensure Email Routing is enabled on this zone automatically
+      try {
+        await fetch(
+          `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/enable`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${cfApiToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      } catch (enableErr) {
+        console.warn('Auto-enable email routing notice:', enableErr)
+      }
+
       // 1. First, check if a rule already exists for this exact email to avoid duplicates
       const listRulesRes = await fetch(
         `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
