@@ -118,12 +118,16 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
   const loadBrandEmails = async (brandId: string, domain: string) => {
     try {
       if (user?.id) {
-        const { data, error } = await supabase
+        let query = supabase
           .from('brand_mailboxes')
           .select('email_address')
-          .eq('client_id', user.id)
-          .eq('brand_id', brandId)
-          .eq('status', 'active');
+          .eq('client_id', user.id);
+
+        if (domain) {
+          query = query.eq('domain', domain);
+        }
+
+        const { data, error } = await query;
 
         if (!error && data && data.length > 0) {
           const list = data.map((d: any) => d.email_address);
@@ -228,14 +232,30 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
       // 2. Persist to brand_mailboxes table for cross-device sync
       if (user?.id) {
         try {
-          await supabase.from('brand_mailboxes').upsert({
-            brand_id: selectedBrandId,
+          const insertPayload: any = {
             client_id: user.id,
             domain: activeDomain,
             email_address: newFullEmail,
             cloudflare_rule_id: edgeRes?.rule_id || null,
             status: 'active'
-          }, { onConflict: 'email_address' });
+          };
+          
+          if (selectedBrandId) {
+            insertPayload.brand_id = selectedBrandId;
+          }
+
+          const { error: insertErr } = await supabase
+            .from('brand_mailboxes')
+            .upsert(insertPayload, { onConflict: 'email_address' });
+
+          if (insertErr) {
+            console.warn('Mailbox DB insert warning:', insertErr.message);
+            // If foreign key constraint failed on brand_id, retry without brand_id
+            if (insertErr.message?.includes('foreign key') || insertErr.code === '23503') {
+              delete insertPayload.brand_id;
+              await supabase.from('brand_mailboxes').upsert(insertPayload, { onConflict: 'email_address' });
+            }
+          }
         } catch (dbErr) {
           console.warn('Mailbox DB insert notice:', dbErr);
         }

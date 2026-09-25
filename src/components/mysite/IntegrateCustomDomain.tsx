@@ -319,6 +319,33 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         setDomainStatus('active');
         setSslStatus('active');
         showToast(`🎉 Domain & SSL Active! Your store is securely live on ${customDomain}`, 'success');
+
+        // Sync subdomain to custom domain 301 redirect in Edge KV cache
+        const actualSubdomain = (currentSubdomain || '').trim().toLowerCase();
+        if (actualSubdomain && user?.id) {
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const authToken = sessionData?.session?.access_token || '';
+            await fetch('/api/internal/sync-cache', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+              },
+              body: JSON.stringify({
+                hostname: `${actualSubdomain}.mecopay.space`,
+                subdomain: actualSubdomain,
+                custom_domain: customDomain,
+                client_id: user.id,
+                brand_id: selectedBrandId,
+                app_type: 'no_code'
+              })
+            });
+          } catch (e) {
+            console.warn('Subdomain redirect sync skipped:', e);
+          }
+        }
+
         fetchDomainSettings();
       } else {
         setDomainStatus('pending_validation');
@@ -621,15 +648,22 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={handleVerifyDomain}
-                  disabled={verifying}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-                >
-                  {verifying ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" /> : <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />}
-                  {verifying ? 'Checking DNS...' : 'Verify DNS & SSL'}
-                </button>
+                {domainStatus === 'active' ? (
+                  <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center gap-1.5 select-none shadow-sm">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Verified &amp; Live</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleVerifyDomain}
+                    disabled={verifying}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    {verifying ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" /> : <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />}
+                    {verifying ? 'Checking DNS...' : 'Verify DNS & SSL'}
+                  </button>
+                )}
 
                 <button
                   type="button"
