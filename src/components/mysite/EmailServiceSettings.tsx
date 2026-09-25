@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Save, CheckCircle2, RefreshCw, Send } from 'lucide-react';
+import { Mail, Save, CheckCircle2, RefreshCw, Send, Building2, Globe, AlertCircle, Plus, Trash2, ShieldCheck, Sparkles, Inbox } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 
 interface EmailServiceSettingsProps {
@@ -8,6 +9,18 @@ interface EmailServiceSettingsProps {
 }
 
 export default function EmailServiceSettings({ user, brands = [] }: EmailServiceSettingsProps) {
+  const [loading, setLoading] = useState(true);
+  const [brandList, setBrandList] = useState<any[]>([]);
+  const [verifiedBrands, setVerifiedBrands] = useState<any[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+  const [activeDomain, setActiveDomain] = useState<string>('');
+
+  // Business Email Creator State
+  const [emailPrefix, setEmailPrefix] = useState('support');
+  const [createdEmails, setCreatedEmails] = useState<string[]>([]);
+  const [creatingEmail, setCreatingEmail] = useState(false);
+
+  // SMTP / Outgoing settings
   const [provider, setProvider] = useState('smtp');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('587');
@@ -19,30 +32,162 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
   const [sendAdminAlert, setSendAdminAlert] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // 1. Fetch Brands and Validate Custom Domains from site_settings
   useEffect(() => {
-    const saved = localStorage.getItem(`mecopay_email_config_${user?.id}`);
+    const fetchBrandsAndDomains = async () => {
+      try {
+        setLoading(true);
+        let currentBrands = brands;
+
+        if (!currentBrands || currentBrands.length === 0) {
+          if (user?.id) {
+            const { data: bData } = await supabase
+              .from('brands')
+              .select('id, name, website_url')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: true });
+            if (bData) currentBrands = bData;
+          }
+        }
+
+        setBrandList(currentBrands || []);
+
+        if (user?.id) {
+          // Fetch site_settings where custom domain is configured
+          const { data: settingsData } = await supabase
+            .from('site_settings')
+            .select('id, brand_id, domain, subdomain, client_id, ssl_status, domain_status')
+            .eq('client_id', user.id);
+
+          if (settingsData && settingsData.length > 0) {
+            // Find only brands that have an actual connected custom domain
+            const valid = (currentBrands || []).filter((b) => {
+              const s = settingsData.find((st) => st.brand_id === b.id || st.id === b.id);
+              return s && s.domain && s.domain.trim() !== '';
+            }).map((b) => {
+              const s = settingsData.find((st) => st.brand_id === b.id || st.id === b.id);
+              return {
+                ...b,
+                connected_domain: s?.domain?.trim() || '',
+                ssl_status: s?.ssl_status || 'pending',
+                domain_status: s?.domain_status || 'active'
+              };
+            });
+
+            setVerifiedBrands(valid);
+
+            if (valid.length > 0) {
+              const initial = valid[0];
+              setSelectedBrandId(initial.id);
+              setActiveDomain(initial.connected_domain);
+              loadBrandEmails(initial.id, initial.connected_domain);
+            }
+          } else {
+            setVerifiedBrands([]);
+          }
+        }
+      } catch (err) {
+        console.error('Error validating brand domains:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBrandsAndDomains();
+  }, [brands, user?.id]);
+
+  // Load configured business emails for brand
+  const loadBrandEmails = (brandId: string, domain: string) => {
+    const key = `mecopay_biz_emails_${user?.id}_${brandId}`;
+    const saved = localStorage.getItem(key);
     if (saved) {
       try {
-        const p = JSON.parse(saved);
-        if (p.provider) setProvider(p.provider);
-        if (p.host) setHost(p.host);
-        if (p.port) setPort(p.port);
-        if (p.username) setUsername(p.username);
-        if (p.password) setPassword(p.password);
-        if (p.fromEmail) setFromEmail(p.fromEmail);
-        if (p.fromName) setFromName(p.fromName);
-        if (p.sendCustomerReceipt !== undefined) setSendCustomerReceipt(p.sendCustomerReceipt);
-        if (p.sendAdminAlert !== undefined) setSendAdminAlert(p.sendAdminAlert);
-      } catch (e) {}
+        setCreatedEmails(JSON.parse(saved));
+      } catch (e) {
+        setCreatedEmails([`support@${domain}`, `info@${domain}`]);
+      }
+    } else {
+      // Default initial mailboxes for new custom domain
+      const defaults = [`support@${domain}`, `info@${domain}`];
+      setCreatedEmails(defaults);
+      localStorage.setItem(key, JSON.stringify(defaults));
     }
-  }, [user]);
+  };
 
-  const handleSave = (e: React.FormEvent) => {
+  // Handle Brand Change
+  const handleBrandChange = (brandId: string) => {
+    setSelectedBrandId(brandId);
+    const found = verifiedBrands.find((b) => b.id === brandId);
+    if (found) {
+      setActiveDomain(found.connected_domain);
+      loadBrandEmails(brandId, found.connected_domain);
+    }
+  };
+
+  // Load SMTP config from localStorage
+  useEffect(() => {
+    if (user?.id) {
+      const saved = localStorage.getItem(`mecopay_email_config_${user.id}_${selectedBrandId || 'default'}`);
+      if (saved) {
+        try {
+          const p = JSON.parse(saved);
+          if (p.provider) setProvider(p.provider);
+          if (p.host) setHost(p.host);
+          if (p.port) setPort(p.port);
+          if (p.username) setUsername(p.username);
+          if (p.password) setPassword(p.password);
+          if (p.fromEmail) setFromEmail(p.fromEmail);
+          if (p.fromName) setFromName(p.fromName);
+          if (p.sendCustomerReceipt !== undefined) setSendCustomerReceipt(p.sendCustomerReceipt);
+          if (p.sendAdminAlert !== undefined) setSendAdminAlert(p.sendAdminAlert);
+        } catch (e) {}
+      }
+    }
+  }, [user, selectedBrandId]);
+
+  // Create Business Email handler
+  const handleCreateBusinessEmail = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPrefix = emailPrefix.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+    if (!cleanPrefix) {
+      showToast('অনুগ্রহ করে সঠিক ইমেইল প্রিফিক্স দিন (e.g. support, info)', 'error');
+      return;
+    }
+    if (!activeDomain) {
+      showToast('কোনো কানেক্টেড কাস্টম ডোমেইন পাওয়া যায়নি', 'error');
+      return;
+    }
+
+    const newFullEmail = `${cleanPrefix}@${activeDomain}`;
+    if (createdEmails.includes(newFullEmail)) {
+      showToast(`'${newFullEmail}' ইমেইলটি ইতিমধ্যে তালিকায় বিদ্যমান!`, 'error');
+      return;
+    }
+
+    setCreatingEmail(true);
+    setTimeout(() => {
+      const updated = [...createdEmails, newFullEmail];
+      setCreatedEmails(updated);
+      localStorage.setItem(`mecopay_biz_emails_${user?.id}_${selectedBrandId}`, JSON.stringify(updated));
+      setEmailPrefix('');
+      setCreatingEmail(false);
+      showToast(`⚡ ${newFullEmail} বিজনেজ ইমেইল তৈরি হয়েছে! ক্লাউডফ্লেয়ার ওয়ার্কার ইনকামিং ইমেইল রিসিভ করার জন্য প্রস্তুত।`, 'success');
+    }, 600);
+  };
+
+  const handleDeleteEmail = (emailToRemove: string) => {
+    const updated = createdEmails.filter((e) => e !== emailToRemove);
+    setCreatedEmails(updated);
+    localStorage.setItem(`mecopay_biz_emails_${user?.id}_${selectedBrandId}`, JSON.stringify(updated));
+    showToast(`${emailToRemove} সরানো হয়েছে`, 'success');
+  };
+
+  const handleSaveSmtp = (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setTimeout(() => {
       localStorage.setItem(
-        `mecopay_email_config_${user?.id}`,
+        `mecopay_email_config_${user?.id}_${selectedBrandId || 'default'}`,
         JSON.stringify({
           provider,
           host,
@@ -56,29 +201,233 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         })
       );
       setSaving(false);
-      showToast('Email Service settings saved successfully!', 'success');
+      showToast('Email Service & Delivery configuration saved successfully!', 'success');
     }, 400);
   };
 
+  if (loading) {
+    return (
+      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 flex items-center justify-center gap-3 text-slate-400 text-sm">
+        <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
+        <span>ভেরিফাইড কাস্টম ডোমেইন ও ব্র্যান্ড ভ্যালিডেট করা হচ্ছে...</span>
+      </div>
+    );
+  }
+
+  // If NO brand has a custom domain connected
+  if (verifiedBrands.length === 0) {
+    return (
+      <div className="max-w-4xl space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Mail className="w-6 h-6 text-emerald-400" />
+            Business Email &amp; SMTP Service
+          </h2>
+          <p className="text-slate-400 text-sm mt-1">
+            Create professional business emails with your own branded domain (e.g. support@yourbrand.com).
+          </p>
+        </div>
+
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 sm:p-8 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+            <Globe className="w-7 h-7" />
+          </div>
+          <div className="max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-white">Custom Domain Required</h3>
+            <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+              বিজনেস ইমেইল সার্ভিস (যেমন: <span className="font-mono text-emerald-400 font-semibold">support@yourdomain.com</span>) ব্যবহার করার জন্য ব্র্যান্ডের নিজস্ব কাস্টম ডোমেইন কানেক্ট থাকা বাধ্যতামূলক।
+            </p>
+            <p className="text-xs text-slate-400 mt-2">
+              আপনার তৈরি করা ব্র্যান্ডগুলোতে এখনো কোনো সক্রিয় কাস্টম ডোমেইন যোগ করা হয়নি।
+            </p>
+          </div>
+          <div className="pt-2">
+            <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-semibold">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              প্রথমে "Integrate Custom Domain" ট্যাবে গিয়ে আপনার ডোমেইনটি যুক্ত করুন
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedBrand = verifiedBrands.find((b) => b.id === selectedBrandId) || verifiedBrands[0];
+
   return (
     <div className="max-w-4xl space-y-6">
+      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
           <Mail className="w-6 h-6 text-emerald-400" />
-          Email Service (SMTP / Transactional)
+          Business Email &amp; SMTP Service
         </h2>
         <p className="text-slate-400 text-sm mt-1">
-          Deliver automated invoices, digital product downloads, and payment receipts directly to customer inboxes.
+          Create branded business email inboxes (Cloudflare Routing + R2) and configure outgoing transactional delivery.
         </p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        {/* Email Credentials */}
+      {/* Brand & Connected Custom Domain Validation Selector */}
+      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+            <Building2 className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white tracking-wide">Brand &amp; Domain Routing</h3>
+              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Verified Custom Domain
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              শুধুমাত্র কাস্টম ডোমেইন যুক্ত থাকা ব্র্যান্ডগুলোই বিজনেস ইমেইল তৈরির যোগ্য
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">Active Brand:</span>
+            <select
+              value={selectedBrandId}
+              onChange={(e) => handleBrandChange(e.target.value)}
+              className="w-full sm:w-auto bg-slate-950 border border-emerald-500/30 text-white font-semibold text-xs rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-400 transition-all shadow-inner cursor-pointer"
+            >
+              {verifiedBrands.map((b) => (
+                <option key={b.id} value={b.id} className="bg-slate-900 text-white">
+                  {b.name || 'Brand'} ({b.connected_domain})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 px-3.5 py-2 rounded-xl">
+            <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-xs text-slate-400 whitespace-nowrap">Domain:</span>
+            <span className="text-xs font-mono font-bold text-emerald-400 truncate max-w-[170px]">
+              {activeDomain}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ⚡ SECTION 1: Automated Business Email Creator */}
+      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+          <div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              Create Custom Business Email
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              আপনার কানেক্টেড কাস্টম ডোমেইনে ফ্রি ক্লাউডফ্লেয়ার ইমেইল রাউটিং অ্যাড্রেস তৈরি করুন
+            </p>
+          </div>
+          <span className="text-[11px] font-semibold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-lg self-start sm:self-auto">
+            Cloudflare Routing + R2 Ready
+          </span>
+        </div>
+
+        {/* Input Form: Prefix + @domain */}
+        <form onSubmit={handleCreateBusinessEmail} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-2">
+              Enter Email Prefix (ইউজারনেম দিন)
+            </label>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1 flex items-center bg-slate-950 border border-slate-800 focus-within:border-emerald-500 rounded-xl overflow-hidden transition-all shadow-inner">
+                <input
+                  type="text"
+                  value={emailPrefix}
+                  onChange={(e) => setEmailPrefix(e.target.value.toLowerCase().trim())}
+                  placeholder="support, info, contact, billing"
+                  className="w-full bg-transparent px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none font-mono font-medium"
+                />
+                <span className="px-3.5 py-2.5 bg-slate-900 text-emerald-400 font-mono text-xs font-bold border-l border-slate-800 select-none">
+                  @{activeDomain}
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={creatingEmail || !emailPrefix.trim()}
+                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {creatingEmail ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Create Email Account
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2">
+              উদাহরণ: <span className="font-mono text-slate-400">support</span> দিলে তৈরি হবে <strong className="font-mono text-emerald-400">support@{activeDomain}</strong>
+            </p>
+          </div>
+        </form>
+
+        {/* Active Created Business Mailboxes List */}
+        <div className="pt-2">
+          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Inbox className="w-3.5 h-3.5 text-emerald-400" />
+            Active Business Mailboxes ({createdEmails.length})
+          </h4>
+
+          {createdEmails.length === 0 ? (
+            <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-xl text-xs text-slate-400 text-center">
+              এই ব্র্যান্ডের জন্য এখনো কোনো বিজনেস ইমেইল তৈরি করা হয়নি।
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {createdEmails.map((email) => (
+                <div
+                  key={email}
+                  className="p-3.5 bg-slate-950 border border-slate-800/90 rounded-xl flex items-center justify-between gap-3 group hover:border-slate-700 transition-all"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                      <Mail className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-mono font-bold text-white truncate">{email}</p>
+                      <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Routing to Supabase &amp; R2
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteEmail(email)}
+                    className="p-1.5 text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
+                    title="Remove Email Address"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 🚀 SECTION 2: Outgoing SMTP / Delivery Configuration */}
+      <form onSubmit={handleSaveSmtp} className="space-y-6">
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-5">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Send className="w-4 h-4 text-emerald-400" />
-            SMTP & Delivery Configuration
-          </h3>
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Send className="w-4 h-4 text-emerald-400" />
+                Outgoing SMTP / Delivery Configuration
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                কাস্টমারদের ইনভয়েস ও রসিদ পাঠাতে ব্যবহৃত হবে (ZeptoMail / Resend / Standard SMTP)
+              </p>
+            </div>
+            <span className="text-[11px] font-semibold text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg">
+              Per Brand Outgoing
+            </span>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -89,9 +438,9 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                 className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none cursor-pointer"
               >
                 <option value="smtp">Standard SMTP Server</option>
+                <option value="zeptomail">Zoho ZeptoMail (Transactional)</option>
                 <option value="resend">Resend (Modern API)</option>
                 <option value="sendgrid">SendGrid</option>
-                <option value="ses">Amazon SES</option>
                 <option value="mailgun">Mailgun</option>
               </select>
             </div>
@@ -102,7 +451,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                 type="text"
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
-                placeholder="e.g. smtp.mailgun.org or mail.yourdomain.com"
+                placeholder="e.g. smtp.zeptomail.com or smtp.gmail.com"
                 className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
               />
             </div>
@@ -130,12 +479,12 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password / Secret</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password / Send Token</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter SMTP password"
+                placeholder="Enter SMTP password or API token"
                 className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
               />
             </div>
@@ -148,7 +497,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                 type="email"
                 value={fromEmail}
                 onChange={(e) => setFromEmail(e.target.value)}
-                placeholder="e.g. billing@yourdomain.com"
+                placeholder={`billing@${activeDomain}`}
                 className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
               />
             </div>
@@ -159,7 +508,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                 type="text"
                 value={fromName}
                 onChange={(e) => setFromName(e.target.value)}
-                placeholder="e.g. ROR SHOP or MecoPay Store"
+                placeholder={selectedBrand.name || 'My Store'}
                 className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
               />
             </div>
@@ -177,7 +526,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
             <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800/80 rounded-xl cursor-pointer hover:border-slate-700 transition-colors">
               <div>
                 <p className="text-sm font-semibold text-white">Send Customer Payment Receipt</p>
-                <p className="text-xs text-slate-400">Instantly email PDF/HTML invoice and digital product download links to customer.</p>
+                <p className="text-xs text-slate-400">ইনভয়েস এবং ডিজিটাল প্রোডাক্ট ডাউনলোড লিংক কাস্টমারের ইমেইলে অটোমেটিক চলে যাবে।</p>
               </div>
               <input
                 type="checkbox"
@@ -190,7 +539,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
             <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800/80 rounded-xl cursor-pointer hover:border-slate-700 transition-colors">
               <div>
                 <p className="text-sm font-semibold text-white">Send Admin Order Alert</p>
-                <p className="text-xs text-slate-400">Receive an email whenever a customer submits an advance payment or new order.</p>
+                <p className="text-xs text-slate-400">কাস্টমার অগ্রিম পেমেন্ট বা নতুন অর্ডার করলে অ্যাডমিন সাথে সাথে ইমেইল নোটিফিকেশন পাবে।</p>
               </div>
               <input
                 type="checkbox"

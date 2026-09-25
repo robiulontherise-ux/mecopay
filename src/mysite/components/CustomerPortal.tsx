@@ -25,15 +25,20 @@ export default function CustomerPortal({ user, siteSettings }: CustomerPortalPro
   const loadPurchases = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('purchases')
         .select(`
           *,
           post:post_id (*)
         `)
         .eq('customer_id', user.id)
-        .eq('client_id', siteSettings!.client_id)
-        .order('created_at', { ascending: false });
+        .eq('client_id', siteSettings!.client_id);
+
+      if (siteSettings?.brand_id) {
+        query = query.or(`brand_id.eq.${siteSettings.brand_id},brand_id.is.null`);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
         
       if (error) throw error;
       setPurchases(data || []);

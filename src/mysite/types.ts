@@ -1,5 +1,6 @@
 export interface Category {
   client_id?: string;
+  brand_id?: string | null;
   id: string;
   name: string;
   slug: string;
@@ -12,6 +13,7 @@ export interface Category {
 
 export interface Post {
   client_id?: string;
+  brand_id?: string | null;
   id: string;
   title: string;
   slug: string;
@@ -45,6 +47,7 @@ export interface Post {
 export interface Purchase {
   id: string;
   client_id: string;
+  brand_id?: string | null;
   customer_id: string;
   post_id: string;
   amount: number;
@@ -82,6 +85,9 @@ export interface CAPITrackingEvent {
 
 export interface SiteSettings {
   client_id?: string;
+  brand_id?: string | null;
+  domain?: string;
+  subdomain?: string;
   owner_email?: string;
   id: string;
   site_name: string;

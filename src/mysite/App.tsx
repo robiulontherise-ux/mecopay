@@ -244,9 +244,13 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       }
 
       // Fetch categories
+      let targetBrandId = settingsData?.brand_id;
       let catQuery = supabase.from('categories').select('*').order('order_index', { ascending: true });
       if (targetClientId) {
          catQuery = catQuery.eq('client_id', targetClientId);
+      }
+      if (targetBrandId) {
+         catQuery = catQuery.or(`brand_id.eq.${targetBrandId},brand_id.is.null`);
       }
       const { data: catData } = await catQuery;
       
@@ -258,6 +262,9 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       let postQuery = supabase.from('posts').select('*').order('created_at', { ascending: false });
       if (targetClientId) {
          postQuery = postQuery.eq('client_id', targetClientId);
+      }
+      if (targetBrandId) {
+         postQuery = postQuery.or(`brand_id.eq.${targetBrandId},brand_id.is.null`);
       }
       const { data: postData } = await postQuery;
       
@@ -360,6 +367,9 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
   const handleSaveCategory = async (cat: Category) => {
     if (!user?.id) return alert('No client ID found (not logged in).');
     cat.client_id = user.id;
+    if (siteSettings?.brand_id) {
+      cat.brand_id = siteSettings.brand_id;
+    }
     try {
       // 1. Save to Supabase
       const { error } = await supabase.from('categories').upsert([cat]);
@@ -400,6 +410,9 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
   const handleSavePost = async (post: Post) => {
     if (!user?.id) return alert('No client ID found (not logged in).');
     post.client_id = user.id;
+    if (siteSettings?.brand_id) {
+      post.brand_id = siteSettings.brand_id;
+    }
     try {
       const { error } = await supabase.from('posts').upsert([post]);
       if (error) {
