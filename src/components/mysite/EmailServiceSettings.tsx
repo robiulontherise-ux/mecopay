@@ -215,45 +215,53 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
     setCreatingEmail(true);
     try {
+      // 0. Ensure we have the actual authenticated user ID directly from supabase auth
+      const { data: authUserData } = await supabase.auth.getUser();
+      const currentUserId = authUserData?.user?.id || user?.id;
+
+      if (!currentUserId) {
+        showToast('ব্যবহারকারী সেশন পাওয়া যায়নি। অনুগ্রহ করে পুনরায় লগইন করুন।', 'error');
+        setCreatingEmail(false);
+        return;
+      }
+
       // 1. First persist to brand_mailboxes table directly
-      if (user?.id) {
-        const insertPayload: any = {
-          client_id: user.id,
-          domain: activeDomain,
-          email_address: newFullEmail,
-          status: 'active'
-        };
-        
-        if (selectedBrandId) {
-          insertPayload.brand_id = selectedBrandId;
-        }
+      const insertPayload: any = {
+        client_id: currentUserId,
+        domain: activeDomain,
+        email_address: newFullEmail,
+        status: 'active'
+      };
+      
+      if (selectedBrandId) {
+        insertPayload.brand_id = selectedBrandId;
+      }
 
-        const { data: dbSaved, error: insertErr } = await supabase
-          .from('brand_mailboxes')
-          .upsert(insertPayload, { onConflict: 'email_address' })
-          .select();
+      const { data: dbSaved, error: insertErr } = await supabase
+        .from('brand_mailboxes')
+        .upsert(insertPayload, { onConflict: 'email_address' })
+        .select();
 
-        if (insertErr) {
-          console.error('Mailbox DB initial insert error:', insertErr);
-          // If foreign key failed on brand_id, retry without brand_id
-          if (insertErr.message?.includes('foreign key') || insertErr.code === '23503') {
-            delete insertPayload.brand_id;
-            const { error: retryErr } = await supabase
-              .from('brand_mailboxes')
-              .upsert(insertPayload, { onConflict: 'email_address' })
-              .select();
-            if (retryErr) {
-              console.error('Mailbox DB retry insert error:', retryErr);
-              showToast(`ডাটাবেস সংরক্ষণ ব্যর্থ: ${retryErr.message}`, 'error');
-            } else {
-              console.log('Mailbox saved to DB without brand_id constraint');
-            }
+      if (insertErr) {
+        console.error('Mailbox DB initial insert error:', insertErr);
+        // If foreign key failed on brand_id, retry without brand_id
+        if (insertErr.message?.includes('foreign key') || insertErr.code === '23503') {
+          delete insertPayload.brand_id;
+          const { data: retrySaved, error: retryErr } = await supabase
+            .from('brand_mailboxes')
+            .upsert(insertPayload, { onConflict: 'email_address' })
+            .select();
+          if (retryErr) {
+            console.error('Mailbox DB retry insert error:', retryErr);
+            showToast(`ডাটাবেস সংরক্ষণ ব্যর্থ: ${retryErr.message}`, 'error');
           } else {
-            showToast(`ডাটাবেস টেবিল ত্রুটি: ${insertErr.message}`, 'error');
+            console.log('Mailbox saved to DB without brand_id constraint:', retrySaved);
           }
         } else {
-          console.log('Mailbox successfully saved to brand_mailboxes:', dbSaved);
+          showToast(`ডাটাবেস টেবিল ত্রুটি: ${insertErr.message}`, 'error');
         }
+      } else {
+        console.log('Mailbox successfully saved to brand_mailboxes:', dbSaved);
       }
 
       // 2. Invoke Supabase Edge Function to configure specific literal rule on Cloudflare
