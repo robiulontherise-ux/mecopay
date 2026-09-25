@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Save, CheckCircle2, RefreshCw, Zap, ShieldCheck, Globe } from 'lucide-react';
+import { Activity, Save, CheckCircle2, RefreshCw, Zap, ShieldCheck, Globe, Building2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 
@@ -9,6 +9,7 @@ interface ServerSideTrackingSettingsProps {
 }
 
 export default function ServerSideTrackingSettings({ user, brands = [] }: ServerSideTrackingSettingsProps) {
+  const [brandList, setBrandList] = useState<any[]>(brands);
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [activeDomain, setActiveDomain] = useState<string>('');
   
@@ -42,12 +43,46 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Initialize selected brand
+  // Initialize and ensure selected brand is populated
   useEffect(() => {
-    if (brands && brands.length > 0 && !selectedBrandId) {
-      setSelectedBrandId(brands[0].id);
+    const initBrands = async () => {
+      if (brands && brands.length > 0) {
+        setBrandList(brands);
+        if (!selectedBrandId) {
+          setSelectedBrandId(brands[0].id);
+        }
+      } else if (user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('brands')
+            .select('id, name, website_url')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true });
+
+          if (!error && data && data.length > 0) {
+            setBrandList(data);
+            if (!selectedBrandId) {
+              setSelectedBrandId(data[0].id);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching brands in tracking settings:', err);
+        }
+      }
+    };
+
+    initBrands();
+  }, [brands, user?.id]);
+
+  // Keep brand list synced if parent brands prop updates
+  useEffect(() => {
+    if (brands && brands.length > 0) {
+      setBrandList(brands);
+      if (!selectedBrandId) {
+        setSelectedBrandId(brands[0].id);
+      }
     }
-  }, [brands]);
+  }, [brands, selectedBrandId]);
 
   // Load tracking data from Supabase server_side_tracking table
   useEffect(() => {
@@ -245,34 +280,57 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
             Bypass browser ad-blockers and iOS privacy restrictions with MecoPay Server-Side Tracking Engine.
           </p>
         </div>
+      </div>
 
-        {/* Brand Selector */}
-        {brands && brands.length > 1 && (
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
-            <Globe className="w-4 h-4 text-emerald-400" />
+      {/* Brand Selector & Active Domain Card (Always visible, exactly matching IntegrateCustomDomain) */}
+      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+            <Building2 className="w-5 h-5 text-indigo-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white tracking-wide">Brand &amp; Store CAPI Routing</h3>
+              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                Isolated Per Brand
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              সিলেক্ট করা ব্র্যান্ডের সাথে তার কাস্টম ডোমেইন মিলিয়ে CAPI ফায়ার হবে
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">Select Brand:</span>
             <select
               value={selectedBrandId}
               onChange={(e) => setSelectedBrandId(e.target.value)}
-              className="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer"
+              className="w-full sm:w-auto bg-slate-950 border border-indigo-500/30 text-white font-semibold text-xs rounded-xl px-3.5 py-2.5 outline-none focus:border-indigo-400 transition-all shadow-inner cursor-pointer"
             >
-              {brands.map((b) => (
-                <option key={b.id} value={b.id} className="bg-slate-900 text-white">
-                  {b.name || 'Default Brand'}
-                </option>
-              ))}
+              {brandList && brandList.length > 0 ? (
+                brandList.map((b) => (
+                  <option key={b.id} value={b.id} className="bg-slate-900 text-white">
+                    {b.name || 'Unnamed Brand'}
+                  </option>
+                ))
+              ) : (
+                <option value="">Default Brand (Primary)</option>
+              )}
             </select>
           </div>
-        )}
-      </div>
 
-      {activeDomain && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs text-emerald-300">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>
-            Connected Domain: <strong className="text-white underline">{activeDomain}</strong>. Events will be tracked via MecoPay Server CAPI Engine.
-          </span>
+          {/* Connected Custom Domain Badge */}
+          <div className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 px-3.5 py-2 rounded-xl">
+            <Globe className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span className="text-xs text-slate-400 whitespace-nowrap">Connected Domain:</span>
+            <span className="text-xs font-mono font-bold text-emerald-400 truncate max-w-[160px]">
+              {activeDomain || 'default'}
+            </span>
+          </div>
         </div>
-      )}
+      </div>
 
       {loading ? (
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-8 flex items-center justify-center gap-3 text-slate-400 text-sm">
@@ -284,8 +342,10 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
           {/* Meta CAPI */}
           <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              <h3 className="text-base font-bold text-white flex items-center gap-2.5">
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z" fill="#1877F2"/>
+                </svg>
                 Meta (Facebook) Conversion API (CAPI)
               </h3>
               <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-0.5 rounded-full font-medium">
@@ -331,8 +391,13 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
 
           {/* Google Analytics 4 */}
           <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            <h3 className="text-base font-bold text-white flex items-center gap-2.5">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+              </svg>
               Google Analytics 4 (Measurement Protocol)
             </h3>
 
@@ -363,8 +428,10 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
 
           {/* TikTok Events API */}
           <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+            <h3 className="text-base font-bold text-white flex items-center gap-2.5">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="#FE2C55">
+                <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-1.01v8.83c0 1.94-.48 3.86-1.48 5.46-1.57 2.49-4.32 3.98-7.29 3.98-2.69 0-5.18-1.25-6.8-3.35-1.7-2.19-2.2-5.12-1.34-7.8 1.05-3.23 3.92-5.46 7.33-5.59v4.06c-1.74.07-3.26 1.13-3.87 2.75-.68 1.83.1 3.92 1.81 4.88 1.49.83 3.39.56 4.58-.65.65-.67.97-1.58.97-2.52V.02h-.03z"/>
+              </svg>
               TikTok Events API
             </h3>
 
@@ -395,8 +462,10 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
 
           {/* Twitter / X Conversions API */}
           <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+            <h3 className="text-base font-bold text-white flex items-center gap-2.5">
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FFFFFF">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
               Twitter / X Conversions API (v12)
             </h3>
 
@@ -427,8 +496,10 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
 
           {/* LinkedIn Conversions API */}
           <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+            <h3 className="text-base font-bold text-white flex items-center gap-2.5">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="#0A66C2">
+                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+              </svg>
               LinkedIn Conversions API (REST v202401)
             </h3>
 
@@ -459,8 +530,10 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
 
           {/* Pinterest Conversions API */}
           <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+            <h3 className="text-base font-bold text-white flex items-center gap-2.5">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="#E60023">
+                <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345-.09.375-.291 1.199-.332 1.357-.053.211-.174.256-.402.155-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/>
+              </svg>
               Pinterest Conversions API (v5)
             </h3>
 
