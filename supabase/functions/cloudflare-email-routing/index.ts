@@ -87,17 +87,75 @@ serve(async (req) => {
     }
 
     // 3. Read Cloudflare Environment Secrets
-    const cfZoneId = Deno.env.get('CLOUDFLARE_ZONE_ID') || ''
+    const defaultZoneId = Deno.env.get('CLOUDFLARE_ZONE_ID') || ''
     const cfApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN') || ''
-    const emailWorkerName = Deno.env.get('CLOUDFLARE_EMAIL_WORKER_NAME') || 'mecopay-email-worker'
+    let emailWorkerName = Deno.env.get('CLOUDFLARE_EMAIL_WORKER_NAME') || ''
 
-    if (!cfApiToken || !cfZoneId) {
+    if (!cfApiToken) {
       return new Response(JSON.stringify({ 
-        error: 'CLOUDFLARE_API_TOKEN or CLOUDFLARE_ZONE_ID is not configured in Supabase Edge Secrets.' 
+        error: 'CLOUDFLARE_API_TOKEN is not configured in Supabase Edge Secrets.' 
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
+    }
+
+    // Dynamic Zone Lookup: Search Cloudflare for the zone matching the custom domain (e.g. rsgedu.online)
+    let targetZoneId = defaultZoneId
+    try {
+      const zoneLookupRes = await fetch(
+        `https://api.cloudflare.com/client/v4/zones?name=${cleanDomain}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${cfApiToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+      const zoneLookupData = await zoneLookupRes.json()
+      if (zoneLookupData.result && zoneLookupData.result.length > 0) {
+        targetZoneId = zoneLookupData.result[0].id
+      }
+    } catch (zErr) {
+      console.warn('Zone dynamic lookup notice:', zErr)
+    }
+
+    if (!targetZoneId) {
+      return new Response(JSON.stringify({ 
+        error: `Could not find Cloudflare Zone for domain ${cleanDomain}. Ensure zone exists on your Cloudflare account.` 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Auto-discover active email worker from existing rules if not provided in env
+    try {
+      const existingRulesRes = await fetch(
+        `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
+        {
+          headers: {
+            'Authorization': `Bearer ${cfApiToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+      const existingRulesData = await existingRulesRes.json()
+      if (existingRulesData.result && Array.isArray(existingRulesData.result)) {
+        for (const r of existingRulesData.result) {
+          const wAction = r.actions?.find((a: any) => a.type === 'worker')
+          if (wAction && wAction.value && wAction.value[0]) {
+            emailWorkerName = wAction.value[0]
+            break
+          }
+        }
+      }
+    } catch (wErr) {
+      console.warn('Worker discovery notice:', wErr)
+    }
+
+    if (!emailWorkerName) {
+      emailWorkerName = 'mecopay-email-worker'
     }
 
     // =========================================================================
@@ -106,7 +164,7 @@ serve(async (req) => {
     if (action === 'create') {
       // 1. First, check if a rule already exists for this exact email to avoid duplicates
       const listRulesRes = await fetch(
-        `https://api.cloudflare.com/client/v4/zones/${cfZoneId}/email/routing/rules`,
+        `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
         {
           headers: {
             'Authorization': `Bearer ${cfApiToken}`,
@@ -123,7 +181,7 @@ serve(async (req) => {
       if (existingRule) {
         return new Response(JSON.stringify({
           success: true,
-          message: 'Email rule already exists and is active on Cloudflare.',
+          message: `MecoPay Business Email ${cleanEmail} is active and ready.`,
           rule_id: existingRule.id,
           email_address: cleanEmail,
           domain: cleanDomain
@@ -135,7 +193,7 @@ serve(async (req) => {
 
       // 2. Create the exact literal rule for this specific mailbox
       const createRes = await fetch(
-        `https://api.cloudflare.com/client/v4/zones/${cfZoneId}/email/routing/rules`,
+        `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
         {
           method: 'POST',
           headers: {
@@ -166,9 +224,9 @@ serve(async (req) => {
       const createData = await createRes.json()
 
       if (!createRes.ok || !createData.success) {
-        const errorMsg = createData.errors?.[0]?.message || 'Failed to create Cloudflare email routing rule'
+        const errorMsg = createData.errors?.[0]?.message || 'Failed to create email routing rule'
         return new Response(JSON.stringify({ 
-          error: `Cloudflare API Error: ${errorMsg}`,
+          error: `Delivery Routing Error: ${errorMsg}`,
           details: createData.errors 
         }), {
           status: 400,
@@ -178,7 +236,7 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        message: `Business email ${cleanEmail} created successfully and routed to MecoPay Worker.`,
+        message: `Business email ${cleanEmail} created successfully and routed to MecoPay Webmail.`,
         rule_id: createData.result?.id,
         email_address: cleanEmail,
         domain: cleanDomain
@@ -193,7 +251,7 @@ serve(async (req) => {
     // =========================================================================
     if (action === 'delete') {
       const listRulesRes = await fetch(
-        `https://api.cloudflare.com/client/v4/zones/${cfZoneId}/email/routing/rules`,
+        `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
         {
           headers: {
             'Authorization': `Bearer ${cfApiToken}`,
@@ -208,7 +266,7 @@ serve(async (req) => {
 
       if (targetRule) {
         await fetch(
-          `https://api.cloudflare.com/client/v4/zones/${cfZoneId}/email/routing/rules/${targetRule.id}`,
+          `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules/${targetRule.id}`,
           {
             method: 'DELETE',
             headers: {
@@ -221,7 +279,7 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        message: `Email rule for ${cleanEmail} deleted from Cloudflare.`
+        message: `Email rule for ${cleanEmail} deleted.`
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

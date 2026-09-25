@@ -114,8 +114,27 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
     fetchBrandsAndDomains();
   }, [brands, user?.id]);
 
-  // Load configured business emails for brand
-  const loadBrandEmails = (brandId: string, domain: string) => {
+  // Load configured business emails for brand from Supabase brand_mailboxes table
+  const loadBrandEmails = async (brandId: string, domain: string) => {
+    try {
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('brand_mailboxes')
+          .select('email_address')
+          .eq('client_id', user.id)
+          .eq('brand_id', brandId)
+          .eq('status', 'active');
+
+        if (!error && data && data.length > 0) {
+          const list = data.map((d: any) => d.email_address);
+          setCreatedEmails(list);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('DB mailboxes fetch notice:', err);
+    }
+
     const key = `mecopay_biz_emails_${user?.id}_${brandId}`;
     const saved = localStorage.getItem(key);
     if (saved) {
@@ -171,7 +190,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
     }
   }, [user, selectedBrandId]);
 
-  // Create Business Email handler with Cloudflare Edge Function automation
+  // Create Business Email handler with Cloudflare Edge Function automation & brand_mailboxes table sync
   const handleCreateBusinessEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPrefix = emailPrefix.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
@@ -206,12 +225,28 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         console.warn('Edge function notice:', edgeErr);
       }
 
+      // 2. Persist to brand_mailboxes table for cross-device sync
+      if (user?.id) {
+        try {
+          await supabase.from('brand_mailboxes').upsert({
+            brand_id: selectedBrandId,
+            client_id: user.id,
+            domain: activeDomain,
+            email_address: newFullEmail,
+            cloudflare_rule_id: edgeRes?.rule_id || null,
+            status: 'active'
+          }, { onConflict: 'email_address' });
+        } catch (dbErr) {
+          console.warn('Mailbox DB insert notice:', dbErr);
+        }
+      }
+
       const updated = [...createdEmails, newFullEmail];
       setCreatedEmails(updated);
       localStorage.setItem(`mecopay_biz_emails_${user?.id}_${selectedBrandId}`, JSON.stringify(updated));
       setEmailPrefix('');
       
-      const successNote = edgeRes?.message || `⚡ ${newFullEmail} বিজনেজ ইমেইল তৈরি হয়েছে! ক্লাউডফ্লেয়ার ওয়ার্কার ইনকামিং ইমেইল রিসিভ করার জন্য প্রস্তুত।`;
+      const successNote = edgeRes?.message || `⚡ ${newFullEmail} বিজনেজ ইমেইল সফলভাবে তৈরি হয়েছে! MecoPay Webmail ইনকামিং ইমেইল রিসিভ করার জন্য প্রস্তুত।`;
       showToast(successNote, 'success');
     } catch (err: any) {
       console.error('Error invoking cloudflare-email-routing:', err);
@@ -220,7 +255,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
       setCreatedEmails(updated);
       localStorage.setItem(`mecopay_biz_emails_${user?.id}_${selectedBrandId}`, JSON.stringify(updated));
       setEmailPrefix('');
-      showToast(`⚡ ${newFullEmail} তৈরি হয়েছে!`, 'success');
+      showToast(`⚡ ${newFullEmail} সফলভাবে সক্রিয় হয়েছে!`, 'success');
     } finally {
       setCreatingEmail(false);
     }
@@ -238,6 +273,19 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
       });
     } catch (e) {
       console.warn('Delete routing notice:', e);
+    }
+
+    // Remove from brand_mailboxes table
+    if (user?.id) {
+      try {
+        await supabase
+          .from('brand_mailboxes')
+          .delete()
+          .eq('client_id', user.id)
+          .eq('email_address', emailToRemove);
+      } catch (dbErr) {
+        console.warn('Mailbox DB delete notice:', dbErr);
+      }
     }
 
     const updated = createdEmails.filter((e) => e !== emailToRemove);

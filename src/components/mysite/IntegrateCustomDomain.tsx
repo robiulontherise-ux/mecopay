@@ -598,7 +598,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Cloudflare TLS &amp; CDN Status:
+                      MecoPay Edge &amp; SSL Status:
                     </span>
                     {domainStatus === 'active' ? (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
@@ -614,7 +614,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
                     {domainStatus === 'active'
-                      ? `Your custom domain ${customDomain} is fully secured by Cloudflare for SaaS and routed via MecoPay Shield.`
+                      ? `Your custom domain ${customDomain} is fully secured with TLS 1.3 and routed via MecoPay Enterprise Edge Engine.`
                       : `Add the CNAME record below, then click Verify to activate your free automated SSL certificate.`}
                   </p>
                 </div>
