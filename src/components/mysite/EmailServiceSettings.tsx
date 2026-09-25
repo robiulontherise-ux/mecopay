@@ -237,6 +237,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         insertPayload.brand_id = selectedBrandId;
       }
 
+      let saveSuccess = false;
       const { data: dbSaved, error: insertErr } = await supabase
         .from('brand_mailboxes')
         .upsert(insertPayload, { onConflict: 'email_address' })
@@ -254,14 +255,24 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
           if (retryErr) {
             console.error('Mailbox DB retry insert error:', retryErr);
             showToast(`ডাটাবেস সংরক্ষণ ব্যর্থ: ${retryErr.message}`, 'error');
+            setCreatingEmail(false);
+            return;
           } else {
-            console.log('Mailbox saved to DB without brand_id constraint:', retrySaved);
+            saveSuccess = true;
           }
         } else {
           showToast(`ডাটাবেস টেবিল ত্রুটি: ${insertErr.message}`, 'error');
+          setCreatingEmail(false);
+          return;
         }
       } else {
-        console.log('Mailbox successfully saved to brand_mailboxes:', dbSaved);
+        saveSuccess = true;
+      }
+
+      if (!saveSuccess) {
+        showToast('ডাটাবেসে ইমেইল সংরক্ষণ করা যায়নি', 'error');
+        setCreatingEmail(false);
+        return;
       }
 
       // 2. Invoke Supabase Edge Function to configure specific literal rule on Cloudflare
