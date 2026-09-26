@@ -638,15 +638,15 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
                 <Globe className="w-4 h-4 text-emerald-400" />
-                ডোমেইন DNS সেটআপ গাইড (ইমেইল সক্রিয় করার নিয়ম)
+                Email Records (Required for Business Email)
               </h4>
               <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                ১ বার সেট করলেই আজীবন কার্যকর
+                Required for Email
               </span>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              আপনার কাস্টম ডোমেইন (<span className="font-mono text-emerald-400 font-semibold">{activeDomain}</span>)-এ আনলিমিটেড ফ্রি বিজনেস ইমেইল রিসিভ করতে এবং পরবর্তীতে ড্যাশবোর্ড থেকেই মেইল সেন্ড করতে আপনার ডোমেইন কন্ট্রোল প্যানেলে এই ২টি রেকর্ড যুক্ত করুন:
+              ইমেইল গ্রহণ (Receive) ও পাঠাতে (Send) আপনার ডোমেইনে এই রেকর্ডগুলো যুক্ত করুন:
             </p>
 
             {/* DNS Records Table */}
@@ -656,52 +656,100 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                   <tr>
                     <th className="p-3 font-semibold">Type</th>
                     <th className="p-3 font-semibold">Host / Name</th>
-                    <th className="p-3 font-semibold">Value / Mail Server</th>
+                    <th className="p-3 font-semibold">Mail Server / Value</th>
                     <th className="p-3 font-semibold">Priority</th>
                     <th className="p-3 font-semibold">TTL</th>
-                    <th className="p-3 font-semibold text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50 bg-slate-950 text-slate-300">
                   <tr>
                     <td className="p-3 font-mono text-emerald-400 font-bold">MX</td>
-                    <td className="p-3 font-mono">@</td>
-                    <td className="p-3 font-mono text-white font-semibold">mx1.mecopay.space</td>
-                    <td className="p-3 font-mono text-emerald-400 font-bold">10</td>
-                    <td className="p-3 font-mono text-slate-400">Automatic</td>
-                    <td className="p-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText('mx1.mecopay.space');
-                          showToast('mx1.mecopay.space কপি হয়েছে', 'success');
-                        }}
-                        className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 transition-colors"
-                      >
-                        <Copy className="w-3 h-3" />
-                        Copy
-                      </button>
+                    <td className="p-3 font-mono">
+                      <span className="inline-flex items-center gap-1.5">
+                        @
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText('@');
+                            showToast('@ কপি হয়েছে', 'success');
+                          }}
+                          className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-850 transition-colors"
+                          title="Copy Host"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
                     </td>
+                    <td className="p-3 font-mono text-white font-semibold">
+                      <span className="inline-flex items-center gap-1.5">
+                        mx1.mecopay.space
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText('mx1.mecopay.space');
+                            showToast('mx1.mecopay.space কপি হয়েছে', 'success');
+                          }}
+                          className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-850 transition-colors"
+                          title="Copy Target"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
+                    </td>
+                    <td className="p-3 font-mono text-emerald-400 font-bold">
+                      <span className="inline-flex items-center gap-1.5">
+                        10
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText('10');
+                            showToast('10 কপি হয়েছে', 'success');
+                          }}
+                          className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-850 transition-colors"
+                          title="Copy Priority"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
+                    </td>
+                    <td className="p-3 font-mono text-slate-400">Automatic</td>
                   </tr>
                   <tr>
                     <td className="p-3 font-mono text-emerald-400 font-bold">TXT</td>
-                    <td className="p-3 font-mono">@</td>
-                    <td className="p-3 font-mono text-slate-300">v=spf1 include:relay.mecopay.space ~all</td>
+                    <td className="p-3 font-mono">
+                      <span className="inline-flex items-center gap-1.5">
+                        @
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText('@');
+                            showToast('@ কপি হয়েছে', 'success');
+                          }}
+                          className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-850 transition-colors"
+                          title="Copy Host"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
+                    </td>
+                    <td className="p-3 font-mono text-slate-300">
+                      <span className="inline-flex items-center gap-1.5">
+                        v=spf1 include:relay.mecopay.space ~all
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText('v=spf1 include:relay.mecopay.space ~all');
+                            showToast('SPF রেকর্ড কপি হয়েছে', 'success');
+                          }}
+                          className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-850 transition-colors"
+                          title="Copy Value"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
+                    </td>
                     <td className="p-3 font-mono text-slate-500">-</td>
                     <td className="p-3 font-mono text-slate-400">Automatic</td>
-                    <td className="p-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText('v=spf1 include:relay.mecopay.space ~all');
-                          showToast('SPF রেকর্ড কপি হয়েছে', 'success');
-                        }}
-                        className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 transition-colors"
-                      >
-                        <Copy className="w-3 h-3" />
-                        Copy
-                      </button>
-                    </td>
                   </tr>
                 </tbody>
               </table>

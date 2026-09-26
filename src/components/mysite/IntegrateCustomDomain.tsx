@@ -689,7 +689,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           DNS Records Configuration (Point to MecoPay)
         </h3>
         <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-          Log in to your Domain provider (Namecheap, GoDaddy, Cloudflare, cPanel etc.) and add this CNAME record. All SSL
+          Log in to your Domain provider (Namecheap, GoDaddy etc.) and add this CNAME record. All SSL
           certificates and bot protection will be provisioned automatically within minutes:
         </p>
 
@@ -700,48 +700,58 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 <th className="pb-3 font-semibold">Record Type</th>
                 <th className="pb-3 font-semibold">Host / Name</th>
                 <th className="pb-3 font-semibold">Value / Target</th>
-                <th className="pb-3 font-semibold">Proxy Status</th>
-                <th className="pb-3 font-semibold text-right">Action</th>
+                <th className="pb-3 font-semibold">TTL</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50 text-slate-300">
               <tr>
                 <td className="py-3 font-mono text-emerald-400 font-bold">CNAME</td>
-                <td className="py-3 font-mono">@ (or subdomain like "shop")</td>
-                <td className="py-3 font-mono text-white">cname.mecopay.space</td>
-                <td className="py-3">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    DNS Only or Proxied
+                <td className="py-3 font-mono">
+                  <span className="inline-flex items-center gap-1.5">
+                    @
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('@', 'cname_host')}
+                      className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                      title="Copy Host"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </span>
+                  <span className="text-[11px] text-slate-500 ml-1">(or subdomain)</span>
+                </td>
+                <td className="py-3 font-mono text-white">
+                  <span className="inline-flex items-center gap-1.5">
+                    cname.mecopay.space
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('cname.mecopay.space', 'cname_val')}
+                      className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                      title="Copy Target"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
                   </span>
                 </td>
-                <td className="py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard('cname.mecopay.space', 'cname')}
-                    className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    {copied === 'cname' ? 'Copied' : 'Copy'}
-                  </button>
-                </td>
+                <td className="py-3 font-mono text-slate-400">Automatic</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        {/* 100% White-Label MecoPay Business Email DNS Records */}
+        {/* MecoPay Business Email DNS Records */}
         <div className="border-t border-slate-800/80 pt-5 mt-6">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Mail className="w-4 h-4 text-emerald-400" />
-              MecoPay Enterprise Email Routing (100% Branded MX)
+              Email Records (Required for Business Email)
             </h4>
             <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-              Optional for Free Business Webmail
+              Required for Email
             </span>
           </div>
           <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-            আপনার ডোমেইন থেকে আনলিমিটেড ফ্রি বিজনেস ইমেইল (যেমন: <span className="font-mono text-emerald-400">support@{customDomain || 'yourdomain.com'}</span>) গ্রহণ করতে এবং সেন্ড করতে আপনার ডোমেইনের পুরনো সব MX ডিলিট করে মেকোপের ব্র্যান্ডেড রেকর্ডগুলো যুক্ত করুন:
+            ইমেইল গ্রহণ (Receive) ও পাঠাতে (Send) আপনার ডোমেইনে এই রেকর্ডগুলো যুক্ত করুন:
           </p>
           <div className="overflow-x-auto mb-4">
             <table className="w-full text-left text-xs">
@@ -752,46 +762,95 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                   <th className="pb-2 font-semibold">Mail Server / Value</th>
                   <th className="pb-2 font-semibold">Priority</th>
                   <th className="pb-2 font-semibold">TTL</th>
-                  <th className="pb-2 font-semibold text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50 text-slate-300">
                 <tr>
                   <td className="py-2.5 font-mono text-emerald-400 font-bold">MX</td>
-                  <td className="py-2.5 font-mono">@</td>
-                  <td className="py-2.5 font-mono text-white font-semibold">mx1.mecopay.space</td>
-                  <td className="py-2.5 font-mono text-emerald-400 font-bold">10</td>
-                  <td className="py-2.5 font-mono text-slate-400">Automatic</td>
-                  <td className="py-2.5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard('mx1.mecopay.space', 'mx1')}
-                      className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {copied === 'mx1' ? 'Copied' : 'Copy'}
-                    </button>
+                  <td className="py-2.5 font-mono">
+                    <span className="inline-flex items-center gap-1.5">
+                      @
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard('@', 'mx_host')}
+                        className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                        title="Copy Host"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </span>
                   </td>
+                  <td className="py-2.5 font-mono text-white font-semibold">
+                    <span className="inline-flex items-center gap-1.5">
+                      mx1.mecopay.space
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard('mx1.mecopay.space', 'mx_val')}
+                        className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                        title="Copy Target"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </span>
+                  </td>
+                  <td className="py-2.5 font-mono text-emerald-400 font-bold">
+                    <span className="inline-flex items-center gap-1.5">
+                      10
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard('10', 'mx_prio')}
+                        className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                        title="Copy Priority"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </span>
+                  </td>
+                  <td className="py-2.5 font-mono text-slate-400">Automatic</td>
                 </tr>
                 <tr>
                   <td className="py-2.5 font-mono text-emerald-400 font-bold">TXT</td>
-                  <td className="py-2.5 font-mono">@</td>
-                  <td className="py-2.5 font-mono text-slate-300">v=spf1 include:relay.mecopay.space ~all</td>
+                  <td className="py-2.5 font-mono">
+                    <span className="inline-flex items-center gap-1.5">
+                      @
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard('@', 'txt_host')}
+                        className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                        title="Copy Host"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </span>
+                  </td>
+                  <td className="py-2.5 font-mono text-slate-300">
+                    <span className="inline-flex items-center gap-1.5">
+                      v=spf1 include:relay.mecopay.space ~all
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard('v=spf1 include:relay.mecopay.space ~all', 'txt_val')}
+                        className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                        title="Copy Value"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </span>
+                  </td>
                   <td className="py-2.5 font-mono text-slate-500">-</td>
                   <td className="py-2.5 font-mono text-slate-400">Automatic</td>
-                  <td className="py-2.5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard('v=spf1 include:relay.mecopay.space ~all', 'spf')}
-                      className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {copied === 'spf' ? 'Copied' : 'Copy'}
-                    </button>
-                  </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          {/* Quick Location Note */}
+          <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 text-[11px] text-slate-300 space-y-1.5">
+            <div>
+              📌 <strong className="text-white">MX Record:</strong> Namecheap-এর ক্ষেত্রে পেজের নিচে <strong className="text-emerald-400">"Mail Settings"</strong> সেকশনে গিয়ে <strong className="text-white">Custom MX</strong> নির্বাচন করে বসান।
+            </div>
+            <div>
+              📌 <strong className="text-white">CNAME &amp; TXT Record:</strong> সাধারণ <strong className="text-emerald-400">"Host Records"</strong> সেকশনে "Add New Record" ক্লিক করে বসান।
+            </div>
           </div>
         </div>
 
