@@ -689,7 +689,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           DNS Records Configuration (Point to MecoPay)
         </h3>
         <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-          Log in to your DNS provider (Cloudflare, Namecheap, GoDaddy, cPanel) and add this CNAME record. All SSL
+          Log in to your Domain provider (Namecheap, GoDaddy, Cloudflare, cPanel etc.) and add this CNAME record. All SSL
           certificates and bot protection will be provisioned automatically within minutes:
         </p>
 
@@ -716,6 +716,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 </td>
                 <td className="py-3 text-right">
                   <button
+                    type="button"
                     onClick={() => copyToClipboard('cname.mecopay.space', 'cname')}
                     className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors"
                   >
@@ -740,7 +741,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
             </span>
           </div>
           <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-            আপনার ডোমেইন থেকে আনলিমিটেড ফ্রি বিজনেস ইমেইল (যেমন: <span className="font-mono text-emerald-400">support@{customDomain || 'yourdomain.com'}</span>) গ্রহণ করতে আপনার ডোমেইনের পুরনো সব MX ডিলিট করে মেকোপের ব্র্যান্ডেড রেকর্ডটি যুক্ত করুন:
+            আপনার ডোমেইন থেকে আনলিমিটেড ফ্রি বিজনেস ইমেইল (যেমন: <span className="font-mono text-emerald-400">support@{customDomain || 'yourdomain.com'}</span>) গ্রহণ করতে এবং সেন্ড করতে আপনার ডোমেইনের পুরনো সব MX ডিলিট করে মেকোপের ব্র্যান্ডেড রেকর্ডগুলো যুক্ত করুন:
           </p>
           <div className="overflow-x-auto mb-4">
             <table className="w-full text-left text-xs">
@@ -748,8 +749,9 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 <tr className="border-b border-slate-800 text-slate-400">
                   <th className="pb-2 font-semibold">Type</th>
                   <th className="pb-2 font-semibold">Host / Name</th>
-                  <th className="pb-2 font-semibold">Mail Server (Target)</th>
+                  <th className="pb-2 font-semibold">Mail Server / Value</th>
                   <th className="pb-2 font-semibold">Priority</th>
+                  <th className="pb-2 font-semibold">TTL</th>
                   <th className="pb-2 font-semibold text-right">Action</th>
                 </tr>
               </thead>
@@ -758,9 +760,11 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                   <td className="py-2.5 font-mono text-emerald-400 font-bold">MX</td>
                   <td className="py-2.5 font-mono">@</td>
                   <td className="py-2.5 font-mono text-white font-semibold">mx1.mecopay.space</td>
-                  <td className="py-2.5 font-mono text-emerald-400">10</td>
+                  <td className="py-2.5 font-mono text-emerald-400 font-bold">10</td>
+                  <td className="py-2.5 font-mono text-slate-400">Automatic</td>
                   <td className="py-2.5 text-right">
                     <button
+                      type="button"
                       onClick={() => copyToClipboard('mx1.mecopay.space', 'mx1')}
                       className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors"
                     >
@@ -772,10 +776,12 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 <tr>
                   <td className="py-2.5 font-mono text-emerald-400 font-bold">TXT</td>
                   <td className="py-2.5 font-mono">@</td>
-                  <td className="py-2.5 font-mono text-slate-400">v=spf1 include:relay.mecopay.space ~all</td>
-                  <td className="py-2.5 font-mono text-slate-500">Auto</td>
+                  <td className="py-2.5 font-mono text-slate-300">v=spf1 include:relay.mecopay.space ~all</td>
+                  <td className="py-2.5 font-mono text-slate-500">-</td>
+                  <td className="py-2.5 font-mono text-slate-400">Automatic</td>
                   <td className="py-2.5 text-right">
                     <button
+                      type="button"
                       onClick={() => copyToClipboard('v=spf1 include:relay.mecopay.space ~all', 'spf')}
                       className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors"
                     >

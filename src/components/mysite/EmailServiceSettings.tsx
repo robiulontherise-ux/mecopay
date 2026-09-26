@@ -658,7 +658,8 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                     <th className="p-3 font-semibold">Host / Name</th>
                     <th className="p-3 font-semibold">Value / Mail Server</th>
                     <th className="p-3 font-semibold">Priority</th>
-                    <th className="p-3 font-semibold text-right">কপি করুন</th>
+                    <th className="p-3 font-semibold">TTL</th>
+                    <th className="p-3 font-semibold text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50 bg-slate-950 text-slate-300">
@@ -667,6 +668,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                     <td className="p-3 font-mono">@</td>
                     <td className="p-3 font-mono text-white font-semibold">mx1.mecopay.space</td>
                     <td className="p-3 font-mono text-emerald-400 font-bold">10</td>
+                    <td className="p-3 font-mono text-slate-400">Automatic</td>
                     <td className="p-3 text-right">
                       <button
                         type="button"
@@ -686,6 +688,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                     <td className="p-3 font-mono">@</td>
                     <td className="p-3 font-mono text-slate-300">v=spf1 include:relay.mecopay.space ~all</td>
                     <td className="p-3 font-mono text-slate-500">-</td>
+                    <td className="p-3 font-mono text-slate-400">Automatic</td>
                     <td className="p-3 text-right">
                       <button
                         type="button"
