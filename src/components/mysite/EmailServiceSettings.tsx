@@ -216,22 +216,50 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
     setCreatingEmail(true);
     try {
-      // 0. Ensure we have the actual authenticated user ID directly from supabase auth
-      const { data: authUserData } = await supabase.auth.getUser();
-      const currentUserId = authUserData?.user?.id || user?.id;
+      // 0. Ensure we have the actual authenticated user session and fresh access token
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      const currentSession = sessionData?.session;
+      const currentUserId = currentSession?.user?.id || user?.id;
 
-      if (!currentUserId) {
-        showToast('ব্যবহারকারী সেশন পাওয়া যায়নি। অনুগ্রহ করে পুনরায় লগইন করুন।', 'error');
+      if (!currentSession?.access_token || !currentUserId) {
+        showToast('ইউজার লগইন সেশন পাওয়া যায়নি। অনুগ্রহ করে পুনরায় লগইন করুন।', 'error');
         setCreatingEmail(false);
         return;
       }
 
-      // 1. First persist to brand_mailboxes table directly
+      const accessToken = currentSession.access_token;
+
+      // 1. FIRST: Invoke Supabase Edge Function to create and verify the Cloudflare Email Routing Rule
+      // Using explicit Authorization: Bearer <accessToken>
+      const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-email-routing', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: {
+          action: 'create',
+          email_address: newFullEmail,
+          domain: activeDomain,
+          brand_id: selectedBrandId
+        }
+      });
+
+      // If Edge Function fails or returns an error, STOP IMMEDIATELY. Do NOT save to database!
+      if (edgeErr || edgeRes?.error) {
+        const errMsg = edgeRes?.error || edgeErr?.message || 'ক্লাউডফ্লেয়ারে ইমেইল রুট তৈরি করতে ব্যর্থ হয়েছে';
+        console.error('Cloudflare Email Routing failed:', edgeErr, edgeRes);
+        showToast(`ত্রুটি: ${errMsg}`, 'error');
+        setCreatingEmail(false);
+        return;
+      }
+
+      // 2. SECOND: Cloudflare Route is confirmed! Now persist to database table
+      const cloudflareRuleId = edgeRes?.rule_id || null;
       const insertPayload: any = {
         client_id: currentUserId,
         domain: activeDomain,
         email_address: newFullEmail,
-        status: 'active'
+        status: 'active',
+        cloudflare_rule_id: cloudflareRuleId
       };
       
       if (selectedBrandId) {
@@ -239,7 +267,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
       }
 
       let saveSuccess = false;
-      const { data: dbSaved, error: insertErr } = await supabase
+      const { error: insertErr } = await supabase
         .from('brand_mailboxes')
         .upsert(insertPayload, { onConflict: 'email_address' })
         .select();
@@ -249,7 +277,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         // If foreign key failed on brand_id, retry without brand_id
         if (insertErr.message?.includes('foreign key') || insertErr.code === '23503') {
           delete insertPayload.brand_id;
-          const { data: retrySaved, error: retryErr } = await supabase
+          const { error: retryErr } = await supabase
             .from('brand_mailboxes')
             .upsert(insertPayload, { onConflict: 'email_address' })
             .select();
@@ -276,34 +304,12 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         return;
       }
 
-      // 2. Invoke Supabase Edge Function to configure specific literal rule on Cloudflare
-      const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-email-routing', {
-        body: {
-          action: 'create',
-          email_address: newFullEmail,
-          domain: activeDomain,
-          brand_id: selectedBrandId
-        }
-      });
-
-      if (edgeErr) {
-        console.warn('Edge function notice:', edgeErr);
-      } else if (edgeRes?.rule_id && user?.id) {
-        // Update cloudflare_rule_id in database
-        try {
-          await supabase
-            .from('brand_mailboxes')
-            .update({ cloudflare_rule_id: edgeRes.rule_id })
-            .eq('email_address', newFullEmail);
-        } catch (e) {}
-      }
-
       const updated = [...createdEmails, newFullEmail];
       setCreatedEmails(updated);
       localStorage.setItem(`mecopay_biz_emails_${user?.id}_${selectedBrandId}`, JSON.stringify(updated));
       setEmailPrefix('');
       
-      const successNote = edgeRes?.message || `⚡ ${newFullEmail} বিজনেজ ইমেইল তৈরি হয়েছে এবং ডাটাবেসে সেভ হয়েছে!`;
+      const successNote = edgeRes?.message || `⚡ ${newFullEmail} বিজনেজ ইমেইল তৈরি হয়েছে এবং ক্লাউডফ্লেয়ার রুটিং সক্রিয় হয়েছে!`;
       showToast(successNote, 'success');
     } catch (err: any) {
       console.error('Error in handleCreateBusinessEmail:', err);
@@ -315,7 +321,11 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
   const handleDeleteEmail = async (emailToRemove: string) => {
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
       await supabase.functions.invoke('cloudflare-email-routing', {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         body: {
           action: 'delete',
           email_address: emailToRemove,
