@@ -14,7 +14,8 @@ import {
   Sparkles, 
   Inbox,
   Layers,
-  Settings
+  Settings,
+  Copy
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
@@ -630,6 +631,102 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Step-by-Step DNS Setup Guide for Custom Domains & Namecheap */}
+          <div className="mt-6 p-5 sm:p-6 bg-slate-950/90 border border-slate-800 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Globe className="w-4 h-4 text-emerald-400" />
+                ডোমেইন DNS সেটআপ গাইড (ইমেইল সক্রিয় করার নিয়ম)
+              </h4>
+              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                ১ বার সেট করলেই আজীবন কার্যকর
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              আপনার কাস্টম ডোমেইন (<span className="font-mono text-emerald-400 font-semibold">{activeDomain}</span>)-এ আনলিমিটেড ফ্রি বিজনেস ইমেইল রিসিভ করতে এবং পরবর্তীতে ড্যাশবোর্ড থেকেই মেইল সেন্ড করতে আপনার ডোমেইন কন্ট্রোল প্যানেলে এই ২টি রেকর্ড যুক্ত করুন:
+            </p>
+
+            {/* DNS Records Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border border-slate-800/80 rounded-xl overflow-hidden">
+                <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th className="p-3 font-semibold">Type</th>
+                    <th className="p-3 font-semibold">Host / Name</th>
+                    <th className="p-3 font-semibold">Value / Mail Server</th>
+                    <th className="p-3 font-semibold">Priority</th>
+                    <th className="p-3 font-semibold text-right">কপি করুন</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50 bg-slate-950 text-slate-300">
+                  <tr>
+                    <td className="p-3 font-mono text-emerald-400 font-bold">MX</td>
+                    <td className="p-3 font-mono">@</td>
+                    <td className="p-3 font-mono text-white font-semibold">mx1.mecopay.space</td>
+                    <td className="p-3 font-mono text-emerald-400 font-bold">10</td>
+                    <td className="p-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText('mx1.mecopay.space');
+                          showToast('mx1.mecopay.space কপি হয়েছে', 'success');
+                        }}
+                        className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 transition-colors"
+                      >
+                        <Copy className="w-3 h-3" />
+                        Copy
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-mono text-emerald-400 font-bold">TXT</td>
+                    <td className="p-3 font-mono">@</td>
+                    <td className="p-3 font-mono text-slate-300">v=spf1 include:relay.mecopay.space ~all</td>
+                    <td className="p-3 font-mono text-slate-500">-</td>
+                    <td className="p-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText('v=spf1 include:relay.mecopay.space ~all');
+                          showToast('SPF রেকর্ড কপি হয়েছে', 'success');
+                        }}
+                        className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 transition-colors"
+                      >
+                        <Copy className="w-3 h-3" />
+                        Copy
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Provider Specific Step-by-Step Instructions */}
+            <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-3">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
+                📌 Namecheap ব্যবহারকারীদের জন্য সহজ ধাপ:
+              </span>
+              <ol className="text-xs text-slate-300 space-y-2 list-decimal list-inside leading-relaxed">
+                <li>
+                  Namecheap অ্যাকাউন্টে গিয়ে আপনার ডোমেইনের <strong className="text-white">"Advanced DNS"</strong> ট্যাবে যান।
+                </li>
+                <li>
+                  পৃষ্ঠাটি স্ক্রোল করে একটু নিচে নামলে <strong className="text-white">"MAIL SETTINGS"</strong> সেকশন পাবেন। ড্রপডাউন থেকে <strong className="text-emerald-400">"Custom MX"</strong> সিলেক্ট করুন (যদি ড্রপডাউনে সাধারণ Host Records-এ MX না পান)।
+                </li>
+                <li>
+                  সেখানে Host ঘরে <code className="text-emerald-300 bg-slate-950 px-1 py-0.5 rounded">@</code>, Mail Server ঘরে <code className="text-emerald-300 bg-slate-950 px-1 py-0.5 rounded">mx1.mecopay.space</code> এবং Priority ঘরে <code className="text-emerald-300 bg-slate-950 px-1 py-0.5 rounded">10</code> লিখে <strong className="text-white">Save Changes</strong> দিন।
+                </li>
+                <li>
+                  এবার উপরের <strong className="text-white">"Host Records"</strong> সেকশনে <strong className="text-emerald-400">"Add New Record"</strong> ক্লিক করে Type-এ <strong className="text-white">TXT Record</strong>, Host-এ <code className="text-emerald-300 bg-slate-950 px-1 py-0.5 rounded">@</code> এবং Value-তে <code className="text-emerald-300 bg-slate-950 px-1 py-0.5 rounded">v=spf1 include:relay.mecopay.space ~all</code> বসিয়ে সেভ করুন।
+                </li>
+              </ol>
+              <div className="pt-1 text-[11px] text-slate-400 border-t border-slate-800/60 mt-2">
+                💡 <strong className="text-slate-300">GoDaddy / cPanel / অন্যান্য ডোমেইন:</strong> DNS ম্যানেজমেন্টে গিয়ে সরাসরি <strong className="text-white">"Add Record"</strong> থেকে MX ও TXT নির্বাচন করে উপরের মানগুলো বসিয়ে দিলেই সাথে সাথে চালু হয়ে যাবে।
+              </div>
+            </div>
           </div>
         </div>
       )}

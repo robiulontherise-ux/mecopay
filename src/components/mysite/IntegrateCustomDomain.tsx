@@ -14,7 +14,8 @@ import {
   Code2,
   ExternalLink,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Mail
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
@@ -725,6 +726,67 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
               </tr>
             </tbody>
           </table>
+        </div>
+
+        {/* 100% White-Label MecoPay Business Email DNS Records */}
+        <div className="border-t border-slate-800/80 pt-5 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Mail className="w-4 h-4 text-emerald-400" />
+              MecoPay Enterprise Email Routing (100% Branded MX)
+            </h4>
+            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+              Optional for Free Business Webmail
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+            আপনার ডোমেইন থেকে আনলিমিটেড ফ্রি বিজনেস ইমেইল (যেমন: <span className="font-mono text-emerald-400">support@{customDomain || 'yourdomain.com'}</span>) গ্রহণ করতে আপনার ডোমেইনের পুরনো সব MX ডিলিট করে মেকোপের ব্র্যান্ডেড রেকর্ডটি যুক্ত করুন:
+          </p>
+          <div className="overflow-x-auto mb-4">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400">
+                  <th className="pb-2 font-semibold">Type</th>
+                  <th className="pb-2 font-semibold">Host / Name</th>
+                  <th className="pb-2 font-semibold">Mail Server (Target)</th>
+                  <th className="pb-2 font-semibold">Priority</th>
+                  <th className="pb-2 font-semibold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50 text-slate-300">
+                <tr>
+                  <td className="py-2.5 font-mono text-emerald-400 font-bold">MX</td>
+                  <td className="py-2.5 font-mono">@</td>
+                  <td className="py-2.5 font-mono text-white font-semibold">mx1.mecopay.space</td>
+                  <td className="py-2.5 font-mono text-emerald-400">10</td>
+                  <td className="py-2.5 text-right">
+                    <button
+                      onClick={() => copyToClipboard('mx1.mecopay.space', 'mx1')}
+                      className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copied === 'mx1' ? 'Copied' : 'Copy'}
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 font-mono text-emerald-400 font-bold">TXT</td>
+                  <td className="py-2.5 font-mono">@</td>
+                  <td className="py-2.5 font-mono text-slate-400">v=spf1 include:relay.mecopay.space ~all</td>
+                  <td className="py-2.5 font-mono text-slate-500">Auto</td>
+                  <td className="py-2.5 text-right">
+                    <button
+                      onClick={() => copyToClipboard('v=spf1 include:relay.mecopay.space ~all', 'spf')}
+                      className="inline-flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 transition-colors"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copied === 'spf' ? 'Copied' : 'Copy'}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Platform Specific Integration Tabs */}
