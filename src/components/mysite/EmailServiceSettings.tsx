@@ -217,17 +217,29 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
     setCreatingEmail(true);
     try {
       // 0. Ensure we have the actual authenticated user session and fresh access token
-      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-      const currentSession = sessionData?.session;
-      const currentUserId = currentSession?.user?.id || user?.id;
+      // Refresh session first to guarantee the token is 100% valid and not expired
+      let accessToken = '';
+      let currentUserId = user?.id;
 
-      if (!currentSession?.access_token || !currentUserId) {
+      try {
+        const { data: refreshRes, error: refErr } = await supabase.auth.refreshSession();
+        if (!refErr && refreshRes?.session?.access_token) {
+          accessToken = refreshRes.session.access_token;
+          currentUserId = refreshRes.session.user?.id || currentUserId;
+        } else {
+          const { data: sessionData } = await supabase.auth.getSession();
+          accessToken = sessionData?.session?.access_token || '';
+          currentUserId = sessionData?.session?.user?.id || currentUserId;
+        }
+      } catch (sessErr) {
+        console.warn('Session refresh check notice:', sessErr);
+      }
+
+      if (!accessToken || !currentUserId) {
         showToast('ইউজার লগইন সেশন পাওয়া যায়নি। অনুগ্রহ করে পুনরায় লগইন করুন।', 'error');
         setCreatingEmail(false);
         return;
       }
-
-      const accessToken = currentSession.access_token;
 
       // 1. FIRST: Invoke Supabase Edge Function to create and verify the Cloudflare Email Routing Rule
       // Using explicit apikey AND Authorization: Bearer <accessToken>

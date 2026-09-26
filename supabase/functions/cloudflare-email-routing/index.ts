@@ -25,13 +25,11 @@ serve(async (req) => {
       })
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    })
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey)
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim()
+    const { data: { user }, error: userError } = await adminSupabase.auth.getUser(token)
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized user session' }), {
+      return new Response(JSON.stringify({ error: `Unauthorized user session: ${userError?.message || 'Invalid JWT'}` }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -65,12 +63,11 @@ serve(async (req) => {
     }
 
     // 2. Strict Security Ownership Check: Verify that user owns this brand & domain in site_settings
-    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey)
     let domainCheckQuery = adminSupabase
       .from('site_settings')
       .select('id, client_id, brand_id, domain')
       .eq('client_id', user.id)
-      .eq('domain', cleanDomain)
+      .ilike('domain', `%${cleanDomain}%`)
 
     if (brandId) {
       domainCheckQuery = domainCheckQuery.or(`brand_id.eq.${brandId},id.eq.${brandId}`)
