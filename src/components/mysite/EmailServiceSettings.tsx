@@ -17,7 +17,7 @@ import {
   Settings,
   Copy
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseAnonKey } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 import MecoPayWebmailInbox from './MecoPayWebmailInbox';
 
@@ -230,11 +230,19 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
       const accessToken = currentSession.access_token;
 
       // 1. FIRST: Invoke Supabase Edge Function to create and verify the Cloudflare Email Routing Rule
-      // Using explicit Authorization: Bearer <accessToken>
+      // Using explicit apikey AND Authorization: Bearer <accessToken>
+      const headersToSend: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (supabaseAnonKey) {
+        headersToSend['apikey'] = supabaseAnonKey;
+      }
+      if (accessToken) {
+        headersToSend['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-email-routing', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        },
+        headers: headersToSend,
         body: {
           action: 'create',
           email_address: newFullEmail,
@@ -245,7 +253,13 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
       // If Edge Function fails or returns an error, STOP IMMEDIATELY. Do NOT save to database!
       if (edgeErr || edgeRes?.error) {
-        const errMsg = edgeRes?.error || edgeErr?.message || 'ক্লাউডফ্লেয়ারে ইমেইল রুট তৈরি করতে ব্যর্থ হয়েছে';
+        let errMsg = edgeRes?.error || edgeErr?.message || 'ক্লাউডফ্লেয়ারে ইমেইল রুট তৈরি করতে ব্যর্থ হয়েছে';
+        if (edgeErr && (edgeErr as any).context && typeof (edgeErr as any).context.json === 'function') {
+          try {
+            const errBody = await (edgeErr as any).context.json();
+            if (errBody?.error) errMsg = errBody.error;
+          } catch (_) {}
+        }
         console.error('Cloudflare Email Routing failed:', edgeErr, edgeRes);
         showToast(`ত্রুটি: ${errMsg}`, 'error');
         setCreatingEmail(false);
@@ -324,8 +338,12 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       
+      const deleteHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (supabaseAnonKey) deleteHeaders['apikey'] = supabaseAnonKey;
+      if (accessToken) deleteHeaders['Authorization'] = `Bearer ${accessToken}`;
+
       await supabase.functions.invoke('cloudflare-email-routing', {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: deleteHeaders,
         body: {
           action: 'delete',
           email_address: emailToRemove,
