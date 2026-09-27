@@ -765,14 +765,16 @@ export default function DashboardShell() {
             const hostUrl = globalConfigRow.project_url || '';
             const anonKey = globalConfigRow.anon_key || '';
             const channel = globalConfigRow.ws_channel || '';
-            const edgeUrl = globalConfigRow.heartbeat_edge_url || '';
             const webEdgeUrl = globalConfigRow.webhook_edge_url || '';
-            const genWebhookUrl = `${webEdgeUrl}?user_id=${user.id}`;
-            const genWsUrl = `wss://${hostUrl}/realtime/v1/websocket?apikey=${anonKey}&vsn=1.0.0&channel=${channel}&user_id=${user.id}&secret=${hmacSecret || ''}&device_id=${encodeURIComponent(dev)}&edge_url=${edgeUrl}`;
+            const userBrandId = brands[0]?.id ? String(brands[0].id) : 'default';
+            const genWebhookUrl = `${webEdgeUrl}?user_id=${user.id}&brand_id=${userBrandId}`;
+            const genWsUrl = `wss://${hostUrl}/realtime/v1/websocket?apikey=${anonKey}&vsn=1.0.0&channel=${channel}&user_id=${user.id}&brand_id=${userBrandId}&secret=${hmacSecret || ''}&device_id=${encodeURIComponent(dev)}`;
 
             await supabase.from('sms_forwarder_settings').upsert({
               user_id: user.id,
               device_name: dev,
+              brand_id: userBrandId,
+              country: globalConfigRow.country || 'Bangladesh',
               hmac_secret: hmacSecret || '',
               sender_number: globalConfigRow.sender_number,
               text_filter: globalConfigRow.text_filter,
@@ -782,7 +784,6 @@ export default function DashboardShell() {
               project_url: hostUrl,
               anon_key: anonKey,
               ws_channel: channel,
-              heartbeat_edge_url: edgeUrl,
               dashboard_url: globalConfigRow.dashboard_url || 'https://mecopay.pages.dev/dashboard',
               webhook_url: genWebhookUrl,
               heartbeat_ws_url: genWsUrl,
@@ -1726,7 +1727,7 @@ export default function DashboardShell() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Heartbeat WebSocket URL (Realtime + Edge Functions)
+                      WebSocket Realtime URL (Direct Realtime Connection)
                     </label>
                     <span className="text-[11px] text-emerald-400 font-mono">channel={forwarderSettings.ws_channel }</span>
                   </div>
@@ -1734,15 +1735,15 @@ export default function DashboardShell() {
                   <div className="space-y-3 mb-4">
                     {customDevices.length === 0 ? (
                       <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800 text-center text-slate-400 text-sm">
-                        No devices added yet. Enter a phone name below to generate a Heartbeat URL and save to database.
+                        No devices added yet. Enter a phone name below to generate a WebSocket URL and save to database.
                       </div>
                     ) : (
                       customDevices.map((device, idx) => {
                         const hostUrl = forwarderSettings.project_url ;
                         const anonKey = forwarderSettings.anon_key ;
                         const channel = forwarderSettings.ws_channel ;
-                        const edgeUrl = forwarderSettings.heartbeat_edge_url ;
-                        const wsHeartbeatUrl = `wss://${hostUrl}/realtime/v1/websocket?apikey=${anonKey}&vsn=1.0.0&channel=${channel}&user_id=${userId}&secret=${displayHmac}&device_id=${encodeURIComponent(device)}&edge_url=${edgeUrl}`;
+                        const defaultBrandId = brands[0]?.id ? String(brands[0].id) : 'default';
+                        const wsRealtimeUrl = `wss://${hostUrl}/realtime/v1/websocket?apikey=${anonKey}&vsn=1.0.0&channel=${channel}&user_id=${userId}&brand_id=${defaultBrandId}&secret=${displayHmac}&device_id=${encodeURIComponent(device)}`;
 
                         return (
                           <div key={idx} className="bg-slate-950 p-3 rounded-lg border border-purple-500/30 flex items-center justify-between gap-3 group relative">
@@ -1752,11 +1753,11 @@ export default function DashboardShell() {
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300">WebSocket</span>
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300">Synced to DB</span>
                               </div>
-                              <div className="text-emerald-400 font-mono text-xs md:text-sm break-all">{wsHeartbeatUrl}</div>
+                              <div className="text-emerald-400 font-mono text-xs md:text-sm break-all">{wsRealtimeUrl}</div>
                             </div>
                             <div className="flex gap-2">
-                              <button onClick={() => handleCopy(wsHeartbeatUrl, `heartbeat-${idx}`)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
-                                {copiedField === `heartbeat-${idx}` ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
+                              <button onClick={() => handleCopy(wsRealtimeUrl, `ws-${idx}`)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors shrink-0 flex items-center gap-1.5">
+                                {copiedField === `ws-${idx}` ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /><span className="text-xs text-emerald-400 font-bold">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span className="text-xs font-medium">Copy</span></>}
                               </button>
                               <button onClick={() => handleDeleteDevice(device)} className="px-3 py-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors shrink-0 flex items-center justify-center" title="Delete Device">
                                 <Trash2 className="w-4 h-4" />
@@ -2936,26 +2937,10 @@ export default function DashboardShell() {
                   </span>
                 </div>
 
-                {/* 8. Heartbeat Edge URL */}
+                {/* 8. Dashboard URL */}
                 <div className="mt-4">
                   <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                    8. Heartbeat Edge Function URL
-                  </label>
-                  <input
-                    type="text"
-                    value={forwarderSettings.heartbeat_edge_url}
-                    onChange={(e) => setForwarderSettings({ ...forwarderSettings, heartbeat_edge_url: e.target.value })}
-                    placeholder="https://fwonuakvherzofqximno.supabase.co/functions/v1/heart-beat"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 font-mono text-sm focus:outline-none focus:border-purple-500 transition-colors"
-                  />
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    হার্টবিট এজ ফাংশন লিংক। যা WebSocket URL এর শেষে &edge_url= হিসেবে থাকবে।
-                  </span>
-                </div>
-                {/* 9. Dashboard URL */}
-                <div className="mt-4">
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                    9. Dashboard URL
+                    8. Dashboard URL
                   </label>
                   <input
                     type="text"

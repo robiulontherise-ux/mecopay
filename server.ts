@@ -159,13 +159,26 @@ async function startServer() {
       
       if (!user_id || !device_name) return res.status(400).json({ error: "Missing required fields" });
       
+      // Fetch user's default brand if brand_id not explicitly provided
+      let finalBrandId = brand_id;
+      if (!finalBrandId) {
+        const { data: userBrand } = await supabaseAdmin
+          .from('brands')
+          .select('id')
+          .eq('user_id', user_id)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (userBrand) finalBrandId = String(userBrand.id);
+      }
+
       // Enforce maximum 2 devices per brand
-      if (brand_id) {
+      if (finalBrandId) {
         const { count, error: countErr } = await supabaseAdmin
           .from('sms_forwarder_settings')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user_id)
-          .eq('brand_id', brand_id)
+          .eq('brand_id', finalBrandId)
           .not('device_name', 'like', '__GLOBAL_CONFIG_%');
 
         if (!countErr && typeof count === 'number' && count >= 2) {
@@ -199,14 +212,14 @@ async function startServer() {
       }
 
       const adminSettings = globalConfig;
-      const genWebhookUrl = `${adminSettings.webhook_edge_url}?user_id=${user_id}`;
-      const genWsUrl = `wss://${adminSettings.project_url}/realtime/v1/websocket?apikey=${adminSettings.anon_key}&vsn=1.0.0&channel=${adminSettings.ws_channel}&user_id=${user_id}&secret=${hmac_secret}&device_id=${encodeURIComponent(device_name)}&edge_url=${adminSettings.heartbeat_edge_url}`;
+      const genWebhookUrl = `${adminSettings.webhook_edge_url}?user_id=${user_id}&brand_id=${encodeURIComponent(finalBrandId || '')}`;
+      const genWsUrl = `wss://${adminSettings.project_url}/realtime/v1/websocket?apikey=${adminSettings.anon_key}&vsn=1.0.0&channel=${adminSettings.ws_channel}&user_id=${user_id}&brand_id=${encodeURIComponent(finalBrandId || '')}&secret=${hmac_secret}&device_id=${encodeURIComponent(device_name)}`;
       
       // 1. Insert into sms_forwarder_settings
       const { error: sfErr } = await supabaseAdmin.from('sms_forwarder_settings').upsert({
         user_id,
         device_name,
-        brand_id: brand_id || null,
+        brand_id: finalBrandId || null,
         country,
         hmac_secret,
         sender_number: adminSettings.sender_number,
@@ -217,7 +230,6 @@ async function startServer() {
         project_url: adminSettings.project_url,
         anon_key: adminSettings.anon_key,
         ws_channel: adminSettings.ws_channel,
-        heartbeat_edge_url: adminSettings.heartbeat_edge_url,
         dashboard_url: adminSettings.dashboard_url || 'https://mecopay.pages.dev/dashboard',
         webhook_url: genWebhookUrl,
         heartbeat_ws_url: genWsUrl,
@@ -265,7 +277,6 @@ async function startServer() {
         project_url: settings.project_url,
         anon_key: settings.anon_key,
         ws_channel: settings.ws_channel,
-        heartbeat_edge_url: settings.heartbeat_edge_url,
         dashboard_url: settings.dashboard_url,
         webhook_url: `${settings.webhook_edge_url}?user_id=${settings.user_id}`,
         heartbeat_ws_url: `wss://${settings.project_url}/realtime/v1/websocket?apikey=${settings.anon_key}&vsn=1.0.0&channel=${settings.ws_channel}&user_id=${settings.user_id}&secret=GLOBAL&device_id=Global`,
