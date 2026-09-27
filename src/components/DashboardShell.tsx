@@ -8,6 +8,7 @@ import EmailServiceSettings from './mysite/EmailServiceSettings';
 import ServerSideTrackingSettings from './mysite/ServerSideTrackingSettings';
 import WebCustomAgent from './mysite/WebCustomAgent';
 import SocialCustomAgent from './mysite/SocialCustomAgent';
+import HeadlessOrchestrator from './admin/HeadlessOrchestrator';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
 import { showConfirm } from '../lib/confirm';
@@ -910,7 +911,7 @@ export default function DashboardShell() {
     ...(isAdmin && {
       admin: {
         title: 'Admin Panel',
-        items: ['Overview', 'Users', 'Sms Forwarder Settings', 'System Settings', 'Reports']
+        items: ['Overview', 'Users', 'Sms Forwarder Settings', 'Headless Orchestrator', 'System Settings', 'Reports']
       }
     })
   };
@@ -3029,6 +3030,14 @@ export default function DashboardShell() {
               </table>
             </div>
           </div>
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Headless Orchestrator') {
+      return (
+        <div className="w-full">
+          <HeadlessOrchestrator />
         </div>
       );
     }

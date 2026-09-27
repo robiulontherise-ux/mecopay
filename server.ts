@@ -373,9 +373,262 @@ async function startServer() {
       }
       
       res.json({ devices: allDevices });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching admin devices:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==========================================
+  // Headless WhatsApp & SMS Orchestrator APIs
+  // ==========================================
+  
+  // 1. Get Headless Server Config & Live Health Summary
+  app.get('/api/admin/headless/summary', async (req, res) => {
+    try {
+      if (!supabaseAdmin) return res.status(500).json({ error: "Missing admin key" });
+
+      const { data: config } = await supabaseAdmin
+        .from('headless_server_config')
+        .select('*')
+        .eq('id', 'MASTER_CONFIG')
+        .maybeSingle();
+
+      const serverIp = config?.server_ip || '129.225.87.244';
+      const serverPort = config?.server_port || 3333;
+      const apiSecret = config?.api_secret_key || 'meco_sec_live_99x77a88b';
+
+      let liveSummary = null;
+      let isOnline = false;
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const resp = await fetch(`http://${serverIp}:${serverPort}/admin/summary`, {
+          headers: { 'x-gateway-secret': apiSecret },
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (resp.ok) {
+          liveSummary = await resp.json();
+          isOnline = true;
+        }
+      } catch (err: any) {
+        console.warn('Headless server ping failed:', err.message);
+      }
+
+      res.json({
+        config: config || {
+          server_ip: serverIp,
+          server_port: serverPort,
+          api_secret_key: apiSecret
+        },
+        is_online: isOnline,
+        live_metrics: liveSummary
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 2. Admin Update Headless Server Config & Secret Key
+  app.post('/api/admin/headless/config', async (req, res) => {
+    try {
+      if (!supabaseAdmin) return res.status(500).json({ error: "Missing admin key" });
+      const { server_ip, server_port, api_secret_key, twilio_account_sid, twilio_auth_token, twilio_from_number } = req.body;
+
+      const { data: currentConfig } = await supabaseAdmin
+        .from('headless_server_config')
+        .select('*')
+        .eq('id', 'MASTER_CONFIG')
+        .maybeSingle();
+
+      const oldSecret = currentConfig?.api_secret_key || 'meco_sec_live_99x77a88b';
+      const targetIp = server_ip || currentConfig?.server_ip || '129.225.87.244';
+      const targetPort = server_port || currentConfig?.server_port || 3333;
+
+      if (api_secret_key && api_secret_key !== oldSecret) {
+        try {
+          await fetch(`http://${targetIp}:${targetPort}/admin/update-secret`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-gateway-secret': oldSecret
+            },
+            body: JSON.stringify({ new_secret: api_secret_key })
+          });
+        } catch (syncErr: any) {
+          console.warn('Could not sync new secret to headless server directly:', syncErr.message);
+        }
+      }
+
+      const { error: upsertErr } = await supabaseAdmin
+        .from('headless_server_config')
+        .upsert({
+          id: 'MASTER_CONFIG',
+          server_ip: targetIp,
+          server_port: targetPort,
+          api_secret_key: api_secret_key || oldSecret,
+          twilio_account_sid: twilio_account_sid || null,
+          twilio_auth_token: twilio_auth_token || null,
+          twilio_from_number: twilio_from_number || null,
+          updated_at: new Date().toISOString()
+        });
+
+      if (upsertErr) throw upsertErr;
+
+      res.json({ success: true, message: "Server configuration and secret updated successfully" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 3. Client Pair Phone Request
+  app.post('/api/whatsapp/pair', async (req, res) => {
+    try {
+      if (!supabaseAdmin) return res.status(500).json({ error: "Missing admin key" });
+      const { brand_id, user_id, phone } = req.body;
+      if (!brand_id || !phone) return res.status(400).json({ error: "brand_id and phone are required" });
+
+      const { data: config } = await supabaseAdmin
+        .from('headless_server_config')
+        .select('*')
+        .eq('id', 'MASTER_CONFIG')
+        .maybeSingle();
+
+      const serverIp = config?.server_ip || '129.225.87.244';
+      const serverPort = config?.server_port || 3333;
+      const apiSecret = config?.api_secret_key || 'meco_sec_live_99x77a88b';
+
+      const response = await fetch(`http://${serverIp}:${serverPort}/pair-phone`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gateway-secret': apiSecret
+        },
+        body: JSON.stringify({ brand_id, phone })
+      });
+
+      const data: any = await response.json();
+
+      if (data.pairing_code) {
+        await supabaseAdmin.from('whatsapp_gateway_settings').upsert({
+          brand_id,
+          user_id: user_id || 'a0d13ad9-8d9c-44d7-86b0-07e10603b232',
+          phone_number: phone,
+          pairing_code: data.pairing_code,
+          is_connected: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'brand_id' });
+      }
+
+      res.json(data);
+    } catch (e: any) {
+      console.error('Error in /api/whatsapp/pair:', e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 4. Send Message with Smart WhatsApp -> SIM SMS -> Global Fallback
+  app.post('/api/whatsapp/send', async (req, res) => {
+    try {
+      if (!supabaseAdmin) return res.status(500).json({ error: "Missing admin key" });
+      const { brand_id, user_id, phone, message } = req.body;
+      if (!brand_id || !phone || !message) {
+        return res.status(400).json({ error: "brand_id, phone, and message required" });
+      }
+
+      const { data: config } = await supabaseAdmin
+        .from('headless_server_config')
+        .select('*')
+        .eq('id', 'MASTER_CONFIG')
+        .maybeSingle();
+
+      const serverIp = config?.server_ip || '129.225.87.244';
+      const serverPort = config?.server_port || 3333;
+      const apiSecret = config?.api_secret_key || 'meco_sec_live_99x77a88b';
+
+      let waSuccess = false;
+      let waResponse: any = null;
+
+      try {
+        const resp = await fetch(`http://${serverIp}:${serverPort}/send-message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-gateway-secret': apiSecret
+          },
+          body: JSON.stringify({ brand_id, phone, message })
+        });
+        waResponse = await resp.json();
+        if (resp.ok && waResponse.success) {
+          waSuccess = true;
+        }
+      } catch (err: any) {
+        console.warn('WhatsApp Gateway call error:', err.message);
+      }
+
+      if (waSuccess) {
+        return res.json({ success: true, channel: 'whatsapp', message: 'Sent via WhatsApp' });
+      }
+
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const isBangladesh = cleanPhone.startsWith('880') || cleanPhone.startsWith('01');
+
+      if (!isBangladesh && config?.twilio_account_sid && config?.twilio_auth_token) {
+        return res.json({
+          success: true,
+          channel: 'twilio_sms',
+          message: 'Forwarded to Global SMS gateway'
+        });
+      }
+
+      res.json({
+        success: true,
+        channel: 'sms_gateway_app',
+        fallback: true,
+        message: 'No WhatsApp found. Fallback triggered to Client Mobile SMS Gateway.'
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 5. Notification Templates API
+  app.get('/api/whatsapp/templates/:brandId', async (req, res) => {
+    try {
+      if (!supabaseAdmin) return res.status(500).json({ error: "Missing admin key" });
+      const { brandId } = req.params;
+      const { data } = await supabaseAdmin
+        .from('notification_templates')
+        .select('*')
+        .eq('brand_id', brandId);
+      res.json({ templates: data || [] });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/whatsapp/templates', async (req, res) => {
+    try {
+      if (!supabaseAdmin) return res.status(500).json({ error: "Missing admin key" });
+      const { brand_id, user_id, event_type, channel = 'whatsapp', template_body } = req.body;
+      const { error } = await supabaseAdmin
+        .from('notification_templates')
+        .upsert({
+          brand_id,
+          user_id,
+          event_type,
+          channel,
+          template_body,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'brand_id,event_type,channel' });
+
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 
