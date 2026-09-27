@@ -155,23 +155,50 @@ async function startServer() {
   app.post('/api/user/add-device', async (req, res) => {
     try {
       if (!supabaseAdmin) return res.status(500).json({ error: "Missing admin key" });
-      const { user_id, device_name, hmac_secret, settings } = req.body;
+      const { user_id, device_name, hmac_secret, brand_id, country = 'Bangladesh' } = req.body;
       
       if (!user_id || !device_name) return res.status(400).json({ error: "Missing required fields" });
       
-      // Fetch global config dynamically so new devices always get the latest admin settings
-      const { data: globalConfig, error: globalErr } = await supabaseAdmin
+      // Enforce maximum 2 devices per brand
+      if (brand_id) {
+        const { count, error: countErr } = await supabaseAdmin
+          .from('sms_forwarder_settings')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user_id)
+          .eq('brand_id', brand_id)
+          .not('device_name', 'like', '__GLOBAL_CONFIG_%');
+
+        if (!countErr && typeof count === 'number' && count >= 2) {
+          return res.status(400).json({ error: "Maximum limit of 2 devices reached for this brand" });
+        }
+      }
+
+      // Fetch global config dynamically for the selected country (fallback to general __GLOBAL_CONFIG__)
+      let globalConfig = null;
+      const { data: countryConfig } = await supabaseAdmin
         .from('sms_forwarder_settings')
         .select('*')
-        .eq('device_name', '__GLOBAL_CONFIG__')
-        .single();
+        .eq('device_name', `__GLOBAL_CONFIG_${country}__`)
+        .maybeSingle();
+
+      if (countryConfig) {
+        globalConfig = countryConfig;
+      } else {
+        const { data: fallbackConfig } = await supabaseAdmin
+          .from('sms_forwarder_settings')
+          .select('*')
+          .or(`device_name.eq.__GLOBAL_CONFIG__,device_name.ilike.__GLOBAL_CONFIG_%`)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        globalConfig = fallbackConfig;
+      }
         
-      if (globalErr || !globalConfig) {
-         return res.status(500).json({ error: "Global configuration not found" });
+      if (!globalConfig) {
+         return res.status(500).json({ error: `Global configuration for ${country} not found` });
       }
 
       const adminSettings = globalConfig;
-      
       const genWebhookUrl = `${adminSettings.webhook_edge_url}?user_id=${user_id}`;
       const genWsUrl = `wss://${adminSettings.project_url}/realtime/v1/websocket?apikey=${adminSettings.anon_key}&vsn=1.0.0&channel=${adminSettings.ws_channel}&user_id=${user_id}&secret=${hmac_secret}&device_id=${encodeURIComponent(device_name)}&edge_url=${adminSettings.heartbeat_edge_url}`;
       
@@ -179,6 +206,8 @@ async function startServer() {
       const { error: sfErr } = await supabaseAdmin.from('sms_forwarder_settings').upsert({
         user_id,
         device_name,
+        brand_id: brand_id || null,
+        country,
         hmac_secret,
         sender_number: adminSettings.sender_number,
         text_filter: adminSettings.text_filter,
@@ -208,8 +237,61 @@ async function startServer() {
       
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Error in add-device:", error);
-      res.status(500).json({ error: error.message });
+      console.error('Error adding device:', error);
+      res.status(500).json({ error: error.message || 'Failed to add device' });
+    }
+  });
+
+  // Admin update global settings for a specific country & cascade sync to all devices in that country
+  app.post('/api/admin/system-settings', async (req, res) => {
+    try {
+      if (!supabaseAdmin) return res.status(500).json({ error: "Missing admin key" });
+      const { settings, country = 'Bangladesh' } = req.body;
+      if (!settings) return res.status(400).json({ error: "Settings required" });
+
+      const targetDeviceName = `__GLOBAL_CONFIG_${country}__`;
+
+      // 1. Upsert Country Master Config
+      const { error: upsertErr } = await supabaseAdmin.from('sms_forwarder_settings').upsert({
+        user_id: settings.user_id || 'a0d13ad9-8d9c-44d7-86b0-07e10603b232',
+        device_name: targetDeviceName,
+        country,
+        brand_id: 'GLOBAL',
+        sender_number: settings.sender_number,
+        text_filter: settings.text_filter,
+        webhook_edge_url: settings.webhook_edge_url,
+        headers: settings.headers,
+        json_payload_template: settings.json_payload_template,
+        project_url: settings.project_url,
+        anon_key: settings.anon_key,
+        ws_channel: settings.ws_channel,
+        heartbeat_edge_url: settings.heartbeat_edge_url,
+        dashboard_url: settings.dashboard_url,
+        webhook_url: `${settings.webhook_edge_url}?user_id=${settings.user_id}`,
+        heartbeat_ws_url: `wss://${settings.project_url}/realtime/v1/websocket?apikey=${settings.anon_key}&vsn=1.0.0&channel=${settings.ws_channel}&user_id=${settings.user_id}&secret=GLOBAL&device_id=Global`,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,device_name' });
+
+      if (upsertErr) console.warn('Supabase upsert master error:', upsertErr);
+
+      // 2. Cascade sync: update all client devices that match this country
+      await supabaseAdmin.from('sms_forwarder_settings').update({
+        sender_number: settings.sender_number,
+        text_filter: settings.text_filter,
+        webhook_edge_url: settings.webhook_edge_url,
+        headers: settings.headers,
+        json_payload_template: settings.json_payload_template,
+        project_url: settings.project_url,
+        anon_key: settings.anon_key,
+        ws_channel: settings.ws_channel,
+        dashboard_url: settings.dashboard_url,
+        updated_at: new Date().toISOString()
+      }).eq('country', country).not('device_name', 'like', '__GLOBAL_CONFIG_%');
+
+      res.json({ success: true, message: `Updated and synced settings for ${country}` });
+    } catch (e: any) {
+      console.error('Error saving country settings:', e);
+      res.status(500).json({ error: e.message });
     }
   });
 

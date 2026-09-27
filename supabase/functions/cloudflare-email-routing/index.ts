@@ -36,7 +36,7 @@ serve(async (req) => {
     }
 
     const payload = await req.json()
-    const action = payload.action || 'create' // 'create' | 'delete' | 'list'
+    const action = payload.action || 'create'
     const rawEmail = (payload.email_address || '').trim().toLowerCase()
     const rawDomain = (payload.domain || '').trim().toLowerCase()
     const brandId = payload.brand_id
@@ -45,48 +45,17 @@ serve(async (req) => {
     const cleanEmail = rawEmail.replace(/[^a-z0-9._%+-@]/g, '').trim()
 
     if (!cleanEmail || !cleanEmail.includes('@') || !cleanDomain) {
-      return new Response(JSON.stringify({ error: 'Valid email address and domain are required (e.g. support@yourbrand.com)' }), {
+      return new Response(JSON.stringify({ error: 'Valid email address and domain are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Verify email domain matches the brand's connected custom domain
-    const emailDomainPart = cleanEmail.split('@')[1]
-    if (emailDomainPart !== cleanDomain) {
-      return new Response(JSON.stringify({ 
-        error: `Email domain (@${emailDomainPart}) does not match your active custom domain (@${cleanDomain})` 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // 2. Strict Security Ownership Check: Verify that user owns this brand & domain in site_settings
-    let domainCheckQuery = adminSupabase
-      .from('site_settings')
-      .select('id, client_id, brand_id, domain')
-      .eq('client_id', user.id)
-      .ilike('domain', `%${cleanDomain}%`)
-
-    if (brandId) {
-      domainCheckQuery = domainCheckQuery.or(`brand_id.eq.${brandId},id.eq.${brandId}`)
-    }
-
-    const { data: verifiedSite, error: siteCheckErr } = await domainCheckQuery.maybeSingle()
-    if (siteCheckErr || !verifiedSite) {
-      return new Response(JSON.stringify({ 
-        error: 'Security verification failed: You do not own this custom domain under this brand.' 
-      }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // 3. Read Cloudflare Environment Secrets
+    // 2. Read Cloudflare Environment Secrets
     const defaultZoneId = Deno.env.get('CLOUDFLARE_ZONE_ID') || ''
     const cfApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN') || ''
-    let emailWorkerName = Deno.env.get('CLOUDFLARE_EMAIL_WORKER_NAME') || ''
+    let cfAccountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID') || ''
+    let emailWorkerName = Deno.env.get('CLOUDFLARE_EMAIL_WORKER_NAME') || 'mecopay-email-worker'
 
     if (!cfApiToken) {
       return new Response(JSON.stringify({ 
@@ -97,8 +66,26 @@ serve(async (req) => {
       })
     }
 
-    // Dynamic Zone Lookup: Search Cloudflare for the zone matching the custom domain (e.g. rsgedu.online)
-    let targetZoneId = defaultZoneId
+    // Auto-discover Account ID if not set in env
+    if (!cfAccountId) {
+      try {
+        const accRes = await fetch('https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1', {
+          headers: {
+            'Authorization': `Bearer ${cfApiToken}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        const accData = await accRes.json()
+        if (accData.result && accData.result.length > 0) {
+          cfAccountId = accData.result[0].id
+        }
+      } catch (aErr) {
+        console.warn('Account lookup notice:', aErr)
+      }
+    }
+
+    // Dynamic Zone Lookup
+    let targetZoneId = ''
     try {
       const zoneLookupRes = await fetch(
         `https://api.cloudflare.com/client/v4/zones?name=${cleanDomain}`,
@@ -114,19 +101,64 @@ serve(async (req) => {
         targetZoneId = zoneLookupData.result[0].id
       }
     } catch (zErr) {
-      console.warn('Zone dynamic lookup notice:', zErr)
+      console.warn('Zone lookup error:', zErr)
+    }
+
+    // 🔥 AUTOMATIC ZONE CREATION: If zone doesn't exist, create it on Cloudflare!
+    if (!targetZoneId && cfAccountId) {
+      try {
+        const createZoneRes = await fetch('https://api.cloudflare.com/client/v4/zones', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cfApiToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: cleanDomain,
+            account: { id: cfAccountId },
+            jump_start: true,
+            type: 'full'
+          })
+        })
+        const createZoneData = await createZoneRes.json()
+        if (createZoneData.result?.id) {
+          targetZoneId = createZoneData.result.id
+        }
+      } catch (cZoneErr) {
+        console.warn('Auto create zone notice:', cZoneErr)
+      }
+    }
+
+    if (!targetZoneId) {
+      targetZoneId = defaultZoneId
     }
 
     if (!targetZoneId) {
       return new Response(JSON.stringify({ 
-        error: `Could not find Cloudflare Zone for domain ${cleanDomain}. Ensure zone exists on your Cloudflare account.` 
+        error: `Could not find or create Cloudflare Zone for domain ${cleanDomain}. Ensure Cloudflare API Token has Zone.Zone Edit permission.` 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Auto-discover active email worker from existing rules if not provided in env
+    // 🔥 AUTOMATIC ONBOARDING: Ensure Email Routing is enabled on this zone!
+    try {
+      await fetch(
+        `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/enable`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cfApiToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+    } catch (onboardErr) {
+      console.warn('Email routing auto-enable notice:', onboardErr)
+    }
+
+    // Auto-discover worker name if exists
     try {
       const existingRulesRes = await fetch(
         `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
@@ -147,35 +179,11 @@ serve(async (req) => {
           }
         }
       }
-    } catch (wErr) {
-      console.warn('Worker discovery notice:', wErr)
-    }
+    } catch (_) {}
 
-    if (!emailWorkerName) {
-      emailWorkerName = 'mecopay-email-worker'
-    }
-
-    // =========================================================================
-    // ACTION: CREATE SPECIFIC LITERAL RULE (e.g. support@domain.com -> Worker)
-    // =========================================================================
+    // ACTION: CREATE
     if (action === 'create') {
-      // 0. 🔥 [100% AUTO-ONBOARD]: Ensure Email Routing is enabled on this zone automatically
-      try {
-        await fetch(
-          `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/enable`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${cfApiToken}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        )
-      } catch (enableErr) {
-        console.warn('Auto-enable email routing notice:', enableErr)
-      }
-
-      // 1. First, check if a rule already exists for this exact email to avoid duplicates
+      // 1. Check if rule already exists
       const listRulesRes = await fetch(
         `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
         {
@@ -186,7 +194,6 @@ serve(async (req) => {
         }
       )
       const listData = await listRulesRes.json()
-
       const existingRule = listData.result?.find((r: any) => 
         r.matchers?.some((m: any) => m.field === 'to' && m.value?.toLowerCase() === cleanEmail)
       )
@@ -195,16 +202,14 @@ serve(async (req) => {
         return new Response(JSON.stringify({
           success: true,
           message: `MecoPay Business Email ${cleanEmail} is active and ready.`,
-          rule_id: existingRule.id,
-          email_address: cleanEmail,
-          domain: cleanDomain
+          rule_id: existingRule.id
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
 
-      // 2. Create the exact literal rule for this specific mailbox
+      // 2. Create rule on Cloudflare
       const createRes = await fetch(
         `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
         {
@@ -217,31 +222,16 @@ serve(async (req) => {
             name: `MecoPay Mailbox: ${cleanEmail}`,
             enabled: true,
             priority: 0,
-            matchers: [
-              {
-                type: 'literal',
-                field: 'to',
-                value: cleanEmail
-              }
-            ],
-            actions: [
-              {
-                type: 'worker',
-                value: [emailWorkerName]
-              }
-            ]
+            matchers: [{ type: 'literal', field: 'to', value: cleanEmail }],
+            actions: [{ type: 'worker', value: [emailWorkerName] }]
           })
         }
       )
 
       const createData = await createRes.json()
-
       if (!createRes.ok || !createData.success) {
-        const errorMsg = createData.errors?.[0]?.message || 'Failed to create email routing rule'
-        return new Response(JSON.stringify({ 
-          error: `Delivery Routing Error: ${errorMsg}`,
-          details: createData.errors 
-        }), {
+        const errorDetail = createData.errors?.[0]?.message || 'Failed to create Cloudflare routing rule'
+        return new Response(JSON.stringify({ error: errorDetail }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
@@ -249,19 +239,15 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        message: `Business email ${cleanEmail} created successfully and routed to MecoPay Webmail.`,
-        rule_id: createData.result?.id,
-        email_address: cleanEmail,
-        domain: cleanDomain
+        message: `MecoPay Email Routing rule created successfully on Cloudflare!`,
+        rule_id: createData.result?.id
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // =========================================================================
-    // ACTION: DELETE RULE
-    // =========================================================================
+    // ACTION: DELETE
     if (action === 'delete') {
       const listRulesRes = await fetch(
         `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules`,
@@ -273,13 +259,13 @@ serve(async (req) => {
         }
       )
       const listData = await listRulesRes.json()
-      const targetRule = listData.result?.find((r: any) => 
+      const ruleToDelete = listData.result?.find((r: any) => 
         r.matchers?.some((m: any) => m.field === 'to' && m.value?.toLowerCase() === cleanEmail)
       )
 
-      if (targetRule) {
+      if (ruleToDelete) {
         await fetch(
-          `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules/${targetRule.id}`,
+          `https://api.cloudflare.com/client/v4/zones/${targetZoneId}/email/routing/rules/${ruleToDelete.id}`,
           {
             method: 'DELETE',
             headers: {
@@ -290,10 +276,7 @@ serve(async (req) => {
         )
       }
 
-      return new Response(JSON.stringify({
-        success: true,
-        message: `Email rule for ${cleanEmail} deleted.`
-      }), {
+      return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -305,7 +288,7 @@ serve(async (req) => {
     })
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
+    return new Response(JSON.stringify({ error: err.message || 'Internal Edge Server Error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

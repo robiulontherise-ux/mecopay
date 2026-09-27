@@ -86,6 +86,13 @@ export default function DashboardShell() {
   const [deleteDeviceInput, setDeleteDeviceInput] = useState('');
   const [deviceToDelete, setDeviceToDelete] = useState<string | null>(null);
 
+  // New device creation attributes
+  const [newDeviceBrandId, setNewDeviceBrandId] = useState<string>('');
+  const [newDeviceCountry, setNewDeviceCountry] = useState<string>('Bangladesh');
+
+  // Admin country selector for system settings
+  const [adminSelectedCountry, setAdminSelectedCountry] = useState<string>('Bangladesh');
+
   const handleAddDevice = async () => {
     const trimmed = newDeviceInput.trim();
     if (!trimmed) {
@@ -108,8 +115,9 @@ export default function DashboardShell() {
         body: JSON.stringify({
           user_id: user.id,
           device_name: trimmed,
-          hmac_secret: hmacSecret || "HMAC_SECRET",
-          settings: forwarderSettings
+          brand_id: newDeviceBrandId || (brands[0]?.id ? String(brands[0].id) : null),
+          country: newDeviceCountry || 'Bangladesh',
+          hmac_secret: hmacSecret || "HMAC_SECRET"
         })
       });
       
@@ -1760,25 +1768,67 @@ export default function DashboardShell() {
                     )}
                   </div>
 
-                  <div className="flex gap-2 mb-3">
-                    <input 
-                      type="text" 
-                      placeholder="Enter New Phone Name (e.g. Samsung S23, vivo15s)" 
-                      value={newDeviceInput}
-                      onChange={(e) => setNewDeviceInput(e.target.value)}
-                      onKeyDown={async (e) => {
-                        if (e.key === "Enter") {
-                          await handleAddDevice();
-                        }
-                      }}
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                    <button 
-                      onClick={handleAddDevice}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                      Add Device
-                    </button>
+                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-4 mb-3 space-y-3">
+                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Add New Phone / SMS Device (Max 2 per Brand)
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1 font-medium">Device Name</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. Walton Primo, Samsung S23" 
+                          value={newDeviceInput}
+                          onChange={(e) => setNewDeviceInput(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === "Enter") {
+                              await handleAddDevice();
+                            }
+                          }}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1 font-medium">Select Brand</label>
+                        <select
+                          value={newDeviceBrandId || (brands[0]?.id ? String(brands[0].id) : '')}
+                          onChange={(e) => setNewDeviceBrandId(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                        >
+                          {brands.length > 0 ? (
+                            brands.map((b) => (
+                              <option key={b.id} value={String(b.id)}>
+                                {b.name || `Brand #${b.id}`}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="">Default Brand</option>
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1 font-medium">Select Country</label>
+                        <select
+                          value={newDeviceCountry}
+                          onChange={(e) => setNewDeviceCountry(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="Bangladesh">🇧🇩 Bangladesh (bKash, Nagad, Rocket)</option>
+                          <option value="India">🇮🇳 India (UPI, Paytm, PhonePe)</option>
+                          <option value="Pakistan">🇵🇰 Pakistan (Easypaisa, JazzCash)</option>
+                          <option value="United States">🇺🇸 United States (Zelle, CashApp)</option>
+                          <option value="United Kingdom">🇬🇧 United Kingdom (Faster Payments)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-1">
+                      <button 
+                        onClick={handleAddDevice}
+                        className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-lg transition-all shadow-md shadow-purple-900/20"
+                      >
+                        Create Device
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2606,74 +2656,73 @@ export default function DashboardShell() {
     }
 
     if (activeSubMenu === 'Sms Forwarder Settings') {
+      const handleCountryChange = async (countryName: string) => {
+        setAdminSelectedCountry(countryName);
+        try {
+          const { data } = await supabase
+            .from('sms_forwarder_settings')
+            .select('*')
+            .eq('device_name', `__GLOBAL_CONFIG_${countryName}__`)
+            .maybeSingle();
+
+          if (data) {
+            setForwarderSettings({
+              sender_number: data.sender_number || '',
+              text_filter: data.text_filter || '',
+              webhook_edge_url: data.webhook_edge_url || '',
+              headers: data.headers || '',
+              json_payload_template: data.json_payload_template || '',
+              project_url: data.project_url || '',
+              anon_key: data.anon_key || '',
+              ws_channel: data.ws_channel || '',
+              heartbeat_edge_url: data.heartbeat_edge_url || '',
+              dashboard_url: data.dashboard_url || 'https://mecopay.pages.dev/dashboard'
+            });
+            showToast(`Loaded settings for ${countryName}`, 'success');
+          } else {
+            // Default presets based on selected country
+            if (countryName === 'India') {
+              setForwarderSettings(prev => ({
+                ...prev,
+                sender_number: 'Paytm,PhonePe,GooglePay,BHIM,SBI,HDFC',
+                text_filter: '(?:UPI|Ref|TxnId)\\s*[:\\s]\\s*([A-Z0-9]+)'
+              }));
+            } else if (countryName === 'Pakistan') {
+              setForwarderSettings(prev => ({
+                ...prev,
+                sender_number: 'Easypaisa,JazzCash,SadaPay,Nayapay,UBL',
+                text_filter: '(?:TRX|TID|ID)\\s*[:\\s]\\s*([A-Z0-9]+)'
+              }));
+            } else if (countryName === 'United States') {
+              setForwarderSettings(prev => ({
+                ...prev,
+                sender_number: 'Zelle,CashApp,Venmo,Chase,BoA',
+                text_filter: '(?:sent you|received|confirmation)\\s*[:\\s]\\s*([A-Z0-9$]+)'
+              }));
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
       const handleSaveForwarderSettings = async () => {
         setIsSavingForwarderSettings(true);
         try {
-          // 1. Save to Node server /api/system-settings (persists immediately to system-settings.json and active server memory)
-          try {
-            await fetch('/api/system-settings', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...forwarderSettings, user_id: user?.id })
-            });
-          } catch (apiErr) {
-            console.warn('Failed to save to /api/system-settings', apiErr);
-          }
+          // Save via server API with specific country cascade
+          const res = await fetch('/api/admin/system-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              settings: { ...forwarderSettings, user_id: user?.id },
+              country: adminSelectedCountry || 'Bangladesh'
+            })
+          });
+          
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.error || 'Failed to save country settings');
 
-          // 2. Direct upsert global config row into Supabase sms_forwarder_settings
-          let dbSynced = false;
-          let dbErrorMsg = '';
-
-          try {
-            const { error: upsertErr } = await supabase.from('sms_forwarder_settings').upsert({
-              user_id: user?.id,
-              device_name: '__GLOBAL_CONFIG__',
-              sender_number: forwarderSettings.sender_number,
-              text_filter: forwarderSettings.text_filter,
-              webhook_edge_url: forwarderSettings.webhook_edge_url,
-              headers: forwarderSettings.headers,
-              json_payload_template: forwarderSettings.json_payload_template,
-              project_url: forwarderSettings.project_url,
-              anon_key: forwarderSettings.anon_key,
-              ws_channel: forwarderSettings.ws_channel,
-              heartbeat_edge_url: forwarderSettings.heartbeat_edge_url,
-              dashboard_url: forwarderSettings.dashboard_url,
-              webhook_url: `${forwarderSettings.webhook_edge_url}?user_id=${user?.id}`,
-              heartbeat_ws_url: `wss://${forwarderSettings.project_url}/realtime/v1/websocket?apikey=${forwarderSettings.anon_key}&vsn=1.0.0&channel=${forwarderSettings.ws_channel}&user_id=${user?.id}&secret=${hmacSecret || 'GLOBAL_SECRET'}&device_id=Global&edge_url=${forwarderSettings.heartbeat_edge_url}`,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id,device_name' });
-
-            if (upsertErr) {
-              console.error('Supabase upsert error:', upsertErr);
-              dbErrorMsg = upsertErr.message || 'Permission denied';
-            } else {
-              dbSynced = true;
-              try {
-                const res = await fetch('/api/admin/sync-devices', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ settings: forwarderSettings })
-                });
-                const data = await res.json();
-                if (data.success) {
-                  showToast(`Synced ${data.count} client devices with new settings!`, 'success');
-                }
-              } catch (syncErr) {
-                console.error("Failed to sync client devices:", syncErr);
-              }
-            }
-          } catch (dbErr: any) {
-            console.warn('Supabase update exception:', dbErr);
-            dbErrorMsg = dbErr.message || '';
-          }
-
-          if (dbSynced) {
-            showToast('Global settings saved and synced to live server & Supabase table!', 'success');
-          } else if (dbErrorMsg) {
-            showToast('Saved to Live App Server! (Run SQL below to grant Supabase permissions)', 'success');
-          } else {
-            showToast('Global settings saved successfully!', 'success');
-          }
+          showToast(`Master settings saved and synced for all ${adminSelectedCountry} client devices!`, 'success');
         } catch (e: any) {
           console.error(e);
           showToast('Error saving settings: ' + (e.message || ''), 'error');
@@ -2691,7 +2740,7 @@ export default function DashboardShell() {
                   Global System Architecture
                 </span>
                 <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Live Auto-Recompose
+                  Country-Wise Auto Sync
                 </span>
               </div>
               <h2 className="text-2xl font-bold text-white mt-2 flex items-center gap-2">
@@ -2699,7 +2748,7 @@ export default function DashboardShell() {
                 SMS Forwarder Settings
               </h2>
               <p className="text-sm text-slate-400">
-                অ্যাডমিন এখান থেকে যে ডেটা আপডেট করবেন, তা স্বয়ংক্রিয়ভাবে SQL দ্বারা সমস্ত ইউজারের ডিভাইসের জন্য Webhook ও WebSocket লিংকে যুক্ত হয়ে যাবে।
+                অ্যাডমিন এখান থেকে যে দেশের রুলস আপডেট করবেন, তা স্বয়ংক্রিয়ভাবে ডাটাবেসের মাধ্যমে ওই দেশের সমস্ত ক্লায়েন্টের ডিভাইসে সিঙ্ক হয়ে যাবে।
               </p>
             </div>
             <button
@@ -2713,13 +2762,36 @@ export default function DashboardShell() {
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" /> Save & Sync All Devices
+                  <CheckCircle2 className="w-4 h-4" /> Save & Sync {adminSelectedCountry}
                 </>
               )}
             </button>
           </div>
 
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
+            {/* Country Selector Header */}
+            <div className="bg-slate-950/80 border border-indigo-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">
+                  Select Country to Configure (Master Global Row)
+                </label>
+                <p className="text-xs text-slate-400">
+                  দেশ নির্বাচন করুন। অ্যাডমিনের এই মাস্টার সেটিংসটি ওই দেশের সব ক্লায়েন্ট নতুন ডিভাইস অ্যাড করার সময় স্বয়ংক্রিয়ভাবে পেয়ে যাবে।
+                </p>
+              </div>
+              <select
+                value={adminSelectedCountry}
+                onChange={(e) => handleCountryChange(e.target.value)}
+                className="bg-slate-900 border border-indigo-500/50 rounded-lg px-4 py-2.5 text-sm text-white font-semibold focus:outline-none focus:border-indigo-400"
+              >
+                <option value="Bangladesh">🇧🇩 Bangladesh</option>
+                <option value="India">🇮🇳 India</option>
+                <option value="Pakistan">🇵🇰 Pakistan</option>
+                <option value="United States">🇺🇸 United States</option>
+                <option value="United Kingdom">🇬🇧 United Kingdom</option>
+              </select>
+            </div>
+
             <div className="space-y-4">
               {/* 1. Sender Number */}
               <div>
