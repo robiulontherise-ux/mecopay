@@ -26,7 +26,7 @@ export default function HeadlessOrchestrator() {
         body: { action: 'admin_summary' }
       });
 
-      if (!error && data) {
+      if (!error && data && data.is_online !== undefined) {
         if (data.config) {
           setConfig({
             server_ip: data.config.server_ip || '129.225.87.244',
@@ -40,21 +40,42 @@ export default function HeadlessOrchestrator() {
         setIsOnline(Boolean(data.is_online));
         setLiveMetrics(data.live_metrics);
       } else {
-        // Fallback reading directly from supabase table if function not deployed yet
+        // Fallback: Check Oracle server directly if Edge function has not answered
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          const pingRes = await fetch(`http://${config.server_ip}:${config.server_port}/admin/summary`, {
+            headers: { 'x-gateway-secret': config.api_secret_key },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          if (pingRes.ok) {
+            const metrics = await pingRes.json();
+            setIsOnline(true);
+            setLiveMetrics(metrics);
+          } else {
+            setIsOnline(false);
+          }
+        } catch (_pingErr) {
+          setIsOnline(false);
+        }
+
+        // Also sync config from supabase table
         const { data: dbConfig } = await supabase
           .from('headless_server_config')
           .select('*')
           .eq('id', 'MASTER_CONFIG')
           .maybeSingle();
         if (dbConfig) {
-          setConfig({
-            server_ip: dbConfig.server_ip,
-            server_port: dbConfig.server_port,
-            api_secret_key: dbConfig.api_secret_key,
+          setConfig(prev => ({
+            ...prev,
+            server_ip: dbConfig.server_ip || prev.server_ip,
+            server_port: dbConfig.server_port || prev.server_port,
+            api_secret_key: dbConfig.api_secret_key || prev.api_secret_key,
             twilio_account_sid: dbConfig.twilio_account_sid || '',
             twilio_auth_token: dbConfig.twilio_auth_token || '',
             twilio_from_number: dbConfig.twilio_from_number || ''
-          });
+          }));
         }
       }
     } catch (e) {
