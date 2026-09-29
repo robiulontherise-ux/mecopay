@@ -28,13 +28,26 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'parcels' | 'settings'>('parcels');
 
-  // Courier API Keys & Brand Automation Settings
-  const [courierProvider, setCourierProvider] = useState<'steadfast' | 'pathao' | 'redx'>('steadfast');
+  // Courier API Keys & Brand Automation Settings (Domestic + International)
+  const [courierProvider, setCourierProvider] = useState<'steadfast' | 'pathao' | 'redx' | 'dhl' | 'fedex' | 'aramex'>('steadfast');
   const [steadfastApiKey, setSteadfastApiKey] = useState('');
   const [steadfastSecretKey, setSteadfastSecretKey] = useState('');
   const [pathaoClientId, setPathaoClientId] = useState('');
   const [pathaoClientSecret, setPathaoClientSecret] = useState('');
   const [pathaoStoreId, setPathaoStoreId] = useState('');
+
+  // International Couriers State
+  const [dhlApiKey, setDhlApiKey] = useState('');
+  const [dhlApiSecret, setDhlApiSecret] = useState('');
+  const [dhlAccountNumber, setDhlAccountNumber] = useState('');
+  const [fedexApiKey, setFedexApiKey] = useState('');
+  const [fedexSecretKey, setFedexSecretKey] = useState('');
+  const [fedexAccountNumber, setFedexAccountNumber] = useState('');
+  const [aramexUsername, setAramexUsername] = useState('');
+  const [aramexPassword, setAramexPassword] = useState('');
+  const [aramexAccountNumber, setAramexAccountNumber] = useState('');
+
+  const [autoCourierOnAdvance, setAutoCourierOnAdvance] = useState(true);
   const [autoCourierOnFullCod, setAutoCourierOnFullCod] = useState(false);
   const [savingKeys, setSavingKeys] = useState(false);
 
@@ -111,15 +124,41 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     try {
       const currentBrand = brands.find(b => b.id === selectedBrandId);
 
-      // Save directly to the existing auto_courier_on_full_cod column in brands table
-      const { error } = await supabase
+      // Save directly to brands table & whatsapp_gateway_settings
+      await supabase
         .from('brands')
         .update({
           auto_courier_on_full_cod: autoCourierOnFullCod
         })
         .eq('id', selectedBrandId);
 
-      if (error) throw error;
+      await supabase
+        .from('whatsapp_gateway_settings')
+        .upsert({
+          brand_id: selectedBrandId,
+          auto_courier_advance: autoCourierOnAdvance,
+          auto_courier_cod: autoCourierOnFullCod,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'brand_id' });
+
+      // Save courier provider credentials
+      await supabase
+        .from('courier_bookings')
+        .upsert({
+          brand_id: selectedBrandId,
+          provider: courierProvider,
+          api_key: courierProvider === 'steadfast' ? steadfastApiKey : (courierProvider === 'pathao' ? pathaoClientId : (courierProvider === 'dhl' ? dhlApiKey : fedexApiKey)),
+          secret_key: courierProvider === 'steadfast' ? steadfastSecretKey : (courierProvider === 'pathao' ? pathaoClientSecret : (courierProvider === 'dhl' ? dhlApiSecret : fedexSecretKey)),
+          raw_response: {
+            provider: courierProvider,
+            pathao_store_id: pathaoStoreId,
+            dhl_account: dhlAccountNumber,
+            fedex_account: fedexAccountNumber,
+            aramex_user: aramexUsername,
+            aramex_account: aramexAccountNumber
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'brand_id' });
 
       if (currentBrand) {
         currentBrand.auto_courier_on_full_cod = autoCourierOnFullCod;
@@ -409,9 +448,16 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                 onChange={(e) => setCourierProvider(e.target.value as any)}
                 className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none cursor-pointer"
               >
-                <option value="steadfast">Steadfast Courier (Recommended)</option>
-                <option value="pathao">Pathao Courier</option>
-                <option value="redx">RedX Courier</option>
+                <optgroup label="🇧🇩 Domestic Couriers (Bangladesh)">
+                  <option value="steadfast">Steadfast Courier (Recommended)</option>
+                  <option value="pathao">Pathao Courier</option>
+                  <option value="redx">RedX Courier</option>
+                </optgroup>
+                <optgroup label="🌐 International Couriers">
+                  <option value="dhl">DHL Express Worldwide</option>
+                  <option value="fedex">FedEx International</option>
+                  <option value="aramex">Aramex Global Delivery</option>
+                </optgroup>
               </select>
             </div>
 
@@ -475,19 +521,147 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
               </div>
             )}
 
-            {/* Zero-Waste Sync Toggle: Auto Courier Booking on 100% Full COD */}
-            <div className="pt-4 border-t border-slate-800">
-              <div className="p-4 bg-slate-950/80 border border-emerald-500/30 rounded-2xl flex items-start justify-between gap-4">
+            {/* DHL Express Worldwide Credentials */}
+            {courierProvider === 'dhl' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">DHL API Key</label>
+                  <input
+                    type="password"
+                    value={dhlApiKey}
+                    onChange={(e) => setDhlApiKey(e.target.value)}
+                    placeholder="DHL Client Key"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">DHL API Secret</label>
+                  <input
+                    type="password"
+                    value={dhlApiSecret}
+                    onChange={(e) => setDhlApiSecret(e.target.value)}
+                    placeholder="DHL Client Secret"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">DHL Account Number</label>
+                  <input
+                    type="text"
+                    value={dhlAccountNumber}
+                    onChange={(e) => setDhlAccountNumber(e.target.value)}
+                    placeholder="e.g. 123456789"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* FedEx International Credentials */}
+            {courierProvider === 'fedex' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">FedEx API Key</label>
+                  <input
+                    type="password"
+                    value={fedexApiKey}
+                    onChange={(e) => setFedexApiKey(e.target.value)}
+                    placeholder="FedEx API Key"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">FedEx Secret Key</label>
+                  <input
+                    type="password"
+                    value={fedexSecretKey}
+                    onChange={(e) => setFedexSecretKey(e.target.value)}
+                    placeholder="FedEx Secret"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">FedEx Account Number</label>
+                  <input
+                    type="text"
+                    value={fedexAccountNumber}
+                    onChange={(e) => setFedexAccountNumber(e.target.value)}
+                    placeholder="FedEx Account No"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Aramex Global Credentials */}
+            {courierProvider === 'aramex' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Aramex Username / Email</label>
+                  <input
+                    type="text"
+                    value={aramexUsername}
+                    onChange={(e) => setAramexUsername(e.target.value)}
+                    placeholder="Username"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Aramex Password</label>
+                  <input
+                    type="password"
+                    value={aramexPassword}
+                    onChange={(e) => setAramexPassword(e.target.value)}
+                    placeholder="Password"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Aramex Account Number</label>
+                  <input
+                    type="text"
+                    value={aramexAccountNumber}
+                    onChange={(e) => setAramexAccountNumber(e.target.value)}
+                    placeholder="Account Number"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Courier Automation Toggles: Advance Pay & Full COD */}
+            <div className="pt-4 border-t border-slate-800 space-y-3">
+              {/* Toggle 1: Auto Courier on Advance Pay */}
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl flex items-start justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm font-bold text-white">Auto Courier Booking on 100% Full COD</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                      Webhook Synced
-                    </span>
+                    <Truck className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-bold text-white">Auto Courier Booking on "Advance Pay" Orders</span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
-                    অন থাকলে: WordPress বা কাস্টম সাইট থেকে ১০০% COD ফর্ম সাবমিট হলে MecoPay স্বয়ংক্রিয়ভাবে কুরিয়ার বুকিং সম্পন্ন করবে।
+                    অন থাকলে: কাস্টমার অগ্রিম টাকা পরিশোধ করলেই MecoPay ব্যাকগ্রাউন্ডে স্বয়ংক্রিয়ভাবে কুরিয়ার পার্সেল বুকিং করে ফেলবে।
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                  <input
+                    type="checkbox"
+                    checked={autoCourierOnAdvance}
+                    onChange={(e) => setAutoCourierOnAdvance(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
+              {/* Toggle 2: Auto Courier on 100% Full COD */}
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-indigo-400" />
+                    <span className="text-sm font-bold text-white">Auto Courier Booking on 100% Full COD</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                    অন থাকলে: WordPress বা কাস্টম সাইট থেকে ১০০% COD ফর্ম সাবমিট হওয়ামাত্রই MecoPay স্বয়ংক্রিয়ভাবে কুরিয়ার বুকিং সম্পন্ন করবে। (অফ থাকলে আপনি ম্যানুয়ালি বুক করবেন)।
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
@@ -497,7 +671,7 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                     onChange={(e) => setAutoCourierOnFullCod(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
                 </label>
               </div>
             </div>
