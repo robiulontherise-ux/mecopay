@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Save, CheckCircle2, ShieldCheck, Zap, Info, RefreshCw, Smartphone, Key, Globe, Send, AlertTriangle, Copy, Check, Radio } from 'lucide-react';
+import { MessageSquare, Save, CheckCircle2, ShieldCheck, Zap, Info, RefreshCw, Smartphone, Key, Globe, Send, AlertTriangle, Copy, Check, Radio, Truck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 
@@ -21,16 +21,22 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
   const [internationalSmsEnabled, setInternationalSmsEnabled] = useState<boolean>(false);
   const [routingStrategy, setRoutingStrategy] = useState<'smart_fallback' | 'send_all'>('smart_fallback');
 
-  // Connected Android SIM Devices (from user's device_status or payment_numbers)
-  const [clientDevices, setClientDevices] = useState<any[]>([]);
+  // Courier 2-Type Automation Switches
+  const [autoCourierAdvance, setAutoCourierAdvance] = useState<boolean>(true);
+  const [autoCourierCod, setAutoCourierCod] = useState<boolean>(false);
+
+  // Real Devices & Selected Outgoing SMS SIM Device
+  const [realDevices, setRealDevices] = useState<any[]>([]);
+  const [paymentNumbers, setPaymentNumbers] = useState<any[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [selectedSimNumber, setSelectedSimNumber] = useState<string>('');
 
   // Template States
   const [templatePaymentSuccess, setTemplatePaymentSuccess] = useState<string>(
-    'ধন্যবাদ {customer_name}! আপনার {amount} টাকার পেমেন্ট সফলভাবে সম্পন্ন হয়েছে। TrxID: {trx_id}।'
+    'ধন্যবাদ {customer_name}! আপনার {amount} টাকার অগ্রিম পেমেন্ট সফল হয়েছে (বাকি {due_amount} টাকা সিওডি)। কুরিয়ার ট্র্যাকিং: {tracking_url}'
   );
   const [templateOrderCreated, setTemplateOrderCreated] = useState<string>(
-    'প্রিয় {customer_name}, আপনার {amount} টাকার অর্ডারটি কনফার্ম হয়েছে।'
+    'প্রিয় {customer_name}, আপনার {amount} টাকার ক্যাশ অন ডেলিভারি অর্ডারটি কনফার্ম হয়েছে। ট্র্যাকিং: {tracking_url}'
   );
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -41,29 +47,36 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     }
   }, [brands]);
 
-  // Load client's connected Android SIM devices
+  // Load Real Device Status & Payment Numbers from Supabase
   useEffect(() => {
     if (!user?.id) return;
-    const fetchDevices = async () => {
+    const fetchRealData = async () => {
       try {
-        const { data } = await supabase
+        // 1. Fetch real device status (No fake count!)
+        const { data: devData } = await supabase
+          .from('device_status')
+          .select('*')
+          .eq('user_id', user.id);
+        if (devData) {
+          setRealDevices(devData);
+        }
+
+        // 2. Fetch payment numbers for this brand/user
+        const { data: numData } = await supabase
           .from('payment_numbers')
           .select('*')
           .eq('user_id', user.id);
-        if (data) {
-          setClientDevices(data);
-          if (data.length > 0 && !selectedDeviceId) {
-            setSelectedDeviceId(data[0].device_id || data[0].device_name || '');
-          }
+        if (numData) {
+          setPaymentNumbers(numData);
         }
       } catch (e) {
-        console.warn('Could not load client devices:', e);
+        console.warn('Error loading devices & numbers:', e);
       }
     };
-    fetchDevices();
+    fetchRealData();
   }, [user]);
 
-  // Load brand settings whenever brand changes
+  // Load Brand Specific Gateway Settings
   useEffect(() => {
     if (!selectedBrandId) return;
     loadBrandSettings();
@@ -71,7 +84,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
 
   const loadBrandSettings = async () => {
     try {
-      // 1. Fetch WhatsApp & SMS Gateway settings
+      // 1. Fetch Gateway settings
       const { data: gw } = await supabase
         .from('whatsapp_gateway_settings')
         .select('*')
@@ -83,6 +96,10 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         setLocalSmsEnabled(gw.fallback_to_sms !== false);
         setInternationalSmsEnabled(Boolean(gw.international_sms_enabled));
         setRoutingStrategy(gw.routing_strategy || 'smart_fallback');
+        setAutoCourierAdvance(gw.auto_courier_advance !== false);
+        setAutoCourierCod(Boolean(gw.auto_courier_cod));
+        setSelectedDeviceId(gw.selected_device_id || '');
+        setSelectedSimNumber(gw.selected_sim_number || '');
         setGatewayStatus({ connected: gw.is_connected, phone: gw.phone_number });
         if (gw.phone_number) setPhoneToPair(gw.phone_number);
         if (gw.pairing_code && !gw.is_connected) setPairingCode(gw.pairing_code);
@@ -105,10 +122,11 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     }
   };
 
+  // Get Code (Pairing Code) with Failover Handshake
   const handleGeneratePairingCode = async () => {
     const cleanPhone = phoneToPair.replace(/[^0-9]/g, '');
     if (!cleanPhone || cleanPhone.length < 10) {
-      showToast('Please enter a valid WhatsApp number with country code (e.g. 88017XXXXXXXX)', 'error');
+      showToast('Please enter a valid WhatsApp phone number with country code (e.g. 88017XXXXXXXX)', 'error');
       return;
     }
     if (!selectedBrandId) {
@@ -120,41 +138,52 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     setPairingCode(null);
 
     try {
-      // Try calling Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('headless-orchestrator', {
-        body: {
-          action: 'pair_phone',
-          brand_id: selectedBrandId,
-          phone: cleanPhone
-        }
-      });
+      let codeReceived = false;
 
-      if (!error && data?.pairing_code) {
-        setPairingCode(data.pairing_code);
-        showToast('Pairing code generated! Check your WhatsApp.', 'success');
-      } else if (data?.connected) {
-        setGatewayStatus({ connected: true, phone: cleanPhone });
-        showToast('WhatsApp is already connected for this brand!', 'success');
-      } else {
-        // Fallback: direct server call if Edge function is not deployed yet
-        try {
-          const directRes = await fetch('http://129.225.87.244:3333/pair-phone', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-gateway-secret': 'meco_sec_live_99x77a88b'
-            },
-            body: JSON.stringify({ brand_id: selectedBrandId, phone: cleanPhone })
-          });
-          const directData = await directRes.json();
-          if (directData.pairing_code) {
-            setPairingCode(directData.pairing_code);
-            showToast('Pairing code received directly from server!', 'success');
-          } else {
-            throw new Error(directData.error || 'Server error');
+      // 1. Try Supabase Edge Function
+      try {
+        const { data, error } = await supabase.functions.invoke('headless-orchestrator', {
+          body: {
+            action: 'pair_phone',
+            brand_id: selectedBrandId,
+            phone: cleanPhone
           }
-        } catch (directErr: any) {
-          showToast(data?.error || error?.message || directErr.message || 'Failed to generate code', 'error');
+        });
+        if (!error && data?.pairing_code) {
+          setPairingCode(data.pairing_code);
+          showToast('Pairing code generated! Check your WhatsApp.', 'success');
+          codeReceived = true;
+        } else if (data?.connected) {
+          setGatewayStatus({ connected: true, phone: cleanPhone });
+          showToast('WhatsApp is already connected for this brand!', 'success');
+          codeReceived = true;
+        }
+      } catch (_edgeErr) {}
+
+      // 2. Direct Fallback: Call Oracle Node directly if Edge Function is pending or failing
+      if (!codeReceived) {
+        const directRes = await fetch('http://129.225.87.244:3333/pair-phone', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-gateway-secret': 'meco_sec_ok_live_headless3199x77a88b'
+          },
+          body: JSON.stringify({ brand_id: selectedBrandId, phone: cleanPhone })
+        });
+        const directData = await directRes.json();
+        if (directData.pairing_code) {
+          setPairingCode(directData.pairing_code);
+          // Save in Supabase
+          await supabase.from('whatsapp_gateway_settings').upsert({
+            brand_id: selectedBrandId,
+            phone_number: cleanPhone,
+            pairing_code: directData.pairing_code,
+            is_connected: false,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'brand_id' });
+          showToast('Pairing code received successfully!', 'success');
+        } else {
+          throw new Error(directData.error || 'Server rejected pairing request');
         }
       }
     } catch (err: any) {
@@ -164,15 +193,16 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     }
   };
 
-  const handleSaveAllSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Save Gateway & Templates
+  const handleSaveAllSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedBrandId) {
       showToast('Please select a brand', 'error');
       return;
     }
     setIsSaving(true);
     try {
-      // 1. Save Gateway Toggles in whatsapp_gateway_settings
+      // 1. Save Settings
       const { error: gwErr } = await supabase
         .from('whatsapp_gateway_settings')
         .upsert({
@@ -182,6 +212,10 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           fallback_to_sms: localSmsEnabled,
           international_sms_enabled: internationalSmsEnabled,
           routing_strategy: routingStrategy,
+          auto_courier_advance: autoCourierAdvance,
+          auto_courier_cod: autoCourierCod,
+          selected_device_id: selectedDeviceId || null,
+          selected_sim_number: selectedSimNumber || null,
           phone_number: phoneToPair || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'brand_id' });
@@ -208,7 +242,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         }
       ], { onConflict: 'brand_id,event_type,channel' });
 
-      showToast('All Gateway Channels & Notification Settings Saved!', 'success');
+      showToast('All Gateway, Courier & Notification Settings Saved!', 'success');
     } catch (err: any) {
       showToast('Failed to save settings: ' + err.message, 'error');
     } finally {
@@ -216,8 +250,11 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     }
   };
 
+  // Calculate real active devices count
+  const activeConnectedDevices = realDevices.filter(d => d.connected === true);
+
   return (
-    <div className="max-w-5xl space-y-8 pb-12">
+    <div className="max-w-5xl space-y-8 pb-16">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -312,7 +349,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
               </div>
             </div>
 
-            {/* Channel 2: Local SIM SMS */}
+            {/* Channel 2: Local SIM SMS (Real Device Status) */}
             <div className={`p-5 rounded-2xl border transition-all ${
               localSmsEnabled ? 'bg-purple-950/20 border-purple-500/40 shadow-lg' : 'bg-slate-950/40 border-slate-800 opacity-60'
             }`}>
@@ -335,9 +372,9 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                 For domestic customers (Bangladesh). Sends real SMS using your connected Android Phone's SIM card.
               </p>
               <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Android App:</span>
-                <span className="font-semibold text-purple-300">
-                  {clientDevices.length > 0 ? `${clientDevices.length} Device Active` : 'App Connected'}
+                <span className="text-slate-400">Live Status:</span>
+                <span className={`font-semibold ${activeConnectedDevices.length > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {activeConnectedDevices.length > 0 ? `${activeConnectedDevices.length} Device Online` : '0 Device Connected (All Offline)'}
                 </span>
               </div>
             </div>
@@ -371,8 +408,53 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
             </div>
           </div>
 
+          {/* Outgoing SIM & Device Selector */}
+          {localSmsEnabled && (
+            <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-3">
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                Select Outgoing SMS Phone Number & Android Device (From payment_numbers)
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-slate-400 block mb-1">Primary Sender SIM:</span>
+                  <select
+                    value={selectedSimNumber}
+                    onChange={(e) => {
+                      const num = e.target.value;
+                      setSelectedSimNumber(num);
+                      const matched = paymentNumbers.find(p => p.number === num);
+                      if (matched) setSelectedDeviceId(matched.device_name || '');
+                    }}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">Select phone number</option>
+                    {paymentNumbers.map(p => (
+                      <option key={p.id} value={p.number}>
+                        {p.provider ? p.provider.toUpperCase() : 'SIM'}: {p.number} (Device: {p.device_name || 'Not bound'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <span className="text-xs text-slate-400 block mb-1">Target Android Device ID:</span>
+                  <input
+                    type="text"
+                    value={selectedDeviceId}
+                    onChange={(e) => setSelectedDeviceId(e.target.value)}
+                    placeholder="e.g. tzy25"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-sm font-mono focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+              <span className="text-[11px] text-slate-500 block">
+                Messages will be sent using the SIM card located in this specific Android device.
+              </span>
+            </div>
+          )}
+
           {/* Smart Delivery Routing Option */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 mt-4">
+          <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
               Routing Behavior (When payment completes)
             </label>
@@ -419,7 +501,68 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         </div>
 
         {/* ======================================================== */}
-        {/* SECTION 2: WHATSAPP 8-DIGIT PAIRING CODE */}
+        {/* SECTION 2: COURIER 2-TYPE AUTOMATION SWITCHES */}
+        {/* ======================================================== */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Truck className="w-5 h-5 text-indigo-400" />
+                2. Automated Courier Booking & Single-SMS Settings
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Configure when system automatically books Steadfast / Pathao courier and attaches tracking ID to the customer receipt.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Auto-Book for Advance Pay */}
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-sm font-bold text-white flex items-center gap-2">
+                  Auto-Book for "Advance Pay" Orders
+                </span>
+                <p className="text-xs text-slate-400">
+                  When advance payment succeeds, auto-book courier instantly and send <strong>1 Unified Receipt SMS</strong> with live tracking code!
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                <input
+                  type="checkbox"
+                  checked={autoCourierAdvance}
+                  onChange={(e) => setAutoCourierAdvance(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+
+            {/* Auto-Book for Full COD */}
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-sm font-bold text-white flex items-center gap-2">
+                  Auto-Book for "100% COD (Just Form)" Orders
+                </span>
+                <p className="text-xs text-slate-400">
+                  If ON: Form submission auto-books courier. If OFF: You manually click "Book Courier" after phone verification before SMS is sent.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                <input
+                  type="checkbox"
+                  checked={autoCourierCod}
+                  onChange={(e) => setAutoCourierCod(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ======================================================== */}
+        {/* SECTION 3: WHATSAPP 8-DIGIT PAIRING CODE */}
         {/* ======================================================== */}
         {whatsappEnabled && (
           <div className="bg-gradient-to-b from-slate-900/90 to-slate-950 border border-emerald-500/30 rounded-2xl p-6 relative overflow-hidden shadow-xl">
@@ -427,7 +570,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
               <div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <h3 className="text-lg font-bold text-white">2. Link WhatsApp Phone (Pairing Code)</h3>
+                  <h3 className="text-lg font-bold text-white">3. Link WhatsApp Phone (Pairing Code)</h3>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
                   Enter your business phone number to generate an 8-character pairing code.
@@ -448,7 +591,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="8801712345678"
+                      placeholder="8801973891388"
                       value={phoneToPair}
                       onChange={(e) => setPhoneToPair(e.target.value)}
                       className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-mono text-sm focus:outline-none focus:border-emerald-500 transition-colors"
@@ -473,7 +616,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                     </button>
                   </div>
                   <span className="text-[11px] text-slate-500 mt-1 block">
-                    No '+' or spaces. Example: 8801711223344
+                    No '+' or spaces. Example: 8801973891388
                   </span>
                 </div>
 
@@ -532,20 +675,33 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         )}
 
         {/* ======================================================== */}
-        {/* SECTION 3: AUTOMATED MESSAGE TEMPLATES */}
+        {/* SECTION 4: AUTOMATED MESSAGE TEMPLATES */}
         {/* ======================================================== */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
-          <div className="border-b border-slate-800 pb-4">
-            <h3 className="text-lg font-bold text-white">3. Custom Message Templates</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Customize the message body sent to customers via WhatsApp or SMS.
-            </p>
+          <div className="border-b border-slate-800 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h3 className="text-lg font-bold text-white">4. Custom Message Templates</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Customize the message body sent to customers via WhatsApp or SMS.
+              </p>
+            </div>
+
+            {/* Dedicated Save Templates Button Right Above */}
+            <button
+              type="button"
+              onClick={() => handleSaveAllSettings()}
+              disabled={isSaving}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 disabled:opacity-50"
+            >
+              {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Notification Templates
+            </button>
           </div>
 
           <div className="space-y-5">
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Payment Success Message
+                Advance Payment & Courier Tracking Message
               </label>
               <textarea
                 rows={3}
@@ -554,7 +710,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
               />
               <div className="flex flex-wrap gap-2 mt-2">
-                {['{customer_name}', '{amount}', '{trx_id}'].map((tag) => (
+                {['{customer_name}', '{amount}', '{due_amount}', '{tracking_url}'].map((tag) => (
                   <span
                     key={tag}
                     onClick={() => setTemplatePaymentSuccess((prev) => prev + ' ' + tag)}
@@ -568,7 +724,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Order Created Message (COD / Advance)
+                Full COD Order & Courier Tracking Message
               </label>
               <textarea
                 rows={3}
@@ -577,7 +733,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
               />
               <div className="flex flex-wrap gap-2 mt-2">
-                {['{customer_name}', '{amount}'].map((tag) => (
+                {['{customer_name}', '{amount}', '{tracking_url}'].map((tag) => (
                   <span
                     key={tag}
                     onClick={() => setTemplateOrderCreated((prev) => prev + ' ' + tag)}
@@ -588,6 +744,19 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Large Save Templates Button at the Bottom */}
+          <div className="pt-4 border-t border-slate-800 flex justify-end">
+            <button
+              type="button"
+              onClick={() => handleSaveAllSettings()}
+              disabled={isSaving}
+              className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 disabled:opacity-50"
+            >
+              {isSaving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Save All Templates & Settings
+            </button>
           </div>
         </div>
       </form>
