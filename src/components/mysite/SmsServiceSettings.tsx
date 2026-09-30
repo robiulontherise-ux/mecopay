@@ -203,7 +203,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     }
   };
 
-  // Pure Edge Function Handshake for Pairing Code
+  // Pure Edge Function Handshake for Pairing Code (Dual-Name + Active JWT Header)
   const handleGeneratePairingCode = async () => {
     const cleanPhone = phoneToPair.replace(/[^0-9]/g, '');
     if (!cleanPhone || cleanPhone.length < 10) {
@@ -219,15 +219,36 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     setPairingCode(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('headless-orchestrator', {
-        body: {
-          action: 'pair_phone',
-          brand_id: selectedBrandId,
-          phone: cleanPhone
-        }
+      // 1. Get Fresh JWT Access Token for Supabase JWT verification
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeader = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+
+      const payload = {
+        action: 'pair_phone',
+        brand_id: selectedBrandId,
+        phone: cleanPhone
+      };
+
+      // 2. Try 'send-notification' first (user created function name)
+      let fnResult = await supabase.functions.invoke('send-notification', {
+        body: payload,
+        headers: authHeader
       });
 
-      if (error) throw new Error(error.message || 'Edge function error');
+      // 3. Fallback to 'headless-orchestrator' if 404 or missing
+      if (fnResult.error && (fnResult.error.message?.includes('404') || fnResult.error.message?.includes('Failed to send a request'))) {
+        fnResult = await supabase.functions.invoke('headless-orchestrator', {
+          body: payload,
+          headers: authHeader
+        });
+      }
+
+      const { data, error } = fnResult;
+
+      if (error) {
+        console.error('Edge Function Error Details:', error);
+        throw new Error(error.message || 'Edge function request failed');
+      }
 
       if (data?.pairing_code) {
         setPairingCode(data.pairing_code);
@@ -239,6 +260,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         throw new Error(data?.error || 'Unable to generate pairing code');
       }
     } catch (err: any) {
+      console.error('Pairing process error:', err);
       showToast('Pairing Error: ' + err.message, 'error');
     } finally {
       setIsGeneratingPair(false);
