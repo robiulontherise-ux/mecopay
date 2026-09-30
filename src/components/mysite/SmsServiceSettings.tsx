@@ -106,6 +106,35 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     }
   }, [brands]);
 
+  // Helper to normalize phone numbers for accurate matching
+  const normalizePhone = (str: string) => (str || '').replace(/[^0-9]/g, '');
+
+  // Helper to accurately extract device name from payment_numbers record or its JSON meta
+  const getDeviceFromRecord = (p: any): string => {
+    if (!p) return '';
+    if (p.device_name && String(p.device_name).trim() && String(p.device_name) !== 'null') {
+      return String(p.device_name).trim();
+    }
+    if (p.device_id && String(p.device_id).trim() && String(p.device_id) !== 'null') {
+      return String(p.device_id).trim();
+    }
+    if (p.device_name_2 && String(p.device_name_2).trim() && String(p.device_name_2) !== 'null') {
+      return String(p.device_name_2).trim();
+    }
+
+    // Check additional_numbers JSON array/object
+    if (Array.isArray(p.additional_numbers)) {
+      for (const item of p.additional_numbers) {
+        if (item?.device_name && String(item.device_name).trim()) return String(item.device_name).trim();
+        if (item?.device_id && String(item.device_id).trim()) return String(item.device_id).trim();
+      }
+    } else if (typeof p.additional_numbers === 'object' && p.additional_numbers !== null) {
+      if (p.additional_numbers.device_name) return String(p.additional_numbers.device_name).trim();
+      if (p.additional_numbers.device_id) return String(p.additional_numbers.device_id).trim();
+    }
+    return '';
+  };
+
   // Load Real Device Status & Payment Numbers
   useEffect(() => {
     if (!user?.id) return;
@@ -229,19 +258,29 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         phone: cleanPhone
       };
 
-      // 2. Try 'send-notification' first (user created function name)
-      let fnResult = await supabase.functions.invoke('send-notification', {
-        body: payload,
-        headers: authHeader
-      });
+      // Timeout promise wrapper (15 seconds) so spinner never hangs indefinitely
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Server response timed out (15s). Please ensure port 3333 is open on server.')), 15000)
+      );
 
-      // 3. Fallback to 'headless-orchestrator' if 404 or missing
-      if (fnResult.error && (fnResult.error.message?.includes('404') || fnResult.error.message?.includes('Failed to send a request'))) {
-        fnResult = await supabase.functions.invoke('headless-orchestrator', {
+      // 2. Try 'send-notification' first with timeout race
+      const invokeCall = async () => {
+        let fnResult = await supabase.functions.invoke('send-notification', {
           body: payload,
           headers: authHeader
         });
-      }
+
+        // 3. Fallback to 'headless-orchestrator' if 404 or missing
+        if (fnResult.error && (fnResult.error.message?.includes('404') || fnResult.error.message?.includes('Failed to send a request'))) {
+          fnResult = await supabase.functions.invoke('headless-orchestrator', {
+            body: payload,
+            headers: authHeader
+          });
+        }
+        return fnResult;
+      };
+
+      const fnResult: any = await Promise.race([invokeCall(), timeoutPromise]);
 
       const { data, error } = fnResult;
 
@@ -607,29 +646,58 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                       onChange={(e) => {
                         const num = e.target.value;
                         setSelectedSimNumber(num);
-                        const matched = paymentNumbers.find(p => p.number === num);
-                        if (matched) setSelectedDeviceId(matched.device_name || '');
+                        const cleanSelected = normalizePhone(num);
+                        const matched = paymentNumbers.find(p => normalizePhone(p.number) === cleanSelected || p.number === num);
+                        const extractedDev = getDeviceFromRecord(matched);
+                        if (extractedDev) {
+                          setSelectedDeviceId(extractedDev);
+                        }
                       }}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500"
                     >
                       <option value="">Select phone number from payment_numbers</option>
-                      {paymentNumbers.map(p => (
-                        <option key={p.id} value={p.number}>
-                          {p.provider ? p.provider.toUpperCase() : 'SIM'}: {p.number} (Device: {p.device_name || 'Not bound'})
-                        </option>
-                      ))}
+                      {paymentNumbers.map(p => {
+                        const devName = getDeviceFromRecord(p);
+                        return (
+                          <option key={p.id} value={p.number}>
+                            {p.provider ? p.provider.toUpperCase() : 'SIM'}: {p.number} (Device: {devName ? devName : 'Not bound'})
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
                   <div>
-                    <span className="text-xs text-slate-400 block mb-1">Target Android Device ID:</span>
-                    <input
-                      type="text"
-                      value={selectedDeviceId}
-                      onChange={(e) => setSelectedDeviceId(e.target.value)}
-                      placeholder="e.g. tzy25"
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-purple-500"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-slate-400">Target Android Device ID:</span>
+                      {realDevices.length > 0 && (
+                        <span className="text-[10px] text-purple-400">Available: {realDevices.map(d => d.device_id).filter(Boolean).join(', ')}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={selectedDeviceId}
+                        onChange={(e) => setSelectedDeviceId(e.target.value)}
+                        placeholder="e.g. tzy25"
+                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-purple-500"
+                      />
+                      {realDevices.length > 0 && (
+                        <select
+                          value={selectedDeviceId}
+                          onChange={(e) => setSelectedDeviceId(e.target.value)}
+                          className="bg-slate-900 border border-slate-800 text-slate-300 text-xs px-2.5 py-2 rounded-xl focus:outline-none"
+                          title="Quick pick device"
+                        >
+                          <option value="">Pick Device</option>
+                          {realDevices.map(d => (
+                            <option key={d.id} value={d.device_id}>
+                              {d.device_id} ({d.connected ? 'Online' : 'Offline'})
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
