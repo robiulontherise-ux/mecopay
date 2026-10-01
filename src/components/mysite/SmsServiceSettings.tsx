@@ -25,6 +25,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
   const [smsSenderMode, setSmsSenderMode] = useState<'device_sim' | 'cloud_api'>('device_sim');
   const [customSmsApiUrl, setCustomSmsApiUrl] = useState<string>('');
   const [customSmsApiKey, setCustomSmsApiKey] = useState<string>('');
+  const [customSmsApiSecret, setCustomSmsApiSecret] = useState<string>('');
 
   // Smart Routing Hierarchy (Cost-Saving Flow)
   const [routingStrategy, setRoutingStrategy] = useState<'smart_fallback' | 'send_all'>('smart_fallback');
@@ -152,11 +153,33 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     fetchRealData();
   }, [user]);
 
-  // Check Brand Mailbox & Load Settings
+  // Check Brand Mailbox & Load Settings + Auto-poll WhatsApp status
   useEffect(() => {
     if (!selectedBrandId) return;
     loadBrandSettings();
     checkBrandMailbox();
+
+    // Auto-poll WhatsApp connection status every 4 seconds
+    const interval = setInterval(async () => {
+      try {
+        const { data: gw } = await supabase
+          .from('whatsapp_gateway_settings')
+          .select('is_connected, phone_number, pairing_code')
+          .eq('brand_id', selectedBrandId)
+          .maybeSingle();
+
+        if (gw) {
+          setGatewayStatus({ connected: Boolean(gw.is_connected), phone: gw.phone_number });
+          if (gw.is_connected) {
+            setPairingCode(null);
+          } else if (gw.pairing_code) {
+            setPairingCode(gw.pairing_code);
+          }
+        }
+      } catch (_pollErr) {}
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, [selectedBrandId]);
 
   const checkBrandMailbox = async () => {
@@ -193,8 +216,9 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         setLocalSmsEnabled(gw.fallback_to_sms !== false);
         setInternationalSmsEnabled(Boolean(gw.international_sms_enabled));
         setSmsSenderMode(gw.sms_sender_mode || 'device_sim');
-        setCustomSmsApiUrl(gw.custom_sms_api_url || '');
-        setCustomSmsApiKey(gw.custom_sms_api_key || '');
+        setCustomSmsApiUrl(gw.custom_sms_api_url || gw.sms_api_endpoint || '');
+        setCustomSmsApiKey(gw.custom_sms_api_key || gw.sms_api_key || '');
+        setCustomSmsApiSecret(gw.sms_api_secret || '');
         setRoutingStrategy(gw.routing_strategy || 'smart_fallback');
         setFallbackToEmail(gw.fallback_to_email !== false);
         setAutoCourierAdvance(gw.auto_courier_advance !== false);
@@ -202,7 +226,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         setDigitalProductSmsEnabled(gw.digital_product_sms_enabled !== false);
         setSelectedDeviceId(gw.selected_device_id || '');
         setSelectedSimNumber(gw.selected_sim_number || '');
-        setGatewayStatus({ connected: gw.is_connected, phone: gw.phone_number });
+        setGatewayStatus({ connected: Boolean(gw.is_connected), phone: gw.phone_number });
         if (gw.phone_number) setPhoneToPair(gw.phone_number);
         if (gw.pairing_code && !gw.is_connected) setPairingCode(gw.pairing_code);
       }
@@ -328,6 +352,9 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           sms_sender_mode: smsSenderMode,
           custom_sms_api_url: customSmsApiUrl || null,
           custom_sms_api_key: customSmsApiKey || null,
+          sms_api_endpoint: customSmsApiUrl || null,
+          sms_api_key: customSmsApiKey || null,
+          sms_api_secret: customSmsApiSecret || null,
           routing_strategy: routingStrategy,
           auto_courier_advance: autoCourierAdvance,
           auto_courier_cod: autoCourierCod,
@@ -640,7 +667,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
               {smsSenderMode === 'device_sim' ? (
                 <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-xs text-slate-400 block mb-1">Select Outgoing SIM Number:</span>
+                    <span className="text-xs text-slate-400 block mb-1">Select Outgoing SIM Number / Connected Phone:</span>
                     <select
                       value={selectedSimNumber}
                       onChange={(e) => {
@@ -651,16 +678,25 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                         const extractedDev = getDeviceFromRecord(matched);
                         if (extractedDev) {
                           setSelectedDeviceId(extractedDev);
+                        } else if (realDevices.length > 0 && !selectedDeviceId) {
+                          setSelectedDeviceId(realDevices[0].device_id);
                         }
                       }}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500"
                     >
-                      <option value="">Select phone number from payment_numbers</option>
+                      <option value="">Select phone / device</option>
+                      {/* Direct connected real devices */}
+                      {realDevices.map(d => (
+                        <option key={d.id} value={d.phone_number || d.device_id}>
+                          📱 Phone Device: {d.device_id} ({d.connected ? 'Online' : 'Offline'}) {d.phone_number ? `- ${d.phone_number}` : ''}
+                        </option>
+                      ))}
+                      {/* Payment numbers */}
                       {paymentNumbers.map(p => {
-                        const devName = getDeviceFromRecord(p);
+                        const devName = getDeviceFromRecord(p) || (realDevices.length > 0 ? realDevices[0].device_id : '');
                         return (
                           <option key={p.id} value={p.number}>
-                            {p.provider ? p.provider.toUpperCase() : 'SIM'}: {p.number} (Device: {devName ? devName : 'Not bound'})
+                            {p.provider ? p.provider.toUpperCase() : 'SIM'}: {p.number} (Device: {devName ? devName : 'Primary App'})
                           </option>
                         );
                       })}
@@ -701,26 +737,41 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                   </div>
                 </div>
               ) : (
-                <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-xs text-slate-400 block mb-1">Custom SMS API Endpoint (Optional):</span>
-                    <input
-                      type="text"
-                      value={customSmsApiUrl}
-                      onChange={(e) => setCustomSmsApiUrl(e.target.value)}
-                      placeholder="Default: Central MecoPay SMS Gateway"
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
-                    />
+                <div className="pt-2 border-t border-slate-800/80 space-y-3">
+                  <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                    <Globe className="w-3.5 h-3.5" /> 3-Field Global / Custom SMS API Configuration
                   </div>
-                  <div>
-                    <span className="text-xs text-slate-400 block mb-1">SMS API Secret / Token (Optional):</span>
-                    <input
-                      type="password"
-                      value={customSmsApiKey}
-                      onChange={(e) => setCustomSmsApiKey(e.target.value)}
-                      placeholder="Your SMS Gateway Key"
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <span className="text-xs text-slate-400 block mb-1">1. SMS API Endpoint URL:</span>
+                      <input
+                        type="text"
+                        value={customSmsApiUrl}
+                        onChange={(e) => setCustomSmsApiUrl(e.target.value)}
+                        placeholder="https://api.smsnet.com/v1/send"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block mb-1">2. SMS API Key / Client ID:</span>
+                      <input
+                        type="text"
+                        value={customSmsApiKey}
+                        onChange={(e) => setCustomSmsApiKey(e.target.value)}
+                        placeholder="API Key / Token"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block mb-1">3. SMS API Secret / Sender ID:</span>
+                      <input
+                        type="password"
+                        value={customSmsApiSecret}
+                        onChange={(e) => setCustomSmsApiSecret(e.target.value)}
+                        placeholder="API Secret or Sender ID"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

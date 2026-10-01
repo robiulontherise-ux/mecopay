@@ -47,6 +47,12 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const [aramexPassword, setAramexPassword] = useState('');
   const [aramexAccountNumber, setAramexAccountNumber] = useState('');
 
+  // 🌐 Universal 3-Field Custom Courier API (Direct Global Integration)
+  const [customCourierEndpoint, setCustomCourierEndpoint] = useState('');
+  const [customCourierApiKey, setCustomCourierApiKey] = useState('');
+  const [customCourierSecretKey, setCustomCourierSecretKey] = useState('');
+  const [customCourierProviderName, setCustomCourierProviderName] = useState('Custom Courier');
+
   const [autoCourierOnAdvance, setAutoCourierOnAdvance] = useState(true);
   const [autoCourierOnFullCod, setAutoCourierOnFullCod] = useState(false);
   const [savingKeys, setSavingKeys] = useState(false);
@@ -81,7 +87,28 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     }
 
     fetchParcels();
+    loadCourierSettings();
   }, [selectedBrandId, brands]);
+
+  const loadCourierSettings = async () => {
+    if (!selectedBrandId) return;
+    try {
+      const { data: cb } = await supabase
+        .from('courier_bookings')
+        .select('*')
+        .eq('brand_id', selectedBrandId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cb) {
+        if (cb.api_endpoint) setCustomCourierEndpoint(cb.api_endpoint);
+        if (cb.api_key) setCustomCourierApiKey(cb.api_key);
+        if (cb.secret_key) setCustomCourierSecretKey(cb.secret_key);
+        if (cb.provider) setCustomCourierProviderName(cb.provider);
+      }
+    } catch (_err) {}
+  };
 
   const fetchParcels = async () => {
     if (!selectedBrandId) return;
@@ -141,16 +168,18 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
           updated_at: new Date().toISOString()
         }, { onConflict: 'brand_id' });
 
-      // Save courier provider credentials
+      // Save courier provider credentials + Universal 3-Field Custom API
       await supabase
         .from('courier_bookings')
         .upsert({
           brand_id: selectedBrandId,
-          provider: courierProvider,
-          api_key: courierProvider === 'steadfast' ? steadfastApiKey : (courierProvider === 'pathao' ? pathaoClientId : (courierProvider === 'dhl' ? dhlApiKey : fedexApiKey)),
-          secret_key: courierProvider === 'steadfast' ? steadfastSecretKey : (courierProvider === 'pathao' ? pathaoClientSecret : (courierProvider === 'dhl' ? dhlApiSecret : fedexSecretKey)),
+          provider: customCourierProviderName || courierProvider,
+          api_endpoint: customCourierEndpoint || (courierProvider === 'steadfast' ? 'https://portal.steadfast.com.bd/api/v1/create_order' : ''),
+          api_key: customCourierApiKey || (courierProvider === 'steadfast' ? steadfastApiKey : (courierProvider === 'pathao' ? pathaoClientId : (courierProvider === 'dhl' ? dhlApiKey : fedexApiKey))),
+          secret_key: customCourierSecretKey || (courierProvider === 'steadfast' ? steadfastSecretKey : (courierProvider === 'pathao' ? pathaoClientSecret : (courierProvider === 'dhl' ? dhlApiSecret : fedexSecretKey))),
           raw_response: {
             provider: courierProvider,
+            custom_endpoint: customCourierEndpoint,
             pathao_store_id: pathaoStoreId,
             dhl_account: dhlAccountNumber,
             fedex_account: fedexAccountNumber,
@@ -628,6 +657,51 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                 </div>
               </div>
             )}
+
+            {/* Universal 3-Field Dynamic Courier API Configuration */}
+            <div className="pt-4 border-t border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5" /> 3-Field Dynamic Courier API (Any Country / Any Courier)
+                </span>
+                <span className="text-[11px] text-slate-500">Universal Endpoint Router</span>
+              </div>
+              <p className="text-xs text-slate-400">
+                You can configure any custom or international courier webhook/API here. The Edge Function will automatically dispatch parcel booking using these 3 fields:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">1. Courier Booking Endpoint URL</label>
+                  <input
+                    type="text"
+                    value={customCourierEndpoint}
+                    onChange={(e) => setCustomCourierEndpoint(e.target.value)}
+                    placeholder="https://portal.steadfast.com.bd/api/v1/create_order"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-600 text-xs font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">2. Courier API Key / Token</label>
+                  <input
+                    type="text"
+                    value={customCourierApiKey}
+                    onChange={(e) => setCustomCourierApiKey(e.target.value)}
+                    placeholder="API Key / Client ID"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-600 text-xs font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">3. Secret Key / Store ID</label>
+                  <input
+                    type="password"
+                    value={customCourierSecretKey}
+                    onChange={(e) => setCustomCourierSecretKey(e.target.value)}
+                    placeholder="Secret Key or Store Identifier"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-600 text-xs font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
 
             {/* Courier Automation Toggles: Advance Pay & Full COD */}
             <div className="pt-4 border-t border-slate-800 space-y-3">

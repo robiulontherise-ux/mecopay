@@ -163,7 +163,40 @@ export default function Invoices({ brands }: { brands: any[] }) {
       if (selectedInvoice && selectedInvoice.id === invoiceId) {
         setSelectedInvoice({ ...selectedInvoice, status: newStatus });
       }
-      showToast("Status updated!", "success");
+      showToast(`Status updated to ${newStatus}!`, "success");
+
+      // 🚀 Trigger Edge Function 'send-notification' automatically when status is 'Completed'
+      if (newStatus.toLowerCase() === 'completed') {
+        const targetInv = invoices.find(i => i.id === invoiceId) || selectedInvoice;
+        if (targetInv) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const authHeader = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+
+            supabase.functions.invoke('send-notification', {
+              body: {
+                action: 'send_notification',
+                brand_id: targetInv.brand_id,
+                customer_phone: targetInv.sender_number || targetInv.customer_phone,
+                customer_email: targetInv.customer_email,
+                customer_name: targetInv.customer_name || 'Customer',
+                amount: targetInv.amount,
+                trx_id: targetInv.trx_id,
+                product_type: targetInv.product_type || 'digital',
+                invoice_no: targetInv.id,
+                product_name: targetInv.product_name
+              },
+              headers: authHeader
+            }).then(({ data, error: fnErr }) => {
+              if (fnErr) {
+                console.warn('Auto notification dispatch error:', fnErr);
+              } else if (data?.channel) {
+                showToast(`Receipt dispatched via ${data.channel.toUpperCase()}!`, 'success');
+              }
+            });
+          } catch (_e) {}
+        }
+      }
     } catch (err: any) {
       showToast("Failed to update!", "error");
     }
