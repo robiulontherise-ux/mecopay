@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Save, CheckCircle2, ShieldCheck, Zap, Info, RefreshCw, Smartphone, Key, Globe, Send, AlertTriangle, Copy, Check, Radio, Truck, Download, Mail, Lock, Code, Eye, ExternalLink } from 'lucide-react';
+import { MessageSquare, Save, CheckCircle2, ShieldCheck, Zap, Info, RefreshCw, Smartphone, Key, Globe, Send, AlertTriangle, Copy, Check, Radio, Truck, Download, Mail, Lock, Code, Eye, ExternalLink, PackageCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 
@@ -607,174 +607,141 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           </div>
 
           {/* ======================================================== */}
-          {/* SMS SENDER MODE SWITCHER: ANDROID SIM VS CLOUD API */}
+          {/* SECTION 1.1: DOMESTIC SMS (SHOP ANDROID PHONE SIM ONLY)  */}
           {/* ======================================================== */}
           {localSmsEnabled && (
-            <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-5 space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div className="bg-slate-950/90 border border-purple-500/30 rounded-2xl p-5 space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-purple-400" />
+                  3. Domestic SMS Engine (Bangladesh Local Phone SIM)
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Sends automated SMS to Bangladeshi numbers (+880) via your shop's connected Android phone SIM card (Free local bundle SMS).
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Smartphone className="w-4 h-4 text-purple-400" />
-                    SMS Sender Engine (Choose according to your business setup)
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Select whether SMS should dispatch using a shop's Android Phone SIM or direct Cloud API without any phone.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Option A: Android SIM */}
-                <label className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                  smsSenderMode === 'device_sim' ? 'bg-purple-950/30 border-purple-500/60 text-white' : 'bg-slate-900 border-slate-800 text-slate-400'
-                }`}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <input
-                      type="radio"
-                      name="smsSenderMode"
-                      value="device_sim"
-                      checked={smsSenderMode === 'device_sim'}
-                      onChange={() => setSmsSenderMode('device_sim')}
-                    />
-                    <span className="text-xs font-bold text-white">Mode A: Shop Android Phone SIM (Free SMS)</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 pl-5">
-                    Uses the local SIM card in your shop's Android Phone. Zero extra API cost.
-                  </p>
-                </label>
-
-                {/* Option B: Pure Cloud API */}
-                <label className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                  smsSenderMode === 'cloud_api' ? 'bg-emerald-950/30 border-emerald-500/60 text-white' : 'bg-slate-900 border-slate-800 text-slate-400'
-                }`}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <input
-                      type="radio"
-                      name="smsSenderMode"
-                      value="cloud_api"
-                      checked={smsSenderMode === 'cloud_api'}
-                      onChange={() => setSmsSenderMode('cloud_api')}
-                    />
-                    <span className="text-xs font-bold text-white">Mode B: Pure Cloud SMS API (No Phone Needed)</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 pl-5">
-                    For pure Merchant/Corporate clients. Dispatches via Central MecoPay Gateway or your own SMS API.
-                  </p>
-                </label>
-              </div>
-
-              {/* Dynamic Details based on selected mode */}
-              {smsSenderMode === 'device_sim' ? (
-                <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-xs text-slate-400 block mb-1">Select Outgoing SIM Number / Connected Phone:</span>
-                    <select
-                      value={selectedSimNumber}
-                      onChange={(e) => {
-                        const num = e.target.value;
-                        setSelectedSimNumber(num);
-                        const cleanSelected = normalizePhone(num);
-                        const matched = paymentNumbers.find(p => normalizePhone(p.number) === cleanSelected || p.number === num);
-                        const extractedDev = getDeviceFromRecord(matched);
-                        if (extractedDev) {
-                          setSelectedDeviceId(extractedDev);
-                        } else if (realDevices.length > 0 && !selectedDeviceId) {
-                          setSelectedDeviceId(realDevices[0].device_id);
-                        }
-                      }}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="">Select phone / device</option>
-                      {/* Direct connected real devices */}
-                      {realDevices.map(d => (
-                        <option key={d.id} value={d.phone_number || d.device_id}>
-                          📱 Phone Device: {d.device_id} ({d.connected ? 'Online' : 'Offline'}) {d.phone_number ? `- ${d.phone_number}` : ''}
+                  <span className="text-xs text-slate-400 block mb-1">Select Outgoing SIM Number / Connected Phone:</span>
+                  <select
+                    value={selectedSimNumber}
+                    onChange={(e) => {
+                      const num = e.target.value;
+                      setSelectedSimNumber(num);
+                      const cleanSelected = normalizePhone(num);
+                      const matched = paymentNumbers.find(p => normalizePhone(p.number) === cleanSelected || p.number === num);
+                      const extractedDev = getDeviceFromRecord(matched);
+                      if (extractedDev) {
+                        setSelectedDeviceId(extractedDev);
+                      } else if (realDevices.length > 0 && !selectedDeviceId) {
+                        setSelectedDeviceId(realDevices[0].device_id);
+                      }
+                    }}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">Select phone / device</option>
+                    {/* Direct connected real devices */}
+                    {realDevices.map(d => (
+                      <option key={d.id} value={d.phone_number || d.device_id}>
+                        📱 Phone Device: {d.device_id} ({d.connected ? 'Online' : 'Offline'}) {d.phone_number ? `- ${d.phone_number}` : ''}
+                      </option>
+                    ))}
+                    {/* Payment numbers */}
+                    {paymentNumbers.map(p => {
+                      const devName = getDeviceFromRecord(p) || (realDevices.length > 0 ? realDevices[0].device_id : '');
+                      return (
+                        <option key={p.id} value={p.number}>
+                          {p.provider ? p.provider.toUpperCase() : 'SIM'}: {p.number} (Device: {devName ? devName : 'Primary App'})
                         </option>
-                      ))}
-                      {/* Payment numbers */}
-                      {paymentNumbers.map(p => {
-                        const devName = getDeviceFromRecord(p) || (realDevices.length > 0 ? realDevices[0].device_id : '');
-                        return (
-                          <option key={p.id} value={p.number}>
-                            {p.provider ? p.provider.toUpperCase() : 'SIM'}: {p.number} (Device: {devName ? devName : 'Primary App'})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
+                      );
+                    })}
+                  </select>
+                </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-slate-400">Target Android Device ID:</span>
-                      {realDevices.length > 0 && (
-                        <span className="text-[10px] text-purple-400">Available: {realDevices.map(d => d.device_id).filter(Boolean).join(', ')}</span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-slate-400">Target Android Device ID:</span>
+                    {realDevices.length > 0 && (
+                      <span className="text-[10px] text-purple-400">Available: {realDevices.map(d => d.device_id).filter(Boolean).join(', ')}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={selectedDeviceId}
+                      onChange={(e) => setSelectedDeviceId(e.target.value)}
+                      placeholder="e.g. tzy25"
+                      className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-purple-500"
+                    />
+                    {realDevices.length > 0 && (
+                      <select
                         value={selectedDeviceId}
                         onChange={(e) => setSelectedDeviceId(e.target.value)}
-                        placeholder="e.g. tzy25"
-                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-purple-500"
-                      />
-                      {realDevices.length > 0 && (
-                        <select
-                          value={selectedDeviceId}
-                          onChange={(e) => setSelectedDeviceId(e.target.value)}
-                          className="bg-slate-900 border border-slate-800 text-slate-300 text-xs px-2.5 py-2 rounded-xl focus:outline-none"
-                          title="Quick pick device"
-                        >
-                          <option value="">Pick Device</option>
-                          {realDevices.map(d => (
-                            <option key={d.id} value={d.device_id}>
-                              {d.device_id} ({d.connected ? 'Online' : 'Offline'})
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
+                        className="bg-slate-900 border border-slate-800 text-slate-300 text-xs px-2.5 py-2 rounded-xl focus:outline-none"
+                        title="Quick pick device"
+                      >
+                        <option value="">Pick Device</option>
+                        {realDevices.map(d => (
+                          <option key={d.id} value={d.device_id}>
+                            {d.device_id} ({d.connected ? 'Online' : 'Offline'})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <div className="pt-2 border-t border-slate-800/80 space-y-3">
-                  <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-                    <Globe className="w-3.5 h-3.5" /> 3-Field Global / Custom SMS API Configuration
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <span className="text-xs text-slate-400 block mb-1">1. SMS API Endpoint URL:</span>
-                      <input
-                        type="text"
-                        value={customSmsApiUrl}
-                        onChange={(e) => setCustomSmsApiUrl(e.target.value)}
-                        placeholder="https://api.smsnet.com/v1/send"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-400 block mb-1">2. SMS API Key / Client ID:</span>
-                      <input
-                        type="text"
-                        value={customSmsApiKey}
-                        onChange={(e) => setCustomSmsApiKey(e.target.value)}
-                        placeholder="API Key / Token"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-400 block mb-1">3. SMS API Secret / Sender ID:</span>
-                      <input
-                        type="password"
-                        value={customSmsApiSecret}
-                        onChange={(e) => setCustomSmsApiSecret(e.target.value)}
-                        placeholder="API Secret or Sender ID"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* SECTION 1.2: GLOBAL SMS (3-FIELD UNIVERSAL CLOUD API)    */}
+          {/* ======================================================== */}
+          {internationalSmsEnabled && (
+            <div className="bg-slate-950/90 border border-cyan-500/30 rounded-2xl p-5 space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-cyan-400" />
+                  4. Global SMS Gateway (3-Field Universal Cloud API)
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Sends international SMS to global customers (+1, +44, +971 etc.) via your Twilio, MessageBird, or custom SMS API.
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <span className="text-xs text-slate-400 block mb-1">1. Global SMS Endpoint URL:</span>
+                  <input
+                    type="text"
+                    value={customSmsApiUrl}
+                    onChange={(e) => setCustomSmsApiUrl(e.target.value)}
+                    placeholder="https://api.twilio.com/2010-04-01/Accounts/.../Messages.json"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                  />
                 </div>
-              )}
+                <div>
+                  <span className="text-xs text-slate-400 block mb-1">2. API Key / Account SID:</span>
+                  <input
+                    type="text"
+                    value={customSmsApiKey}
+                    onChange={(e) => setCustomSmsApiKey(e.target.value)}
+                    placeholder="API Key / Account SID"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400 block mb-1">3. API Secret / Auth Token / Sender ID:</span>
+                  <input
+                    type="password"
+                    value={customSmsApiSecret}
+                    onChange={(e) => setCustomSmsApiSecret(e.target.value)}
+                    placeholder="Auth Token or Sender Phone"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -841,13 +808,35 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Auto-Notification for Physical (100% Full Paid) */}
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <PackageCheck className="w-4 h-4 text-emerald-400" />
+                  Physical (100% Paid)
+                </span>
+                <p className="text-xs text-slate-400">
+                  Global/USA orders with 100% upfront card/bank payment. Auto-books courier & sends dispatch receipt.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                <input
+                  type="checkbox"
+                  checked={autoCourierAdvance}
+                  onChange={(e) => setAutoCourierAdvance(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+
             {/* Auto-Notification for Advance Pay */}
             <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start justify-between gap-3">
               <div className="space-y-1">
                 <span className="text-sm font-bold text-white flex items-center gap-1.5">
-                  <Truck className="w-4 h-4 text-emerald-400" />
-                  Advance Pay Receipt
+                  <Truck className="w-4 h-4 text-amber-400" />
+                  Advance + COD Receipt
                 </span>
                 <p className="text-xs text-slate-400">
                   Sends 1 single receipt message with courier tracking code when advance payment is received.
@@ -860,7 +849,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                   onChange={(e) => setAutoCourierAdvance(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
               </label>
             </div>
 

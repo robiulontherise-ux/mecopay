@@ -405,11 +405,23 @@ export default function Invoices({ brands }: { brands: any[] }) {
                     </td>
                     <td className="px-4 py-4 text-slate-300 max-w-[150px] truncate" title={inv.product_name || 'N/A'}>{inv.product_name || 'N/A'}</td>
                     <td className="px-4 py-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        inv.product_type === 'physical' || inv.is_full_cod ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                      }`}>
-                        {inv.is_full_cod ? '100% COD' : (inv.product_type || 'Digital')}
-                      </span>
+                      {inv.is_full_cod ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                          100% COD
+                        </span>
+                      ) : inv.product_type === 'advance_cod' || (inv.product_type === 'physical' && inv.advance_amount && inv.advance_amount < inv.amount) ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          Advance COD
+                        </span>
+                      ) : inv.product_type === 'physical' || inv.product_type === 'physical_full' ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Physical (100% Paid)
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                          Digital (100% Paid)
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-4">{inv.brand?.name || 'Unknown'}</td>
                     <td className="px-4 py-4 font-bold uppercase text-slate-300">{inv.gateway_used || '-'}</td>
