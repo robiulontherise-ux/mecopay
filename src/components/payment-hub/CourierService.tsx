@@ -114,29 +114,49 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     if (!selectedBrandId) return;
     setLoadingParcels(true);
     try {
-      // First try fetching from invoices where courier/consignment exists
+      // 1. Fetch from invoices: All Full COD orders + orders with courier consignment
       const { data: invData, error: invErr } = await supabase
         .from('invoices')
         .select('*')
         .eq('brand_id', selectedBrandId)
-        .not('consignment_id', 'is', null)
+        .or('consignment_id.not.is.null,is_full_cod.eq.true,product_type.eq.physical')
         .order('created_at', { ascending: false });
 
-      if (!invErr && invData && invData.length > 0) {
-        setParcels(invData);
-        return;
-      }
-
-      // Or fallback to courier_bookings if table exists
-      const { data, error } = await supabase
+      // 2. Fetch from courier_bookings table
+      const { data: cbData } = await supabase
         .from('courier_bookings')
         .select('*')
         .eq('brand_id', selectedBrandId)
         .order('created_at', { ascending: false });
 
-      if (!error && Array.isArray(data)) {
-        setParcels(data);
-      }
+      const combinedMap = new Map();
+
+      // Add courier_bookings
+      (cbData || []).forEach((b: any) => {
+        combinedMap.set(b.consignment_id || b.id, b);
+      });
+
+      // Add / merge invoices (Full COD or booked)
+      (invData || []).forEach((inv: any) => {
+        const key = inv.consignment_id || inv.id;
+        if (!combinedMap.has(key)) {
+          combinedMap.set(key, {
+            id: inv.id,
+            consignment_id: inv.consignment_id || `COD-${inv.id.slice(0, 8)}`,
+            courier: inv.courier_name || 'Pending Booking',
+            recipient_name: inv.customer_name || 'Customer',
+            recipient_phone: inv.customer_phone || inv.sender_number || '',
+            recipient_address: inv.customer_address || 'Address in Invoice',
+            cod_amount: inv.amount || 0,
+            advance_paid: inv.advance_amount || 0,
+            status: inv.consignment_id ? (inv.courier_status || 'in_transit') : 'pending_call',
+            tracking_url: inv.tracking_url || '#',
+            is_invoice_order: true
+          });
+        }
+      });
+
+      setParcels(Array.from(combinedMap.values()));
     } catch (e) {
       console.warn('Error fetching parcels:', e);
     } finally {
@@ -432,6 +452,10 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                 <CheckCircle2 className="w-3 h-3" /> Delivered
                               </span>
+                            ) : parcel.status === 'pending_call' ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                📞 Call & Confirm COD
+                              </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                 <Clock className="w-3 h-3" /> In Transit
@@ -439,16 +463,41 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                             )}
                           </td>
                           <td className="p-4 text-right">
-                            {track !== '#' && (
-                              <a
-                                href={track}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 transition-colors"
-                              >
-                                Track <ExternalLink className="w-3 h-3" />
-                              </a>
-                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              {recPhone && (
+                                <a
+                                  href={`tel:${recPhone}`}
+                                  className="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 font-semibold px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 transition-colors"
+                                  title="Call Customer"
+                                >
+                                  📞 Call
+                                </a>
+                              )}
+                              {parcel.status === 'pending_call' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRecipientName(recName);
+                                    setRecipientPhone(recPhone);
+                                    setRecipientAddress(parcel.recipient_address || '');
+                                    setCodAmount(String(cod));
+                                    setShowBookingModal(true);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 transition-colors"
+                                >
+                                  🚚 Book Courier
+                                </button>
+                              ) : track !== '#' && (
+                                <a
+                                  href={track}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 transition-colors"
+                                >
+                                  Track <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -487,27 +536,81 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                   <option value="fedex">FedEx International</option>
                   <option value="aramex">Aramex Global Delivery</option>
                 </optgroup>
+                <optgroup label="⚙️ Custom / Any Courier (3-Field)">
+                  <option value="custom">Custom / Global Courier API (3-Field)</option>
+                </optgroup>
               </select>
             </div>
 
-            {courierProvider === 'steadfast' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            {courierProvider === 'custom' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Steadfast API Key</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">1. Booking API Endpoint URL</label>
+                  <input
+                    type="text"
+                    value={customCourierEndpoint}
+                    onChange={(e) => setCustomCourierEndpoint(e.target.value)}
+                    placeholder="https://api.yourcourier.com/v1/orders"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">2. API Key / Client ID</label>
+                  <input
+                    type="text"
+                    value={customCourierApiKey}
+                    onChange={(e) => setCustomCourierApiKey(e.target.value)}
+                    placeholder="API Key / Token"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">3. Secret Key / Store ID</label>
+                  <input
+                    type="password"
+                    value={customCourierSecretKey}
+                    onChange={(e) => setCustomCourierSecretKey(e.target.value)}
+                    placeholder="Secret Key or Store Identifier"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {courierProvider === 'steadfast' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">1. Steadfast API Endpoint</label>
+                  <input
+                    type="text"
+                    value={customCourierEndpoint || 'https://portal.steadfast.com.bd/api/v1/create_order'}
+                    onChange={(e) => setCustomCourierEndpoint(e.target.value)}
+                    placeholder="https://portal.steadfast.com.bd/api/v1/create_order"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">2. Steadfast API Key</label>
                   <input
                     type="password"
                     value={steadfastApiKey}
-                    onChange={(e) => setSteadfastApiKey(e.target.value)}
+                    onChange={(e) => {
+                      setSteadfastApiKey(e.target.value);
+                      setCustomCourierApiKey(e.target.value);
+                    }}
                     placeholder="Enter Steadfast API Key"
                     className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Steadfast Secret Key</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">3. Steadfast Secret Key</label>
                   <input
                     type="password"
                     value={steadfastSecretKey}
-                    onChange={(e) => setSteadfastSecretKey(e.target.value)}
+                    onChange={(e) => {
+                      setSteadfastSecretKey(e.target.value);
+                      setCustomCourierSecretKey(e.target.value);
+                    }}
                     placeholder="Enter Steadfast Secret Key"
                     className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm font-mono focus:outline-none"
                   />
@@ -657,51 +760,6 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                 </div>
               </div>
             )}
-
-            {/* Universal 3-Field Dynamic Courier API Configuration */}
-            <div className="pt-4 border-t border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5" /> 3-Field Dynamic Courier API (Any Country / Any Courier)
-                </span>
-                <span className="text-[11px] text-slate-500">Universal Endpoint Router</span>
-              </div>
-              <p className="text-xs text-slate-400">
-                You can configure any custom or international courier webhook/API here. The Edge Function will automatically dispatch parcel booking using these 3 fields:
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">1. Courier Booking Endpoint URL</label>
-                  <input
-                    type="text"
-                    value={customCourierEndpoint}
-                    onChange={(e) => setCustomCourierEndpoint(e.target.value)}
-                    placeholder="https://portal.steadfast.com.bd/api/v1/create_order"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-600 text-xs font-mono focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">2. Courier API Key / Token</label>
-                  <input
-                    type="text"
-                    value={customCourierApiKey}
-                    onChange={(e) => setCustomCourierApiKey(e.target.value)}
-                    placeholder="API Key / Client ID"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-600 text-xs font-mono focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">3. Secret Key / Store ID</label>
-                  <input
-                    type="password"
-                    value={customCourierSecretKey}
-                    onChange={(e) => setCustomCourierSecretKey(e.target.value)}
-                    placeholder="Secret Key or Store Identifier"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-600 text-xs font-mono focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Courier Automation Toggles: Advance Pay & Full COD */}
             <div className="pt-4 border-t border-slate-800 space-y-3">

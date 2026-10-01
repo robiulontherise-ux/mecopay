@@ -369,6 +369,7 @@ export default function Invoices({ brands }: { brands: any[] }) {
                 <th className="px-4 py-4">Sender No</th>
                 <th className="px-4 py-4">Customer Email</th>
                 <th className="px-4 py-4">Product Name</th>
+                <th className="px-4 py-4">Type</th>
                 <th className="px-4 py-4">Brand Name</th>
                 <th className="px-4 py-4">Method</th>
                 <th className="px-4 py-4">Txn ID</th>
@@ -403,6 +404,13 @@ export default function Invoices({ brands }: { brands: any[] }) {
                       <div>{inv.customer_email || inv.customer_name || 'N/A'}</div>
                     </td>
                     <td className="px-4 py-4 text-slate-300 max-w-[150px] truncate" title={inv.product_name || 'N/A'}>{inv.product_name || 'N/A'}</td>
+                    <td className="px-4 py-4">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        inv.product_type === 'physical' || inv.is_full_cod ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                      }`}>
+                        {inv.is_full_cod ? '100% COD' : (inv.product_type || 'Digital')}
+                      </span>
+                    </td>
                     <td className="px-4 py-4">{inv.brand?.name || 'Unknown'}</td>
                     <td className="px-4 py-4 font-bold uppercase text-slate-300">{inv.gateway_used || '-'}</td>
                     <td className="px-4 py-4 font-mono text-xs">{inv.trx_id || '-'}</td>

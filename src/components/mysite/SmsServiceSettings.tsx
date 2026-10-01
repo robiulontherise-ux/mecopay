@@ -597,11 +597,11 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
               </div>
               <h4 className="text-sm font-bold text-white">4. Global SMS</h4>
               <p className="text-[11px] text-slate-400 mt-1">
-                Routes foreign numbers (+1, +44) via Twilio pipeline.
+                Dispatches to all global numbers via your 3-Field SMS API or Twilio.
               </p>
               <div className="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px]">
                 <span className="text-slate-400">Route:</span>
-                <span className="font-semibold text-cyan-400">Twilio Global</span>
+                <span className="font-semibold text-cyan-400">3-Field API / Twilio</span>
               </div>
             </div>
           </div>
