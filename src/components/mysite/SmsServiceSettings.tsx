@@ -162,19 +162,25 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     // Auto-poll WhatsApp connection status every 3 seconds
     const interval = setInterval(async () => {
       try {
-        const { data: gw } = await supabase
+        let query = supabase
           .from('whatsapp_gateway_settings')
-          .select('is_connected, phone_number, pairing_code')
-          .eq('brand_id', selectedBrandId)
-          .maybeSingle();
+          .select('is_connected, phone_number, pairing_code, brand_id');
 
-        if (gw) {
-          const isConn = Boolean(gw.is_connected);
-          setGatewayStatus({ connected: isConn, phone: gw.phone_number });
+        if (selectedBrandId) {
+          query = query.or(`brand_id.eq.${selectedBrandId},user_id.eq.${user?.id}`);
+        } else if (user?.id) {
+          query = query.eq('user_id', user.id);
+        }
+
+        const { data: rows } = await query;
+        if (rows && rows.length > 0) {
+          const matched = rows.find((r: any) => r.brand_id === selectedBrandId) || rows[0];
+          const isConn = Boolean(matched.is_connected);
+          setGatewayStatus({ connected: isConn, phone: matched.phone_number });
           if (isConn) {
             setPairingCode(null);
-          } else if (gw.pairing_code) {
-            setPairingCode(gw.pairing_code);
+          } else if (matched.pairing_code && !pairingCode) {
+            setPairingCode(matched.pairing_code);
           }
         }
       } catch (_pollErr) {}
@@ -205,11 +211,18 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
 
   const loadBrandSettings = async () => {
     try {
-      const { data: gw } = await supabase
+      let query = supabase
         .from('whatsapp_gateway_settings')
-        .select('*')
-        .eq('brand_id', selectedBrandId)
-        .maybeSingle();
+        .select('*');
+
+      if (selectedBrandId) {
+        query = query.or(`brand_id.eq.${selectedBrandId},user_id.eq.${user?.id}`);
+      } else if (user?.id) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data: rows } = await query;
+      const gw = (rows && rows.length > 0) ? (rows.find((r: any) => r.brand_id === selectedBrandId) || rows[0]) : null;
 
       if (gw) {
         setWhatsappEnabled(gw.whatsapp_enabled !== false);
@@ -318,16 +331,38 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
 
       if (data?.pairing_code) {
         setPairingCode(data.pairing_code);
-        showToast(forceReset ? 'Fresh session created! New pairing code ready.' : 'Pairing code generated! Check your WhatsApp.', 'success');
+        // Persist code directly to database so polling can track immediately
+        await supabase
+          .from('whatsapp_gateway_settings')
+          .upsert({
+            brand_id: selectedBrandId,
+            user_id: user?.id,
+            phone_number: cleanPhone,
+            pairing_code: data.pairing_code,
+            is_connected: false,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'brand_id' });
+
+        showToast(forceReset ? 'Session reset done. New pairing code ready.' : 'Pairing code generated. Enter in WhatsApp.', 'success');
       } else if (data?.connected) {
         setGatewayStatus({ connected: true, phone: cleanPhone });
-        showToast('WhatsApp is already connected for this brand!', 'success');
+        await supabase
+          .from('whatsapp_gateway_settings')
+          .upsert({
+            brand_id: selectedBrandId,
+            user_id: user?.id,
+            phone_number: cleanPhone,
+            pairing_code: null,
+            is_connected: true,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'brand_id' });
+        showToast('WhatsApp connected successfully!', 'success');
       } else {
-        throw new Error(data?.error || 'Unable to generate pairing code');
+        throw new Error(data?.error || (forceReset ? 'Reset completed. Click Get Code now.' : 'Could not get pairing code'));
       }
     } catch (err: any) {
       console.error('Pairing process error:', err);
-      showToast('Pairing Error: ' + err.message, 'error');
+      showToast(err.message || 'Error communicating with server', 'error');
     } finally {
       setIsGeneratingPair(false);
     }
