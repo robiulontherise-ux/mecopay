@@ -159,7 +159,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     loadBrandSettings();
     checkBrandMailbox();
 
-    // Auto-poll WhatsApp connection status every 4 seconds
+    // Auto-poll WhatsApp connection status every 3 seconds
     const interval = setInterval(async () => {
       try {
         const { data: gw } = await supabase
@@ -169,15 +169,16 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           .maybeSingle();
 
         if (gw) {
-          setGatewayStatus({ connected: Boolean(gw.is_connected), phone: gw.phone_number });
-          if (gw.is_connected) {
+          const isConn = Boolean(gw.is_connected);
+          setGatewayStatus({ connected: isConn, phone: gw.phone_number });
+          if (isConn) {
             setPairingCode(null);
           } else if (gw.pairing_code) {
             setPairingCode(gw.pairing_code);
           }
         }
       } catch (_pollErr) {}
-    }, 4000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [selectedBrandId]);
@@ -922,48 +923,50 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-7 space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
                     WhatsApp Phone Number (with Country Code)
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2.5">
                     <input
                       type="text"
                       placeholder="8801973891388"
                       value={phoneToPair}
                       onChange={(e) => setPhoneToPair(e.target.value)}
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-mono text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 font-mono text-sm focus:outline-none focus:border-emerald-500 transition-colors min-w-0"
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleGeneratePairingCode(false)}
-                      disabled={isGeneratingPair}
-                      className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-900/20 flex items-center gap-2 shrink-0 disabled:opacity-50"
-                    >
-                      {isGeneratingPair ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4" />
-                          Get Code
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleGeneratePairingCode(true)}
-                      disabled={isGeneratingPair}
-                      className="px-4 py-3 bg-slate-900 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 disabled:opacity-50"
-                      title="Clear previous session lock and generate fresh pairing code"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingPair ? 'animate-spin' : ''}`} />
-                      Reset Session
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePairingCode(false)}
+                        disabled={isGeneratingPair}
+                        className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-900/20 flex items-center gap-1.5 shrink-0 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {isGeneratingPair ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Generating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4" />
+                            <span>Get Code</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePairingCode(true)}
+                        disabled={isGeneratingPair}
+                        className="px-3.5 py-3 bg-slate-900 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 disabled:opacity-50 whitespace-nowrap"
+                        title="Clear previous session lock and generate fresh pairing code"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingPair ? 'animate-spin' : ''}`} />
+                        <span>Reset</span>
+                      </button>
+                    </div>
                   </div>
                   <span className="text-[11px] text-slate-500 mt-1 block">
                     No '+' or spaces. Example: 8801973891388
@@ -984,7 +987,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
               </div>
 
               {/* Code Box */}
-              <div className="flex flex-col items-center justify-center p-6 bg-slate-950 border border-dashed border-slate-800 rounded-2xl min-h-[190px]">
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950 border border-dashed border-slate-800 rounded-2xl min-h-[190px]">
                 {pairingCode ? (
                   <div className="text-center space-y-3">
                     <span className="text-xs uppercase font-bold tracking-widest text-emerald-400">
