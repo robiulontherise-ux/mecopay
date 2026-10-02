@@ -256,8 +256,8 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     }
   };
 
-  // Pure Edge Function Handshake for Pairing Code (Dual-Name + Active JWT Header)
-  const handleGeneratePairingCode = async () => {
+  // Pure Edge Function Handshake for Pairing Code (Dual-Name + Active JWT Header + Clear Session Support)
+  const handleGeneratePairingCode = async (forceReset = false) => {
     const cleanPhone = phoneToPair.replace(/[^0-9]/g, '');
     if (!cleanPhone || cleanPhone.length < 10) {
       showToast('Please enter a valid WhatsApp phone number with country code (e.g. 8801973891388)', 'error');
@@ -277,9 +277,11 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
       const authHeader = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 
       const payload = {
-        action: 'pair_phone',
+        action: forceReset ? 'reset_and_pair_phone' : 'pair_phone',
         brand_id: selectedBrandId,
-        phone: cleanPhone
+        phone: cleanPhone,
+        clear_session: forceReset,
+        force_new: forceReset
       };
 
       // Timeout promise wrapper (15 seconds) so spinner never hangs indefinitely
@@ -315,7 +317,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
 
       if (data?.pairing_code) {
         setPairingCode(data.pairing_code);
-        showToast('Pairing code generated! Check your WhatsApp.', 'success');
+        showToast(forceReset ? 'Fresh session created! New pairing code ready.' : 'Pairing code generated! Check your WhatsApp.', 'success');
       } else if (data?.connected) {
         setGatewayStatus({ connected: true, phone: cleanPhone });
         showToast('WhatsApp is already connected for this brand!', 'success');
@@ -936,7 +938,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                     />
                     <button
                       type="button"
-                      onClick={handleGeneratePairingCode}
+                      onClick={() => handleGeneratePairingCode(false)}
                       disabled={isGeneratingPair}
                       className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-900/20 flex items-center gap-2 shrink-0 disabled:opacity-50"
                     >
@@ -951,6 +953,16 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                           Get Code
                         </>
                       )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleGeneratePairingCode(true)}
+                      disabled={isGeneratingPair}
+                      className="px-4 py-3 bg-slate-900 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                      title="Clear previous session lock and generate fresh pairing code"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingPair ? 'animate-spin' : ''}`} />
+                      Reset Session
                     </button>
                   </div>
                   <span className="text-[11px] text-slate-500 mt-1 block">

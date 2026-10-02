@@ -68,10 +68,11 @@ export default function MecoPayWebmailInbox({
         .select('*')
         .order('created_at', { ascending: false });
 
+      const cleanDom = activeDomain.trim().toLowerCase();
       if (selectedMailbox && selectedMailbox !== 'all') {
         query = query.ilike('recipient', `%${selectedMailbox}%`);
       } else {
-        query = query.ilike('recipient', `%@${activeDomain}%`);
+        query = query.or(`recipient.ilike.%@${cleanDom}%,recipient.ilike.%${cleanDom}%`);
       }
 
       const { data, error } = await query;
