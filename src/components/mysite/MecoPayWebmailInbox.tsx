@@ -55,12 +55,6 @@ export default function MecoPayWebmailInbox({
 
   // Fetch Emails from incoming_emails
   const loadEmails = async () => {
-    if (!activeDomain) {
-      setEmails([]);
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       let query = supabase
@@ -73,7 +67,6 @@ export default function MecoPayWebmailInbox({
       if (selectedMailbox && selectedMailbox !== 'all') {
         query = query.ilike('recipient', `%${selectedMailbox}%`);
       } else if (cleanDom) {
-        // If domain matches, filter by domain; otherwise fetch all incoming emails
         query = query.or(`recipient.ilike.%@${cleanDom}%,recipient.ilike.%${cleanDom}%`);
       }
 

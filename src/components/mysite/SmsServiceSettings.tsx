@@ -1034,9 +1034,37 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                 </div>
               </div>
 
-              {/* Code Box */}
-              <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950 border border-dashed border-slate-800 rounded-2xl min-h-[190px]">
-                {pairingCode ? (
+              {/* Code Box & Connection Card */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950 border border-slate-800 rounded-2xl min-h-[190px]">
+                {gatewayStatus.connected ? (
+                  <div className="text-center space-y-3 w-full py-2">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-950">
+                      <CheckCircle2 className="w-6 h-6 animate-pulse" />
+                    </div>
+                    <div>
+                      <span className="text-xs uppercase font-extrabold tracking-widest text-emerald-400 block">
+                        WhatsApp Linked &amp; Active
+                      </span>
+                      <p className="text-sm font-mono font-bold text-white mt-1">
+                        +{gatewayStatus.phone || phoneToPair}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Ready to send zero-cost receipts to customers.
+                      </p>
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePairingCode(true)}
+                        disabled={isGeneratingPair}
+                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isGeneratingPair ? 'animate-spin' : ''}`} />
+                        <span>Disconnect / Re-link</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : pairingCode ? (
                   <div className="text-center space-y-3">
                     <span className="text-xs uppercase font-bold tracking-widest text-emerald-400">
                       Your 8-Character Pairing Code
