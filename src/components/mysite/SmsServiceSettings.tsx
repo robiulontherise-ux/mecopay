@@ -153,13 +153,13 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     fetchRealData();
   }, [user]);
 
-  // Check Brand Mailbox & Load Settings + Auto-poll WhatsApp status
+  // Check Brand Mailbox & Load Settings + Auto-poll WhatsApp status from Database Table (Zero edge-invocation cost)
   useEffect(() => {
     if (!selectedBrandId) return;
     loadBrandSettings();
     checkBrandMailbox();
 
-    // Auto-poll WhatsApp connection status every 3 seconds
+    // Auto-poll WhatsApp connection status every 4 seconds purely from Database Table
     const interval = setInterval(async () => {
       try {
         let query = supabase
@@ -176,7 +176,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         if (rows && rows.length > 0) {
           const matched = rows.find((r: any) => r.brand_id === selectedBrandId) || rows[0];
           const isConn = Boolean(matched.is_connected);
-          setGatewayStatus({ connected: isConn, phone: matched.phone_number });
+          setGatewayStatus({ connected: isConn, phone: matched.phone_number || phoneToPair });
           if (isConn) {
             setPairingCode(null);
           } else if (matched.pairing_code && !pairingCode) {
@@ -184,7 +184,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           }
         }
       } catch (_pollErr) {}
-    }, 3000);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [selectedBrandId]);
@@ -329,6 +329,18 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         throw new Error(error.message || 'Edge function request failed');
       }
 
+      if (forceReset) {
+        // Cleanly remove pairing code and reset connection state in database
+        await supabase
+          .from('whatsapp_gateway_settings')
+          .update({
+            pairing_code: null,
+            is_connected: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('brand_id', selectedBrandId);
+      }
+
       if (data?.pairing_code) {
         setPairingCode(data.pairing_code);
         // Persist code directly to database so polling can track immediately
@@ -344,8 +356,9 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           }, { onConflict: 'brand_id' });
 
         showToast(forceReset ? 'Session reset done. New pairing code ready.' : 'Pairing code generated. Enter in WhatsApp.', 'success');
-      } else if (data?.connected) {
+      } else if (data?.connected || data?.status === 'connected') {
         setGatewayStatus({ connected: true, phone: cleanPhone });
+        setPairingCode(null);
         await supabase
           .from('whatsapp_gateway_settings')
           .upsert({

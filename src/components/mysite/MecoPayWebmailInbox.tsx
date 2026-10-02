@@ -66,12 +66,14 @@ export default function MecoPayWebmailInbox({
       let query = supabase
         .from('incoming_emails')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-      const cleanDom = activeDomain.trim().toLowerCase();
+      const cleanDom = activeDomain ? activeDomain.trim().toLowerCase() : '';
       if (selectedMailbox && selectedMailbox !== 'all') {
         query = query.ilike('recipient', `%${selectedMailbox}%`);
-      } else {
+      } else if (cleanDom) {
+        // If domain matches, filter by domain; otherwise fetch all incoming emails
         query = query.or(`recipient.ilike.%@${cleanDom}%,recipient.ilike.%${cleanDom}%`);
       }
 
