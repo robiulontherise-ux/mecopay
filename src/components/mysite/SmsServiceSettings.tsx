@@ -1006,12 +1006,50 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                       </button>
                       <button
                         type="button"
+                        onClick={async () => {
+                          setIsGeneratingPair(true);
+                          try {
+                            const res = await supabase.functions.invoke('send-notification', {
+                              body: {
+                                action: 'check_status',
+                                brand_id: selectedBrandId
+                              }
+                            });
+                            if (res.data?.connected) {
+                              setGatewayStatus({ connected: true, phone: res.data.phone || phoneToPair });
+                              setPairingCode(null);
+                              await supabase.from('whatsapp_gateway_settings').upsert({
+                                brand_id: selectedBrandId,
+                                user_id: user?.id,
+                                is_connected: true,
+                                phone_number: res.data.phone || phoneToPair,
+                                pairing_code: null,
+                                updated_at: new Date().toISOString()
+                              }, { onConflict: 'brand_id' });
+                              showToast('Server WhatsApp session is Active & Synced to Database!', 'success');
+                            } else {
+                              showToast(res.data?.message || 'Server reports WhatsApp session not connected yet.', 'error');
+                            }
+                          } catch (e: any) {
+                            showToast('Status check error: ' + (e.message || 'Server unreachable'), 'error');
+                          } finally {
+                            setIsGeneratingPair(false);
+                          }
+                        }}
+                        disabled={isGeneratingPair}
+                        className="px-3.5 py-3 bg-slate-900 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border border-slate-800 hover:border-emerald-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 disabled:opacity-50 whitespace-nowrap"
+                        title="Query server Edge Function and sync connection status to Database Table"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingPair ? 'animate-spin' : ''}`} />
+                        <span>Sync Status</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleGeneratePairingCode(true)}
                         disabled={isGeneratingPair}
                         className="px-3.5 py-3 bg-slate-900 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 disabled:opacity-50 whitespace-nowrap"
                         title="Clear previous session lock and generate fresh pairing code"
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingPair ? 'animate-spin' : ''}`} />
                         <span>Reset</span>
                       </button>
                     </div>
