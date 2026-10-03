@@ -128,14 +128,21 @@ export default function MecoPayWebmailInbox({
     try {
       setLoading(true);
       // Always scope the database query before data reaches the browser.
-      // Prefer brand_id; otherwise scope by the authenticated user's user_id.
+      // A selected mailbox is identified by its recipient address. For the
+      // aggregate view, scope by brand_id (or authenticated user_id fallback).
       let query = supabase
         .from('incoming_emails')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (brandId) {
+      const hasSelectedMailbox = selectedMailbox && selectedMailbox !== 'all';
+
+      if (hasSelectedMailbox) {
+        // Do not additionally require brand_id here: existing inbound rows may
+        // have a NULL/legacy brand_id, while the mailbox address is canonical.
+        query = query.ilike('recipient', `%${selectedMailbox.trim().toLowerCase()}%`);
+      } else if (brandId) {
         query = query.eq('brand_id', brandId);
       } else {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -148,10 +155,7 @@ export default function MecoPayWebmailInbox({
         query = query.eq('user_id', user.id);
       }
 
-      // The mailbox filter must also be applied by Supabase, not in React.
-      if (selectedMailbox && selectedMailbox !== 'all') {
-        query = query.ilike('recipient', `%${selectedMailbox.trim().toLowerCase()}%`);
-      } else if (!brandId && activeDomain?.trim()) {
+      if (!hasSelectedMailbox && !brandId && activeDomain?.trim()) {
         // When user_id is the scope, keep the domain restriction in the DB too.
         query = query.ilike('recipient', `%${activeDomain.trim().toLowerCase()}%`);
       }
@@ -200,12 +204,14 @@ export default function MecoPayWebmailInbox({
           },
           (payload) => {
             const newMsg = payload.new as IncomingEmail;
-            const matchesOwner = brandId
-              ? newMsg.brand_id === brandId
-              : newMsg.user_id === user?.id;
             const mailbox = selectedMailbox.trim().toLowerCase();
             const matchesMailbox = selectedMailbox === 'all'
               || newMsg.recipient?.toLowerCase().includes(mailbox);
+            const matchesOwner = selectedMailbox !== 'all'
+              ? true
+              : brandId
+                ? newMsg.brand_id === brandId
+                : newMsg.user_id === user?.id;
             const matchesDomain = brandId || !activeDomain
               ? true
               : newMsg.recipient?.toLowerCase().includes(activeDomain.trim().toLowerCase());
