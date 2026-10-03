@@ -10,6 +10,7 @@ export default function WebsiteBuilderHub({ user }) {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showHostingModal, setShowHostingModal] = useState(false);
+  const [selectedSiteId, setSelectedSiteId] = useState('');
   
   // New state for brand logic
   const [brandSiteExists, setBrandSiteExists] = useState(false);
@@ -20,14 +21,51 @@ export default function WebsiteBuilderHub({ user }) {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Check if selected brand already has a site
+  // Resolve existing sites created by either the current brand flow or the
+  // earlier client-scoped flow, without changing any saved site content.
   useEffect(() => {
-    if (selectedBrand) {
-      supabase.from('site_settings').select('id').eq('id', selectedBrand).single().then(({data}) => {
-        setBrandSiteExists(!!data);
-      });
-    }
-  }, [selectedBrand]);
+    const findExistingSite = async () => {
+      if (!selectedBrand || !user?.id) {
+        setBrandSiteExists(false);
+        setSelectedSiteId('');
+        return;
+      }
+
+      const byBrand = await supabase
+        .from('site_settings')
+        .select('id')
+        .eq('client_id', user.id)
+        .eq('brand_id', selectedBrand)
+        .limit(1)
+        .maybeSingle();
+
+      let site = byBrand.data;
+      if (!site) {
+        const bySiteId = await supabase
+          .from('site_settings')
+          .select('id')
+          .eq('client_id', user.id)
+          .eq('id', selectedBrand)
+          .limit(1)
+          .maybeSingle();
+        site = bySiteId.data;
+      }
+      if (!site) {
+        const legacy = await supabase
+          .from('site_settings')
+          .select('id')
+          .eq('client_id', user.id)
+          .is('brand_id', null)
+          .limit(1)
+          .maybeSingle();
+        site = legacy.data;
+      }
+
+      setBrandSiteExists(!!site);
+      setSelectedSiteId(site?.id || '');
+    };
+    findExistingSite();
+  }, [selectedBrand, user?.id]);
 
   useEffect(() => {
     if (activeView === 'brand_selection') {
@@ -63,7 +101,7 @@ export default function WebsiteBuilderHub({ user }) {
     setIsLoading(true);
     try {
       // Insert new site for the brand
-      const { error } = await supabase.from('site_settings').insert({
+      const { data: createdSite, error } = await supabase.from('site_settings').insert({
         id: selectedBrand, // Use brand_id as the site_settings ID to keep it 1:1
         client_id: user.id, // Primary linking key for the owner
         brand_id: selectedBrand,
@@ -76,9 +114,10 @@ export default function WebsiteBuilderHub({ user }) {
         text_size: 'medium',
         show_default_home: true,
         default_home_content: 'Welcome to my site!',
-      });
+      }).select('id').single();
       
       if (error) throw error;
+      setSelectedSiteId(createdSite?.id || selectedBrand);
       
       showToast("Website backend initialized successfully!", "success");
       setActiveView('no_code');
@@ -109,7 +148,7 @@ export default function WebsiteBuilderHub({ user }) {
     return (
       <div className="h-[calc(100vh-100px)] overflow-y-auto w-full -mx-4 sm:mx-0 bg-slate-950 rounded-xl relative">
         {toastEl}
-        <MySiteApp builderUser={user} activeSiteId={selectedBrand} onNavigateUpload={() => setActiveView('upload')} onBackToHub={() => setActiveView('hub')} />
+        <MySiteApp builderUser={user} activeSiteId={selectedSiteId || selectedBrand} onNavigateUpload={() => setActiveView('upload')} onBackToHub={() => setActiveView('hub')} />
       </div>
     );
   }
