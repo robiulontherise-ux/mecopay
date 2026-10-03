@@ -569,8 +569,10 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
       {activeServiceTab === 'inbox' && (
         <MecoPayWebmailInbox
           activeDomain={activeDomain}
+          brandId={selectedBrandId}
           brandName={selectedBrand?.name}
           createdEmails={createdEmails}
+          isEmailServiceActive={selectedBrand?.email_service_active !== false && selectedBrand?.service_status !== 'inactive'}
         />
       )}
 
@@ -963,10 +965,17 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
             </div>
           </div>
 
+          {selectedBrand?.service_status === 'inactive' && (
+            <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400 flex items-center gap-2 font-medium">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>আপনার বিজনেস ইমেইল সার্ভিস বর্তমানে <strong>Inactive</strong> রয়েছে। সার্ভিস সক্রিয় না হওয়া পর্যন্ত মেইল সেন্ড ও ডেলিভারি কনফিগারেশন লক থাকবে।</span>
+            </div>
+          )}
           <button
             type="submit"
-            disabled={saving}
-            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 disabled:opacity-50"
+            disabled={saving || selectedBrand?.service_status === 'inactive'}
+            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            title={selectedBrand?.service_status === 'inactive' ? 'সার্ভিস Inactive থাকায় কনফিগারেশন সেভ ও সেন্ড বন্ধ রয়েছে' : ''}
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Delivery Configuration

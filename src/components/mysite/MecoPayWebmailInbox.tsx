@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Inbox, 
+  Inbox,
+  Send,
+  Plus,
+  X,
+  AlertTriangle, 
   Search, 
   RefreshCw, 
   Paperclip, 
@@ -33,20 +37,84 @@ interface IncomingEmail {
 
 interface MecoPayWebmailInboxProps {
   activeDomain: string;
+  brandId?: string;
   brandName?: string;
   createdEmails: string[];
+  isEmailServiceActive?: boolean;
 }
 
 export default function MecoPayWebmailInbox({
   activeDomain,
+  brandId,
   brandName,
-  createdEmails
+  createdEmails,
+  isEmailServiceActive = true
 }: MecoPayWebmailInboxProps) {
   const [emails, setEmails] = useState<IncomingEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMailbox, setSelectedMailbox] = useState<string>('all');
   const [activeEmail, setActiveEmail] = useState<IncomingEmail | null>(null);
+  // Compose Mail Modal State
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeFrom, setComposeFrom] = useState('');
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [composeStatus, setComposeStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+
+  // Update default compose from email
+  useEffect(() => {
+    if (createdEmails && createdEmails.length > 0) {
+      setComposeFrom(createdEmails[0]);
+    } else if (activeDomain) {
+      setComposeFrom('info@' + activeDomain);
+    }
+  }, [createdEmails, activeDomain]);
+
+  const handleSendEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isEmailServiceActive) {
+      setComposeStatus({ type: 'error', message: 'সার্ভিস Inactive থাকায় ইমেইল পাঠানো সম্ভব নয়!' });
+      return;
+    }
+    if (!composeTo.trim() || !composeSubject.trim()) {
+      setComposeStatus({ type: 'error', message: 'Recipient and Subject are required.' });
+      return;
+    }
+    setSendingEmail(true);
+    setComposeStatus({ type: 'idle', message: '' });
+    try {
+      const res = await fetch('http://140.245.231.130:5000/api/send-mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: composeFrom,
+          to: composeTo.trim(),
+          subject: composeSubject.trim(),
+          text: composeBody,
+          brand_id: brandId
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setComposeStatus({ type: 'success', message: 'Email sent successfully!' });
+        setTimeout(() => {
+          setComposeOpen(false);
+          setComposeSubject('');
+          setComposeBody('');
+          setComposeStatus({ type: 'idle', message: '' });
+        }, 1500);
+      } else {
+        setComposeStatus({ type: 'error', message: data.error || 'Failed to send email.' });
+      }
+    } catch (err: any) {
+      setComposeStatus({ type: 'error', message: 'Server unreachable or error: ' + err.message });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   // In-App File Viewer Modal State
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -65,9 +133,11 @@ export default function MecoPayWebmailInbox({
 
       const cleanDom = activeDomain ? activeDomain.trim().toLowerCase() : '';
       if (selectedMailbox && selectedMailbox !== 'all') {
-        query = query.ilike('recipient', `%${selectedMailbox}%`);
+        query = query.ilike('recipient', '%' + selectedMailbox.trim().toLowerCase() + '%');
+      } else if (brandId && cleanDom) {
+        query = query.or('brand_id.eq.' + brandId + ',recipient.ilike.%@' + cleanDom + '%,recipient.ilike.%' + cleanDom + '%');
       } else if (cleanDom) {
-        query = query.or(`recipient.ilike.%@${cleanDom}%,recipient.ilike.%${cleanDom}%`);
+        query = query.or('recipient.ilike.%@' + cleanDom + '%,recipient.ilike.%' + cleanDom + '%');
       }
 
       const { data, error } = await query;
@@ -89,7 +159,7 @@ export default function MecoPayWebmailInbox({
 
   useEffect(() => {
     loadEmails();
-  }, [activeDomain, selectedMailbox]);
+  }, [activeDomain, brandId, selectedMailbox]);
 
   // Realtime subscription for incoming emails
   useEffect(() => {
@@ -195,6 +265,18 @@ export default function MecoPayWebmailInbox({
               ))}
             </select>
           </div>
+
+          {/* Compose Email Button (Disabled if Service is Inactive) */}
+          <button
+            type="button"
+            onClick={() => setComposeOpen(true)}
+            disabled={!isEmailServiceActive}
+            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/10 transition-all"
+            title={!isEmailServiceActive ? "ইমেইল সার্ভিস Inactive থাকায় সেন্ড ব্লক রয়েছে" : "নতুন মেইল পাঠান"}
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Compose Email</span>
+          </button>
 
           {/* Refresh Button */}
           <button
@@ -450,6 +532,131 @@ export default function MecoPayWebmailInbox({
         fileUrl={viewerFileUrl}
         fileName={viewerFileName}
       />
-    </div>
+    
+      {/* Compose Email Modal */}
+      {composeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">New Message</h4>
+                  <p className="text-[11px] text-slate-400">MecoPay Outbound Delivery Engine</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setComposeOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendEmail} className="p-5 space-y-4">
+              {!isEmailServiceActive && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>ইমেইল সার্ভিস Inactive থাকায় বর্তমানে মেইল সেন্ড করা যাবে না।</span>
+                </div>
+              )}
+
+              {composeStatus.type === 'error' && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{composeStatus.message}</span>
+                </div>
+              )}
+
+              {composeStatus.type === 'success' && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{composeStatus.message}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">From (প্রেরক)</label>
+                <select
+                  value={composeFrom}
+                  onChange={(e) => setComposeFrom(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-emerald-400 font-mono outline-none"
+                >
+                  {createdEmails.length > 0 ? (
+                    createdEmails.map((em) => (
+                      <option key={em} value={em} className="bg-slate-900 text-white">
+                        {em}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={"info@" + activeDomain} className="bg-slate-900 text-white">
+                      info@{activeDomain}
+                    </option>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">To (প্রাপক)</label>
+                <input
+                  type="email"
+                  required
+                  value={composeTo}
+                  onChange={(e) => setComposeTo(e.target.value)}
+                  placeholder="client@example.com"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-600 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Subject</label>
+                <input
+                  type="text"
+                  required
+                  value={composeSubject}
+                  onChange={(e) => setComposeSubject(e.target.value)}
+                  placeholder="Enter email subject"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-600 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Message Body</label>
+                <textarea
+                  rows={5}
+                  value={composeBody}
+                  onChange={(e) => setComposeBody(e.target.value)}
+                  placeholder="Write your message here..."
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-600 outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setComposeOpen(false)}
+                  className="px-4 py-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingEmail || !isEmailServiceActive}
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/10 transition-all"
+                  title={!isEmailServiceActive ? 'সার্ভিস Inactive থাকায় সেন্ড বন্ধ' : 'Send'}
+                >
+                  {sendingEmail ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  <span>Send Email</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+</div>
   );
 }
