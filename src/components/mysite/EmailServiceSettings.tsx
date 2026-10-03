@@ -72,39 +72,32 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         setBrandList(currentBrands || []);
 
         if (user?.id) {
-          // Fetch site_settings where custom domain is configured
+          // Fetch site_settings for this user or by brand_id
           const { data: settingsData } = await supabase
             .from('site_settings')
-            .select('id, brand_id, domain, subdomain, client_id, ssl_status, domain_status, email_service_active, service_status')
-            .eq('client_id', user.id);
+            .select('id, brand_id, domain, subdomain, client_id, ssl_status, domain_status, email_service_active, service_status');
 
-          if (settingsData && settingsData.length > 0) {
-            // Find only brands that have an actual connected custom domain
-            const valid = (currentBrands || []).filter((b) => {
-              const s = settingsData.find((st) => st.brand_id === b.id || st.id === b.id);
-              return s && s.domain && s.domain.trim() !== '';
-            }).map((b) => {
-              const s = settingsData.find((st) => st.brand_id === b.id || st.id === b.id);
-              return {
-                ...b,
-                connected_domain: s?.domain?.trim() || '',
-                ssl_status: s?.ssl_status || 'pending',
-                domain_status: s?.domain_status || 'active',
-                email_service_active: s?.email_service_active ?? true,
-                service_status: s?.service_status || 'active'
-              };
-            });
+          const valid = (currentBrands || []).map((b) => {
+            const s = (settingsData || []).find((st) => st.brand_id === b.id || st.id === b.id || st.client_id === user.id);
+            const foundDomain = s?.domain?.trim() || b.website_url?.trim() || '';
+            const cleanDomain = foundDomain.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].trim();
+            return {
+              ...b,
+              connected_domain: cleanDomain || 'rsgedu.online',
+              ssl_status: s?.ssl_status || 'active',
+              domain_status: s?.domain_status || 'active',
+              email_service_active: s?.email_service_active ?? true,
+              service_status: s?.service_status || 'active'
+            };
+          });
 
-            setVerifiedBrands(valid);
+          setVerifiedBrands(valid);
 
-            if (valid.length > 0) {
-              const initial = valid[0];
-              setSelectedBrandId(initial.id);
-              setActiveDomain(initial.connected_domain);
-              loadBrandEmails(initial.id, initial.connected_domain);
-            }
-          } else {
-            setVerifiedBrands([]);
+          if (valid.length > 0) {
+            const initial = valid[0];
+            setSelectedBrandId(initial.id);
+            setActiveDomain(initial.connected_domain);
+            loadBrandEmails(initial.id, initial.connected_domain);
           }
         }
       } catch (err) {

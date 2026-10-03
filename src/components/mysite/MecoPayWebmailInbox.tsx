@@ -125,59 +125,39 @@ export default function MecoPayWebmailInbox({
   const loadEmails = async () => {
     try {
       setLoading(true);
-      let query = supabase
+      // Fetch directly from incoming_emails table
+      const { data, error } = await supabase
         .from('incoming_emails')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
 
-      const cleanDom = activeDomain ? activeDomain.trim().toLowerCase() : '';
-      if (selectedMailbox && selectedMailbox !== 'all') {
-        const targetRcpt = selectedMailbox.trim().toLowerCase();
-        query = query.ilike('recipient', `%${targetRcpt}%`);
-      } else if (brandId && cleanDom) {
-        query = query.or(`brand_id.eq.${brandId},recipient.ilike.%${cleanDom}%`);
-      } else if (brandId) {
-        query = query.eq('brand_id', brandId);
-      } else if (cleanDom) {
-        query = query.ilike('recipient', `%${cleanDom}%`);
-      }
-
-      const { data, error } = await query;
-
       if (error) {
         console.error('Error fetching incoming emails:', error);
-        // Fallback: fetch without filters to ensure user never sees a blank inbox if data exists
-        const { data: fallbackData } = await supabase
-          .from('incoming_emails')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(50);
-        if (fallbackData && fallbackData.length > 0) {
-          setEmails(fallbackData);
-          if (!activeEmail) setActiveEmail(fallbackData[0]);
-        }
       } else {
-        if ((!data || data.length === 0) && cleanDom) {
-          // If query returned 0, try broader fetch
-          const { data: fallbackData } = await supabase
-            .from('incoming_emails')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(50);
-          const matched = (fallbackData || []).filter((em: any) => 
-            (em.recipient && em.recipient.toLowerCase().includes(cleanDom)) ||
-            (brandId && em.brand_id === brandId)
-          );
-          const finalData = matched.length > 0 ? matched : (fallbackData || []);
-          setEmails(finalData);
-          if (finalData.length > 0 && !activeEmail) {
-            setActiveEmail(finalData[0]);
-          }
+        const allList: IncomingEmail[] = data || [];
+        const cleanDom = activeDomain ? activeDomain.trim().toLowerCase() : '';
+
+        // If a specific mailbox is selected, filter by that mailbox
+        if (selectedMailbox && selectedMailbox !== 'all') {
+          const target = selectedMailbox.trim().toLowerCase();
+          const filtered = allList.filter((em) => em.recipient?.toLowerCase().includes(target));
+          setEmails(filtered.length > 0 ? filtered : allList);
+          if (filtered.length > 0) setActiveEmail(filtered[0]);
+          else if (allList.length > 0 && !activeEmail) setActiveEmail(allList[0]);
         } else {
-          setEmails(data || []);
-          if (data && data.length > 0 && !activeEmail) {
-            setActiveEmail(data[0]);
+          // If "all" is selected, match by domain or brand_id, or display all
+          const matched = allList.filter((em) => {
+            const r = em.recipient?.toLowerCase() || '';
+            const matchDom = cleanDom && (r.includes(cleanDom) || r.includes('@' + cleanDom));
+            const matchBrand = brandId && (em as any).brand_id === brandId;
+            return matchDom || matchBrand;
+          });
+
+          const finalEmails = matched.length > 0 ? matched : allList;
+          setEmails(finalEmails);
+          if (finalEmails.length > 0 && (!activeEmail || !finalEmails.some((e) => e.id === activeEmail.id))) {
+            setActiveEmail(finalEmails[0]);
           }
         }
       }
