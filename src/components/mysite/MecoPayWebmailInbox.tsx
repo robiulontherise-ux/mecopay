@@ -27,6 +27,8 @@ import InAppFileViewerModal from './InAppFileViewerModal';
 
 interface IncomingEmail {
   id: string;
+  user_id?: string | null;
+  brand_id?: string | null;
   sender: string;
   recipient: string;
   subject: string;
@@ -125,44 +127,50 @@ export default function MecoPayWebmailInbox({
   const loadEmails = async () => {
     try {
       setLoading(true);
-      // Fetch directly from incoming_emails table
-      const { data, error } = await supabase
+      // Always scope the database query before data reaches the browser.
+      // Prefer brand_id; otherwise scope by the authenticated user's user_id.
+      let query = supabase
         .from('incoming_emails')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) {
-        console.error('Error fetching incoming emails:', error);
+      if (brandId) {
+        query = query.eq('brand_id', brandId);
       } else {
-        const allList: IncomingEmail[] = data || [];
-        const cleanDom = activeDomain ? activeDomain.trim().toLowerCase() : '';
-
-        // If a specific mailbox is selected, filter by that mailbox
-        if (selectedMailbox && selectedMailbox !== 'all') {
-          const target = selectedMailbox.trim().toLowerCase();
-          const filtered = allList.filter((em) => em.recipient?.toLowerCase().includes(target));
-          setEmails(filtered.length > 0 ? filtered : allList);
-          if (filtered.length > 0) setActiveEmail(filtered[0]);
-          else if (allList.length > 0 && !activeEmail) setActiveEmail(allList[0]);
-        } else {
-          // If "all" is selected, match by domain or brand_id, or display all
-          const matched = allList.filter((em) => {
-            const r = em.recipient?.toLowerCase() || '';
-            const matchDom = cleanDom && (r.includes(cleanDom) || r.includes('@' + cleanDom));
-            const matchBrand = brandId && (em as any).brand_id === brandId;
-            return matchDom || matchBrand;
-          });
-
-          const finalEmails = matched.length > 0 ? matched : allList;
-          setEmails(finalEmails);
-          if (finalEmails.length > 0 && (!activeEmail || !finalEmails.some((e) => e.id === activeEmail.id))) {
-            setActiveEmail(finalEmails[0]);
-          }
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) {
+          setEmails([]);
+          setActiveEmail(null);
+          return;
         }
+        query = query.eq('user_id', user.id);
       }
+
+      // The mailbox filter must also be applied by Supabase, not in React.
+      if (selectedMailbox && selectedMailbox !== 'all') {
+        query = query.ilike('recipient', `%${selectedMailbox.trim().toLowerCase()}%`);
+      } else if (!brandId && activeDomain?.trim()) {
+        // When user_id is the scope, keep the domain restriction in the DB too.
+        query = query.ilike('recipient', `%${activeDomain.trim().toLowerCase()}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const nextEmails: IncomingEmail[] = data || [];
+      setEmails(nextEmails);
+      setActiveEmail((current) => {
+        if (!nextEmails.length) return null;
+        return current && nextEmails.some((email) => email.id === current.id)
+          ? current
+          : nextEmails[0];
+      });
     } catch (err) {
       console.error('Incoming emails error:', err);
+      setEmails([]);
+      setActiveEmail(null);
     } finally {
       setLoading(false);
     }
@@ -174,36 +182,53 @@ export default function MecoPayWebmailInbox({
 
   // Realtime subscription for incoming emails
   useEffect(() => {
-    const channel = supabase
-      .channel(`incoming_emails_realtime_${brandId || activeDomain || 'all'}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'incoming_emails'
-        },
-        (payload) => {
-          const newMsg = payload.new as IncomingEmail;
-          const cleanDom = activeDomain ? activeDomain.toLowerCase() : '';
-          const matchesDomain = cleanDom && newMsg.recipient?.toLowerCase().includes(cleanDom);
-          const matchesBrand = brandId && (newMsg as any).brand_id === brandId;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
-          if (matchesDomain || matchesBrand || !cleanDom) {
-            setEmails((prev) => {
-              if (prev.some((e) => e.id === newMsg.id)) return prev;
-              return [newMsg, ...prev];
-            });
-            setActiveEmail((current) => current || newMsg);
+    const subscribeToScopedEmails = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled || (!brandId && !user)) return;
+
+      channel = supabase
+        .channel(`incoming_emails_realtime_${brandId || user?.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'incoming_emails'
+          },
+          (payload) => {
+            const newMsg = payload.new as IncomingEmail;
+            const matchesOwner = brandId
+              ? newMsg.brand_id === brandId
+              : newMsg.user_id === user?.id;
+            const mailbox = selectedMailbox.trim().toLowerCase();
+            const matchesMailbox = selectedMailbox === 'all'
+              || newMsg.recipient?.toLowerCase().includes(mailbox);
+            const matchesDomain = brandId || !activeDomain
+              ? true
+              : newMsg.recipient?.toLowerCase().includes(activeDomain.trim().toLowerCase());
+
+            if (matchesOwner && matchesMailbox && matchesDomain) {
+              setEmails((prev) => {
+                if (prev.some((e) => e.id === newMsg.id)) return prev;
+                return [newMsg, ...prev];
+              });
+              setActiveEmail((current) => current || newMsg);
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    };
+
+    subscribeToScopedEmails();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
-  }, [activeDomain, brandId]);
+  }, [activeDomain, brandId, selectedMailbox]);
 
   // Filtered emails by search
   const filteredEmails = emails.filter((em) => {
