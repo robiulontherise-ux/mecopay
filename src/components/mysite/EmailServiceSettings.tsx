@@ -75,7 +75,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
           // Fetch site_settings where custom domain is configured
           const { data: settingsData } = await supabase
             .from('site_settings')
-            .select('id, brand_id, domain, subdomain, client_id, ssl_status, domain_status')
+            .select('id, brand_id, domain, subdomain, client_id, ssl_status, domain_status, email_service_active, service_status')
             .eq('client_id', user.id);
 
           if (settingsData && settingsData.length > 0) {
@@ -89,7 +89,9 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                 ...b,
                 connected_domain: s?.domain?.trim() || '',
                 ssl_status: s?.ssl_status || 'pending',
-                domain_status: s?.domain_status || 'active'
+                domain_status: s?.domain_status || 'active',
+                email_service_active: s?.email_service_active ?? true,
+                service_status: s?.service_status || 'active'
               };
             });
 

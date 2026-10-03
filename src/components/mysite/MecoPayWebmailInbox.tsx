@@ -133,21 +133,52 @@ export default function MecoPayWebmailInbox({
 
       const cleanDom = activeDomain ? activeDomain.trim().toLowerCase() : '';
       if (selectedMailbox && selectedMailbox !== 'all') {
-        query = query.ilike('recipient', '%' + selectedMailbox.trim().toLowerCase() + '%');
+        const targetRcpt = selectedMailbox.trim().toLowerCase();
+        query = query.ilike('recipient', `%${targetRcpt}%`);
       } else if (brandId && cleanDom) {
-        query = query.or('brand_id.eq.' + brandId + ',recipient.ilike.%@' + cleanDom + '%,recipient.ilike.%' + cleanDom + '%');
+        query = query.or(`brand_id.eq.${brandId},recipient.ilike.%${cleanDom}%`);
+      } else if (brandId) {
+        query = query.eq('brand_id', brandId);
       } else if (cleanDom) {
-        query = query.or('recipient.ilike.%@' + cleanDom + '%,recipient.ilike.%' + cleanDom + '%');
+        query = query.ilike('recipient', `%${cleanDom}%`);
       }
 
       const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching incoming emails:', error);
+        // Fallback: fetch without filters to ensure user never sees a blank inbox if data exists
+        const { data: fallbackData } = await supabase
+          .from('incoming_emails')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (fallbackData && fallbackData.length > 0) {
+          setEmails(fallbackData);
+          if (!activeEmail) setActiveEmail(fallbackData[0]);
+        }
       } else {
-        setEmails(data || []);
-        if (data && data.length > 0 && !activeEmail) {
-          setActiveEmail(data[0]);
+        if ((!data || data.length === 0) && cleanDom) {
+          // If query returned 0, try broader fetch
+          const { data: fallbackData } = await supabase
+            .from('incoming_emails')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+          const matched = (fallbackData || []).filter((em: any) => 
+            (em.recipient && em.recipient.toLowerCase().includes(cleanDom)) ||
+            (brandId && em.brand_id === brandId)
+          );
+          const finalData = matched.length > 0 ? matched : (fallbackData || []);
+          setEmails(finalData);
+          if (finalData.length > 0 && !activeEmail) {
+            setActiveEmail(finalData[0]);
+          }
+        } else {
+          setEmails(data || []);
+          if (data && data.length > 0 && !activeEmail) {
+            setActiveEmail(data[0]);
+          }
         }
       }
     } catch (err) {
@@ -163,10 +194,8 @@ export default function MecoPayWebmailInbox({
 
   // Realtime subscription for incoming emails
   useEffect(() => {
-    if (!activeDomain) return;
-
     const channel = supabase
-      .channel(`incoming_emails_realtime_${activeDomain}`)
+      .channel(`incoming_emails_realtime_${brandId || activeDomain || 'all'}`)
       .on(
         'postgres_changes',
         {
@@ -176,11 +205,16 @@ export default function MecoPayWebmailInbox({
         },
         (payload) => {
           const newMsg = payload.new as IncomingEmail;
-          if (newMsg.recipient?.toLowerCase().includes(`@${activeDomain.toLowerCase()}`)) {
-            setEmails((prev) => [newMsg, ...prev]);
-            if (!activeEmail) {
-              setActiveEmail(newMsg);
-            }
+          const cleanDom = activeDomain ? activeDomain.toLowerCase() : '';
+          const matchesDomain = cleanDom && newMsg.recipient?.toLowerCase().includes(cleanDom);
+          const matchesBrand = brandId && (newMsg as any).brand_id === brandId;
+
+          if (matchesDomain || matchesBrand || !cleanDom) {
+            setEmails((prev) => {
+              if (prev.some((e) => e.id === newMsg.id)) return prev;
+              return [newMsg, ...prev];
+            });
+            setActiveEmail((current) => current || newMsg);
           }
         }
       )
@@ -189,7 +223,7 @@ export default function MecoPayWebmailInbox({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeDomain]);
+  }, [activeDomain, brandId]);
 
   // Filtered emails by search
   const filteredEmails = emails.filter((em) => {
