@@ -1153,9 +1153,6 @@ export default function DashboardShell() {
                     <span className="text-3xl font-bold text-slate-400">{(user?.email || 'U').charAt(0).toUpperCase()}</span>
                   )}
                 </div>
-                <button className="absolute bottom-0 right-0 p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full transition-colors border-2 border-slate-900 shadow-sm">
-                  <Upload className="w-4 h-4" />
-                </button>
               </div>
               
               <p className="text-sm font-medium text-slate-400 mb-2">{user?.email}</p>
