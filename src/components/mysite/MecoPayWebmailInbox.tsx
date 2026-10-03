@@ -54,6 +54,7 @@ export default function MecoPayWebmailInbox({
 }: MecoPayWebmailInboxProps) {
   const [emails, setEmails] = useState<IncomingEmail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMailbox, setSelectedMailbox] = useState<string>('all');
   const [activeEmail, setActiveEmail] = useState<IncomingEmail | null>(null);
@@ -127,6 +128,7 @@ export default function MecoPayWebmailInbox({
   const loadEmails = async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       // Always scope the database query before data reaches the browser.
       // A selected mailbox is identified by its recipient address. For the
       // aggregate view, scope by brand_id (or authenticated user_id fallback).
@@ -141,7 +143,7 @@ export default function MecoPayWebmailInbox({
       if (hasSelectedMailbox) {
         // Do not additionally require brand_id here: existing inbound rows may
         // have a NULL/legacy brand_id, while the mailbox address is canonical.
-        query = query.ilike('recipient', `%${selectedMailbox.trim().toLowerCase()}%`);
+        query = query.eq('recipient', selectedMailbox.trim());
       } else if (brandId) {
         query = query.eq('brand_id', brandId);
       } else {
@@ -161,6 +163,13 @@ export default function MecoPayWebmailInbox({
       }
 
       const { data, error } = await query;
+      console.info('[MecoPay Inbox] incoming_emails query response', {
+        selectedMailbox,
+        brandId: brandId || null,
+        activeDomain,
+        rowCount: data?.length || 0,
+        error
+      });
       if (error) throw error;
 
       const nextEmails: IncomingEmail[] = data || [];
@@ -171,8 +180,9 @@ export default function MecoPayWebmailInbox({
           ? current
           : nextEmails[0];
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Incoming emails error:', err);
+      setFetchError(err?.message || 'Supabase থেকে email data fetch করা যায়নি।');
       setEmails([]);
       setActiveEmail(null);
     } finally {
@@ -360,6 +370,23 @@ export default function MecoPayWebmailInbox({
               <div className="p-12 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
                 <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
                 <span>ইমেইল ডাটা লোড হচ্ছে...</span>
+              </div>
+            ) : fetchError ? (
+              <div className="p-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-rose-300">Email data fetch failed</p>
+                  <p className="text-xs text-rose-400/80 mt-2 break-words">{fetchError}</p>
+                  <button
+                    type="button"
+                    onClick={loadEmails}
+                    className="mt-4 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-white hover:bg-slate-700"
+                  >
+                    Retry
+                  </button>
+                </div>
               </div>
             ) : filteredEmails.length === 0 ? (
               <div className="p-12 text-center space-y-3">
