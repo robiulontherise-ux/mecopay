@@ -70,7 +70,12 @@ export default function DashboardShell() {
   }, [activeSubMenu, activeTab]);
 
   const [isYearly, setIsYearly] = useState(false);
-  const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['payment-links']);
+  const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
+  const [pricingTier, setPricingTier] = useState<'tier3' | 'tier1'>('tier3');
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
+  useEffect(() => {
+    setSelectedFeatureIds(pricingMode === 'nocode' ? ['no-code-website'] : ['custom-domain']);
+  }, [pricingMode, pricingTier]);
   const [showAddFund, setShowAddFund] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [customDevices, setCustomDevices] = useState<string[]>([]);
@@ -1359,21 +1364,60 @@ export default function DashboardShell() {
     }
 
     if (activeSubMenu === 'Service & Billing') {
-      const buildFeatures = [
-        { id: 'business-email', name: 'Business Email', price: 50, icon: <ShieldCheck className="w-5 h-5 text-cyan-400" />, description: 'Branded sending and receiving with addresses such as hello@yourbrand.com.', example: 'sales@acme.com receives an enquiry and support@acme.com replies from the same domain.' },
-        { id: 'custom-domain', name: 'Custom Domain', price: 100, icon: <Globe className="w-5 h-5 text-indigo-400" />, description: 'Connect a memorable domain to your website and brand identity.', example: 'Publish at www.acme.com and use shop.acme.com for a campaign.' },
-        { id: 'no-code-website', name: 'No-Code Website', price: 150, icon: <Rocket className="w-5 h-5 text-purple-400" />, description: 'Create and manage a storefront, posts, products, and branding without code.', example: 'A course seller publishes a landing page and product posts from the dashboard.' },
-        { id: 'custom-website-api', name: 'Custom Website + API', price: 200, icon: <Zap className="w-5 h-5 text-blue-400" />, description: 'Connect an existing website to MecoPay through integration endpoints.', example: 'A React or WordPress checkout sends an order and receives payment status.' },
-        { id: 'payment-gateway', name: 'Payment System: API Checkout', price: 100, icon: <Wallet className="w-5 h-5 text-emerald-400" />, description: 'Embed payment initiation and status handling into your own website or app.', example: 'A buyer clicks Pay, completes payment, and your server confirms the order.' },
-        { id: 'payment-links', name: 'Payment System: Payment Links', price: 50, icon: <LinkIcon className="w-5 h-5 text-pink-400" />, description: 'Create a hosted payment page and share one link through social media or messaging.', example: 'Send a ৳500 course link in Messenger and receive a payment notification.' },
-        { id: 'no-code-checkout', name: 'Payment System: No-Code Checkout', price: 75, icon: <CheckCircle2 className="w-5 h-5 text-amber-400" />, description: 'Use a ready checkout flow without building a payment page yourself.', example: 'Create a product, set a price, and publish a checkout button.' },
-        { id: 'courier', name: 'Courier & Order Flow', price: 75, icon: <ArrowRight className="w-5 h-5 text-orange-400" />, description: 'Connect confirmed order data to supported courier workflows.', example: 'A confirmed COD order is prepared for courier handoff from the dashboard.' },
-        { id: 'messaging', name: 'SMS + WhatsApp Notifications', price: 100, icon: <PlayCircle className="w-5 h-5 text-green-400" />, description: 'Add configured customer and merchant notifications around payment events.', example: 'The merchant receives a payment alert while the customer receives an update.' },
-        { id: 'ai-agent', name: 'AI Sales Agent', price: 150, icon: <Crown className="w-5 h-5 text-fuchsia-400" />, description: 'Add an assisted sales conversation layer on supported channels.', example: 'A visitor asks about delivery and the agent guides them to a product or link.' }
-      ];
-      const selectedFeatures = buildFeatures.filter((feature) => selectedFeatureIds.includes(feature.id));
-      const monthlyTotal = selectedFeatures.reduce((total, feature) => total + feature.price, 0);
-      const planTotal = isYearly ? monthlyTotal * 12 * 0.9 : monthlyTotal;
+      const pricingCatalog = {
+      nocode: {
+        tier3: [
+          { id: 'no-code-website', name: 'No-Code Website Builder', price: 5, available: true, description: 'ই-কমার্স, এডটেক, ব্লগ বা নিউজ সাইট কোনো কোডিং ছাড়াই তৈরি ও publish করুন।', example: 'Example: course seller dashboard থেকে landing page ও product post publish করে।' },
+          { id: 'custom-domain', name: 'Custom Domain (2x Speed)', price: 0, available: true, description: 'নিজস্ব domain connect করুন; No-Code user-এর জন্য HTML reference অনুযায়ী domain integration free।', example: 'Example: your store চলে www.acme.com-এ, platform subdomain-এ নয়।' },
+          { id: 'capi', name: 'Server-Side Tracking (CAPI)', price: 2, available: true, description: 'Dynamic pay-as-you-go server-side event tracking module।', example: 'Example: campaign conversion event server থেকে ad platform-এ পাঠানো হয়।' },
+          { id: 'personal-mfs', name: 'Personal MFS Automation (APK)', price: 2, available: true, description: 'Supported personal MFS payment-এর automated verification workflow।', example: 'Example: personal bKash/Nagad/M-Pesa payment order-এর সঙ্গে verify হয়।' },
+          { id: 'local-gateway', name: 'Local Payment Gateway', price: 2, available: true, description: 'Local payment gateway integration for regional customers।', example: 'Example: Bangladesh বা regional buyer local gateway দিয়ে checkout করে।' },
+          { id: 'international-gateway', name: 'International Gateway', price: 3, available: true, description: 'Global customer-এর জন্য international payment gateway connection।', example: 'Example: overseas customer international checkout ব্যবহার করে।' },
+          { id: 'notifications', name: 'Notification (WhatsApp + SMS/Email)', price: 2, available: true, description: 'Payment/order event-এর customer ও merchant notifications।', example: 'Example: payment success হলে merchant alert এবং customer update পায়।' },
+          { id: 'courier', name: 'Courier Auto-Book', price: 2, available: true, description: 'Confirmed order supported courier workflow-এ পাঠানোর automation।', example: 'Example: COD order confirm হলে courier handoff-এর জন্য প্রস্তুত হয়।' },
+          { id: 'business-email', name: 'Business Email (Custom Domain)', price: 1, available: true, description: 'নিজস্ব domain-এ branded business email send ও receive করুন।', example: 'Example: sales@acme.com inquiry receive করে, support@acme.com reply করে।' }
+        ],
+        tier1: [
+          { id: 'no-code-website', name: 'No-Code Website Builder', price: 25, available: true, description: 'Premium global market-এর জন্য no-code storefront ও content management।', example: 'Example: global brand code ছাড়াই product catalog publish করে।' },
+          { id: 'custom-domain', name: 'Custom Domain (2x Speed)', price: 0, available: true, description: 'Premium tier-এ custom domain integration included।', example: 'Example: branded domain-এ fast storefront চালু হয়।' },
+          { id: 'capi', name: 'Server-Side Tracking (CAPI)', price: 10, available: true, description: 'Dynamic server-side conversion tracking module।', example: 'Example: campaign events server-side attribution-এর জন্য পাঠানো হয়।' },
+          { id: 'personal-mfs', name: 'Personal MFS Automation (APK)', price: 0, available: false, description: 'এই market tier-এ Personal MFS Automation available নয়।', example: 'N/A for Tier-1.' },
+          { id: 'local-gateway', name: 'Local Payment Gateway', price: 10, available: true, description: 'Regional gateway integration for local payment methods।', example: 'Example: local customer regional gateway দিয়ে pay করে।' },
+          { id: 'international-gateway', name: 'International Gateway', price: 15, available: true, description: 'Global gateway connection for international customers।', example: 'Example: international buyer card বা supported global method ব্যবহার করে।' },
+          { id: 'notifications', name: 'Notification (WhatsApp + SMS/Email)', price: 10, available: true, description: 'Premium notification workflow for payment and order events।', example: 'Example: customer ও merchant দুজনেই real-time status update পায়।' },
+          { id: 'courier', name: 'Courier Auto-Book', price: 15, available: true, description: 'Global operation-এর supported delivery workflow automation।', example: 'Example: confirmed order courier processing queue-তে যায়।' },
+          { id: 'business-email', name: 'Business Email', price: 5, available: true, description: 'Professional custom-domain email identity for global business।', example: 'Example: hello@yourbrand.com দিয়ে customer communication।' }
+        ]
+      },
+      custom: {
+        tier3: [
+          { id: 'no-code-website', name: 'No-Code Website Builder', price: 0, available: false, description: 'Existing website থাকলে No-Code Builder charge প্রযোজ্য নয়।', example: 'N/A — আপনার existing website ব্যবহার হবে।' },
+          { id: 'custom-domain', name: 'Custom Domain (2x Speed)', price: 1, available: true, description: 'Existing website-এর সঙ্গে নিজের domain ও optimized routing connect করুন।', example: 'Example: existing store চলে shop.acme.com-এ।' },
+          { id: 'capi', name: 'Server-Side Tracking (CAPI)', price: 2, available: true, description: 'Existing website-এর server-side tracking integration।', example: 'Example: checkout conversion server থেকে tracking platform-এ যায়।' },
+          { id: 'personal-mfs', name: 'Personal MFS Automation (APK)', price: 2, available: true, description: 'Supported personal MFS payment verification workflow।', example: 'Example: personal MFS payment website order-এর সঙ্গে match হয়।' },
+          { id: 'local-gateway', name: 'Local Payment Gateway', price: 2, available: true, description: 'Existing website-এ local gateway connection।', example: 'Example: regional customer local method দিয়ে pay করে।' },
+          { id: 'international-gateway', name: 'International Gateway', price: 3, available: true, description: 'Existing website-এর জন্য international gateway integration।', example: 'Example: overseas customer global checkout ব্যবহার করে।' },
+          { id: 'notifications', name: 'Notification (WhatsApp + SMS/Email)', price: 2, available: true, description: 'Existing checkout-এর payment/order notifications।', example: 'Example: order status customer ও merchant-কে পাঠানো হয়।' },
+          { id: 'courier', name: 'Courier Auto-Book', price: 2, available: true, description: 'Existing website order courier workflow-এ পাঠানোর automation।', example: 'Example: paid/COD order courier handoff-এর জন্য তৈরি হয়।' },
+          { id: 'business-email', name: 'Business Email', price: 1, available: true, description: 'নিজস্ব domain-এ business email send ও receive করুন।', example: 'Example: support@acme.com customer support reply দেয়।' }
+        ],
+        tier1: [
+          { id: 'no-code-website', name: 'No-Code Website Builder', price: 0, available: false, description: 'Existing website user-এর জন্য No-Code Builder charge নেই।', example: 'N/A — existing website integration ব্যবহার হবে।' },
+          { id: 'custom-domain', name: 'Custom Domain (2x Speed)', price: 5, available: true, description: 'Existing global website-এর branded domain connection।', example: 'Example: store.yourbrand.com global storefront address হয়।' },
+          { id: 'capi', name: 'Server-Side Tracking (CAPI)', price: 10, available: true, description: 'Dynamic server-side tracking for global campaigns।', example: 'Example: server-side purchase event attribution-এর জন্য পাঠানো হয়।' },
+          { id: 'personal-mfs', name: 'Personal MFS Automation (APK)', price: 0, available: false, description: 'এই market tier-এ Personal MFS Automation available নয়।', example: 'N/A for Tier-1.' },
+          { id: 'local-gateway', name: 'Local Payment Gateway', price: 10, available: true, description: 'Existing website-এর local gateway integration।', example: 'Example: local market customer regional gateway ব্যবহার করে।' },
+          { id: 'international-gateway', name: 'International Gateway', price: 15, available: true, description: 'Existing global website-এর international gateway integration।', example: 'Example: overseas customer supported international method ব্যবহার করে।' },
+          { id: 'notifications', name: 'Notification (WhatsApp + SMS/Email)', price: 10, available: true, description: 'Global payment ও order notification workflow।', example: 'Example: payment status customer ও merchant দুজনকে জানানো হয়।' },
+          { id: 'courier', name: 'Courier Auto-Book', price: 15, available: true, description: 'Existing website order-এর supported courier automation।', example: 'Example: confirmed order delivery queue-তে যায়।' },
+          { id: 'business-email', name: 'Business Email', price: 5, available: true, description: 'Professional custom-domain email for global operations।', example: 'Example: sales@yourbrand.com lead receive করে।' }
+        ]
+      }
+    };
+        const buildFeatures = pricingCatalog[pricingMode][pricingTier];
+        const selectedFeatures = buildFeatures.filter((feature) => feature.available && selectedFeatureIds.includes(feature.id));
+        const monthlyTotal = selectedFeatures.reduce((total, feature) => total + feature.price, 0);
+        const planTotal = isYearly ? monthlyTotal * 12 * 0.9 : monthlyTotal;
 
       return (
         <div className="max-w-6xl mx-auto">
@@ -1455,6 +1499,7 @@ export default function DashboardShell() {
               <h3 className="text-3xl font-black text-white mt-2">Build Your Own Plan</h3>
               <p className="text-slate-400 mt-2 max-w-3xl">Select individual services instead of paying for features you do not need. Each card explains the use case and gives a practical example.</p>
             </div>
+            <div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400'}`}>যাঁদের website নেই (No-Code)</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-slate-900 text-slate-400'}`}>যাঁদের website আছে (Custom)</button></div><div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingTier('tier3')} className={`px-4 py-2 rounded-lg text-xs font-bold ${pricingTier === 'tier3' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-slate-500'}`}>Tier-3: Asia & Africa</button><button onClick={() => setPricingTier('tier1')} className={`px-4 py-2 rounded-lg text-xs font-bold ${pricingTier === 'tier1' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-500'}`}>Tier-1: Europe, US, AUS</button></div>
             <div className="inline-flex items-center p-1.5 bg-slate-900 border border-slate-800 rounded-xl relative w-full max-w-xs">
               <button onClick={() => setIsYearly(false)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${!isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Monthly</button>
               <button onClick={() => setIsYearly(true)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Yearly</button>
@@ -1465,20 +1510,20 @@ export default function DashboardShell() {
           <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
             <div className="grid md:grid-cols-2 gap-4">
               {buildFeatures.map((feature) => {
-                const selected = selectedFeatureIds.includes(feature.id);
-                return <button key={feature.id} onClick={() => setSelectedFeatureIds((current) => selected ? current.filter((id) => id !== feature.id) : [...current, feature.id])} className={`text-left rounded-2xl border p-5 transition-all ${selected ? 'border-indigo-500/70 bg-indigo-500/10 shadow-lg shadow-indigo-950/30' : 'border-slate-800 bg-slate-900/50 hover:border-slate-600'}`}>
+                const selected = feature.available && selectedFeatureIds.includes(feature.id);
+                return <button key={feature.id} disabled={!feature.available} onClick={() => feature.available && setSelectedFeatureIds((current) => selected ? current.filter((id) => id !== feature.id) : [...current, feature.id])} className={`text-left rounded-2xl border p-5 transition-all ${selected ? 'border-indigo-500/70 bg-indigo-500/10 shadow-lg shadow-indigo-950/30' : 'border-slate-800 bg-slate-900/50 hover:border-slate-600'}`}>
                   <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">{feature.icon}</span><span className="font-bold text-white">{feature.name}</span></div><span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selected ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-600 text-transparent'}`}>✓</span></div>
                   <p className="text-sm text-slate-300 mt-4 leading-relaxed">{feature.description}</p>
                   <p className="text-xs text-slate-500 mt-3 leading-relaxed"><strong className="text-slate-400">Example:</strong> {feature.example}</p>
-                  <p className="text-sm text-indigo-300 font-bold mt-4">From ৳{feature.price}/mo</p>
+                  <p className="text-sm text-indigo-300 font-bold mt-4">{feature.available ? (feature.price === 0 ? 'FREE' : `$${feature.price}/mo`) : 'N/A'}</p>
                 </button>;
               })}
             </div>
             <aside className="lg:sticky lg:top-28 rounded-2xl border border-indigo-500/30 bg-gradient-to-b from-indigo-950/60 to-slate-900 p-6">
               <p className="text-xs uppercase tracking-wider text-indigo-300 font-bold">Selected services</p>
               <h3 className="text-2xl font-black text-white mt-2">{selectedFeatures.length} services</h3>
-              <div className="my-6 flex items-end gap-2"><span className="text-4xl font-black text-white">৳{planTotal.toLocaleString()}</span><span className="text-sm text-slate-400 mb-1">/{isYearly ? 'year' : 'month'}</span></div>
-              <div className="space-y-2 border-y border-slate-800 py-4 mb-6">{selectedFeatures.length ? selectedFeatures.map((feature) => <div key={feature.id} className="flex justify-between gap-3 text-sm"><span className="text-slate-300">{feature.name}</span><span className="text-slate-400">৳{isYearly ? Math.round(feature.price * 12 * 0.9).toLocaleString() : feature.price}</span></div>) : <p className="text-sm text-slate-500">Select a service to start building your plan.</p>}</div>
+              <div className="my-6 flex items-end gap-2"><span className="text-4xl font-black text-white">${planTotal.toLocaleString()}</span><span className="text-sm text-slate-400 mb-1">/{isYearly ? 'year' : 'month'}</span></div>
+              <div className="space-y-2 border-y border-slate-800 py-4 mb-6">{selectedFeatures.length ? selectedFeatures.map((feature) => <div key={feature.id} className="flex justify-between gap-3 text-sm"><span className="text-slate-300">{feature.name}</span><span className="text-slate-400">${isYearly ? Math.round(feature.price * 12 * 0.9).toLocaleString() : feature.price}</span></div>) : <p className="text-sm text-slate-500">Select a service to start building your plan.</p>}</div>
               <button className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-colors">Request this plan</button>
               <p className="text-[11px] text-slate-500 mt-4 leading-relaxed">Illustrative starting prices are shown for planning. Processing or third-party usage charges may be separate where applicable.</p>
             </aside>
