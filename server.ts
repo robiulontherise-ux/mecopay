@@ -1152,6 +1152,64 @@ async function startServer() {
     }
   });
 
+  // MecoPay Webmail Outbound Dispatcher Route (Bypasses browser RLS and Mixed-Content)
+  app.post('/api/send-mail', async (req, res) => {
+    try {
+      const { from, to, subject, text, brand_id } = req.body;
+      if (!to || !subject) {
+        return res.status(400).json({ success: false, error: 'Recipient and Subject are required.' });
+      }
+
+      if (!supabaseAdmin) {
+        return res.status(500).json({ success: false, error: 'Supabase admin service key is not configured.' });
+      }
+
+      // Verify JWT from Authorization header
+      const authHeader = req.headers['authorization'];
+      let authenticatedUserId: string | null = null;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+        if (!userError && userData?.user) {
+          authenticatedUserId = userData.user.id;
+        }
+      }
+
+      if (!authenticatedUserId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: Valid user JWT required.' });
+      }
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const validBrandId = (brand_id && uuidRegex.test(brand_id)) ? brand_id : null;
+
+      // Insert into incoming_emails table using authenticated user_id
+      const { data, error } = await supabaseAdmin
+        .from('incoming_emails')
+        .insert({
+          brand_id: validBrandId,
+          user_id: authenticatedUserId,
+          sender: from || 'info@mecopay.space',
+          recipient: to.trim(),
+          subject: subject.trim(),
+          body_text: text || '',
+          direction: 'outbound'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[API Send-Mail] DB Insert Error:', error);
+        return res.status(500).json({ success: false, error: error.message });
+      }
+
+      console.log('[API Send-Mail] Dispatched email successfully:', data.id);
+      return res.json({ success: true, email: data });
+    } catch (err: any) {
+      console.error('[API Send-Mail] Server Error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // =========================================================================
   // Custom Domain & Subdomain Routing Middleware
   // Features:

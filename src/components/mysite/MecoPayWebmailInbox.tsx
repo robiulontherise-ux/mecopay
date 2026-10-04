@@ -89,65 +89,33 @@ export default function MecoPayWebmailInbox({
     setSendingEmail(true);
     setComposeStatus({ type: 'idle', message: '' });
     try {
-      // 1. Get current session token for Supabase Edge Function
       const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token || supabaseAnonKey;
+      const token = sessionData?.session?.access_token;
 
-      // 2. Call Supabase Edge Function to avoid direct IP mixed-content block
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/notification-engine`;
-
-      let sentSuccess = false;
-      let errorMsg = '';
-
-      try {
-        const edgeRes = await fetch(edgeFunctionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            action: 'send_mail',
-            brand_id: brandId,
-            from: composeFrom,
-            to: composeTo.trim(),
-            subject: composeSubject.trim(),
-            text: composeBody,
-            customer_email: composeTo.trim()
-          })
-        });
-
-        if (edgeRes.ok) {
-          const edgeData = await edgeRes.json();
-          if (edgeData.success) {
-            sentSuccess = true;
-          } else {
-            errorMsg = edgeData.error || '';
-          }
-        }
-      } catch (e: any) {
-        console.warn('Edge function attempt notice:', e);
+      if (!token) {
+        setComposeStatus({ type: 'error', message: 'User session not found. Please log in again.' });
+        return;
       }
 
-      // If Edge Function not yet deployed or failed, save directly into incoming_emails queue
-      if (!sentSuccess) {
-        const { error: insError } = await supabase.from('incoming_emails').insert({
-          brand_id: brandId || null,
-          sender: composeFrom,
-          recipient: composeTo.trim(),
+      // 1. Dispatch via application backend proxy (/api/send-mail) with user JWT
+      const res = await fetch('/api/send-mail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          from: composeFrom,
+          to: composeTo.trim(),
           subject: composeSubject.trim(),
-          body_text: composeBody,
-          direction: 'outbound'
-        });
+          text: composeBody,
+          brand_id: brandId || null
+        })
+      });
 
-        if (!insError) {
-          sentSuccess = true;
-        } else {
-          errorMsg = insError.message || errorMsg || 'Failed to dispatch email';
-        }
-      }
+      const data = await res.json();
 
-      if (sentSuccess) {
+      if (res.ok && data.success) {
         setComposeStatus({ type: 'success', message: 'Email sent successfully!' });
         loadEmails();
         setTimeout(() => {
@@ -157,7 +125,7 @@ export default function MecoPayWebmailInbox({
           setComposeStatus({ type: 'idle', message: '' });
         }, 1500);
       } else {
-        setComposeStatus({ type: 'error', message: errorMsg || 'Failed to send email.' });
+        setComposeStatus({ type: 'error', message: data.error || 'Failed to dispatch email' });
       }
     } catch (err: any) {
       setComposeStatus({ type: 'error', message: 'Error: ' + err.message });
