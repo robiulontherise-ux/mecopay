@@ -8,6 +8,7 @@ import CheckoutPage from './components/checkout/CheckoutPage';
 import AccessPage from './components/checkout/AccessPage';
 import { PrivacyPolicy, TermsConditions, RefundPolicy, CustomerRightsAndAntiFraud, DeveloperDocsPage } from './components/Legal';
 import TimeSpentBeaconTracker from './components/analytics/TimeSpentBeaconTracker';
+import { LocaleProvider } from './lib/LocaleContext';
 
 interface EBProps { children?: React.ReactNode; }
 interface EBState { hasError: boolean; error: any; }
@@ -79,9 +80,10 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
-        <TimeSpentBeaconTracker />
-        <Routes>
+      <LocaleProvider>
+        <BrowserRouter>
+          <TimeSpentBeaconTracker />
+          <Routes>
           {/* Authentication */}
           <Route
             path="/login"
@@ -119,8 +121,9 @@ function App() {
             path="*" 
             element={<Navigate to={session ? "/dashboard" : "/login"} replace />} 
           />
-        </Routes>
-              </BrowserRouter>
+          </Routes>
+        </BrowserRouter>
+      </LocaleProvider>
     </ErrorBoundary>
   );
 }

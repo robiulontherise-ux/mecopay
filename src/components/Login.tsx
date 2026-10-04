@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, ShieldCheck, Zap, Rocket, Globe, ArrowRight, Menu, Wallet, Crown, Link as LinkIcon, PlayCircle } from 'lucide-react';
-import { getCountryLanguageOptions, getDefaultCountryLanguage, getFeatureCopy, getHeroChunks, getLanguageOptions, getSectionCopy, getTickerCopy, loadCountriesByContinent, type Continent, type CountryLanguage } from '../lib/marketingLocalization';
+import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
+import { useLocale } from '../lib/LocaleContext';
 
 const textChunks = [
   [
@@ -39,12 +40,7 @@ export default function Login() {
   const [showIframeWarning, setShowIframeWarning] = useState(false);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
-  const [continent, setContinent] = useState<Continent>('asia');
-  const [isDetectingContinent, setIsDetectingContinent] = useState(true);
-  const [language, setLanguage] = useState<string>('en');
-  const [countries, setCountries] = useState<CountryLanguage[]>([]);
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [detectedCountry, setDetectedCountry] = useState('');
+  const { continent, country: selectedCountry, language, countries, isDetecting: isDetectingContinent, countryData: selectedCountryData, languageOptions: countryLanguageOptions, setCountry: setSelectedCountry, setLanguage } = useLocale();
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
   useEffect(() => {
     // Calculate total time needed for the current chunk to finish its animation
@@ -135,49 +131,6 @@ export default function Login() {
   const monthlyTotal = selectedFeatures.reduce((total, feature) => total + feature.price, 0);
   const planTotal = isYearly ? monthlyTotal * 12 * 0.9 : monthlyTotal;
 
-  useEffect(() => {
-    let cancelled = false;
-    const detectContinent = async () => {
-      try {
-        let data: { continent_code?: string; country_code?: string };
-        try {
-          const response = await fetch('https://ipapi.co/json/', { headers: { Accept: 'application/json' } });
-          if (!response.ok) throw new Error('primary continent lookup failed');
-          data = await response.json();
-        } catch {
-          const fallbackResponse = await fetch('https://ipwho.is/');
-          if (!fallbackResponse.ok) throw new Error('fallback continent lookup failed');
-          data = await fallbackResponse.json();
-        }
-        const detected = ({ AF: 'africa', AS: 'asia', EU: 'europe', NA: 'north-america', SA: 'south-america', OC: 'oceania' } as Record<string, typeof continent>)[data.continent_code || ''] || 'asia';
-        if (!cancelled) { setContinent(detected); setDetectedCountry(data.country_code || ''); setSelectedCountry(data.country_code || ''); }
-      } catch {
-        if (!cancelled) setContinent('asia');
-      } finally {
-        if (!cancelled) setIsDetectingContinent(false);
-      }
-    };
-    detectContinent();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadCountriesByContinent(continent).then((list) => {
-      if (cancelled) return;
-      setCountries(list);
-      const preferredCountry = detectedCountry || selectedCountry;
-      const nextCountry = list.some((country) => country.code === preferredCountry) ? preferredCountry : (list[0]?.code || '');
-      setSelectedCountry(nextCountry);
-      setLanguage(getDefaultCountryLanguage(list.find((country) => country.code === nextCountry)));
-    }).catch(() => {
-      if (!cancelled) setCountries([]);
-    });
-    return () => { cancelled = true; };
-  }, [continent, detectedCountry]);
-
-  const selectedCountryData = countries.find((country) => country.code === selectedCountry);
-  const countryLanguageOptions = selectedCountryData ? getCountryLanguageOptions(selectedCountryData, countries) : getLanguageOptions(continent);
 
   useEffect(() => {
     setSelectedFeatureIds(pricingMode === 'nocode' ? ['no-code-website'] : ['custom-domain']);
@@ -219,7 +172,12 @@ export default function Login() {
           <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           <Link to="/developers" className="hover:text-white transition-colors">Developers</Link>
         </div>
-      </nav>
+</nav>
+      <div className="flex flex-wrap justify-center items-center gap-2 border-b border-neutral-900 bg-neutral-950 px-4 py-3">
+        <span className="text-xs font-semibold text-neutral-500">{isDetectingContinent ? 'Detecting location…' : `Country: ${selectedCountryData?.name || continent}`}</span>
+        <select aria-label="Country" value={selectedCountry} onChange={(event) => setSelectedCountry(event.target.value)} className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-200">{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select>
+        <select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+      </div>
 
       {/* Hero Section */}
       <section id="home" className="relative z-10 pt-24 sm:pt-40 pb-20 px-0 sm:px-6 text-center max-w-6xl mx-auto flex flex-col items-center">
@@ -376,7 +334,7 @@ export default function Login() {
           <h2 className="text-3xl md:text-5xl font-black text-white mt-5 mb-4 tracking-tight">Build Your Own Plan</h2>
           <p className="text-neutral-400 text-base md:text-lg">Choose only the services your business needs. Each feature explains what it does and where it fits in your workflow.</p>
           <div className="flex flex-wrap justify-center gap-2 mt-7 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-blue-600 text-white' : 'bg-neutral-900 text-neutral-400'}`}>No-Code Website</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-neutral-900 text-neutral-400'}`}>Custom Website</button></div>
-          <div className="flex flex-wrap justify-center items-center gap-2 mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your country…' : `Showing pricing for ${selectedCountryData?.name || continentLabel}`}</span><select aria-label="Country" value={selectedCountry} onChange={(event) => { setSelectedCountry(event.target.value); setLanguage(getDefaultCountryLanguage(countries.find((country) => country.code === event.target.value))); }} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200"><option value="">Select country</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+          <div className="flex flex-wrap justify-center items-center gap-2 mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your country…' : `Showing pricing for ${selectedCountryData?.name || continentLabel}`}</span><select aria-label="Country" value={selectedCountry} onChange={(event) => { setSelectedCountry(event.target.value); }} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200"><option value="">Select country</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
           <div className="inline-flex items-center p-1 mt-7 bg-neutral-900 border border-neutral-800 rounded-lg relative">
             <button onClick={() => setIsYearly(false)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${!isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Monthly</button>
             <button onClick={() => setIsYearly(true)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Yearly</button>
