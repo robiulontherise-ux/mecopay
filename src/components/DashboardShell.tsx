@@ -71,11 +71,38 @@ export default function DashboardShell() {
 
   const [isYearly, setIsYearly] = useState(false);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
-  const [pricingTier, setPricingTier] = useState<'tier3' | 'tier1'>('tier3');
+  const [continent, setContinent] = useState<'asia' | 'africa' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'unknown'>('asia');
+  const [isDetectingContinent, setIsDetectingContinent] = useState(true);
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
   useEffect(() => {
+    let cancelled = false;
+    const detectContinent = async () => {
+      try {
+        let data: { continent_code?: string };
+        try {
+          const response = await fetch('https://ipapi.co/json/', { headers: { Accept: 'application/json' } });
+          if (!response.ok) throw new Error('primary continent lookup failed');
+          data = await response.json();
+        } catch {
+          const fallbackResponse = await fetch('https://ipwho.is/');
+          if (!fallbackResponse.ok) throw new Error('fallback continent lookup failed');
+          data = await fallbackResponse.json();
+        }
+        const detected = ({ AF: 'africa', AS: 'asia', EU: 'europe', NA: 'north-america', SA: 'south-america', OC: 'oceania' } as Record<string, typeof continent>)[data.continent_code || ''] || 'asia';
+        if (!cancelled) setContinent(detected);
+      } catch {
+        if (!cancelled) setContinent('asia');
+      } finally {
+        if (!cancelled) setIsDetectingContinent(false);
+      }
+    };
+    detectContinent();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     setSelectedFeatureIds(pricingMode === 'nocode' ? ['no-code-website'] : ['custom-domain']);
-  }, [pricingMode, pricingTier]);
+  }, [pricingMode, continent]);
   const [showAddFund, setShowAddFund] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [customDevices, setCustomDevices] = useState<string[]>([]);
@@ -1414,6 +1441,8 @@ export default function DashboardShell() {
         ]
       }
     };
+        const pricingTier = continent === 'asia' || continent === 'africa' || continent === 'unknown' ? 'tier3' : 'tier1';
+        const continentLabel = { asia: 'Asia', africa: 'Africa', europe: 'Europe', 'north-america': 'North America', 'south-america': 'South America', oceania: 'Oceania', unknown: 'your region' }[continent];
         const buildFeatures = pricingCatalog[pricingMode][pricingTier];
         const selectedFeatures = buildFeatures.filter((feature) => feature.available && selectedFeatureIds.includes(feature.id));
         const monthlyTotal = selectedFeatures.reduce((total, feature) => total + feature.price, 0);
@@ -1499,7 +1528,7 @@ export default function DashboardShell() {
               <h3 className="text-3xl font-black text-white mt-2">Build Your Own Plan</h3>
               <p className="text-slate-400 mt-2 max-w-3xl">Select individual services instead of paying for features you do not need. Each card explains the use case and gives a practical example.</p>
             </div>
-            <div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400'}`}>যাঁদের website নেই (No-Code)</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-slate-900 text-slate-400'}`}>যাঁদের website আছে (Custom)</button></div><div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingTier('tier3')} className={`px-4 py-2 rounded-lg text-xs font-bold ${pricingTier === 'tier3' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-slate-500'}`}>Tier-3: Asia & Africa</button><button onClick={() => setPricingTier('tier1')} className={`px-4 py-2 rounded-lg text-xs font-bold ${pricingTier === 'tier1' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-500'}`}>Tier-1: Europe, US, AUS</button></div>
+            <div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400'}`}>যাঁদের website নেই (No-Code)</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-slate-900 text-slate-400'}`}>যাঁদের website আছে (Custom)</button></div><div className="flex justify-start mb-3"><span className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300">{isDetectingContinent ? 'Detecting your continent…' : `Showing pricing for ${continentLabel}`}</span></div>
             <div className="inline-flex items-center p-1.5 bg-slate-900 border border-slate-800 rounded-xl relative w-full max-w-xs">
               <button onClick={() => setIsYearly(false)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${!isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Monthly</button>
               <button onClick={() => setIsYearly(true)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Yearly</button>

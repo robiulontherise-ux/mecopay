@@ -38,7 +38,8 @@ export default function Login() {
   const [showIframeWarning, setShowIframeWarning] = useState(false);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
-  const [pricingTier, setPricingTier] = useState<'tier3' | 'tier1'>('tier3');
+  const [continent, setContinent] = useState<'asia' | 'africa' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'unknown'>('asia');
+  const [isDetectingContinent, setIsDetectingContinent] = useState(true);
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
   useEffect(() => {
     // Calculate total time needed for the current chunk to finish its animation
@@ -122,14 +123,42 @@ export default function Login() {
       ]
     }
   };
+  const pricingTier = continent === 'asia' || continent === 'africa' || continent === 'unknown' ? 'tier3' : 'tier1';
+  const continentLabel = { asia: 'Asia', africa: 'Africa', europe: 'Europe', 'north-america': 'North America', 'south-america': 'South America', oceania: 'Oceania', unknown: 'your region' }[continent];
   const buildFeatures = pricingCatalog[pricingMode][pricingTier];
   const selectedFeatures = buildFeatures.filter((feature) => feature.available && selectedFeatureIds.includes(feature.id));
   const monthlyTotal = selectedFeatures.reduce((total, feature) => total + feature.price, 0);
   const planTotal = isYearly ? monthlyTotal * 12 * 0.9 : monthlyTotal;
 
   useEffect(() => {
+    let cancelled = false;
+    const detectContinent = async () => {
+      try {
+        let data: { continent_code?: string };
+        try {
+          const response = await fetch('https://ipapi.co/json/', { headers: { Accept: 'application/json' } });
+          if (!response.ok) throw new Error('primary continent lookup failed');
+          data = await response.json();
+        } catch {
+          const fallbackResponse = await fetch('https://ipwho.is/');
+          if (!fallbackResponse.ok) throw new Error('fallback continent lookup failed');
+          data = await fallbackResponse.json();
+        }
+        const detected = ({ AF: 'africa', AS: 'asia', EU: 'europe', NA: 'north-america', SA: 'south-america', OC: 'oceania' } as Record<string, typeof continent>)[data.continent_code || ''] || 'asia';
+        if (!cancelled) setContinent(detected);
+      } catch {
+        if (!cancelled) setContinent('asia');
+      } finally {
+        if (!cancelled) setIsDetectingContinent(false);
+      }
+    };
+    detectContinent();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     setSelectedFeatureIds(pricingMode === 'nocode' ? ['no-code-website'] : ['custom-domain']);
-  }, [pricingMode, pricingTier]);
+  }, [pricingMode, continent]);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans selection:bg-blue-500/30 overflow-x-hidden relative">
@@ -333,7 +362,7 @@ export default function Login() {
           <h2 className="text-3xl md:text-5xl font-black text-white mt-5 mb-4 tracking-tight">Build Your Own Plan</h2>
           <p className="text-neutral-400 text-base md:text-lg">Choose only the services your business needs. Each feature explains what it does and where it fits in your workflow.</p>
           <div className="flex flex-wrap justify-center gap-2 mt-7 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-blue-600 text-white' : 'bg-neutral-900 text-neutral-400'}`}>যাঁদের website নেই (No-Code)</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-neutral-900 text-neutral-400'}`}>যাঁদের website আছে (Custom)</button></div>
-          <div className="flex flex-wrap justify-center gap-2 mb-4"><button onClick={() => setPricingTier('tier3')} className={`px-4 py-2 rounded-lg text-xs font-bold ${pricingTier === 'tier3' ? 'bg-neutral-700 text-white' : 'bg-neutral-900 text-neutral-500'}`}>Tier-3: Asia & Africa</button><button onClick={() => setPricingTier('tier1')} className={`px-4 py-2 rounded-lg text-xs font-bold ${pricingTier === 'tier1' ? 'bg-indigo-600 text-white' : 'bg-neutral-900 text-neutral-500'}`}>Tier-1: Europe, US, AUS</button></div>
+          <div className="flex justify-center mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your continent…' : `Showing pricing for ${continentLabel}`}</span></div>
           <div className="inline-flex items-center p-1 mt-7 bg-neutral-900 border border-neutral-800 rounded-lg relative">
             <button onClick={() => setIsYearly(false)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${!isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Monthly</button>
             <button onClick={() => setIsYearly(true)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Yearly</button>
