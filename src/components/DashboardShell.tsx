@@ -70,6 +70,7 @@ export default function DashboardShell() {
   }, [activeSubMenu, activeTab]);
 
   const [isYearly, setIsYearly] = useState(false);
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['payment-links']);
   const [showAddFund, setShowAddFund] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [customDevices, setCustomDevices] = useState<string[]>([]);
@@ -1358,57 +1359,21 @@ export default function DashboardShell() {
     }
 
     if (activeSubMenu === 'Service & Billing') {
-      const plans = [
-        {
-          name: "Free Trial",
-          monthlyPrice: 0,
-          yearlyPrice: 0,
-          icon: <Zap className="w-6 h-6 text-slate-400" />,
-          accent: "from-slate-600 to-slate-800",
-          features: ["2 Days Validity", "1 Brand", "1 Custom Website Integration or 1 No Code Website Integration", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Basic API Access", "Unlimited Transactions"]
-        },
-        {
-          name: "Basic",
-          monthlyPrice: 100,
-      yearlyPrice: 1080,
-          icon: <ShieldCheck className="w-6 h-6 text-blue-400" />,
-          accent: "from-blue-500 to-cyan-600",
-          features: ["1 Brand", "1 Custom Website Integration or 1 No Code Website Integration", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Standard Support"]
-        },
-        {
-          name: "Starter",
-          monthlyPrice: 200,
-      yearlyPrice: 2160,
-          icon: <Rocket className="w-6 h-6 text-indigo-400" />,
-          accent: "from-indigo-500 to-purple-600",
-          popular: true,
-          features: ["2 Brands", "Mix of 2 Custom or No Code Website Integrations", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Premium Themes"]
-        },
-        {
-          name: "Pro",
-          monthlyPrice: 300,
-      yearlyPrice: 3240,
-          icon: <Globe className="w-6 h-6 text-pink-400" />,
-          accent: "from-pink-500 to-rose-600",
-          features: ["3 Brands", "Mix of 3 Custom or No Code Website Integrations", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Smart Volume Routing"]
-        },
-        {
-          name: "Scale",
-          monthlyPrice: 400,
-      yearlyPrice: 4320,
-          icon: <Wallet className="w-6 h-6 text-teal-400" />,
-          accent: "from-teal-400 to-emerald-600",
-          features: ["4 Brands", "Mix of 4 Custom or No Code Website Integrations", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Priority Routing"]
-        },
-        {
-          name: "Business",
-          monthlyPrice: 500,
-      yearlyPrice: 5400,
-          icon: <Crown className="w-6 h-6 text-amber-400" />,
-          accent: "from-amber-400 to-orange-600",
-          features: ["5 Brands", "Mix of 5 Custom or No Code Website Integrations", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Dedicated Manager"]
-        }
+      const buildFeatures = [
+        { id: 'business-email', name: 'Business Email', price: 50, icon: <ShieldCheck className="w-5 h-5 text-cyan-400" />, description: 'Branded sending and receiving with addresses such as hello@yourbrand.com.', example: 'sales@acme.com receives an enquiry and support@acme.com replies from the same domain.' },
+        { id: 'custom-domain', name: 'Custom Domain', price: 100, icon: <Globe className="w-5 h-5 text-indigo-400" />, description: 'Connect a memorable domain to your website and brand identity.', example: 'Publish at www.acme.com and use shop.acme.com for a campaign.' },
+        { id: 'no-code-website', name: 'No-Code Website', price: 150, icon: <Rocket className="w-5 h-5 text-purple-400" />, description: 'Create and manage a storefront, posts, products, and branding without code.', example: 'A course seller publishes a landing page and product posts from the dashboard.' },
+        { id: 'custom-website-api', name: 'Custom Website + API', price: 200, icon: <Zap className="w-5 h-5 text-blue-400" />, description: 'Connect an existing website to MecoPay through integration endpoints.', example: 'A React or WordPress checkout sends an order and receives payment status.' },
+        { id: 'payment-gateway', name: 'Payment System: API Checkout', price: 100, icon: <Wallet className="w-5 h-5 text-emerald-400" />, description: 'Embed payment initiation and status handling into your own website or app.', example: 'A buyer clicks Pay, completes payment, and your server confirms the order.' },
+        { id: 'payment-links', name: 'Payment System: Payment Links', price: 50, icon: <LinkIcon className="w-5 h-5 text-pink-400" />, description: 'Create a hosted payment page and share one link through social media or messaging.', example: 'Send a ৳500 course link in Messenger and receive a payment notification.' },
+        { id: 'no-code-checkout', name: 'Payment System: No-Code Checkout', price: 75, icon: <CheckCircle2 className="w-5 h-5 text-amber-400" />, description: 'Use a ready checkout flow without building a payment page yourself.', example: 'Create a product, set a price, and publish a checkout button.' },
+        { id: 'courier', name: 'Courier & Order Flow', price: 75, icon: <ArrowRight className="w-5 h-5 text-orange-400" />, description: 'Connect confirmed order data to supported courier workflows.', example: 'A confirmed COD order is prepared for courier handoff from the dashboard.' },
+        { id: 'messaging', name: 'SMS + WhatsApp Notifications', price: 100, icon: <PlayCircle className="w-5 h-5 text-green-400" />, description: 'Add configured customer and merchant notifications around payment events.', example: 'The merchant receives a payment alert while the customer receives an update.' },
+        { id: 'ai-agent', name: 'AI Sales Agent', price: 150, icon: <Crown className="w-5 h-5 text-fuchsia-400" />, description: 'Add an assisted sales conversation layer on supported channels.', example: 'A visitor asks about delivery and the agent guides them to a product or link.' }
       ];
+      const selectedFeatures = buildFeatures.filter((feature) => selectedFeatureIds.includes(feature.id));
+      const monthlyTotal = selectedFeatures.reduce((total, feature) => total + feature.price, 0);
+      const planTotal = isYearly ? monthlyTotal * 12 * 0.9 : monthlyTotal;
 
       return (
         <div className="max-w-6xl mx-auto">
@@ -1485,79 +1450,40 @@ export default function DashboardShell() {
 
           
           <div className="flex flex-col items-center justify-center gap-6 mb-10 mt-4">
-            <h3 className="text-2xl font-bold text-white w-full text-left">Upgrade Plan</h3>
+            <div className="w-full text-left">
+              <p className="text-xs uppercase tracking-wider text-blue-400 font-bold">Flexible service selection</p>
+              <h3 className="text-3xl font-black text-white mt-2">Build Your Own Plan</h3>
+              <p className="text-slate-400 mt-2 max-w-3xl">Select individual services instead of paying for features you do not need. Each card explains the use case and gives a practical example.</p>
+            </div>
             <div className="inline-flex items-center p-1.5 bg-slate-900 border border-slate-800 rounded-xl relative w-full max-w-xs">
-              <button 
-                onClick={() => setIsYearly(false)}
-                className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${!isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}
-              >
-                Monthly
-              </button>
-              <button 
-                onClick={() => setIsYearly(true)}
-                className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}
-              >
-                Yearly
-              </button>
-              <div 
-                className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-slate-700 rounded-lg transition-all duration-300 ease-out shadow-sm ${isYearly ? 'translate-x-[calc(100%-1px)]' : 'translate-x-1'}`}
-              ></div>
-              <div className="absolute -top-3 -right-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">
-                Save 10%
-              </div>
+              <button onClick={() => setIsYearly(false)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${!isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Monthly</button>
+              <button onClick={() => setIsYearly(true)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Yearly</button>
+              <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-slate-700 rounded-lg transition-transform ${isYearly ? 'translate-x-[calc(100%-1px)]' : 'translate-x-1'}`}></div>
+              <div className="absolute -top-3 -right-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-3 py-1 rounded-full">Save 10%</div>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-            {plans.map((plan, idx) => (
-              <div 
-                key={idx} 
-                className={`relative flex flex-col p-6 rounded-2xl border transition-all duration-300 hover:shadow-xl group ${
-                  plan.popular 
-                    ? 'bg-slate-900/80 border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.15)] scale-[1.02] md:-translate-y-2' 
-                    : 'bg-slate-900/40 border-slate-800 hover:border-slate-600'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-                    MOST POPULAR
-                  </div>
-                )}
-                
-                <div className="flex justify-between items-center mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shadow-inner">
-                    {plan.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                </div>
-                
-                <div className="mb-6 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold text-white">৳{isYearly ? plan.yearlyPrice : plan.monthlyPrice}</span>
-                  <span className="text-sm text-slate-400 font-medium">/{isYearly ? 'yr' : 'mo'}</span>
-                </div>
-                
-                <ul className="space-y-3 mb-8 flex-1">
-                  {plan.features.map((feature, fIdx) => (
-                    <li key={fIdx} className="flex items-start text-sm text-slate-300">
-                      <CheckCircle2 className={`w-5 h-5 mr-3 shrink-0 ${plan.popular ? 'text-indigo-400' : 'text-emerald-400'}`} />
-                      <span className="leading-tight pt-0.5">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <button 
-                  className={`w-full py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${
-                    plan.popular
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-900/20'
-                      : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
-                  }`}
-                >
-                  {plan.name === 'Free Trial' ? 'Current Plan' : 'Select Plan'}
-                </button>
-              </div>
-            ))}
+          <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
+            <div className="grid md:grid-cols-2 gap-4">
+              {buildFeatures.map((feature) => {
+                const selected = selectedFeatureIds.includes(feature.id);
+                return <button key={feature.id} onClick={() => setSelectedFeatureIds((current) => selected ? current.filter((id) => id !== feature.id) : [...current, feature.id])} className={`text-left rounded-2xl border p-5 transition-all ${selected ? 'border-indigo-500/70 bg-indigo-500/10 shadow-lg shadow-indigo-950/30' : 'border-slate-800 bg-slate-900/50 hover:border-slate-600'}`}>
+                  <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">{feature.icon}</span><span className="font-bold text-white">{feature.name}</span></div><span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selected ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-600 text-transparent'}`}>✓</span></div>
+                  <p className="text-sm text-slate-300 mt-4 leading-relaxed">{feature.description}</p>
+                  <p className="text-xs text-slate-500 mt-3 leading-relaxed"><strong className="text-slate-400">Example:</strong> {feature.example}</p>
+                  <p className="text-sm text-indigo-300 font-bold mt-4">From ৳{feature.price}/mo</p>
+                </button>;
+              })}
+            </div>
+            <aside className="lg:sticky lg:top-28 rounded-2xl border border-indigo-500/30 bg-gradient-to-b from-indigo-950/60 to-slate-900 p-6">
+              <p className="text-xs uppercase tracking-wider text-indigo-300 font-bold">Selected services</p>
+              <h3 className="text-2xl font-black text-white mt-2">{selectedFeatures.length} services</h3>
+              <div className="my-6 flex items-end gap-2"><span className="text-4xl font-black text-white">৳{planTotal.toLocaleString()}</span><span className="text-sm text-slate-400 mb-1">/{isYearly ? 'year' : 'month'}</span></div>
+              <div className="space-y-2 border-y border-slate-800 py-4 mb-6">{selectedFeatures.length ? selectedFeatures.map((feature) => <div key={feature.id} className="flex justify-between gap-3 text-sm"><span className="text-slate-300">{feature.name}</span><span className="text-slate-400">৳{isYearly ? Math.round(feature.price * 12 * 0.9).toLocaleString() : feature.price}</span></div>) : <p className="text-sm text-slate-500">Select a service to start building your plan.</p>}</div>
+              <button className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-colors">Request this plan</button>
+              <p className="text-[11px] text-slate-500 mt-4 leading-relaxed">Illustrative starting prices are shown for planning. Processing or third-party usage charges may be separate where applicable.</p>
+            </aside>
           </div>
-        </div>
+          </div>
       );
     }
     

@@ -37,6 +37,7 @@ export default function Login() {
   const [isYearly, setIsYearly] = useState(false);
   const [showIframeWarning, setShowIframeWarning] = useState(false);
   const [currentChunk, setCurrentChunk] = useState(0);
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['payment-links']);
 
   useEffect(() => {
     // Calculate total time needed for the current chunk to finish its animation
@@ -70,57 +71,21 @@ export default function Login() {
     if (error) console.error("Error logging in:", error.message);
   };
 
-  const plans = [
-    {
-      name: "Free Trial",
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      icon: <Zap className="w-6 h-6 text-slate-400" />,
-      accent: "from-slate-600 to-slate-800",
-      features: ["2 Days Validity", "1 Brand", "1 Custom Website Integration or 1 No Code Website Integration", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Basic API Access", "Unlimited Transactions"]
-    },
-    {
-      name: "Basic",
-      monthlyPrice: 100,
-      yearlyPrice: 1080,
-      icon: <ShieldCheck className="w-6 h-6 text-blue-400" />,
-      accent: "from-blue-500 to-cyan-600",
-      features: ["1 Brand", "1 Custom Website Integration or 1 No Code Website Integration", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Standard Support"]
-    },
-    {
-      name: "Starter",
-      monthlyPrice: 200,
-      yearlyPrice: 2160,
-      icon: <Rocket className="w-6 h-6 text-indigo-400" />,
-      accent: "from-indigo-500 to-purple-600",
-      popular: true,
-      features: ["2 Brands", "Mix of 2 Custom or No Code Website Integrations", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Premium Themes"]
-    },
-    {
-      name: "Pro",
-      monthlyPrice: 300,
-      yearlyPrice: 3240,
-      icon: <Globe className="w-6 h-6 text-pink-400" />,
-      accent: "from-pink-500 to-rose-600",
-      features: ["3 Brands", "Mix of 3 Custom or No Code Website Integrations", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Smart Volume Routing"]
-    },
-    {
-      name: "Scale",
-      monthlyPrice: 400,
-      yearlyPrice: 4320,
-      icon: <Wallet className="w-6 h-6 text-teal-400" />,
-      accent: "from-teal-400 to-emerald-600",
-      features: ["4 Brands", "Mix of 4 Custom or No Code Website Integrations", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Priority Routing"]
-    },
-    {
-      name: "Business",
-      monthlyPrice: 500,
-      yearlyPrice: 5400,
-      icon: <Crown className="w-6 h-6 text-amber-400" />,
-      accent: "from-amber-400 to-orange-600",
-      features: ["5 Brands", "Mix of 5 Custom or No Code Website Integrations", "Unlimited Posts & Products", "Unlimited Payment Links", "Custom Domain Support", "Full API Access", "Unlimited Transactions", "Dedicated Manager"]
-    }
+  const buildFeatures = [
+    { id: 'business-email', name: 'Business Email', price: 50, icon: <ShieldCheck className="w-5 h-5 text-cyan-400" />, description: 'Use branded addresses such as hello@yourbrand.com for professional sending and receiving.', example: 'Example: sales@acme.com receives an enquiry and support@acme.com replies from the same branded domain.' },
+    { id: 'custom-domain', name: 'Custom Domain', price: 100, icon: <Globe className="w-5 h-5 text-indigo-400" />, description: 'Connect a human-readable domain to your website instead of relying only on a platform subdomain.', example: 'Example: publish your store at www.acme.com and use shop.acme.com for a campaign.' },
+    { id: 'no-code-website', name: 'No-Code Website', price: 150, icon: <Rocket className="w-5 h-5 text-purple-400" />, description: 'Create and manage a storefront without writing code, including posts, products, branding, and content.', example: 'Example: a course seller publishes a landing page and product posts from the dashboard.' },
+    { id: 'custom-website-api', name: 'Custom Website + API', price: 200, icon: <Zap className="w-5 h-5 text-blue-400" />, description: 'Connect an existing website to MecoPay through API or integration endpoints.', example: 'Example: a React or WordPress checkout sends an order request and receives payment status.' },
+    { id: 'payment-gateway', name: 'Payment System: API Checkout', price: 100, icon: <Wallet className="w-5 h-5 text-emerald-400" />, description: 'Embed payment initiation and status handling into your own website or application.', example: 'Example: a buyer clicks Pay on your store, completes payment, and your server confirms the order.' },
+    { id: 'payment-links', name: 'Payment System: Payment Links', price: 50, icon: <LinkIcon className="w-5 h-5 text-pink-400" />, description: 'Create a hosted payment page and share one link through social media, email, or messaging—no code required.', example: 'Example: send a ৳500 course link in Facebook Messenger and receive a payment notification.' },
+    { id: 'no-code-checkout', name: 'Payment System: No-Code Checkout', price: 75, icon: <CheckCircle2 className="w-5 h-5 text-amber-400" />, description: 'Use a ready checkout flow for products or services when you do not want to build a payment page.', example: 'Example: create a product, set a price, and publish a checkout button without developer work.' },
+    { id: 'courier', name: 'Courier & Order Flow', price: 75, icon: <ArrowRight className="w-5 h-5 text-orange-400" />, description: 'Connect order data to supported courier workflows so confirmed orders can move to delivery.', example: 'Example: a paid or confirmed COD order is prepared for courier handoff from the dashboard.' },
+    { id: 'messaging', name: 'SMS + WhatsApp Notifications', price: 100, icon: <PlayCircle className="w-5 h-5 text-green-400" />, description: 'Add customer and merchant notifications around order or payment events where configured.', example: 'Example: the merchant receives a payment alert while the customer receives an order update.' },
+    { id: 'ai-agent', name: 'AI Sales Agent', price: 150, icon: <Crown className="w-5 h-5 text-fuchsia-400" />, description: 'Add an assisted sales conversation layer for product questions and order intent on supported channels.', example: 'Example: a visitor asks about delivery and the agent guides them to the right product or link.' }
   ];
+  const selectedFeatures = buildFeatures.filter((feature) => selectedFeatureIds.includes(feature.id));
+  const monthlyTotal = selectedFeatures.reduce((total, feature) => total + feature.price, 0);
+  const planTotal = isYearly ? monthlyTotal * 12 * 0.9 : monthlyTotal;
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans selection:bg-blue-500/30 overflow-x-hidden relative">
@@ -317,86 +282,39 @@ export default function Login() {
         </div>
       </section>
 
-      {/* Pricing Section (Clean & Professional) */}
-      <section id="pricing" className="relative z-10 py-24 px-6 max-w-7xl mx-auto">
-        <div className="flex flex-col items-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 tracking-tight text-center">
-            Scale on your terms
-          </h2>
-          
-          {/* Custom Pill Toggle */}
-          <div className="inline-flex items-center p-1 bg-neutral-900 border border-neutral-800 rounded-lg relative">
-            <button 
-              onClick={() => setIsYearly(false)}
-              className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium transition-all duration-300 ${!isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}
-            >
-              Monthly
-            </button>
-            <button 
-              onClick={() => setIsYearly(true)}
-              className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium transition-all duration-300 ${isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}
-            >
-              Yearly
-            </button>
-            <div 
-              className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-neutral-700 rounded-md transition-all duration-300 ease-out shadow-sm ${isYearly ? 'translate-x-[calc(100%-4px)]' : 'translate-x-0'}`}
-            ></div>
-            
-            {/* Minimal Discount Tag */}
-            <div className="absolute -top-3 -right-4 bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
-              Save 10%
-            </div>
+      {/* Build Your Own Plan */}
+      <section id="pricing" className="relative z-10 py-24 px-4 sm:px-6 max-w-7xl mx-auto">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-blue-300">Flexible business pricing</div>
+          <h2 className="text-3xl md:text-5xl font-black text-white mt-5 mb-4 tracking-tight">Build Your Own Plan</h2>
+          <p className="text-neutral-400 text-base md:text-lg">Choose only the services your business needs. Each feature explains what it does and where it fits in your workflow.</p>
+          <div className="inline-flex items-center p-1 mt-7 bg-neutral-900 border border-neutral-800 rounded-lg relative">
+            <button onClick={() => setIsYearly(false)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${!isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Monthly</button>
+            <button onClick={() => setIsYearly(true)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Yearly</button>
+            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-neutral-700 rounded-md transition-transform ${isYearly ? 'translate-x-[calc(100%-4px)]' : ''}`}></div>
+            <div className="absolute -top-3 -right-4 bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">Save 10%</div>
           </div>
         </div>
-
-        {/* Bento/Grid Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-          {plans.map((plan, idx) => (
-            <div 
-              key={idx} 
-              className={`relative flex flex-col bg-neutral-900 border ${plan.popular ? 'border-blue-500/50 ring-1 ring-blue-500/20' : 'border-neutral-800'} rounded-2xl p-6 transition-all hover:bg-neutral-800/80`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] uppercase tracking-wider font-bold px-3 py-1 rounded-full shadow-sm">
-                  Most Popular
-                </div>
-              )}
-              
-              <div className="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center mb-6 border border-neutral-700">
-                {plan.icon}
-              </div>
-              
-              <h3 className="text-lg font-semibold text-white mb-2">{plan.name}</h3>
-              <div className="flex items-baseline gap-1 mb-8">
-                <span className="text-3xl font-bold text-white tracking-tight">
-                  ৳{isYearly ? plan.yearlyPrice : plan.monthlyPrice}
-                </span>
-                <span className="text-xs text-neutral-500 font-medium">
-                  /{isYearly ? 'yr' : 'mo'}
-                </span>
-              </div>
-              
-              <div className="space-y-4 mb-8 flex-1">
-                {plan.features.map((feature, fIdx) => (
-                  <div key={fIdx} className="flex items-start gap-3">
-                    <CheckCircle2 className="w-4 h-4 text-neutral-400 shrink-0 mt-0.5" />
-                    <span className="text-sm text-neutral-300 leading-tight">{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button 
-                onClick={handleGoogleLogin}
-                className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 group ${
-                  plan.popular 
-                  ? 'bg-blue-600 text-white hover:bg-blue-500' 
-                  : 'bg-neutral-800 text-white hover:bg-neutral-700 border border-neutral-700'
-                }`}
-              >
-                Choose {plan.name}
-              </button>
-            </div>
-          ))}
+        <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
+          <div className="grid md:grid-cols-2 gap-4">
+            {buildFeatures.map((feature) => {
+              const selected = selectedFeatureIds.includes(feature.id);
+              return <button key={feature.id} onClick={() => setSelectedFeatureIds((current) => selected ? current.filter((id) => id !== feature.id) : [...current, feature.id])} className={`text-left rounded-2xl border p-5 transition-all ${selected ? 'border-blue-500/70 bg-blue-500/10 shadow-lg shadow-blue-950/30' : 'border-neutral-800 bg-neutral-900/70 hover:border-neutral-600'}`}>
+                <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center">{feature.icon}</span><span className="font-bold text-white">{feature.name}</span></div><span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selected ? 'bg-blue-600 border-blue-500 text-white' : 'border-neutral-600 text-transparent'}`}>✓</span></div>
+                <p className="text-sm text-neutral-300 mt-4 leading-relaxed">{feature.description}</p>
+                <p className="text-xs text-neutral-500 mt-3 leading-relaxed"><strong className="text-neutral-400">Example:</strong> {feature.example.replace('Example: ', '')}</p>
+                <p className="text-sm text-blue-300 font-bold mt-4">From ৳{feature.price}/mo</p>
+              </button>;
+            })}
+          </div>
+          <aside className="lg:sticky lg:top-28 rounded-2xl border border-blue-500/30 bg-gradient-to-b from-blue-950/60 to-neutral-900 p-6">
+            <p className="text-xs uppercase tracking-wider text-blue-300 font-bold">Your custom plan</p>
+            <h3 className="text-2xl font-black text-white mt-2">{selectedFeatures.length} services selected</h3>
+            <div className="my-6 flex items-end gap-2"><span className="text-4xl font-black text-white">৳{planTotal.toLocaleString()}</span><span className="text-sm text-neutral-400 mb-1">/{isYearly ? 'year' : 'month'}</span></div>
+            <div className="space-y-2 border-y border-neutral-800 py-4 mb-6">{selectedFeatures.length ? selectedFeatures.map((feature) => <div key={feature.id} className="flex justify-between gap-3 text-sm"><span className="text-neutral-300">{feature.name}</span><span className="text-neutral-400">৳{isYearly ? Math.round(feature.price * 12 * 0.9).toLocaleString() : feature.price}</span></div>) : <p className="text-sm text-neutral-500">Select a service to start building your plan.</p>}</div>
+            <button onClick={handleGoogleLogin} className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors">Start with this plan</button>
+            <p className="text-[11px] text-neutral-500 mt-4 leading-relaxed">Illustrative starting prices are shown for planning. Payment processing or third-party usage charges may be separate where applicable.</p>
+          </aside>
         </div>
       </section>
 
