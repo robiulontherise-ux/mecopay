@@ -77,6 +77,7 @@ export default function DashboardShell() {
   const [language, setLanguage] = useState<string>('en');
   const [countries, setCountries] = useState<CountryLanguage[]>([]);
   const [selectedCountry, setSelectedCountry] = useState('');
+  const [detectedCountry, setDetectedCountry] = useState('');
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +94,7 @@ export default function DashboardShell() {
           data = await fallbackResponse.json();
         }
         const detected = ({ AF: 'africa', AS: 'asia', EU: 'europe', NA: 'north-america', SA: 'south-america', OC: 'oceania' } as Record<string, typeof continent>)[data.continent_code || ''] || 'asia';
-        if (!cancelled) { setContinent(detected); setSelectedCountry(data.country_code || ''); setLanguage('en'); }
+        if (!cancelled) { setContinent(detected); setDetectedCountry(data.country_code || ''); setSelectedCountry(data.country_code || ''); }
       } catch {
         if (!cancelled) setContinent('asia');
       } finally {
@@ -109,14 +110,15 @@ export default function DashboardShell() {
     loadCountriesByContinent(continent).then((list) => {
       if (cancelled) return;
       setCountries(list);
-      const nextCountry = list.some((country) => country.code === selectedCountry) ? selectedCountry : (list[0]?.code || '');
+      const preferredCountry = detectedCountry || selectedCountry;
+      const nextCountry = list.some((country) => country.code === preferredCountry) ? preferredCountry : (list[0]?.code || '');
       setSelectedCountry(nextCountry);
       setLanguage(getDefaultCountryLanguage(list.find((country) => country.code === nextCountry)));
     }).catch(() => {
       if (!cancelled) setCountries([]);
     });
     return () => { cancelled = true; };
-  }, [continent]);
+  }, [continent, detectedCountry]);
 
   const selectedCountryData = countries.find((country) => country.code === selectedCountry);
   const countryLanguageOptions = selectedCountryData ? getCountryLanguageOptions(selectedCountryData, countries) : getLanguageOptions(continent);
