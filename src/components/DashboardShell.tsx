@@ -20,7 +20,7 @@ import CourierService from "./payment-hub/CourierService";
 import DeveloperDocs from "./DeveloperDocs";
 import { downloadWordPressPluginZip } from '../lib/wordpressPluginSource';
 import { useNavigate } from 'react-router-dom';
-import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles, Link as LinkIcon } from 'lucide-react';
+import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles, Link as LinkIcon, ArrowRight, PlayCircle } from 'lucide-react';
 
 export default function DashboardShell() {
   const logoInputRef = useRef<HTMLInputElement>(null);
