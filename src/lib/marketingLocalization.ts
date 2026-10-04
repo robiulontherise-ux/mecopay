@@ -1,5 +1,6 @@
 export type Continent = 'asia' | 'africa' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'unknown';
 export type MarketingLanguage = 'en' | 'bn' | 'hi' | 'ar' | 'fr' | 'es' | 'pt';
+export type CountryLanguage = { code: string; name: string; languages: { code: string; name: string }[] };
 
 export const languageOptions: Record<Continent, { value: MarketingLanguage; label: string }[]> = {
   asia: [{ value: 'bn', label: 'বাংলা' }, { value: 'hi', label: 'हिन्दी' }, { value: 'en', label: 'English' }],
@@ -169,7 +170,35 @@ const tickerCopy: Record<MarketingLanguage, string> = {
 
 export const getLanguageOptions = (continent: Continent) => languageOptions[continent] || languageOptions.unknown;
 export const getDefaultLanguage = (continent: Continent) => defaultLanguage[continent] || 'en';
-export const getHeroChunks = (language: MarketingLanguage) => hero[language] || hero.en;
-export const getFeatureCopy = (id: string, language: MarketingLanguage): [string, string] => featureCopy[language]?.[id] || featureCopy.en[id] || ['', ''];
-export const getSectionCopy = (key: 'scale' | 'personal' | 'physical', language: MarketingLanguage) => sectionCopy[language]?.[key] || sectionCopy.en[key];
-export const getTickerCopy = (language: MarketingLanguage) => tickerCopy[language] || tickerCopy.en;
+export const getHeroChunks = (language: MarketingLanguage | string) => hero[language as MarketingLanguage] || hero.en;
+export const getFeatureCopy = (id: string, language: MarketingLanguage | string): [string, string] => featureCopy[language as MarketingLanguage]?.[id] || featureCopy.en[id] || ['', ''];
+export const getSectionCopy = (key: 'scale' | 'personal' | 'physical', language: MarketingLanguage | string) => sectionCopy[language as MarketingLanguage]?.[key] || sectionCopy.en[key];
+export const getTickerCopy = (language: MarketingLanguage | string) => tickerCopy[language as MarketingLanguage] || tickerCopy.en;
+
+export const getCountryLanguageOptions = (country?: CountryLanguage) => {
+  const supportedCodes: Record<string, MarketingLanguage> = { eng: 'en', ben: 'bn', hin: 'hi', ara: 'ar', fra: 'fr', fre: 'fr', spa: 'es', por: 'pt' };
+  const supportedNames: Record<string, MarketingLanguage> = { English: 'en', Bengali: 'bn', Hindi: 'hi', Arabic: 'ar', French: 'fr', Spanish: 'es', Portuguese: 'pt' };
+  const official = country?.languages?.map((language) => ({ value: supportedCodes[language.code] || supportedNames[language.name] || language.code, label: language.name })) || [];
+  const english = { value: 'en', label: 'English (default)' };
+  return [english, ...official.filter((language) => language.value !== 'en')];
+};
+
+export const loadCountriesByContinent = async (continent: Continent): Promise<CountryLanguage[]> => {
+  const response = await fetch('https://raw.githubusercontent.com/mledoze/countries/master/countries.json');
+  if (!response.ok) throw new Error('country list unavailable');
+  const data = await response.json() as { cca2?: string; name?: { common?: string }; region?: string; subregion?: string; languages?: Record<string, string> }[];
+  const belongsToContinent = (country: typeof data[number]) => {
+    if (continent === 'unknown') return false;
+    if (continent === 'north-america') return country.region === 'Americas' && country.subregion !== 'South America';
+    if (continent === 'south-america') return country.region === 'Americas' && country.subregion === 'South America';
+    return country.region === continent[0].toUpperCase() + continent.slice(1);
+  };
+  return data
+    .filter((country) => belongsToContinent(country) && country.cca2 && country.name?.common)
+    .map((country) => ({
+      code: country.cca2!,
+      name: country.name!.common!,
+      languages: Object.entries(country.languages || {}).map(([code, name]) => ({ code, name }))
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
