@@ -89,30 +89,41 @@ export default function MecoPayWebmailInbox({
     setSendingEmail(true);
     setComposeStatus({ type: 'idle', message: '' });
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // 1. Get Fresh JWT Access Token for Supabase JWT verification
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      if (!user) {
+      if (!token) {
         setComposeStatus({ type: 'error', message: 'User session not found. Please log in again.' });
         return;
       }
 
-      // Direct Supabase Client insert (100% Cloudflare Pages compatible)
-      const { error: insertError } = await supabase
-        .from('incoming_emails')
-        .insert({
-          user_id: user.id,
+      // 2. Invoke 'send-notification' Edge Function with JWT header
+      const { data: result, error: invokeError } = await supabase.functions.invoke('send-notification', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: {
+          action: 'send_mail',
           brand_id: brandId || null,
-          sender: composeFrom,
-          recipient: composeTo.trim(),
+          from: composeFrom,
+          to: composeTo.trim(),
           subject: composeSubject.trim(),
-          body_text: composeBody,
-          direction: 'outbound'
-        });
+          text: composeBody,
+          customer_email: composeTo.trim(),
+          recipient: composeTo.trim()
+        }
+      });
 
-      if (insertError) {
-        throw insertError;
+      if (invokeError) {
+        throw new Error(invokeError.message || 'Failed to dispatch email via Edge Function');
       }
 
+      if (!result?.success) {
+        throw new Error(result?.error || result?.message || 'Failed to dispatch email');
+      }
+
+      // 3. Edge Function confirmed actual delivery
       setComposeStatus({ type: 'success', message: 'Email sent successfully!' });
       loadEmails();
       setTimeout(() => {
