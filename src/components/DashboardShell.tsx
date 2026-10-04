@@ -21,6 +21,7 @@ import DeveloperDocs from "./DeveloperDocs";
 import { downloadWordPressPluginZip } from '../lib/wordpressPluginSource';
 import { useNavigate } from 'react-router-dom';
 import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles, Link as LinkIcon, ArrowRight, PlayCircle } from 'lucide-react';
+import { getDefaultLanguage, getFeatureCopy, getHeroChunks, getLanguageOptions, getSectionCopy, getTickerCopy, type Continent, type MarketingLanguage } from '../lib/marketingLocalization';
 
 export default function DashboardShell() {
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -71,8 +72,9 @@ export default function DashboardShell() {
 
   const [isYearly, setIsYearly] = useState(false);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
-  const [continent, setContinent] = useState<'asia' | 'africa' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'unknown'>('asia');
+  const [continent, setContinent] = useState<Continent>('asia');
   const [isDetectingContinent, setIsDetectingContinent] = useState(true);
+  const [language, setLanguage] = useState<MarketingLanguage>('en');
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
   useEffect(() => {
     let cancelled = false;
@@ -89,7 +91,7 @@ export default function DashboardShell() {
           data = await fallbackResponse.json();
         }
         const detected = ({ AF: 'africa', AS: 'asia', EU: 'europe', NA: 'north-america', SA: 'south-america', OC: 'oceania' } as Record<string, typeof continent>)[data.continent_code || ''] || 'asia';
-        if (!cancelled) setContinent(detected);
+        if (!cancelled) { setContinent(detected); setLanguage(getDefaultLanguage(detected)); }
       } catch {
         if (!cancelled) setContinent('asia');
       } finally {
@@ -1528,7 +1530,7 @@ export default function DashboardShell() {
               <h3 className="text-3xl font-black text-white mt-2">Build Your Own Plan</h3>
               <p className="text-slate-400 mt-2 max-w-3xl">Select individual services instead of paying for features you do not need. Each card explains the use case and gives a practical example.</p>
             </div>
-            <div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400'}`}>যাঁদের website নেই (No-Code)</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-slate-900 text-slate-400'}`}>যাঁদের website আছে (Custom)</button></div><div className="flex justify-start mb-3"><span className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300">{isDetectingContinent ? 'Detecting your continent…' : `Showing pricing for ${continentLabel}`}</span></div>
+            <div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400'}`}>No-Code Website</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-slate-900 text-slate-400'}`}>Custom Website</button></div><div className="flex flex-wrap justify-start items-center gap-2 mb-3"><span className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300">{isDetectingContinent ? 'Detecting your continent…' : `Showing pricing for ${continentLabel}`}</span><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value as MarketingLanguage)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200">{getLanguageOptions(continent).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
             <div className="inline-flex items-center p-1.5 bg-slate-900 border border-slate-800 rounded-xl relative w-full max-w-xs">
               <button onClick={() => setIsYearly(false)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${!isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Monthly</button>
               <button onClick={() => setIsYearly(true)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Yearly</button>
@@ -1542,8 +1544,8 @@ export default function DashboardShell() {
                 const selected = feature.available && selectedFeatureIds.includes(feature.id);
                 return <button key={feature.id} disabled={!feature.available} onClick={() => feature.available && setSelectedFeatureIds((current) => selected ? current.filter((id) => id !== feature.id) : [...current, feature.id])} className={`text-left rounded-2xl border p-5 transition-all ${selected ? 'border-indigo-500/70 bg-indigo-500/10 shadow-lg shadow-indigo-950/30' : 'border-slate-800 bg-slate-900/50 hover:border-slate-600'}`}>
                   <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">{feature.icon}</span><span className="font-bold text-white">{feature.name}</span></div><span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selected ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-600 text-transparent'}`}>✓</span></div>
-                  <p className="text-sm text-slate-300 mt-4 leading-relaxed">{feature.description}</p>
-                  <p className="text-xs text-slate-500 mt-3 leading-relaxed"><strong className="text-slate-400">Example:</strong> {feature.example}</p>
+                  <p className="text-sm text-slate-300 mt-4 leading-relaxed">{getFeatureCopy(feature.id, language)[0]}</p>
+                  <p className="text-xs text-slate-500 mt-3 leading-relaxed"><strong className="text-slate-400">Example:</strong> {getFeatureCopy(feature.id, language)[1]}</p>
                   <p className="text-sm text-indigo-300 font-bold mt-4">{feature.available ? (feature.price === 0 ? 'FREE' : `$${feature.price}/mo`) : 'N/A'}</p>
                 </button>;
               })}

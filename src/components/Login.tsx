@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, ShieldCheck, Zap, Rocket, Globe, ArrowRight, Menu, Wallet, Crown, Link as LinkIcon, PlayCircle } from 'lucide-react';
+import { getDefaultLanguage, getFeatureCopy, getHeroChunks, getLanguageOptions, getSectionCopy, getTickerCopy, type Continent, type MarketingLanguage } from '../lib/marketingLocalization';
 
 const textChunks = [
   [
@@ -38,14 +39,15 @@ export default function Login() {
   const [showIframeWarning, setShowIframeWarning] = useState(false);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
-  const [continent, setContinent] = useState<'asia' | 'africa' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'unknown'>('asia');
+  const [continent, setContinent] = useState<Continent>('asia');
   const [isDetectingContinent, setIsDetectingContinent] = useState(true);
+  const [language, setLanguage] = useState<MarketingLanguage>('en');
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
   useEffect(() => {
     // Calculate total time needed for the current chunk to finish its animation
     // Duration is 2.0s, delay is 0.5 + lineIndex * 2.0
     // We add 1.0s extra reading time after the last line finishes
-    const numLines = textChunks[currentChunk].length;
+    const numLines = getHeroChunks(language)[currentChunk].length;
     const animationTimeMs = (0.5 + (numLines - 1) * 2.0 + 2.0 + 1.0) * 1000;
     
     const timeout = setTimeout(() => {
@@ -53,7 +55,7 @@ export default function Login() {
     }, animationTimeMs);
     
     return () => clearTimeout(timeout);
-  }, [currentChunk]);
+  }, [currentChunk, language]);
 
   const handleGoogleLogin = async () => {
     if (window.self !== window.top) {
@@ -145,7 +147,7 @@ export default function Login() {
           data = await fallbackResponse.json();
         }
         const detected = ({ AF: 'africa', AS: 'asia', EU: 'europe', NA: 'north-america', SA: 'south-america', OC: 'oceania' } as Record<string, typeof continent>)[data.continent_code || ''] || 'asia';
-        if (!cancelled) setContinent(detected);
+        if (!cancelled) { setContinent(detected); setLanguage(getDefaultLanguage(detected)); }
       } catch {
         if (!cancelled) setContinent('asia');
       } finally {
@@ -212,7 +214,7 @@ export default function Login() {
               transition={{ duration: 0.25 }}
               className="absolute inset-0 flex flex-col items-center justify-start sm:justify-center pt-8 sm:pt-0 space-y-2 md:space-y-4 w-full text-center"
             >
-              {textChunks[currentChunk] && textChunks[currentChunk].map((line, lineIndex) => {
+              {getHeroChunks(language)[currentChunk] && getHeroChunks(language)[currentChunk].map((line, lineIndex) => {
                 const isLongText = currentChunk === 1 && lineIndex >= 2;
                 return (
                 <div key={lineIndex} className="relative inline-block py-1 md:py-2 px-1 md:px-2">
@@ -318,8 +320,8 @@ export default function Login() {
              transition={{ ease: "linear", duration: 35, repeat: Infinity }}
              className="flex w-max whitespace-nowrap gap-16"
            >
-             <span className="text-xl md:text-3xl font-bold text-neutral-300">১. পার্সোনাল MFS: যাদের Trade License বা TIN Certificate নেই তাদের জন্য। ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট সেল, ফ্রড অর্ডার কমাতে অ্যাডভান্স পেমেন্ট রিসিভ করুন। <span className="mx-8 text-pink-500/50">•</span> ২. মার্চেন্ট MFS/Bank/Card: Trade License ধারীদের জন্য। আনলিমিটেড পেমেন্ট রিসিভ, ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট সেল এবং অ্যাডভান্স পেমেন্ট সিস্টেম। <span className="mx-8 text-pink-500/50">•</span> ৩. বাংলা QR: ফিজিক্যাল শপ বা শোরুমে বাংলা QR দিয়ে পেমেন্ট নিন ও ডিজিটাল হিসাব রাখুন। ফিজিক্যাল শপের পাশাপাশি অনলাইনেও সেল ও আইডেন্টিটি তৈরি করুন। <span className="mx-8 text-pink-500/50">•</span></span>
-             <span className="text-xl md:text-3xl font-bold text-neutral-300">১. পার্সোনাল MFS: যাদের Trade License বা TIN Certificate নেই তাদের জন্য। ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট সেল, ফ্রড অর্ডার কমাতে অ্যাডভান্স পেমেন্ট রিসিভ করুন। <span className="mx-8 text-pink-500/50">•</span> ২. মার্চেন্ট MFS/Bank/Card: Trade License ধারীদের জন্য। আনলিমিটেড পেমেন্ট রিসিভ, ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট সেল এবং অ্যাডভান্স পেমেন্ট সিস্টেম। <span className="mx-8 text-pink-500/50">•</span> ৩. বাংলা QR: ফিজিক্যাল শপ বা শোরুমে বাংলা QR দিয়ে পেমেন্ট নিন ও ডিজিটাল হিসাব রাখুন। ফিজিক্যাল শপের পাশাপাশি অনলাইনেও সেল ও আইডেন্টিটি তৈরি করুন। <span className="mx-8 text-pink-500/50">•</span></span>
+             <span className="text-xl md:text-3xl font-bold text-neutral-300">{getTickerCopy(language)}</span>
+             <span className="text-xl md:text-3xl font-bold text-neutral-300">{getTickerCopy(language)}</span>
            </motion.div>
         </div>
         
@@ -329,28 +331,19 @@ export default function Login() {
              <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                <svg className="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
              </div>
-             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">আনলিমিটেড স্কেলিং</h3>
-             <p className="text-lg text-neutral-400 leading-relaxed">
-               যাদের Trade License ও TIN Certificate আছে, তারা মার্চেন্ট MFS, ব্যাংক বা কার্ড দিয়ে লিমিট ছাড়া পেমেন্ট রিসিভ করুন। ডিজিটাল ও ই-কমার্স ব্যবসার জন্য সম্পূর্ণ অটোমেশন।
-             </p>
+             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">{getSectionCopy('scale', language)[0]}</h3><p className="text-lg text-neutral-400 leading-relaxed">{getSectionCopy('scale', language)[1]}</p>
            </div>
            <div className="bg-neutral-900/80 p-6 md:p-8 rounded-2xl border border-neutral-800 transition-all hover:border-pink-500/30 hover:bg-neutral-800/80 group">
              <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                <svg className="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
              </div>
-             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">Trade License নেই?</h3>
-             <p className="text-lg text-neutral-400 leading-relaxed">
-               যাদের Trade License বা TIN Certificate নেই, তারা পার্সোনাল MFS দিয়ে খুব সহজেই পেমেন্ট রিসিভ করা শুরু করুন। আপনার ডিজিটাল আইডেন্টিটি তৈরি করুন ও ই-কমার্স শুরু করুন কোনো ঝামেলা ছাড়াই।
-             </p>
+             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">{getSectionCopy('personal', language)[0]}</h3><p className="text-lg text-neutral-400 leading-relaxed">{getSectionCopy('personal', language)[1]}</p>
            </div>
            <div className="bg-neutral-900/80 p-6 md:p-8 rounded-2xl border border-neutral-800 transition-all hover:border-pink-500/30 hover:bg-neutral-800/80 group">
              <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                <svg className="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
              </div>
-             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">ফিজিক্যাল শপ ও অনলাইন</h3>
-             <p className="text-lg text-neutral-400 leading-relaxed">
-               যাদের ফিজিক্যাল দোকান বা চেম্বার আছে, তারা ডিজিটাল হিসাব রাখার পাশাপাশি অনলাইনেও প্রোডাক্ট সেল করতে পারবেন। সাথে থাকছে বাংলা QR দিয়ে সরাসরি পেমেন্ট নেয়ার সুবিধা।
-             </p>
+             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">{getSectionCopy('physical', language)[0]}</h3><p className="text-lg text-neutral-400 leading-relaxed">{getSectionCopy('physical', language)[1]}</p>
            </div>
         </div>
       </section>
@@ -361,8 +354,8 @@ export default function Login() {
           <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-blue-300">Flexible business pricing</div>
           <h2 className="text-3xl md:text-5xl font-black text-white mt-5 mb-4 tracking-tight">Build Your Own Plan</h2>
           <p className="text-neutral-400 text-base md:text-lg">Choose only the services your business needs. Each feature explains what it does and where it fits in your workflow.</p>
-          <div className="flex flex-wrap justify-center gap-2 mt-7 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-blue-600 text-white' : 'bg-neutral-900 text-neutral-400'}`}>যাঁদের website নেই (No-Code)</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-neutral-900 text-neutral-400'}`}>যাঁদের website আছে (Custom)</button></div>
-          <div className="flex justify-center mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your continent…' : `Showing pricing for ${continentLabel}`}</span></div>
+          <div className="flex flex-wrap justify-center gap-2 mt-7 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-blue-600 text-white' : 'bg-neutral-900 text-neutral-400'}`}>No-Code Website</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-neutral-900 text-neutral-400'}`}>Custom Website</button></div>
+          <div className="flex flex-wrap justify-center items-center gap-2 mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your continent…' : `Showing pricing for ${continentLabel}`}</span><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value as MarketingLanguage)} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200">{getLanguageOptions(continent).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
           <div className="inline-flex items-center p-1 mt-7 bg-neutral-900 border border-neutral-800 rounded-lg relative">
             <button onClick={() => setIsYearly(false)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${!isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Monthly</button>
             <button onClick={() => setIsYearly(true)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Yearly</button>
@@ -376,8 +369,8 @@ export default function Login() {
               const selected = feature.available && selectedFeatureIds.includes(feature.id);
               return <button key={feature.id} disabled={!feature.available} onClick={() => feature.available && setSelectedFeatureIds((current) => selected ? current.filter((id) => id !== feature.id) : [...current, feature.id])} className={`text-left rounded-2xl border p-5 transition-all ${selected ? 'border-blue-500/70 bg-blue-500/10 shadow-lg shadow-blue-950/30' : 'border-neutral-800 bg-neutral-900/70 hover:border-neutral-600'}`}>
                 <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center">{feature.icon}</span><span className="font-bold text-white">{feature.name}</span></div><span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selected ? 'bg-blue-600 border-blue-500 text-white' : 'border-neutral-600 text-transparent'}`}>✓</span></div>
-                <p className="text-sm text-neutral-300 mt-4 leading-relaxed">{feature.description}</p>
-                <p className="text-xs text-neutral-500 mt-3 leading-relaxed"><strong className="text-neutral-400">Example:</strong> {feature.example.replace('Example: ', '')}</p>
+                <p className="text-sm text-neutral-300 mt-4 leading-relaxed">{getFeatureCopy(feature.id, language)[0]}</p>
+                <p className="text-xs text-neutral-500 mt-3 leading-relaxed"><strong className="text-neutral-400">Example:</strong> {getFeatureCopy(feature.id, language)[1].replace('Example: ', '')}</p>
                 <p className="text-sm text-blue-300 font-bold mt-4">{feature.available ? (feature.price === 0 ? 'FREE' : `$${feature.price}/mo`) : 'N/A'}</p>
               </button>;
             })}
