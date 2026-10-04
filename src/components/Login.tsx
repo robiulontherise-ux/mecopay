@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, ShieldCheck, Zap, Rocket, Globe, ArrowRight, Menu, Wallet, Crown, Link as LinkIcon, PlayCircle } from 'lucide-react';
-import { getCountryLanguageOptions, getFeatureCopy, getHeroChunks, getLanguageOptions, getSectionCopy, getTickerCopy, loadCountriesByContinent, type Continent, type CountryLanguage } from '../lib/marketingLocalization';
+import { getCountryLanguageOptions, getDefaultCountryLanguage, getFeatureCopy, getHeroChunks, getLanguageOptions, getSectionCopy, getTickerCopy, loadCountriesByContinent, type Continent, type CountryLanguage } from '../lib/marketingLocalization';
 
 const textChunks = [
   [
@@ -165,7 +165,9 @@ export default function Login() {
     loadCountriesByContinent(continent).then((list) => {
       if (cancelled) return;
       setCountries(list);
-      setSelectedCountry((current) => list.some((country) => country.code === current) ? current : (list[0]?.code || ''));
+      const nextCountry = list.some((country) => country.code === selectedCountry) ? selectedCountry : (list[0]?.code || '');
+      setSelectedCountry(nextCountry);
+      setLanguage(getDefaultCountryLanguage(list.find((country) => country.code === nextCountry)));
     }).catch(() => {
       if (!cancelled) setCountries([]);
     });
@@ -173,7 +175,7 @@ export default function Login() {
   }, [continent]);
 
   const selectedCountryData = countries.find((country) => country.code === selectedCountry);
-  const countryLanguageOptions = selectedCountryData ? getCountryLanguageOptions(selectedCountryData) : getLanguageOptions(continent);
+  const countryLanguageOptions = selectedCountryData ? getCountryLanguageOptions(selectedCountryData, countries) : getLanguageOptions(continent);
 
   useEffect(() => {
     setSelectedFeatureIds(pricingMode === 'nocode' ? ['no-code-website'] : ['custom-domain']);
@@ -372,7 +374,7 @@ export default function Login() {
           <h2 className="text-3xl md:text-5xl font-black text-white mt-5 mb-4 tracking-tight">Build Your Own Plan</h2>
           <p className="text-neutral-400 text-base md:text-lg">Choose only the services your business needs. Each feature explains what it does and where it fits in your workflow.</p>
           <div className="flex flex-wrap justify-center gap-2 mt-7 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-blue-600 text-white' : 'bg-neutral-900 text-neutral-400'}`}>No-Code Website</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-neutral-900 text-neutral-400'}`}>Custom Website</button></div>
-          <div className="flex flex-wrap justify-center items-center gap-2 mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your country…' : `Showing pricing for ${selectedCountryData?.name || continentLabel}`}</span><select aria-label="Country" value={selectedCountry} onChange={(event) => { setSelectedCountry(event.target.value); setLanguage('en'); }} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200"><option value="">Select country</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+          <div className="flex flex-wrap justify-center items-center gap-2 mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your country…' : `Showing pricing for ${selectedCountryData?.name || continentLabel}`}</span><select aria-label="Country" value={selectedCountry} onChange={(event) => { setSelectedCountry(event.target.value); setLanguage(getDefaultCountryLanguage(countries.find((country) => country.code === event.target.value))); }} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200"><option value="">Select country</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
           <div className="inline-flex items-center p-1 mt-7 bg-neutral-900 border border-neutral-800 rounded-lg relative">
             <button onClick={() => setIsYearly(false)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${!isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Monthly</button>
             <button onClick={() => setIsYearly(true)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Yearly</button>

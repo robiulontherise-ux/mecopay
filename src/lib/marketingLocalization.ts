@@ -168,19 +168,38 @@ const tickerCopy: Record<MarketingLanguage, string> = {
   pt: '1. Personal MFS: para usuários sem licença comercial ou TIN; venda produtos e aceite pagamentos antecipados. • 2. Merchant MFS/Bank/Card: para comerciantes registrados. • 3. Bangla QR: aceite pagamentos QR na loja e venda também online.'
 };
 
+const languageAliases: Record<string, MarketingLanguage> = {
+  eng: 'en', en: 'en', English: 'en', ben: 'bn', bn: 'bn', Bengali: 'bn', hin: 'hi', hi: 'hi', Hindi: 'hi', ara: 'ar', ar: 'ar', Arabic: 'ar', fra: 'fr', fre: 'fr', fr: 'fr', French: 'fr', spa: 'es', es: 'es', Spanish: 'es', por: 'pt', pt: 'pt', Portuguese: 'pt'
+};
+const globalLanguages = [
+  { value: 'en', label: 'English (default)' }, { value: 'ar', label: 'Arabic' }, { value: 'es', label: 'Spanish' }, { value: 'fr', label: 'French' },
+  { value: 'zh', label: 'Mandarin Chinese' }, { value: 'hi', label: 'Hindi' }, { value: 'bn', label: 'Bengali' }, { value: 'pt', label: 'Portuguese' },
+  { value: 'ru', label: 'Russian' }, { value: 'de', label: 'German' }, { value: 'ja', label: 'Japanese' }, { value: 'ko', label: 'Korean' }, { value: 'tr', label: 'Turkish' }
+];
+
+const canonicalLanguage = (code: string, name?: string) => languageAliases[code] || languageAliases[name || ''] || code;
+
 export const getLanguageOptions = (continent: Continent) => languageOptions[continent] || languageOptions.unknown;
 export const getDefaultLanguage = (continent: Continent) => defaultLanguage[continent] || 'en';
-export const getHeroChunks = (language: MarketingLanguage | string) => hero[language as MarketingLanguage] || hero.en;
-export const getFeatureCopy = (id: string, language: MarketingLanguage | string): [string, string] => featureCopy[language as MarketingLanguage]?.[id] || featureCopy.en[id] || ['', ''];
-export const getSectionCopy = (key: 'scale' | 'personal' | 'physical', language: MarketingLanguage | string) => sectionCopy[language as MarketingLanguage]?.[key] || sectionCopy.en[key];
-export const getTickerCopy = (language: MarketingLanguage | string) => tickerCopy[language as MarketingLanguage] || tickerCopy.en;
+export const getHeroChunks = (language: MarketingLanguage | string) => hero[canonicalLanguage(language) as MarketingLanguage] || hero.en;
+export const getFeatureCopy = (id: string, language: MarketingLanguage | string): [string, string] => featureCopy[canonicalLanguage(language) as MarketingLanguage]?.[id] || featureCopy.en[id] || ['', ''];
+export const getSectionCopy = (key: 'scale' | 'personal' | 'physical', language: MarketingLanguage | string) => sectionCopy[canonicalLanguage(language) as MarketingLanguage]?.[key] || sectionCopy.en[key];
+export const getTickerCopy = (language: MarketingLanguage | string) => tickerCopy[canonicalLanguage(language) as MarketingLanguage] || tickerCopy.en;
 
-export const getCountryLanguageOptions = (country?: CountryLanguage) => {
-  const supportedCodes: Record<string, MarketingLanguage> = { eng: 'en', ben: 'bn', hin: 'hi', ara: 'ar', fra: 'fr', fre: 'fr', spa: 'es', por: 'pt' };
-  const supportedNames: Record<string, MarketingLanguage> = { English: 'en', Bengali: 'bn', Hindi: 'hi', Arabic: 'ar', French: 'fr', Spanish: 'es', Portuguese: 'pt' };
-  const official = country?.languages?.map((language) => ({ value: supportedCodes[language.code] || supportedNames[language.name] || language.code, label: language.name })) || [];
-  const english = { value: 'en', label: 'English (default)' };
-  return [english, ...official.filter((language) => language.value !== 'en')];
+export const getCountryLanguageOptions = (country?: CountryLanguage, continentCountries: CountryLanguage[] = []) => {
+  const allLanguages = [...(country?.languages || []), ...continentCountries.flatMap((item) => item.languages)];
+  const options = new Map<string, { value: string; label: string }>();
+  allLanguages.forEach((language) => {
+    const value = canonicalLanguage(language.code, language.name);
+    if (!options.has(value)) options.set(value, { value, label: language.name });
+  });
+  globalLanguages.forEach((language) => { if (!options.has(language.value)) options.set(language.value, language); });
+  return Array.from(options.values());
+};
+
+export const getDefaultCountryLanguage = (country?: CountryLanguage) => {
+  const first = country?.languages?.[0];
+  return first ? canonicalLanguage(first.code, first.name) : 'en';
 };
 
 export const loadCountriesByContinent = async (continent: Continent): Promise<CountryLanguage[]> => {

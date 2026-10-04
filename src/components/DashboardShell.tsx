@@ -21,7 +21,7 @@ import DeveloperDocs from "./DeveloperDocs";
 import { downloadWordPressPluginZip } from '../lib/wordpressPluginSource';
 import { useNavigate } from 'react-router-dom';
 import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles, Link as LinkIcon, ArrowRight, PlayCircle } from 'lucide-react';
-import { getCountryLanguageOptions, getFeatureCopy, getHeroChunks, getLanguageOptions, getSectionCopy, getTickerCopy, loadCountriesByContinent, type Continent, type CountryLanguage } from '../lib/marketingLocalization';
+import { getCountryLanguageOptions, getDefaultCountryLanguage, getFeatureCopy, getHeroChunks, getLanguageOptions, getSectionCopy, getTickerCopy, loadCountriesByContinent, type Continent, type CountryLanguage } from '../lib/marketingLocalization';
 
 export default function DashboardShell() {
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -109,7 +109,9 @@ export default function DashboardShell() {
     loadCountriesByContinent(continent).then((list) => {
       if (cancelled) return;
       setCountries(list);
-      setSelectedCountry((current) => list.some((country) => country.code === current) ? current : (list[0]?.code || ''));
+      const nextCountry = list.some((country) => country.code === selectedCountry) ? selectedCountry : (list[0]?.code || '');
+      setSelectedCountry(nextCountry);
+      setLanguage(getDefaultCountryLanguage(list.find((country) => country.code === nextCountry)));
     }).catch(() => {
       if (!cancelled) setCountries([]);
     });
@@ -117,7 +119,7 @@ export default function DashboardShell() {
   }, [continent]);
 
   const selectedCountryData = countries.find((country) => country.code === selectedCountry);
-  const countryLanguageOptions = selectedCountryData ? getCountryLanguageOptions(selectedCountryData) : getLanguageOptions(continent);
+  const countryLanguageOptions = selectedCountryData ? getCountryLanguageOptions(selectedCountryData, countries) : getLanguageOptions(continent);
 
   useEffect(() => {
     setSelectedFeatureIds(pricingMode === 'nocode' ? ['no-code-website'] : ['custom-domain']);
@@ -1547,7 +1549,7 @@ export default function DashboardShell() {
               <h3 className="text-3xl font-black text-white mt-2">Build Your Own Plan</h3>
               <p className="text-slate-400 mt-2 max-w-3xl">Select individual services instead of paying for features you do not need. Each card explains the use case and gives a practical example.</p>
             </div>
-            <div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400'}`}>No-Code Website</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-slate-900 text-slate-400'}`}>Custom Website</button></div><div className="flex flex-wrap justify-start items-center gap-2 mb-3"><span className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300">{isDetectingContinent ? 'Detecting your country…' : `Showing pricing for ${selectedCountryData?.name || continentLabel}`}</span><select aria-label="Country" value={selectedCountry} onChange={(event) => { setSelectedCountry(event.target.value); setLanguage('en'); }} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200"><option value="">Select country</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+            <div className="flex flex-wrap gap-2 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400'}`}>No-Code Website</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-slate-900 text-slate-400'}`}>Custom Website</button></div><div className="flex flex-wrap justify-start items-center gap-2 mb-3"><span className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300">{isDetectingContinent ? 'Detecting your country…' : `Showing pricing for ${selectedCountryData?.name || continentLabel}`}</span><select aria-label="Country" value={selectedCountry} onChange={(event) => { setSelectedCountry(event.target.value); setLanguage(getDefaultCountryLanguage(countries.find((country) => country.code === event.target.value))); }} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200"><option value="">Select country</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
             <div className="inline-flex items-center p-1.5 bg-slate-900 border border-slate-800 rounded-xl relative w-full max-w-xs">
               <button onClick={() => setIsYearly(false)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${!isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Monthly</button>
               <button onClick={() => setIsYearly(true)} className={`relative z-10 w-1/2 py-2 rounded-lg text-sm font-bold ${isYearly ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Yearly</button>
