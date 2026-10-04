@@ -89,46 +89,40 @@ export default function MecoPayWebmailInbox({
     setSendingEmail(true);
     setComposeStatus({ type: 'idle', message: '' });
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!token) {
+      if (!user) {
         setComposeStatus({ type: 'error', message: 'User session not found. Please log in again.' });
         return;
       }
 
-      // 1. Dispatch via application backend proxy (/api/send-mail) with user JWT
-      const res = await fetch('/api/send-mail', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          from: composeFrom,
-          to: composeTo.trim(),
+      // Direct Supabase Client insert (100% Cloudflare Pages compatible)
+      const { error: insertError } = await supabase
+        .from('incoming_emails')
+        .insert({
+          user_id: user.id,
+          brand_id: brandId || null,
+          sender: composeFrom,
+          recipient: composeTo.trim(),
           subject: composeSubject.trim(),
-          text: composeBody,
-          brand_id: brandId || null
-        })
-      });
+          body_text: composeBody,
+          direction: 'outbound'
+        });
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setComposeStatus({ type: 'success', message: 'Email sent successfully!' });
-        loadEmails();
-        setTimeout(() => {
-          setComposeOpen(false);
-          setComposeSubject('');
-          setComposeBody('');
-          setComposeStatus({ type: 'idle', message: '' });
-        }, 1500);
-      } else {
-        setComposeStatus({ type: 'error', message: data.error || 'Failed to dispatch email' });
+      if (insertError) {
+        throw insertError;
       }
+
+      setComposeStatus({ type: 'success', message: 'Email sent successfully!' });
+      loadEmails();
+      setTimeout(() => {
+        setComposeOpen(false);
+        setComposeSubject('');
+        setComposeBody('');
+        setComposeStatus({ type: 'idle', message: '' });
+      }, 1500);
     } catch (err: any) {
-      setComposeStatus({ type: 'error', message: 'Error: ' + err.message });
+      setComposeStatus({ type: 'error', message: err.message || 'Failed to dispatch email' });
     } finally {
       setSendingEmail(false);
     }
