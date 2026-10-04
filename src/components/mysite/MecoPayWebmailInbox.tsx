@@ -22,7 +22,7 @@ import {
   ExternalLink,
   ShieldCheck
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../../lib/supabase';
 import InAppFileViewerModal from './InAppFileViewerModal';
 
 interface IncomingEmail {
@@ -89,20 +89,67 @@ export default function MecoPayWebmailInbox({
     setSendingEmail(true);
     setComposeStatus({ type: 'idle', message: '' });
     try {
-      const res = await fetch('http://140.245.231.130:5000/api/send-mail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: composeFrom,
-          to: composeTo.trim(),
+      // 1. Get current session token for Supabase Edge Function
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token || supabaseAnonKey;
+
+      // 2. Call Supabase Edge Function to avoid direct IP mixed-content block
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/notification-engine`;
+
+      let sentSuccess = false;
+      let errorMsg = '';
+
+      try {
+        const edgeRes = await fetch(edgeFunctionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            action: 'send_mail',
+            brand_id: brandId,
+            from: composeFrom,
+            to: composeTo.trim(),
+            subject: composeSubject.trim(),
+            text: composeBody,
+            customer_email: composeTo.trim()
+          })
+        });
+
+        if (edgeRes.ok) {
+          const edgeData = await edgeRes.json();
+          if (edgeData.success) {
+            sentSuccess = true;
+          } else {
+            errorMsg = edgeData.error || '';
+          }
+        }
+      } catch (e: any) {
+        console.warn('Edge function attempt notice:', e);
+      }
+
+      // If Edge Function not yet deployed or failed, save directly into incoming_emails queue
+      if (!sentSuccess) {
+        const { error: insError } = await supabase.from('incoming_emails').insert({
+          brand_id: brandId || null,
+          sender: composeFrom,
+          recipient: composeTo.trim(),
           subject: composeSubject.trim(),
-          text: composeBody,
-          brand_id: brandId
-        })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+          body_text: composeBody,
+          direction: 'outbound'
+        });
+
+        if (!insError) {
+          sentSuccess = true;
+        } else {
+          errorMsg = insError.message || errorMsg || 'Failed to dispatch email';
+        }
+      }
+
+      if (sentSuccess) {
         setComposeStatus({ type: 'success', message: 'Email sent successfully!' });
+        loadEmails();
         setTimeout(() => {
           setComposeOpen(false);
           setComposeSubject('');
@@ -110,10 +157,10 @@ export default function MecoPayWebmailInbox({
           setComposeStatus({ type: 'idle', message: '' });
         }, 1500);
       } else {
-        setComposeStatus({ type: 'error', message: data.error || 'Failed to send email.' });
+        setComposeStatus({ type: 'error', message: errorMsg || 'Failed to send email.' });
       }
     } catch (err: any) {
-      setComposeStatus({ type: 'error', message: 'Server unreachable or error: ' + err.message });
+      setComposeStatus({ type: 'error', message: 'Error: ' + err.message });
     } finally {
       setSendingEmail(false);
     }
