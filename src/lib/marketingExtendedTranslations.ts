@@ -1,4 +1,6 @@
-export const extendedCopy = {
+import { additionalMarketingCopy } from './marketingAdditionalTranslations';
+
+const baseExtendedCopy = {
   "zh": {
     "hero": [
       [
@@ -492,3 +494,5 @@ export const extendedCopy = {
     "ticker": "1. Personal MFS: Trade License veya TIN'i olmayan kullanıcılar için. Dijital ve fiziki ürünler satın ve ön ödeme kabul et. • 2. Merchant MFS/Bank/Card: lisanslı satıcılar için. Sınırsız ödeme alın ve dijital ile fiziki ürünler satın. • 3. Bangla QR: fiziksel mağazalarda QR ödemelerini kabul edin ve online satış yaparken dijital kayıtları tutun."
   }
 } as const;
+
+export const extendedCopy = { ...baseExtendedCopy, ...additionalMarketingCopy } as const;

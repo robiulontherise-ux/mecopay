@@ -1,7 +1,7 @@
 import { extendedCopy } from './marketingExtendedTranslations';
 
 export type Continent = 'asia' | 'africa' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'unknown';
-export type MarketingLanguage = 'en' | 'bn' | 'hi' | 'ar' | 'fr' | 'es' | 'pt' | 'zh' | 'de' | 'ja' | 'ko' | 'ru' | 'tr';
+export type MarketingLanguage = 'en' | 'bn' | 'hi' | 'ar' | 'fr' | 'es' | 'pt' | 'zh' | 'de' | 'ja' | 'ko' | 'ru' | 'tr' | 'ta' | 'te' | 'ur' | 'it' | 'nl' | 'th' | 'vi' | 'uk' | 'pl' | 'el' | 'he' | 'ne' | 'si' | 'sv' | 'da';
 export type CountryLanguage = { code: string; name: string; languages: { code: string; name: string }[] };
 
 export const languageOptions: Record<Continent, { value: MarketingLanguage; label: string }[]> = {
@@ -183,12 +183,31 @@ const languageAliases: Record<string, MarketingLanguage> = {
   jpn: 'ja', ja: 'ja', japanese: 'ja',
   kor: 'ko', ko: 'ko', korean: 'ko',
   rus: 'ru', ru: 'ru', russian: 'ru',
-  tur: 'tr', tr: 'tr', turkish: 'tr'
+  tur: 'tr', tr: 'tr', turkish: 'tr',
+  tam: 'ta', ta: 'ta', tamil: 'ta',
+  tel: 'te', te: 'te', telugu: 'te',
+  urd: 'ur', ur: 'ur', urdu: 'ur',
+  ita: 'it', it: 'it', italian: 'it',
+  nld: 'nl', dut: 'nl', nl: 'nl', dutch: 'nl',
+  tha: 'th', th: 'th', thai: 'th',
+  vie: 'vi', vi: 'vi', vietnamese: 'vi',
+  ukr: 'uk', uk: 'uk', ukrainian: 'uk',
+  pol: 'pl', pl: 'pl', polish: 'pl',
+  ell: 'el', el: 'el', greek: 'el',
+  heb: 'he', he: 'he', hebrew: 'he',
+  nep: 'ne', ne: 'ne', nepali: 'ne',
+  sin: 'si', si: 'si', sinhala: 'si',
+  swe: 'sv', sv: 'sv', swedish: 'sv',
+  dan: 'da', da: 'da', danish: 'da'
 };
 const globalLanguages = [
   { value: 'en', label: 'English (default)' }, { value: 'ar', label: 'Arabic' }, { value: 'es', label: 'Spanish' }, { value: 'fr', label: 'French' },
   { value: 'zh', label: 'Mandarin Chinese' }, { value: 'hi', label: 'Hindi' }, { value: 'bn', label: 'Bengali' }, { value: 'pt', label: 'Portuguese' },
-  { value: 'ru', label: 'Russian' }, { value: 'de', label: 'German' }, { value: 'ja', label: 'Japanese' }, { value: 'ko', label: 'Korean' }, { value: 'tr', label: 'Turkish' }
+  { value: 'ru', label: 'Russian' }, { value: 'de', label: 'German' }, { value: 'ja', label: 'Japanese' }, { value: 'ko', label: 'Korean' }, { value: 'tr', label: 'Turkish' },
+  { value: 'ta', label: 'Tamil' }, { value: 'te', label: 'Telugu' }, { value: 'ur', label: 'Urdu' }, { value: 'it', label: 'Italian' },
+  { value: 'nl', label: 'Dutch' }, { value: 'th', label: 'Thai' }, { value: 'vi', label: 'Vietnamese' }, { value: 'uk', label: 'Ukrainian' },
+  { value: 'pl', label: 'Polish' }, { value: 'el', label: 'Greek' }, { value: 'he', label: 'Hebrew' }, { value: 'ne', label: 'Nepali' },
+  { value: 'si', label: 'Sinhala' }, { value: 'sv', label: 'Swedish' }, { value: 'da', label: 'Danish' }
 ];
 
 const canonicalLanguage = (code: string, name?: string): string => {

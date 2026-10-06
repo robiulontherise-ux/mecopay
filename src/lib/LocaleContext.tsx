@@ -17,7 +17,9 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 const continentFromCode: Record<string, Continent> = { AF: 'africa', AS: 'asia', EU: 'europe', NA: 'north-america', SA: 'south-america', OC: 'oceania' };
 const languageAliases: Record<string, string> = {
   eng: 'en', ben: 'bn', hin: 'hi', ara: 'ar', fra: 'fr', fre: 'fr', spa: 'es', por: 'pt',
-  zho: 'zh', chi: 'zh', deu: 'de', ger: 'de', jpn: 'ja', kor: 'ko', rus: 'ru', tur: 'tr'
+  zho: 'zh', chi: 'zh', deu: 'de', ger: 'de', jpn: 'ja', kor: 'ko', rus: 'ru', tur: 'tr',
+  tam: 'ta', tel: 'te', urd: 'ur', ita: 'it', nld: 'nl', dut: 'nl', tha: 'th', vie: 'vi',
+  ukr: 'uk', pol: 'pl', ell: 'el', heb: 'he', nep: 'ne', sin: 'si', swe: 'sv', dan: 'da'
 };
 
 const normalizeLanguage = (language: string) => {
@@ -78,7 +80,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = language;
-    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.dir = ['ar', 'he', 'ur'].includes(language) ? 'rtl' : 'ltr';
   }, [language]);
 
   const countryData = countries.find((item) => item.code === country);
