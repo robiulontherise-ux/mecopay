@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { ShieldCheck, X, Loader2, Lock, Copy, Clock, RefreshCw, AlertCircle, CheckCircle2, Flag, QrCode, ShoppingCart, AlertTriangle } from 'lucide-react';
+import LocaleSwitcher from '../LocaleSwitcher';
 
 // Brand Logos
 const LOGOS = {
@@ -960,6 +961,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">
+      <LocaleSwitcher className="w-full max-w-md mx-auto px-4 pt-3 justify-end" />
       <div className="max-w-md w-full mx-auto p-4 pt-8 pb-20 relative">
         
         {/* Language Toggle */}

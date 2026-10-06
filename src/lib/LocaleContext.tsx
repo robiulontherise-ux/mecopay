@@ -28,10 +28,10 @@ const normalizeLanguage = (language: string) => {
 };
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [continent, setContinent] = useState<Continent>('asia');
-  const [country, setCountryState] = useState('');
+  const [continent, setContinent] = useState<Continent>(() => (typeof window !== 'undefined' ? (window.localStorage.getItem('mecopay.continent') as Continent) || 'asia' : 'asia'));
+  const [country, setCountryState] = useState(() => (typeof window !== 'undefined' ? window.localStorage.getItem('mecopay.country') || '' : ''));
   const [detectedCountry, setDetectedCountry] = useState('');
-  const [language, setLanguageState] = useState('en');
+  const [language, setLanguageState] = useState(() => (typeof window !== 'undefined' ? window.localStorage.getItem('mecopay.language') || 'en' : 'en'));
   const [countries, setCountries] = useState<CountryLanguage[]>([]);
   const [isDetecting, setIsDetecting] = useState(true);
 
@@ -52,9 +52,17 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         const nextContinent = continentFromCode[data.continent_code || ''] || 'asia';
         const nextCountry = data.country_code || '';
-        setContinent(nextContinent);
+        const savedCountry = window.localStorage.getItem('mecopay.country');
+        const savedContinent = window.localStorage.getItem('mecopay.continent') as Continent | null;
+        const savedLanguage = window.localStorage.getItem('mecopay.language');
+        setContinent(savedContinent || nextContinent);
+        window.localStorage.setItem('mecopay.continent', savedContinent || nextContinent);
         setDetectedCountry(nextCountry);
-        setCountryState(nextCountry);
+        if (!savedCountry) {
+          setCountryState(nextCountry);
+          window.localStorage.setItem('mecopay.country', nextCountry);
+        }
+        if (savedLanguage) setLanguageState(normalizeLanguage(savedLanguage));
       } catch {
         if (!cancelled) setContinent('asia');
       } finally {
@@ -70,10 +78,10 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     loadCountriesByContinent(continent).then((list) => {
       if (cancelled) return;
       setCountries(list);
-      const preferred = detectedCountry || country;
+      const preferred = country || detectedCountry;
       const nextCountry = list.some((item) => item.code === preferred) ? preferred : (list[0]?.code || '');
       setCountryState(nextCountry);
-      setLanguageState(getDefaultCountryLanguage(list.find((item) => item.code === nextCountry)));
+      if (!window.localStorage.getItem('mecopay.language')) setLanguageState(getDefaultCountryLanguage(list.find((item) => item.code === nextCountry)));
     }).catch(() => { if (!cancelled) setCountries([]); });
     return () => { cancelled = true; };
   }, [continent, detectedCountry]);
@@ -81,16 +89,21 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = ['ar', 'he', 'ur'].includes(language) ? 'rtl' : 'ltr';
+    window.localStorage.setItem('mecopay.language', language);
   }, [language]);
 
   const countryData = countries.find((item) => item.code === country);
   const languageOptions = useMemo(() => getCountryLanguageOptions(countryData, countries), [countryData, countries]);
   const setCountry = (code: string) => {
     setCountryState(code);
-    setLanguageState(getDefaultCountryLanguage(countries.find((item) => item.code === code)));
+    window.localStorage.setItem('mecopay.country', code);
+    const nextLanguage = getDefaultCountryLanguage(countries.find((item) => item.code === code));
+    setLanguageState(nextLanguage);
   };
   const setLanguage = (nextLanguage: string) => {
-    setLanguageState(normalizeLanguage(nextLanguage));
+    const normalized = normalizeLanguage(nextLanguage);
+    setLanguageState(normalized);
+    window.localStorage.setItem('mecopay.language', normalized);
   };
 
   return <LocaleContext.Provider value={{ continent, country, language, countries, isDetecting, countryData, languageOptions, setCountry, setLanguage }}>{children}</LocaleContext.Provider>;

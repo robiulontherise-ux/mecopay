@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { ShieldAlert, ShieldCheck, ExternalLink, Loader2, Info, Send, Copy, Check, Lock } from 'lucide-react';
+import LocaleSwitcher from '../LocaleSwitcher';
 
 export default function AccessPage() {
   const { invoiceId } = useParams();
@@ -160,6 +161,7 @@ export default function AccessPage() {
   if (success && deliveryType === 'telegram') {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-between p-4 sm:p-6 text-white selection:bg-blue-500 selection:text-white">
+        <LocaleSwitcher className="w-full max-w-xl justify-end" />
         {/* Brand Header */}
         <header className="w-full max-w-xl flex items-center justify-between py-4 border-b border-slate-800/80">
           <div className="flex items-center gap-3">
@@ -250,6 +252,7 @@ export default function AccessPage() {
   if (success && deliveryType === 'tally' && contentUrl) {
     return (
       <div className="w-full h-screen flex flex-col bg-slate-950 overflow-hidden">
+        <LocaleSwitcher className="absolute top-2 right-4 z-20" />
         {/* Top Brand Header Bar */}
         <div className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-10 shadow-md">
           <div className="flex items-center gap-3">
@@ -306,6 +309,7 @@ export default function AccessPage() {
   if (success && contentUrl) {
     return (
       <div className="w-full h-screen flex flex-col bg-slate-950 overflow-hidden">
+        <LocaleSwitcher className="absolute top-2 right-4 z-20" />
         <div className="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-10 shadow-md">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-500/20 p-1.5 rounded-md">
@@ -342,6 +346,7 @@ export default function AccessPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+      <LocaleSwitcher className="absolute top-4 right-4" />
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50" />
         
@@ -375,4 +380,3 @@ export default function AccessPage() {
     </div>
   );
 }
-
