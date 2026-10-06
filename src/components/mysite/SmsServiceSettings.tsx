@@ -18,8 +18,9 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
   // 4 Primary Channels Switches
   const [whatsappEnabled, setWhatsappEnabled] = useState<boolean>(true);
   const [emailEnabled, setEmailEnabled] = useState<boolean>(true);
-  const [localSmsEnabled, setLocalSmsEnabled] = useState<boolean>(true);
+  const [localSmsEnabled, setLocalSmsEnabled] = useState<boolean>(false);
   const [internationalSmsEnabled, setInternationalSmsEnabled] = useState<boolean>(false);
+  const [internationalProvider, setInternationalProvider] = useState<'twilio' | 'infobip' | 'vonage' | 'messagebird' | 'custom'>('twilio');
 
   // SMS Sender Mode: Phone SIM vs Pure Cloud API
   const [smsSenderMode, setSmsSenderMode] = useState<'device_sim' | 'cloud_api'>('device_sim');
@@ -227,8 +228,9 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
       if (gw) {
         setWhatsappEnabled(gw.whatsapp_enabled !== false);
         setEmailEnabled(gw.email_notification_enabled !== false);
-        setLocalSmsEnabled(gw.fallback_to_sms !== false);
+        setLocalSmsEnabled(Boolean(gw.fallback_to_sms));
         setInternationalSmsEnabled(Boolean(gw.international_sms_enabled));
+        setInternationalProvider(gw.international_provider || 'twilio');
         setSmsSenderMode(gw.sms_sender_mode || 'device_sim');
         setCustomSmsApiUrl(gw.custom_sms_api_url || gw.sms_api_endpoint || '');
         setCustomSmsApiKey(gw.custom_sms_api_key || gw.sms_api_key || '');
@@ -381,6 +383,87 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
     }
   };
 
+  // Mutual Exclusion & Auto-Save on Channel Toggle
+  const handleToggleChannel = async (channel: 'whatsapp' | 'email' | 'local_sms' | 'global_sms') => {
+    if (!selectedBrandId) {
+      showToast('Please select a brand', 'error');
+      return;
+    }
+
+    let nextWa = whatsappEnabled;
+    let nextEmail = emailEnabled;
+    let nextLocalSms = localSmsEnabled;
+    let nextGlobalSms = internationalSmsEnabled;
+
+    if (channel === 'whatsapp') {
+      nextWa = !whatsappEnabled;
+      // If toggled ON and both Email and an SMS are currently on, turn off the SMS to obey rule
+      if (nextWa && nextEmail && (nextLocalSms || nextGlobalSms)) {
+        nextLocalSms = false;
+        nextGlobalSms = false;
+      }
+    } else if (channel === 'email') {
+      nextEmail = !emailEnabled;
+      // If toggling Email ON, cannot have SMS active simultaneously (Rule: WhatsApp + Email means no SMS)
+      if (nextEmail) {
+        nextLocalSms = false;
+        nextGlobalSms = false;
+      }
+    } else if (channel === 'local_sms') {
+      const willEnable = !localSmsEnabled;
+      if (willEnable) {
+        nextLocalSms = true;
+        nextGlobalSms = false; // Only 1 SMS channel can be active
+        nextEmail = false;     // Cannot have Email active when SMS is selected
+        nextWa = true;         // Pair with WhatsApp
+      } else {
+        nextLocalSms = false;
+      }
+    } else if (channel === 'global_sms') {
+      const willEnable = !internationalSmsEnabled;
+      if (willEnable) {
+        nextGlobalSms = true;
+        nextLocalSms = false;  // Only 1 SMS channel can be active
+        nextEmail = false;     // Cannot have Email active when SMS is selected
+        nextWa = true;         // Pair with WhatsApp
+      } else {
+        nextGlobalSms = false;
+      }
+    }
+
+    setWhatsappEnabled(nextWa);
+    setEmailEnabled(nextEmail);
+    setLocalSmsEnabled(nextLocalSms);
+    setInternationalSmsEnabled(nextGlobalSms);
+
+    // Auto-save instantly to database
+    try {
+      await supabase
+        .from('whatsapp_gateway_settings')
+        .upsert({
+          brand_id: selectedBrandId,
+          user_id: user?.id,
+          whatsapp_enabled: nextWa,
+          email_notification_enabled: nextEmail,
+          fallback_to_email: fallbackToEmail,
+          fallback_to_sms: nextLocalSms,
+          international_sms_enabled: nextGlobalSms,
+          international_provider: internationalProvider,
+          sms_sender_mode: smsSenderMode,
+          custom_sms_api_url: customSmsApiUrl || null,
+          custom_sms_api_key: customSmsApiKey || null,
+          sms_api_endpoint: customSmsApiUrl || null,
+          sms_api_key: customSmsApiKey || null,
+          sms_api_secret: customSmsApiSecret || null,
+          routing_strategy: routingStrategy,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'brand_id' });
+      showToast('Channel settings auto-saved!', 'success');
+    } catch (e: any) {
+      console.warn('Auto-save error:', e);
+    }
+  };
+
   // Save All Settings
   const handleSaveAllSettings = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -400,6 +483,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           fallback_to_email: fallbackToEmail,
           fallback_to_sms: localSmsEnabled,
           international_sms_enabled: internationalSmsEnabled,
+          international_provider: internationalProvider,
           sms_sender_mode: smsSenderMode,
           custom_sms_api_url: customSmsApiUrl || null,
           custom_sms_api_key: customSmsApiKey || null,
@@ -544,7 +628,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                   <input
                     type="checkbox"
                     checked={whatsappEnabled}
-                    onChange={(e) => setWhatsappEnabled(e.target.checked)}
+                    onChange={() => handleToggleChannel('whatsapp')}
                     className="sr-only peer"
                   />
                   <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
@@ -575,7 +659,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                     <input
                       type="checkbox"
                       checked={emailEnabled}
-                      onChange={(e) => setEmailEnabled(e.target.checked)}
+                      onChange={() => handleToggleChannel('email')}
                       className="sr-only peer"
                     />
                     <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
@@ -610,7 +694,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                   <input
                     type="checkbox"
                     checked={localSmsEnabled}
-                    onChange={(e) => setLocalSmsEnabled(e.target.checked)}
+                    onChange={() => handleToggleChannel('local_sms')}
                     className="sr-only peer"
                   />
                   <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
@@ -640,7 +724,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                   <input
                     type="checkbox"
                     checked={internationalSmsEnabled}
-                    onChange={(e) => setInternationalSmsEnabled(e.target.checked)}
+                    onChange={() => handleToggleChannel('global_sms')}
                     className="sr-only peer"
                   />
                   <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
@@ -652,9 +736,31 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
               </p>
               <div className="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px]">
                 <span className="text-slate-400">Route:</span>
-                <span className="font-semibold text-cyan-400">3-Field API / Twilio</span>
+                <span className="font-semibold text-cyan-400">
+                  {internationalProvider.toUpperCase()} / 3-Field API
+                </span>
               </div>
             </div>
+          </div>
+
+          {/* Dynamic Active Combination Helper Text */}
+          <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-slate-300">
+                সক্রিয় চ্যানেলসমূহ: <strong className="text-white">
+                  {[
+                    whatsappEnabled && '1. WhatsApp',
+                    emailEnabled && '2. Brand Email',
+                    localSmsEnabled && '3. Domestic SMS',
+                    internationalSmsEnabled && `4. Global SMS (${internationalProvider.toUpperCase()})`
+                  ].filter(Boolean).join(' + ') || 'কোনো চ্যানেল অন নেই'}
+                </strong>
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-400">
+              (একত্রে সর্বোচ্চ ২ চ্যানেল: WhatsApp + [SMS বা Email])
+            </span>
           </div>
 
           {/* ======================================================== */}
@@ -751,17 +857,47 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           {/* ======================================================== */}
           {internationalSmsEnabled && (
             <div className="bg-slate-950/90 border border-cyan-500/30 rounded-2xl p-5 space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-cyan-400" />
-                  4. Global SMS Gateway (3-Field Universal Cloud API)
-                </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Sends international SMS to global customers (+1, +44, +971 etc.) via your Twilio, MessageBird, or custom SMS API.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-cyan-400" />
+                    4. Global SMS Gateway (Multi-Platform Cloud API)
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Sends international SMS to global customers (+1, +44, +971 etc.) via your chosen SMS platform.
+                  </p>
+                </div>
+
+                {/* International Platform Selector (Single Choice) */}
+                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 self-start sm:self-auto">
+                  <span className="text-xs text-slate-400 font-medium">Select Platform:</span>
+                  <select
+                    value={internationalProvider}
+                    onChange={(e) => {
+                      const prov = e.target.value as any;
+                      setInternationalProvider(prov);
+                      if (prov === 'twilio' && !customSmsApiUrl) {
+                        setCustomSmsApiUrl('https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages.json');
+                      } else if (prov === 'infobip' && !customSmsApiUrl) {
+                        setCustomSmsApiUrl('https://api.infobip.com/sms/2/text/advanced');
+                      } else if (prov === 'vonage' && !customSmsApiUrl) {
+                        setCustomSmsApiUrl('https://rest.nexmo.com/sms/json');
+                      } else if (prov === 'messagebird' && !customSmsApiUrl) {
+                        setCustomSmsApiUrl('https://rest.messagebird.com/messages');
+                      }
+                    }}
+                    className="bg-transparent text-xs text-cyan-400 font-bold outline-none cursor-pointer"
+                  >
+                    <option value="twilio" className="bg-slate-900 text-white">Twilio SMS</option>
+                    <option value="infobip" className="bg-slate-900 text-white">Infobip Global</option>
+                    <option value="vonage" className="bg-slate-900 text-white">Vonage / Nexmo</option>
+                    <option value="messagebird" className="bg-slate-900 text-white">MessageBird</option>
+                    <option value="custom" className="bg-slate-900 text-white">Universal 3-Field API</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <span className="text-xs text-slate-400 block mb-1">1. Global SMS Endpoint URL:</span>
                   <input
