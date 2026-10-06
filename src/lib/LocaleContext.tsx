@@ -15,12 +15,21 @@ type LocaleContextValue = {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 const continentFromCode: Record<string, Continent> = { AF: 'africa', AS: 'asia', EU: 'europe', NA: 'north-america', SA: 'south-america', OC: 'oceania' };
+const languageAliases: Record<string, string> = {
+  eng: 'en', ben: 'bn', hin: 'hi', ara: 'ar', fra: 'fr', fre: 'fr', spa: 'es', por: 'pt',
+  zho: 'zh', chi: 'zh', deu: 'de', ger: 'de', jpn: 'ja', kor: 'ko', rus: 'ru', tur: 'tr'
+};
+
+const normalizeLanguage = (language: string) => {
+  const code = language.trim().toLowerCase();
+  return languageAliases[code] || code;
+};
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [continent, setContinent] = useState<Continent>('asia');
   const [country, setCountryState] = useState('');
   const [detectedCountry, setDetectedCountry] = useState('');
-  const [language, setLanguage] = useState('en');
+  const [language, setLanguageState] = useState('en');
   const [countries, setCountries] = useState<CountryLanguage[]>([]);
   const [isDetecting, setIsDetecting] = useState(true);
 
@@ -62,16 +71,24 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
       const preferred = detectedCountry || country;
       const nextCountry = list.some((item) => item.code === preferred) ? preferred : (list[0]?.code || '');
       setCountryState(nextCountry);
-      setLanguage(getDefaultCountryLanguage(list.find((item) => item.code === nextCountry)));
+      setLanguageState(getDefaultCountryLanguage(list.find((item) => item.code === nextCountry)));
     }).catch(() => { if (!cancelled) setCountries([]); });
     return () => { cancelled = true; };
   }, [continent, detectedCountry]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+  }, [language]);
 
   const countryData = countries.find((item) => item.code === country);
   const languageOptions = useMemo(() => getCountryLanguageOptions(countryData, countries), [countryData, countries]);
   const setCountry = (code: string) => {
     setCountryState(code);
-    setLanguage(getDefaultCountryLanguage(countries.find((item) => item.code === code)));
+    setLanguageState(getDefaultCountryLanguage(countries.find((item) => item.code === code)));
+  };
+  const setLanguage = (nextLanguage: string) => {
+    setLanguageState(normalizeLanguage(nextLanguage));
   };
 
   return <LocaleContext.Provider value={{ continent, country, language, countries, isDetecting, countryData, languageOptions, setCountry, setLanguage }}>{children}</LocaleContext.Provider>;

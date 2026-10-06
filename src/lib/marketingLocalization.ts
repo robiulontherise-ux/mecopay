@@ -1,7 +1,7 @@
 import { extendedCopy } from './marketingExtendedTranslations';
 
 export type Continent = 'asia' | 'africa' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'unknown';
-export type MarketingLanguage = 'en' | 'bn' | 'hi' | 'ar' | 'fr' | 'es' | 'pt';
+export type MarketingLanguage = 'en' | 'bn' | 'hi' | 'ar' | 'fr' | 'es' | 'pt' | 'zh' | 'de' | 'ja' | 'ko' | 'ru' | 'tr';
 export type CountryLanguage = { code: string; name: string; languages: { code: string; name: string }[] };
 
 export const languageOptions: Record<Continent, { value: MarketingLanguage; label: string }[]> = {
@@ -18,7 +18,7 @@ export const defaultLanguage: Record<Continent, MarketingLanguage> = {
   asia: 'en', africa: 'en', europe: 'en', 'north-america': 'en', 'south-america': 'en', oceania: 'en', unknown: 'en'
 };
 
-const hero: Record<MarketingLanguage, string[][]> = {
+const hero: Partial<Record<MarketingLanguage, string[][]>> = {
   en: [
     ['MecoPay is a complete e-commerce solution—', 'with powerful payment gateways', 'and a no-code website builder.'],
     ['Use your custom website or', 'our no-code website with APIs and links', 'and accept payments through social media payment links.'],
@@ -70,7 +70,7 @@ const hero: Record<MarketingLanguage, string[][]> = {
   ]
 };
 
-const featureCopy: Record<MarketingLanguage, Record<string, [string, string]>> = {
+const featureCopy: Partial<Record<MarketingLanguage, Record<string, [string, string]>>> = {
   en: {
     'no-code-website': ['Create and publish e-commerce, education, blog, or news sites without coding.', 'Example: publish a landing page and product post from the course seller dashboard.'],
     'custom-domain': ['Connect your own domain and build a professional digital identity with faster routing.', 'Example: your store runs on www.acme.com instead of a platform subdomain.'],
@@ -150,7 +150,7 @@ const featureCopy: Record<MarketingLanguage, Record<string, [string, string]>> =
   }
 };
 
-const sectionCopy: Record<MarketingLanguage, Record<string, [string, string]>> = {
+const sectionCopy: Partial<Record<MarketingLanguage, Record<string, [string, string]>>> = {
   en: { scale: ['Unlimited Scaling', 'Businesses with a Trade License and TIN can receive unlimited payments through merchant MFS, bank, or card—fully automated for digital commerce.'], personal: ['No Trade License?', 'Start receiving payments with Personal MFS, create your digital identity, and begin e-commerce without unnecessary complexity.'], physical: ['Physical Shop and Online', 'Keep digital records and sell online from your physical shop or office with direct QR payment support.'] },
   bn: { scale: ['আনলিমিটেড স্কেলিং', 'Trade License ও TIN থাকা ব্যবসা merchant MFS, bank বা card দিয়ে সীমাহীন payment receive করতে পারবে—ডিজিটাল commerce-এর জন্য সম্পূর্ণ automation।'], personal: ['Trade License নেই?', 'Personal MFS দিয়ে payment receive শুরু করুন, digital identity তৈরি করুন এবং সহজে e-commerce শুরু করুন।'], physical: ['Physical Shop ও Online', 'নিজস্ব দোকান বা office থেকে digital হিসাব রাখুন এবং QR payment support-সহ online-এ বিক্রি করুন।'] },
   hi: { scale: ['Unlimited Scaling', 'Trade License और TIN वाले व्यवसाय merchant MFS, bank या card से unlimited payments ले सकते हैं—digital commerce के लिए पूरी automation।'], personal: ['Trade License नहीं है?', 'Personal MFS से payments लेना शुरू करें, digital identity बनाएं और आसानी से e-commerce शुरू करें।'], physical: ['Physical Shop और Online', 'अपनी दुकान या office से digital records रखें और QR payment support के साथ online बेचें।'] },
@@ -160,7 +160,7 @@ const sectionCopy: Record<MarketingLanguage, Record<string, [string, string]>> =
   pt: { scale: ['Escala ilimitada', 'Empresas registradas podem receber pagamentos ilimitados por MFS, banco ou cartão com automação completa.'], personal: ['Sem licença comercial?', 'Comece a receber pagamentos com Personal MFS, crie sua identidade digital e inicie seu e-commerce.'], physical: ['Loja física e online', 'Mantenha registros digitais e venda online da sua loja com pagamento direto por QR.'] }
 };
 
-const tickerCopy: Record<MarketingLanguage, string> = {
+const tickerCopy: Partial<Record<MarketingLanguage, string>> = {
   en: '1. Personal MFS: for users without a Trade License or TIN. Sell digital and physical products and accept advance payments. • 2. Merchant MFS/Bank/Card: for licensed merchants. Receive unlimited payments and sell digital and physical products. • 3. Bangla QR: accept QR payments in physical shops and keep digital records while selling online.',
   bn: '১. Personal MFS: Trade License বা TIN Certificate না থাকা ব্যবহারকারীদের জন্য। ডিজিটাল ও physical product বিক্রি করে advance payment নিন। • ২. Merchant MFS/Bank/Card: licensed merchant-এর জন্য unlimited payment receive করুন। • ৩. Bangla QR: physical shop-এ QR payment নিন এবং online-এও বিক্রি করুন।',
   hi: '1. Personal MFS: Trade License या TIN के बिना users के लिए। Digital और physical products बेचें और advance payments लें। • 2. Merchant MFS/Bank/Card: licensed merchants के लिए unlimited payments। • 3. Bangla QR: physical shops में QR payments लें और online भी बेचें।',
@@ -171,7 +171,19 @@ const tickerCopy: Record<MarketingLanguage, string> = {
 };
 
 const languageAliases: Record<string, MarketingLanguage> = {
-  eng: 'en', en: 'en', English: 'en', ben: 'bn', bn: 'bn', Bengali: 'bn', hin: 'hi', hi: 'hi', Hindi: 'hi', ara: 'ar', ar: 'ar', Arabic: 'ar', fra: 'fr', fre: 'fr', fr: 'fr', French: 'fr', spa: 'es', es: 'es', Spanish: 'es', por: 'pt', pt: 'pt', Portuguese: 'pt'
+  eng: 'en', en: 'en', english: 'en',
+  ben: 'bn', bn: 'bn', bengali: 'bn', bangla: 'bn',
+  hin: 'hi', hi: 'hi', hindi: 'hi',
+  ara: 'ar', ar: 'ar', arabic: 'ar',
+  fra: 'fr', fre: 'fr', fr: 'fr', french: 'fr',
+  spa: 'es', es: 'es', spanish: 'es',
+  por: 'pt', pt: 'pt', portuguese: 'pt',
+  zho: 'zh', chi: 'zh', zh: 'zh', chinese: 'zh', mandarin: 'zh',
+  deu: 'de', ger: 'de', de: 'de', german: 'de',
+  jpn: 'ja', ja: 'ja', japanese: 'ja',
+  kor: 'ko', ko: 'ko', korean: 'ko',
+  rus: 'ru', ru: 'ru', russian: 'ru',
+  tur: 'tr', tr: 'tr', turkish: 'tr'
 };
 const globalLanguages = [
   { value: 'en', label: 'English (default)' }, { value: 'ar', label: 'Arabic' }, { value: 'es', label: 'Spanish' }, { value: 'fr', label: 'French' },
@@ -179,8 +191,14 @@ const globalLanguages = [
   { value: 'ru', label: 'Russian' }, { value: 'de', label: 'German' }, { value: 'ja', label: 'Japanese' }, { value: 'ko', label: 'Korean' }, { value: 'tr', label: 'Turkish' }
 ];
 
-const canonicalLanguage = (code: string, name?: string) => languageAliases[code] || languageAliases[name || ''] || code;
+const canonicalLanguage = (code: string, name?: string): string => {
+  const normalizedCode = code.trim().toLowerCase();
+  const normalizedName = name?.trim().toLowerCase();
+  return languageAliases[normalizedCode] || (normalizedName ? languageAliases[normalizedName] : undefined) || normalizedCode;
+};
 const getExtendedCopy = (language: MarketingLanguage | string) => (extendedCopy as Record<string, any>)[canonicalLanguage(language)];
+const supportedLanguages = new Set<string>(['en', 'bn', 'hi', 'ar', 'fr', 'es', 'pt', ...Object.keys(extendedCopy)]);
+const isSupportedLanguage = (language: string) => supportedLanguages.has(canonicalLanguage(language));
 
 export const getLanguageOptions = (continent: Continent) => languageOptions[continent] || languageOptions.unknown;
 export const getDefaultLanguage = (continent: Continent) => defaultLanguage[continent] || 'en';
@@ -194,15 +212,18 @@ export const getCountryLanguageOptions = (country?: CountryLanguage, continentCo
   const options = new Map<string, { value: string; label: string }>();
   allLanguages.forEach((language) => {
     const value = canonicalLanguage(language.code, language.name);
-    if (!options.has(value)) options.set(value, { value, label: language.name });
+    if (isSupportedLanguage(value) && !options.has(value)) options.set(value, { value, label: language.name });
   });
   globalLanguages.forEach((language) => { if (!options.has(language.value)) options.set(language.value, language); });
   return Array.from(options.values());
 };
 
 export const getDefaultCountryLanguage = (country?: CountryLanguage) => {
-  const first = country?.languages?.[0];
-  return first ? canonicalLanguage(first.code, first.name) : 'en';
+  const supported = (country?.languages || [])
+    .map((language) => canonicalLanguage(language.code, language.name))
+    .filter((language) => isSupportedLanguage(language));
+  // Prefer a translated local language over English when both are available.
+  return supported.find((language) => language !== 'en') || supported[0] || 'en';
 };
 
 export const loadCountriesByContinent = async (continent: Continent): Promise<CountryLanguage[]> => {
