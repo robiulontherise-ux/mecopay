@@ -20,6 +20,7 @@ import {
 import { supabase, supabaseAnonKey } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 import MecoPayWebmailInbox from './MecoPayWebmailInbox';
+import MecoPayOutgoingDelivery from './MecoPayOutgoingDelivery';
 
 interface EmailServiceSettingsProps {
   user: any;
@@ -821,57 +822,11 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
       {/* TAB 3: Outgoing Delivery & Sent History */}
       {activeServiceTab === 'delivery' && (
-        <div className="space-y-6">
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Send className="w-4 h-4 text-emerald-400" />
-                  Outgoing MecoPay Engine
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  কাস্টম ডোমেইন <strong className="font-mono text-emerald-400">{activeDomain}</strong> থেকে গ্রাহকদের কাছে পাঠানো সকল আউটগোয়িং মেসেজ ও সেন্ড স্ট্যাটাস
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Active Outbound
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Informational Notice */}
-            <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-300">
-              <div className="space-y-1">
-                <p className="font-semibold text-white flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  MecoPay Automated Outbox Engine
-                </p>
-                <p className="text-slate-400 text-[11px]">
-                  জটিল কোনো SMTP কনফিগারেশনের প্রয়োজন নেই। আপনি ওয়েবমেইল ইনবক্স থেকে কম্পোজ করলে বা অটোমেটেড অর্ডার রিসিট গেলে সব আউটবাউন্ড মেইল সরাসরি এখানে জমা হবে।
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveServiceTab('inbox')}
-                className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs transition-colors shrink-0"
-              >
-                Go to Webmail Inbox
-              </button>
-            </div>
-          </div>
-
-          {/* Outbox & Sent History using MecoPayWebmailInbox in Outbound Mode */}
-          <MecoPayWebmailInbox
-            activeDomain={activeDomain}
-            brandId={selectedBrandId}
-            brandName={selectedBrand?.name}
-            createdEmails={createdEmails}
-            isEmailServiceActive={selectedBrand?.email_service_active !== false && selectedBrand?.service_status !== 'inactive'}
-            initialFolder="sent"
-          />
-        </div>
+        <MecoPayOutgoingDelivery
+          activeDomain={activeDomain}
+          brandId={selectedBrandId}
+          brandName={selectedBrand?.name}
+        />
       )}
     </div>
   );

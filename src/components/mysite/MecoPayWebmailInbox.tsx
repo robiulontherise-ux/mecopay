@@ -33,8 +33,6 @@ interface IncomingEmail {
   recipient: string;
   subject: string;
   body_text: string;
-  direction?: 'inbound' | 'outbound' | string | null;
-  status?: string | null;
   attachments?: string[] | null;
   created_at: string;
 }
@@ -45,7 +43,6 @@ interface MecoPayWebmailInboxProps {
   brandName?: string;
   createdEmails: string[];
   isEmailServiceActive?: boolean;
-  initialFolder?: 'inbox' | 'sent' | 'all';
 }
 
 export default function MecoPayWebmailInbox({
@@ -53,11 +50,9 @@ export default function MecoPayWebmailInbox({
   brandId,
   brandName,
   createdEmails,
-  isEmailServiceActive = true,
-  initialFolder = 'inbox'
+  isEmailServiceActive = true
 }: MecoPayWebmailInboxProps) {
   const [emails, setEmails] = useState<IncomingEmail[]>([]);
-  const [activeFolder, setActiveFolder] = useState<'inbox' | 'sent' | 'all'>(initialFolder);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -269,21 +264,14 @@ export default function MecoPayWebmailInbox({
     };
   }, [activeDomain, brandId, selectedMailbox]);
 
-  // Filtered emails by folder and search
+  // Filtered emails by search
   const filteredEmails = emails.filter((em) => {
-    // 1. Folder check:
-    const isOutbound = em.direction === 'outbound' || em.status === 'sent';
-    if (activeFolder === 'sent' && !isOutbound) return false;
-    if (activeFolder === 'inbox' && isOutbound) return false;
-
-    // 2. Mailbox check:
+    // Mailbox check:
     if (selectedMailbox && selectedMailbox !== 'all') {
       const mb = selectedMailbox.toLowerCase().trim();
-      const target = isOutbound ? (em.sender || '').toLowerCase() : (em.recipient || '').toLowerCase();
-      if (!target.includes(mb)) return false;
+      if (!(em.recipient || '').toLowerCase().includes(mb)) return false;
     }
 
-    // 3. Search query check:
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -340,41 +328,6 @@ export default function MecoPayWebmailInbox({
 
         {/* Right Header Filters & Refresh */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Folder Switcher (Inbox vs Sent/Outbox) */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveFolder('inbox');
-                setActiveEmail(null);
-              }}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                activeFolder === 'inbox'
-                  ? 'bg-emerald-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Inbox className="w-3.5 h-3.5" />
-              <span>Inbox</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveFolder('sent');
-                setActiveEmail(null);
-              }}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                activeFolder === 'sent'
-                  ? 'bg-emerald-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Sent / Outbox</span>
-            </button>
-          </div>
-
           {/* Mailbox Selector */}
           <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
             <Mail className="w-3.5 h-3.5 text-slate-400" />
@@ -462,18 +415,12 @@ export default function MecoPayWebmailInbox({
             ) : filteredEmails.length === 0 ? (
               <div className="p-12 text-center space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-slate-500 flex items-center justify-center mx-auto">
-                  {activeFolder === 'sent' ? <Send className="w-6 h-6" /> : <Inbox className="w-6 h-6" />}
+                  <Inbox className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">
-                    {activeFolder === 'sent' ? 'No Sent / Outbox Emails' : 'No Emails Found'}
-                  </p>
+                  <p className="text-sm font-semibold text-white">No Emails Found</p>
                   <p className="text-xs text-slate-400 mt-1">
-                    {searchQuery
-                      ? 'আপনার সার্চের সাথে কোনো ইমেইল মেলেনি।'
-                      : activeFolder === 'sent'
-                      ? 'এখনো কোনো আউটগোয়িং বা সেন্ট ইমেইল পাঠানো হয়নি।'
-                      : 'এই ডোমেইন বা মেইলবক্সে এখনো কোনো ইমেইল আসেনি।'}
+                    {searchQuery ? 'আপনার সার্চের সাথে কোনো ইমেইল মেলেনি।' : 'এই ডোমেইন বা মেইলবক্সে এখনো কোনো ইমেইল আসেনি।'}
                   </p>
                 </div>
               </div>
@@ -481,7 +428,6 @@ export default function MecoPayWebmailInbox({
               filteredEmails.map((em) => {
                 const isSelected = activeEmail?.id === em.id;
                 const hasAttachments = Array.isArray(em.attachments) && em.attachments.length > 0;
-                const isOutbound = em.direction === 'outbound' || em.status === 'sent';
                 const cleanSender = em.sender?.replace(/<.*?>/, '').trim() || em.sender || 'Unknown Sender';
 
                 return (
@@ -496,14 +442,14 @@ export default function MecoPayWebmailInbox({
                   >
                     {/* Sender Initial Avatar */}
                     <div className="w-9 h-9 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-700/60">
-                      {isOutbound ? <Send className="w-4 h-4 text-emerald-400" /> : (cleanSender.charAt(0).toUpperCase() || 'M')}
+                      {cleanSender.charAt(0).toUpperCase() || 'M'}
                     </div>
 
                     {/* Content Preview */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span className={`text-xs truncate ${isSelected ? 'font-bold text-white' : 'font-semibold text-slate-200'}`}>
-                          {isOutbound ? `To: ${em.recipient}` : cleanSender}
+                          {cleanSender}
                         </span>
                         <span className="text-[10px] text-slate-500 whitespace-nowrap">
                           {formatEmailDate(em.created_at)}
@@ -520,21 +466,14 @@ export default function MecoPayWebmailInbox({
 
                       <div className="flex items-center justify-between mt-2 pt-1">
                         <span className="text-[10px] font-mono text-slate-500 truncate max-w-[150px]">
-                          {isOutbound ? `From: ${em.sender}` : `To: ${em.recipient}`}
+                          To: {em.recipient}
                         </span>
-                        <div className="flex items-center gap-1.5">
-                          {isOutbound && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded">
-                              Outbox
-                            </span>
-                          )}
-                          {hasAttachments && (
-                            <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
-                              <Paperclip className="w-3 h-3" />
-                              {em.attachments!.length}
-                            </span>
-                          )}
-                        </div>
+                        {hasAttachments && (
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
+                            <Paperclip className="w-3 h-3" />
+                            {em.attachments!.length}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
