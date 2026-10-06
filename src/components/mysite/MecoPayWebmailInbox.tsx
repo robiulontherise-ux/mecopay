@@ -144,13 +144,6 @@ export default function MecoPayWebmailInbox({
   const [viewerFileUrl, setViewerFileUrl] = useState('');
   const [viewerFileName, setViewerFileName] = useState('');
 
-  // Sync initialFolder if prop changes
-  useEffect(() => {
-    if (initialFolder) {
-      setActiveFolder(initialFolder);
-    }
-  }, [initialFolder]);
-
   // Fetch Emails from incoming_emails
   const loadEmails = async () => {
     try {
@@ -162,7 +155,11 @@ export default function MecoPayWebmailInbox({
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (brandId) {
+      const hasSelectedMailbox = selectedMailbox && selectedMailbox !== 'all';
+
+      if (hasSelectedMailbox) {
+        query = query.eq('recipient', selectedMailbox.trim());
+      } else if (brandId) {
         query = query.eq('brand_id', brandId);
       } else {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
