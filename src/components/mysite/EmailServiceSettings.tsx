@@ -555,7 +555,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
           <Send className="w-4 h-4" />
           <span>Outgoing Delivery</span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
-            SMTP / Gateway
+            Outbox &amp; Sent
           </span>
         </button>
       </div>
@@ -819,163 +819,59 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         </div>
       )}
 
-      {/* TAB 3: Outgoing SMTP & Transactional Delivery */}
+      {/* TAB 3: Outgoing Delivery & Sent History */}
       {activeServiceTab === 'delivery' && (
-        <form onSubmit={handleSaveSmtp} className="space-y-6">
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+        <div className="space-y-6">
+          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <Send className="w-4 h-4 text-emerald-400" />
-                  MecoPay Transactional Delivery Engine
+                  Outgoing MecoPay Engine
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  অর্ডার রসিদ, ডিজিটাল ডাউনলোড লিংক এবং পেমেন্ট ইনভয়েস ডেলিভারি কনফিগারেশন
+                  কাস্টম ডোমেইন <strong className="font-mono text-emerald-400">{activeDomain}</strong> থেকে গ্রাহকদের কাছে পাঠানো সকল আউটগোয়িং মেসেজ ও সেন্ড স্ট্যাটাস
                 </p>
               </div>
-              <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
-                Brand Delivery
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Delivery Service</label>
-                <select
-                  value={provider}
-                  onChange={(e) => setProvider(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none cursor-pointer font-medium"
-                >
-                  <option value="mecopay_engine">MecoPay High-Speed Delivery Engine (Recommended)</option>
-                  <option value="smtp">Standard Custom SMTP Server</option>
-                  <option value="resend">Resend API Delivery</option>
-                  <option value="ses">Amazon SES Gateway</option>
-                  <option value="sendgrid">SendGrid Delivery Engine</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">SMTP Host / Server</label>
-                <input
-                  type="text"
-                  value={host}
-                  onChange={(e) => setHost(e.target.value)}
-                  placeholder="e.g. mail.yourdomain.com or smtp.provider.com"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">SMTP Port</label>
-                <input
-                  type="text"
-                  value={port}
-                  onChange={(e) => setPort(e.target.value)}
-                  placeholder="587 or 465"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Username / Access Key</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="SMTP username or access key"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password / Send Token</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter SMTP password or API token"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
-                />
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Active Outbound
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800/80">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Sender Email Address</label>
-                <input
-                  type="email"
-                  value={fromEmail}
-                  onChange={(e) => setFromEmail(e.target.value)}
-                  placeholder={`billing@${activeDomain}`}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
-                />
+            {/* Quick Informational Notice */}
+            <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-300">
+              <div className="space-y-1">
+                <p className="font-semibold text-white flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  MecoPay Automated Outbox Engine
+                </p>
+                <p className="text-slate-400 text-[11px]">
+                  জটিল কোনো SMTP কনফিগারেশনের প্রয়োজন নেই। আপনি ওয়েবমেইল ইনবক্স থেকে কম্পোজ করলে বা অটোমেটেড অর্ডার রিসিট গেলে সব আউটবাউন্ড মেইল সরাসরি এখানে জমা হবে।
+                </p>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Sender Display Name</label>
-                <input
-                  type="text"
-                  value={fromName}
-                  onChange={(e) => setFromName(e.target.value)}
-                  placeholder={selectedBrand?.name || 'My Store'}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => setActiveServiceTab('inbox')}
+                className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs transition-colors shrink-0"
+              >
+                Go to Webmail Inbox
+              </button>
             </div>
           </div>
 
-          {/* Triggers */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              Automated Customer Delivery Triggers
-            </h3>
-
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800/80 rounded-xl cursor-pointer hover:border-slate-700 transition-colors">
-                <div>
-                  <p className="text-sm font-semibold text-white">Send Customer Payment Receipt</p>
-                  <p className="text-xs text-slate-400">ইনভয়েস এবং ডিজিটাল প্রোডাক্ট ডাউনলোড লিংক কাস্টমারের ইমেইলে অটোমেটিক চলে যাবে।</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={sendCustomerReceipt}
-                  onChange={(e) => setSendCustomerReceipt(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800/80 rounded-xl cursor-pointer hover:border-slate-700 transition-colors">
-                <div>
-                  <p className="text-sm font-semibold text-white">Send Admin Order Alert</p>
-                  <p className="text-xs text-slate-400">কাস্টমার অগ্রিম পেমেন্ট বা নতুন অর্ডার করলে অ্যাডমিন সাথে সাথে ইমেইল নোটিফিকেশন পাবে।</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={sendAdminAlert}
-                  onChange={(e) => setSendAdminAlert(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
-                />
-              </label>
-            </div>
-          </div>
-
-          {selectedBrand?.service_status === 'inactive' && (
-            <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400 flex items-center gap-2 font-medium">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>আপনার বিজনেস ইমেইল সার্ভিস বর্তমানে <strong>Inactive</strong> রয়েছে। সার্ভিস সক্রিয় না হওয়া পর্যন্ত মেইল সেন্ড ও ডেলিভারি কনফিগারেশন লক থাকবে।</span>
-            </div>
-          )}
-          <button
-            type="submit"
-            disabled={saving || selectedBrand?.service_status === 'inactive'}
-            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            title={selectedBrand?.service_status === 'inactive' ? 'সার্ভিস Inactive থাকায় কনফিগারেশন সেভ ও সেন্ড বন্ধ রয়েছে' : ''}
-          >
-            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save Delivery Configuration
-          </button>
-        </form>
+          {/* Outbox & Sent History using MecoPayWebmailInbox in Outbound Mode */}
+          <MecoPayWebmailInbox
+            activeDomain={activeDomain}
+            brandId={selectedBrandId}
+            brandName={selectedBrand?.name}
+            createdEmails={createdEmails}
+            isEmailServiceActive={selectedBrand?.email_service_active !== false && selectedBrand?.service_status !== 'inactive'}
+            initialFolder="sent"
+          />
+        </div>
       )}
     </div>
   );
