@@ -20,7 +20,6 @@ import {
 import { supabase, supabaseAnonKey } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 import MecoPayWebmailInbox from './MecoPayWebmailInbox';
-import MecoPayOutgoingDelivery from './MecoPayOutgoingDelivery';
 
 interface EmailServiceSettingsProps {
   user: any;
@@ -549,14 +548,14 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
           onClick={() => setActiveServiceTab('delivery')}
           className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
             activeServiceTab === 'delivery'
-              ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5 rounded-t-xl'
+              ? 'border-amber-500 text-amber-400 bg-amber-500/5 rounded-t-xl'
               : 'border-transparent text-slate-400 hover:text-white hover:border-slate-700'
           }`}
         >
           <Send className="w-4 h-4" />
           <span>Outgoing Delivery</span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
-            Outbox &amp; Sent
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
+            In Development
           </span>
         </button>
       </div>
@@ -820,13 +819,40 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         </div>
       )}
 
-      {/* TAB 3: Outgoing Delivery & Sent History */}
+      {/* TAB 3: Outgoing Delivery - In Development Alert */}
       {activeServiceTab === 'delivery' && (
-        <MecoPayOutgoingDelivery
-          activeDomain={activeDomain}
-          brandId={selectedBrandId}
-          brandName={selectedBrand?.name}
-        />
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-5 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/5">
+            <Send className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              Under Active Development
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold text-white tracking-wide">
+              সার্ভিসটি বর্তমানে ডেভেলপমেন্ট পর্যায়ে রয়েছে
+            </h3>
+            <p className="text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
+              দ্রুতই এই সার্ভিস যুক্ত হবে। এই সার্ভিসের কাজ সফলভাবে সম্পন্ন হওয়া মাত্রই স্বয়ংক্রিয়ভাবে লাইভ হয়ে যাবে।
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-950/80 border border-slate-800/80 rounded-xl text-xs text-slate-400 max-w-md mx-auto">
+            💡 কাস্টম ডোমেইন <strong className="font-mono text-emerald-400">{activeDomain}</strong> এর ইনকামিং মেইল ও বিজনেস মেইলবক্স ইতিমধ্যে সম্পূর্ণ সক্রিয় ও লাইভ রয়েছে।
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveServiceTab('inbox')}
+              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-lg shadow-emerald-500/10"
+            >
+              Webmail Inbox-এ ফিরে যান
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
