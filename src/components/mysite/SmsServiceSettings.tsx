@@ -17,7 +17,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
 
   // 4 Primary Channels Switches
   const [whatsappEnabled, setWhatsappEnabled] = useState<boolean>(true);
-  const [emailEnabled, setEmailEnabled] = useState<boolean>(true);
+  const [emailEnabled, setEmailEnabled] = useState<boolean>(false);
   const [localSmsEnabled, setLocalSmsEnabled] = useState<boolean>(false);
   const [internationalSmsEnabled, setInternationalSmsEnabled] = useState<boolean>(false);
   const [internationalProvider, setInternationalProvider] = useState<'twilio' | 'infobip' | 'vonage' | 'messagebird' | 'custom'>('twilio');
@@ -246,7 +246,7 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
 
       if (gw) {
         setWhatsappEnabled(gw.whatsapp_enabled !== false);
-        setEmailEnabled(gw.email_notification_enabled !== false);
+        setEmailEnabled(false); // Locked - coming soon
         setLocalSmsEnabled(Boolean(gw.fallback_to_sms));
         setInternationalSmsEnabled(Boolean(gw.international_sms_enabled));
         setInternationalProvider(gw.international_provider || 'twilio');
@@ -421,38 +421,13 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
 
     if (channel === 'whatsapp') {
       nextWa = !whatsappEnabled;
-      // If toggled ON and both Email and an SMS are currently on, turn off the SMS to obey rule
-      if (nextWa && nextEmail && (nextLocalSms || nextGlobalSms)) {
-        nextLocalSms = false;
-        nextGlobalSms = false;
-      }
     } else if (channel === 'email') {
-      nextEmail = !emailEnabled;
-      // If toggling Email ON, cannot have SMS active simultaneously (Rule: WhatsApp + Email means no SMS)
-      if (nextEmail) {
-        nextLocalSms = false;
-        nextGlobalSms = false;
-      }
+      showToast('এই সার্ভিসটি ডেভেলপমেন্ট পর্যায়ে রয়েছে, দ্রুতই এই সার্ভিস যুক্ত হবে।', 'warning');
+      return;
     } else if (channel === 'local_sms') {
-      const willEnable = !localSmsEnabled;
-      if (willEnable) {
-        nextLocalSms = true;
-        nextGlobalSms = false; // Only 1 SMS channel can be active
-        nextEmail = false;     // Cannot have Email active when SMS is selected
-        nextWa = true;         // Pair with WhatsApp
-      } else {
-        nextLocalSms = false;
-      }
+      nextLocalSms = !localSmsEnabled;
     } else if (channel === 'global_sms') {
-      const willEnable = !internationalSmsEnabled;
-      if (willEnable) {
-        nextGlobalSms = true;
-        nextLocalSms = false;  // Only 1 SMS channel can be active
-        nextEmail = false;     // Cannot have Email active when SMS is selected
-        nextWa = true;         // Pair with WhatsApp
-      } else {
-        nextGlobalSms = false;
-      }
+      nextGlobalSms = !internationalSmsEnabled;
     }
 
     setWhatsappEnabled(nextWa);
@@ -751,38 +726,33 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
               </div>
             </div>
 
-            {/* Channel 2: Brand Email Invoice */}
-            <div className={`p-4 rounded-2xl border transition-all ${
-              emailEnabled && hasBrandMailbox ? 'bg-blue-950/20 border-blue-500/40 shadow-lg' : 'bg-slate-950/40 border-slate-800 opacity-60'
-            }`}>
+            {/* Channel 2: Brand Email Invoice (Locked - Coming Soon) */}
+            <div
+              onClick={() => showToast('ইমেইল সেন্ডিং ফিচারটি বর্তমানে ডেভেলপমেন্ট পর্যায়ে রয়েছে, দ্রুতই এটি যুক্ত হবে।', 'warning')}
+              className="p-4 rounded-2xl border transition-all bg-slate-950/40 border-slate-800 hover:border-amber-500/50 hover:bg-slate-900/60 opacity-80 cursor-pointer relative group select-none shadow-sm"
+              title="ইমেইল সেন্ডিং সার্ভিস দ্রুতই আসছে (বিস্তারিত জানতে ক্লিক করুন)"
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
                   <Mail className="w-4 h-4" />
                 </span>
-                {hasBrandMailbox ? (
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={emailEnabled}
-                      onChange={() => handleToggleChannel('email')}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                ) : (
-                  <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-[10px] font-bold flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Locked
-                  </span>
-                )}
+                <span className="p-1 px-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-bold flex items-center gap-1 group-hover:bg-amber-500/25 transition-all shadow-sm">
+                  <Lock className="w-3 h-3 text-amber-400" /> Locked
+                </span>
               </div>
-              <h4 className="text-sm font-bold text-white">2. Brand Email</h4>
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-sm font-bold text-white">2. Brand Email</h4>
+                <span className="text-[10px] bg-amber-500/10 text-amber-300 font-semibold px-1.5 py-0.5 rounded border border-amber-500/20">
+                  Coming Soon
+                </span>
+              </div>
               <p className="text-[11px] text-slate-400 mt-1">
                 Professional HTML invoice & tracking sent to customer inbox.
               </p>
               <div className="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Mailbox:</span>
-                <span className={`font-semibold truncate max-w-[120px] ${hasBrandMailbox ? 'text-blue-400' : 'text-amber-400'}`}>
-                  {hasBrandMailbox ? (brandMailboxAddress || 'Ready') : 'Setup in MySite'}
+                <span className="text-slate-400">Status:</span>
+                <span className="font-semibold text-amber-400 flex items-center gap-1">
+                  🔒 দ্রুতই আসছে (লক করা)
                 </span>
               </div>
             </div>
@@ -863,8 +833,8 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
                 </strong>
               </span>
             </div>
-            <span className="text-[11px] text-slate-400">
-              (একত্রে সর্বোচ্চ ২ চ্যানেল: WhatsApp + [SMS বা Email])
+            <span className="text-[11px] text-emerald-400/90 font-medium">
+              (কাস্টমারের ফোন বা ইমেইল ডাটা অনুযায়ী স্বয়ংক্রিয় ডিসপ্যাচ ও ফলব্যাক)
             </span>
           </div>
 
