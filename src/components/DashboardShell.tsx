@@ -337,6 +337,14 @@ export default function DashboardShell() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const liveCameraInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (cameraOpen && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(e => console.warn("Video play error:", e));
+    }
+  }, [cameraOpen, cameraStream]);
 
   // Admin KYC Review Modal States
   const [kycModalUser, setKycModalUser] = useState<any | null>(null);
@@ -1033,25 +1041,60 @@ export default function DashboardShell() {
     try {
       if (cameraStream) {
         cameraStream.getTracks().forEach(t => t.stop());
+        setCameraStream(null);
       }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: facing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
+
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error("Direct getUserMedia not supported in this environment");
+      }
+
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+      } catch (e1) {
+        console.warn("First camera constraint attempt failed, trying simple video:", e1);
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: facing },
+            audio: false
+          });
+        } catch (e2) {
+          console.warn("Second camera constraint attempt failed, trying any video:", e2);
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        }
+      }
+
+      if (!stream) throw new Error("No camera stream acquired");
+
       setCameraStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-    } catch (err: any) {
-      console.warn("Live camera access failed:", err);
-      showToast("ক্যামেরা অন করা যায়নি! ব্রাউজারে ক্যামেরার অনুমতি দিন অথবা ফাইল সিলেক্ট করুন।", "error");
-    } finally {
       setCameraLoading(false);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(e => console.warn("Video play error:", e));
+        }
+      }, 100);
+    } catch (err: any) {
+      console.warn("Live WebRTC camera unavailable, switching to native camera shutter:", err);
+      setCameraLoading(false);
+      setCameraOpen(false);
+
+      if (liveCameraInputRef.current) {
+        liveCameraInputRef.current.setAttribute('capture', facing);
+        liveCameraInputRef.current.click();
+      } else {
+        showToast("ক্যামেরা অন করা যায়নি! ব্রাউজারের ক্যামেরা পারমিশন চেক করুন।", "error");
+      }
     }
   };
 
@@ -1068,24 +1111,31 @@ export default function DashboardShell() {
     const nextFacing = cameraFacing === 'user' ? 'environment' : 'user';
     setCameraFacing(nextFacing);
     if (cameraTarget) {
+      setCameraLoading(true);
       try {
         if (cameraStream) {
           cameraStream.getTracks().forEach(t => t.stop());
+          setCameraStream(null);
         }
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: nextFacing },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          audio: false
-        });
+        let stream: MediaStream | null = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: nextFacing } },
+            audio: false
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
         setCameraStream(stream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-        }
+        setCameraLoading(false);
+        setTimeout(() => {
+          if (videoRef.current && stream) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(e => console.warn("Video play error:", e));
+          }
+        }, 100);
       } catch (e) {
+        setCameraLoading(false);
         console.warn("Could not switch camera", e);
       }
     }
@@ -1671,6 +1721,26 @@ export default function DashboardShell() {
             </div>
           </div>
 
+          {/* CRITICAL WARNING & GUIDELINES BANNER (ALWAYS VISIBLE AT TOP) */}
+          <div className="mb-6 p-4 sm:p-5 bg-red-500/10 border-2 border-red-500/40 rounded-2xl text-red-200 shadow-xl">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="w-6 h-6 text-red-400 shrink-0 mt-0.5" />
+              <div className="text-xs sm:text-sm space-y-2">
+                <p className="font-bold text-red-400 text-sm sm:text-base flex items-center gap-2">
+                  <span>🚨 CRITICAL WARNING & IDENTITY GUIDELINES</span>
+                </p>
+                <ul className="list-disc pl-4 space-y-1.5 text-slate-200 leading-relaxed">
+                  <li><strong>১৮ বছরের উপরে হলে:</strong> NID কার্ড (Front & Back) এবং জন্মনিবন্ধন (Birth Certificate) উভয়ই ১০০% বাধ্যতামূলক।</li>
+                  <li><strong>১৮ বছরের নিচে হলে:</strong> শুধুমাত্র জন্মনিবন্ধন সনদ ও লাইভ পাসপোর্ট সাইজ সেলফি বাধ্যতামূলক।</li>
+                  <li className="text-amber-300 font-bold">📸 লাইভ ফেস সেলফি: পরিচয় নিশ্চিতকরণে ফেস ফটোটি শুধুমাত্র সরাসরি লাইভ ক্যামেরা দিয়ে তুলতে হবে (গ্যালারি আপলোড চলবে না)।</li>
+                  <li className="text-blue-300 font-medium">📄 NID ও জন্মনিবন্ধন: ডকুমেন্টের স্পষ্ট ছবি আপলোড করতে পারবেন অথবা ক্যামেরা দিয়েও সরাসরি তুলতে পারবেন।</li>
+                  <li className="text-red-300 font-bold">⚠️ একটি NID বা জন্মনিবন্ধন দিয়ে কেবল ১টি মাত্র অ্যাকাউন্ট অনুমোদন পাবে। ডুপ্লিকেট অ্যাকাউন্ট করলে বা তথ্য জালিয়াতি করলে অ্যাকাউন্ট সাথে সাথে ব্লক/ব্যান করা হবে।</li>
+                  <li>১৮ বছরের বেশি হওয়া সত্ত্বেও NID এড়ানোর জন্য অসত্য বয়স দিলে ভেরিফিকেশন বাতিল ও অ্যাকাউন্ট ব্লক করা হবে।</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* Rejection Alert Banner */}
           {verificationStatus === 'rejected' && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-300 text-xs shadow-lg">
@@ -1764,8 +1834,9 @@ export default function DashboardShell() {
                         <p className="font-bold text-red-400 mb-2">CRITICAL WARNING & GUIDELINES</p>
                         <ul className="list-disc pl-3 sm:pl-4 space-y-1.5">
                           <li><strong>১৮ বছরের উপরে হলে NID এবং Birth Certificate উভয়ই বাধ্যতামূলক।</strong></li>
-                          <li>১৮ বছরের নিচে হলে শুধুমাত্র Birth Certificate বাধ্যতামূলক।</li>
-                          <li className="text-amber-400 font-medium">নিরাপত্তার স্বার্থে লাইভ ক্যামেরা দিয়ে তোলা ছবি জমা নেওয়া হবে।</li>
+                          <li>১৮ বছরের নিচে হলে শুধুমাত্র Birth Certificate ও লাইভ ফেস সেলফি বাধ্যতামূলক।</li>
+                          <li className="text-amber-400 font-bold">নিরাপত্তার স্বার্থে ফেস সেলফি শুধুমাত্র সরাসরি লাইভ ক্যামেরা দিয়ে তুলতে হবে (গ্যালারি আপলোড নিষিদ্ধ)।</li>
+                          <li>NID ও জন্মনিবন্ধন সনদের স্পষ্ট ছবি ক্যামেরা বা ডিভাইস ফাইল আপলোড উভয়ভাবেই দেওয়া যাবে।</li>
                           <li className="text-red-400 font-bold">একটি NID বা জন্মনিবন্ধন দিয়ে কেবল একটি অ্যাকাউন্টই অনুমোদন পাবে। ডুপ্লিকেট অ্যাকাউন্ট নিষিদ্ধ।</li>
                         </ul>
                       </div>
@@ -1815,25 +1886,27 @@ export default function DashboardShell() {
                           ) : (
                             <div className="aspect-[4/3] rounded-lg border-2 border-dashed border-slate-800 flex flex-col items-center justify-center p-4 mb-2 text-slate-500">
                               <Camera className="w-6 h-6 text-slate-600 mb-1" />
-                              <span className="text-xs">ছবি এখনো তোলা হয়নি</span>
+                              <span className="text-xs">ছবি এখনো তোলা বা আপলোড হয়নি</span>
                             </div>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => startLiveCamera('birth')}
-                            disabled={isBirthLocked}
-                            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
-                          >
-                            <Camera className="w-4 h-4" /> {birthImage ? 'ক্যামেরা দিয়ে পুনরায় তুলুন' : '📸 লাইভ ক্যামেরা দিয়ে তুলুন'}
-                          </button>
-                          
-                          {!isBirthLocked && (
-                            <label className="block text-center mt-2 text-[11px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
-                              অথবা ডিভাইস থেকে ফাইল সিলেক্ট করুন
-                              <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setBirthImage)} className="hidden" />
-                            </label>
-                          )}
+                          <div className="flex flex-col gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startLiveCamera('birth')}
+                              disabled={isBirthLocked}
+                              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                            >
+                              <Camera className="w-4 h-4" /> {birthImage ? 'ক্যামেরা দিয়ে পুনরায় তুলুন' : '📸 ক্যামেরা দিয়ে তুলুন'}
+                            </button>
+                            {!isBirthLocked && (
+                              <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors">
+                                <Upload className="w-3.5 h-3.5 text-blue-400" />
+                                <span>ফাইল / গ্যালারি থেকে আপলোড</span>
+                                <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setBirthImage)} className="hidden" />
+                              </label>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1876,20 +1949,23 @@ export default function DashboardShell() {
                             </div>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => startLiveCamera('nid_front')}
-                            disabled={isNidLocked}
-                            className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-2 rounded-lg text-[11px] font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
-                          >
-                            <Camera className="w-3.5 h-3.5" /> {nidFrontImage ? 'রিটেক' : 'ক্যামেরা ফ্রন্ট'}
-                          </button>
-                          {!isNidLocked && (
-                            <label className="block text-center mt-1.5 text-[10px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
-                              ফাইল আপলোড
-                              <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidFrontImage)} className="hidden" />
-                            </label>
-                          )}
+                          <div className="flex flex-col gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => startLiveCamera('nid_front')}
+                              disabled={isNidLocked}
+                              className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                            >
+                              <Camera className="w-3.5 h-3.5" /> {nidFrontImage ? 'রিটেক' : 'ক্যামেরা'}
+                            </button>
+                            {!isNidLocked && (
+                              <label className="w-full flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-colors">
+                                <Upload className="w-3 h-3 text-blue-400" />
+                                <span>আপলোড</span>
+                                <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidFrontImage)} className="hidden" />
+                              </label>
+                            )}
+                          </div>
                         </div>
 
                         {/* Back Side */}
@@ -1913,29 +1989,34 @@ export default function DashboardShell() {
                             </div>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => startLiveCamera('nid_back')}
-                            disabled={isNidLocked}
-                            className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-2 rounded-lg text-[11px] font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
-                          >
-                            <Camera className="w-3.5 h-3.5" /> {nidBackImage ? 'রিটেক' : 'ক্যামেরা ব্যাক'}
-                          </button>
-                          {!isNidLocked && (
-                            <label className="block text-center mt-1.5 text-[10px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
-                              ফাইল আপলোড
-                              <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidBackImage)} className="hidden" />
-                            </label>
-                          )}
+                          <div className="flex flex-col gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => startLiveCamera('nid_back')}
+                              disabled={isNidLocked}
+                              className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                            >
+                              <Camera className="w-3.5 h-3.5" /> {nidBackImage ? 'রিটেক' : 'ক্যামেরা'}
+                            </button>
+                            {!isNidLocked && (
+                              <label className="w-full flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-colors">
+                                <Upload className="w-3 h-3 text-blue-400" />
+                                <span>আপলোড</span>
+                                <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidBackImage)} className="hidden" />
+                              </label>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Face Image Card */}
+                  {/* Face Image Card (LIVE CAMERA ONLY) */}
                   <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      লাইভ ফেস সেলফি ফটো (Passport Size) <span className="text-red-400 text-xs ml-2">*Mandatory</span>
+                    <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                      <span>লাইভ ফেস সেলফি ফটো (Passport Size)</span>
+                      <span className="text-red-400 text-xs">*Mandatory</span>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">লাইভ ক্যামেরা অনলি</span>
                     </label>
                     <p className="text-xs text-slate-500 mb-3">ক্যামেরার মুখোমুখি হয়ে পরিষ্কার আলোতে একটি লাইভ সেলফি তুলুন।</p>
                     
@@ -1970,17 +2051,60 @@ export default function DashboardShell() {
                         >
                           <Camera className="w-4 h-4" /> {faceImage ? 'লাইভ সেলফি পুনরায় তুলুন' : '📸 লাইভ ফ্রন্ট ক্যামেরা দিয়ে সেলফি তুলুন'}
                         </button>
-                        
-                        {!isIdentityLocked && (
-                          <label className="block text-[11px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
-                            অথবা ডিভাইস থেকে ফাইল বেছে নিন
-                            <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setFaceImage)} className="hidden" />
-                          </label>
-                        )}
-                        <p className="text-[11px] text-slate-500">ছবি তোলার সময় চশমা বা মাস্ক পরিহার করুন এবং পর্যাপ্ত আলো নিশ্চিত করুন।</p>
+                        <p className="text-[11px] text-amber-300 font-medium">⚠️ জালিয়াতি প্রতিরোধে ফেস সেলফি শুধুমাত্র লাইভ ক্যামেরা দিয়ে নেওয়া হবে (গ্যালারি আপলোড বন্ধ)।</p>
+                        <p className="text-[11px] text-slate-400">ছবি তোলার সময় চশমা বা মাস্ক পরিহার করুন এবং পর্যাপ্ত আলো নিশ্চিত করুন।</p>
                       </div>
                     </div>
                   </div>
+
+                  {/* Hidden Native Hardware Camera Shutter (Direct camera only, no gallery) */}
+                  <input
+                    ref={liveCameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture={cameraFacing}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !cameraTarget) return;
+
+                      const img = new Image();
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        img.src = event.target?.result as string;
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          let width = img.width;
+                          let height = img.height;
+                          const maxDim = 1200;
+                          if (width > maxDim || height > maxDim) {
+                            if (width > height) {
+                              height = Math.round((height * maxDim) / width);
+                              width = maxDim;
+                            } else {
+                              width = Math.round((width * maxDim) / height);
+                              height = maxDim;
+                            }
+                          }
+                          canvas.width = width;
+                          canvas.height = height;
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) {
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const compressedDataUrl = canvas.toDataURL('image/webp', 0.82);
+                            if (cameraTarget === 'birth') setBirthImage(compressedDataUrl);
+                            else if (cameraTarget === 'nid_front') setNidFrontImage(compressedDataUrl);
+                            else if (cameraTarget === 'nid_back') setNidBackImage(compressedDataUrl);
+                            else if (cameraTarget === 'face') setFaceImage(compressedDataUrl);
+
+                            showToast("লাইভ ক্যামেরা দিয়ে ছবি সফলভাবে নেওয়া হয়েছে!", "success");
+                          }
+                        };
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                  />
                 </div>
               </div>{/* Web & Social Profiles */}
               
@@ -4480,6 +4604,21 @@ export default function DashboardShell() {
                 className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/30 transition-all active:scale-95"
               >
                 <Camera className="w-4 h-4" /> ছবি তুলুন (Capture)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  stopLiveCamera();
+                  if (liveCameraInputRef.current) {
+                    liveCameraInputRef.current.setAttribute('capture', cameraFacing);
+                    liveCameraInputRef.current.click();
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                title="সরাসরি ডিভাইসের ক্যামেরা অ্যাপ চালু করুন"
+              >
+                <Smartphone className="w-4 h-4 text-emerald-400" /> ডিভাইস ক্যামেরা
               </button>
 
               <button
