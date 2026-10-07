@@ -20,7 +20,7 @@ import CourierService from "./payment-hub/CourierService";
 import DeveloperDocs from "./DeveloperDocs";
 import { downloadWordPressPluginZip } from '../lib/wordpressPluginSource';
 import { useNavigate } from 'react-router-dom';
-import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles, Link as LinkIcon, ArrowRight, PlayCircle } from 'lucide-react';
+import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles, Link as LinkIcon, ArrowRight, PlayCircle, Camera, Clock, Eye, SwitchCamera, Check } from 'lucide-react';
 import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
 import { useLocale } from '../lib/LocaleContext';
 
@@ -202,6 +202,45 @@ export default function DashboardShell() {
     setIsLoadingUsers(true);
     setAdminWarning('');
     try {
+      // 1. Fetch live profiles from supabase database
+      const { data: dbProfiles, error: profErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (dbProfiles && dbProfiles.length > 0) {
+        const formatted = dbProfiles.map((p: any) => ({
+          id: p.id,
+          name: p.name || p.email?.split('@')[0] || 'Client',
+          email: p.email,
+          phone: p.phone || 'N/A',
+          provider: 'Email / OAuth',
+          verification: p.verification_status === 'verified'
+            ? 'Verified'
+            : p.verification_status === 'rejected'
+            ? 'Rejected'
+            : 'Pending',
+          verification_status: p.verification_status || 'pending',
+          rejection_reason: p.rejection_reason,
+          age_group: p.age_group,
+          nid_number: p.nid_number,
+          nid_front_url: p.nid_front_url,
+          nid_back_url: p.nid_back_url,
+          birth_number: p.birth_number,
+          birth_cert_url: p.birth_cert_url,
+          face_image_url: p.face_image_url,
+          website_url: p.website_url,
+          social_fb: p.social_fb,
+          social_insta: p.social_insta,
+          social_li: p.social_li,
+          social_yt: p.social_yt,
+          joined: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
+          status: p.status || 'Active'
+        }));
+        setMockAdminUsers(formatted);
+        return;
+      }
+
       const res = await fetch('/api/admin/users');
       if (res.ok) {
         const data = await res.json();
@@ -244,20 +283,27 @@ export default function DashboardShell() {
   const toggleUserStatus = async (id: string, currentStatus: string) => {
     const isBlocking = currentStatus === 'Active';
     try {
-      const res = await fetch(`/api/admin/users/${id}/${isBlocking ? 'block' : 'unblock'}`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        setMockAdminUsers(users => users.map(u => 
-          u.id === id ? { ...u, status: isBlocking ? 'Blocked' : 'Active' } : u
-        ));
-      } else {
-        const err = await res.json();
-        showToast("Error changing status!", "error");
+      const nextStatus = isBlocking ? 'Blocked' : 'Active';
+      await supabase
+        .from('profiles')
+        .update({ status: nextStatus, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      try {
+        await fetch(`/api/admin/users/${id}/${isBlocking ? 'block' : 'unblock'}`, {
+          method: 'POST'
+        });
+      } catch (err) {
+        console.warn("Server proxy endpoint sync skipped:", err);
       }
+
+      setMockAdminUsers(users => users.map(u => 
+        u.id === id ? { ...u, status: nextStatus } : u
+      ));
+      showToast(isBlocking ? "ইউজার সফলভাবে ব্লক (Banned) করা হয়েছে" : "ইউজার আনব্লক করা হয়েছে", "success");
     } catch (e) {
       console.error(e);
-      showToast("Failed to update status!", "error");
+      showToast("স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে!", "error");
     }
   };
 
@@ -281,6 +327,23 @@ export default function DashboardShell() {
   const [isIdentityLocked, setIsIdentityLocked] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+  const [verificationStatus, setVerificationStatus] = useState<'unverified' | 'pending' | 'verified' | 'rejected' | 'banned'>('unverified');
+  const [rejectionReason, setRejectionReason] = useState<string>('');
+
+  // Live Camera Capture States
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState<'birth' | 'nid_front' | 'nid_back' | 'face' | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Admin KYC Review Modal States
+  const [kycModalUser, setKycModalUser] = useState<any | null>(null);
+  const [adminRejectInput, setAdminRejectInput] = useState<string>('');
+  const [showRejectInputBox, setShowRejectInputBox] = useState(false);
+  const [isUpdatingKyc, setIsUpdatingKyc] = useState(false);
+  const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
 
   // Global SMS Forwarder Settings (Sync with backend table sms_forwarder_settings)
   const [forwarderSettings, setForwarderSettings] = useState({
@@ -728,26 +791,58 @@ export default function DashboardShell() {
       };
       fetchHmac();
         
-      setProfileName(user.user_metadata?.full_name || '');
-      setProfilePhone(user.user_metadata?.phone || '+8801');
-      setAgeGroup(user.user_metadata?.age_group || '18_plus');
-      setNidNumber(user.user_metadata?.nid_number || user.user_metadata?.identity_number || '');
-      setNidFrontImage(user.user_metadata?.nid_front_image || user.user_metadata?.doc_front_image || '');
-      setNidBackImage(user.user_metadata?.nid_back_image || user.user_metadata?.doc_back_image || '');
-      setBirthNumber(user.user_metadata?.birth_number || '');
-      setBirthImage(user.user_metadata?.birth_image || '');
-      setFaceImage(user.user_metadata?.face_image || '');
-      setWebsiteUrl(user.user_metadata?.website_url || '');
-      setSocialFb(user.user_metadata?.social_fb || '');
-      setSocialInsta(user.user_metadata?.social_insta || '');
-      setSocialLi(user.user_metadata?.social_li || '');
-      setSocialYt(user.user_metadata?.social_yt || '');
-      
-      const hasBirth = !!(user.user_metadata?.birth_number || (user.user_metadata?.identity_type === 'birth_cert' && user.user_metadata?.identity_number));
-      const hasNid = !!(user.user_metadata?.nid_number || (user.user_metadata?.identity_type === 'nid' && user.user_metadata?.identity_number));
-      
-      setIsBirthLocked(hasBirth);
-      setIsNidLocked(hasNid);
+      // Load user profile from Supabase profiles table
+      const fetchUserProfile = async () => {
+        try {
+          const { data: dbProf } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (dbProf && isMounted) {
+            setProfileName(dbProf.name || user.user_metadata?.full_name || '');
+            setProfilePhone(dbProf.phone || user.user_metadata?.phone || '+8801');
+            setAgeGroup(dbProf.age_group || user.user_metadata?.age_group || '18_plus');
+            setNidNumber(dbProf.nid_number || user.user_metadata?.nid_number || '');
+            setNidFrontImage(dbProf.nid_front_url || user.user_metadata?.nid_front_image || '');
+            setNidBackImage(dbProf.nid_back_url || user.user_metadata?.nid_back_image || '');
+            setBirthNumber(dbProf.birth_number || user.user_metadata?.birth_number || '');
+            setBirthImage(dbProf.birth_cert_url || user.user_metadata?.birth_image || '');
+            setFaceImage(dbProf.face_image_url || user.user_metadata?.face_image || '');
+            setWebsiteUrl(dbProf.website_url || user.user_metadata?.website_url || '');
+            setSocialFb(dbProf.social_fb || user.user_metadata?.social_fb || '');
+            setSocialInsta(dbProf.social_insta || user.user_metadata?.social_insta || '');
+            setSocialLi(dbProf.social_li || user.user_metadata?.social_li || '');
+            setSocialYt(dbProf.social_yt || user.user_metadata?.social_yt || '');
+            const vStatus = dbProf.verification_status || (dbProf.nid_number || dbProf.birth_number || dbProf.nid_front_url || dbProf.birth_cert_url ? 'pending' : 'unverified');
+            setVerificationStatus(vStatus as any);
+            setRejectionReason(dbProf.rejection_reason || '');
+
+            const isLocked = dbProf.verification_status === 'verified';
+            setIsIdentityLocked(isLocked);
+            setIsBirthLocked(!!dbProf.birth_number && isLocked);
+            setIsNidLocked(!!dbProf.nid_number && isLocked);
+            return;
+          }
+        } catch (e) {
+          console.warn("Could not load db profile", e);
+        }
+
+        if (isMounted) {
+          setProfileName(user.user_metadata?.full_name || '');
+          setProfilePhone(user.user_metadata?.phone || '+8801');
+          setAgeGroup(user.user_metadata?.age_group || '18_plus');
+          setNidNumber(user.user_metadata?.nid_number || '');
+          setBirthNumber(user.user_metadata?.birth_number || '');
+          setWebsiteUrl(user.user_metadata?.website_url || '');
+          setSocialFb(user.user_metadata?.social_fb || '');
+          setSocialInsta(user.user_metadata?.social_insta || '');
+          setSocialLi(user.user_metadata?.social_li || '');
+          setSocialYt(user.user_metadata?.social_yt || '');
+        }
+      };
+      fetchUserProfile();
       
       // Fetch user's existing devices from the database
       supabase.from('payment_numbers').select('*, brands(name)').eq('user_id', user.id).then(({ data }) => {
@@ -853,6 +948,8 @@ export default function DashboardShell() {
       
       // Unlock if they have full name and phone (or identity documents)
       const hasBasicInfo = !!(user.user_metadata?.full_name && user.user_metadata?.phone);
+      const hasBirth = !!(user.user_metadata?.birth_number);
+      const hasNid = !!(user.user_metadata?.nid_number);
       const isVerified = hasBasicInfo || hasBirth || hasNid || !!user.user_metadata?.identity_number;
       setIsIdentityLocked(isVerified);
       if (isVerified) {
@@ -925,15 +1022,178 @@ export default function DashboardShell() {
     })
   };
 
-  // Helper function to render content based on the selected sub-menu
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
+  // Live Camera Controls
+  const startLiveCamera = async (target: 'birth' | 'nid_front' | 'nid_back' | 'face') => {
+    setCameraTarget(target);
+    const facing: 'user' | 'environment' = target === 'face' ? 'user' : 'environment';
+    setCameraFacing(facing);
+    setCameraOpen(true);
+    setCameraLoading(true);
+
+    try {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err: any) {
+      console.warn("Live camera access failed:", err);
+      showToast("ক্যামেরা অন করা যায়নি! ব্রাউজারে ক্যামেরার অনুমতি দিন অথবা ফাইল সিলেক্ট করুন।", "error");
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const stopLiveCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(null);
+    }
+    setCameraOpen(false);
+    setCameraTarget(null);
+  };
+
+  const switchCameraFacing = async () => {
+    const nextFacing = cameraFacing === 'user' ? 'environment' : 'user';
+    setCameraFacing(nextFacing);
+    if (cameraTarget) {
+      try {
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(t => t.stop());
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: nextFacing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+        setCameraStream(stream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      } catch (e) {
+        console.warn("Could not switch camera", e);
+      }
+    }
+  };
+
+  const capturePhotoFromCamera = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    let width = video.videoWidth || 1280;
+    let height = video.videoHeight || 720;
+    const maxDim = 1200;
+    if (width > maxDim || height > maxDim) {
+      if (width > height) {
+        height = Math.round((height * maxDim) / width);
+        width = maxDim;
+      } else {
+        width = Math.round((width * maxDim) / height);
+        height = maxDim;
+      }
+    }
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, width, height);
+
+    // Compress to WebP (~150-250 KB)
+    const dataUrl = canvas.toDataURL('image/webp', 0.82);
+
+    if (cameraTarget === 'birth') setBirthImage(dataUrl);
+    else if (cameraTarget === 'nid_front') setNidFrontImage(dataUrl);
+    else if (cameraTarget === 'nid_back') setNidBackImage(dataUrl);
+    else if (cameraTarget === 'face') setFaceImage(dataUrl);
+
+    stopLiveCamera();
+    showToast("ছবি সফলভাবে ক্যাপচার হয়েছে!", "success");
+  };
+
+  // Fallback Compressed File Upload
+  const handleCompressedImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setter(reader.result as string);
+    if (!file) return;
+
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1200;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/webp', 0.82);
+          setter(compressedDataUrl);
+          showToast("ছবি অপ্টিমাইজ করে লোড করা হয়েছে", "success");
+        }
       };
-      reader.readAsDataURL(file);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Upload image to Supabase kyc_documents Bucket
+  const uploadKycImage = async (dataOrUrl: string, prefix: string): Promise<string> => {
+    if (!dataOrUrl) return '';
+    // If it's already an uploaded http/https URL, keep it
+    if (dataOrUrl.startsWith('http://') || dataOrUrl.startsWith('https://')) {
+      return dataOrUrl;
+    }
+    try {
+      const res = await fetch(dataOrUrl);
+      const blob = await res.blob();
+      const filePath = `${user.id}/${prefix}_${Date.now()}.webp`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('kyc_documents')
+        .upload(filePath, blob, {
+          contentType: 'image/webp',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error("Storage upload error for " + prefix, uploadError);
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('kyc_documents')
+        .getPublicUrl(filePath);
+
+      return publicUrlData.publicUrl;
+    } catch (err: any) {
+      console.error("Failed to upload KYC image", err);
+      throw new Error(`${prefix} ছবি আপলোড করা যায়নি: ${err.message || ''}`);
     }
   };
 
@@ -961,6 +1221,24 @@ export default function DashboardShell() {
         }
       });
       if (error) throw error;
+
+      await supabase.from('profiles').update({
+        name: '',
+        phone: '',
+        nid_number: null,
+        nid_front_url: null,
+        nid_back_url: null,
+        birth_number: null,
+        birth_cert_url: null,
+        face_image_url: null,
+        website_url: null,
+        social_fb: null,
+        social_insta: null,
+        social_li: null,
+        social_yt: null,
+        verification_status: 'pending',
+        rejection_reason: null
+      }).eq('id', user.id);
       
       setProfileName('');
       setProfilePhone('');
@@ -976,11 +1254,14 @@ export default function DashboardShell() {
       setSocialInsta('');
       setSocialLi('');
       setSocialYt('');
+      setVerificationStatus('pending');
+      setRejectionReason('');
       setIsIdentityLocked(false);
       setIsBirthLocked(false);
       setIsNidLocked(false);
       
       setProfileMessage('Profile has been completely reset for testing.');
+      showToast('Profile reset successfully', 'success');
       setTimeout(() => setProfileMessage(''), 3000);
     } catch (err: any) {
       setProfileMessage('Error: ' + err.message);
@@ -994,7 +1275,157 @@ export default function DashboardShell() {
     setProfileMessage('');
 
     try {
-      const { data, error } = await supabase.auth.updateUser({
+      // 1. Mandatory Text Validation
+      if (!profileName.trim()) {
+        showToast("অনুগ্রহ করে আপনার পূর্ণ নাম প্রদান করুন", "error");
+        setIsSavingProfile(false);
+        return;
+      }
+      if (!profilePhone.trim()) {
+        showToast("অনুগ্রহ করে আপনার ফোন নম্বর প্রদান করুন", "error");
+        setIsSavingProfile(false);
+        return;
+      }
+
+      // 2. Identity Document Mandatory Validation
+      if (ageGroup === '18_plus') {
+        if (!nidNumber.trim()) {
+          showToast("১৮ বছরের বেশি বয়সীদের ক্ষেত্রে NID নম্বর বাধ্যতামূলক!", "error");
+          setIsSavingProfile(false);
+          return;
+        }
+        if (!birthNumber.trim()) {
+          showToast("জন্মনিবন্ধন নম্বর প্রদান করুন!", "error");
+          setIsSavingProfile(false);
+          return;
+        }
+        if (!nidFrontImage || !nidBackImage) {
+          showToast("NID কার্ডের সম্মুখভাগ ও পেছনের ভাগের ছবি আবশ্যক!", "error");
+          setIsSavingProfile(false);
+          return;
+        }
+        if (!birthImage) {
+          showToast("জন্মনিবন্ধন সনদের ছবি আবশ্যক!", "error");
+          setIsSavingProfile(false);
+          return;
+        }
+      } else {
+        if (!birthNumber.trim()) {
+          showToast("জন্মনিবন্ধন নম্বর প্রদান করা বাধ্যতামূলক!", "error");
+          setIsSavingProfile(false);
+          return;
+        }
+        if (!birthImage) {
+          showToast("জন্মনিবন্ধন সনদের ছবি আবশ্যক!", "error");
+          setIsSavingProfile(false);
+          return;
+        }
+      }
+
+      if (!faceImage) {
+        showToast("লাইভ ফেস ফটো সেলফি আবশ্যক!", "error");
+        setIsSavingProfile(false);
+        return;
+      }
+
+      // 3. Unique Check: Check if NID already used by another user
+      if (nidNumber.trim()) {
+        const { data: existingNid } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .eq('nid_number', nidNumber.trim())
+          .neq('id', user.id)
+          .maybeSingle();
+
+        if (existingNid) {
+          showToast(`ত্রুটি: এই NID নম্বরটি (${nidNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট ভেরিফাই করা হয়েছে!`, "error");
+          setProfileMessage(`ত্রুটি: এই NID নম্বরটি (${nidNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট রেজিস্টার্ড রয়েছে!`);
+          setIsSavingProfile(false);
+          return;
+        }
+      }
+
+      // 4. Unique Check: Check if Birth Certificate number already used by another user
+      if (birthNumber.trim()) {
+        const { data: existingBirth } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .eq('birth_number', birthNumber.trim())
+          .neq('id', user.id)
+          .maybeSingle();
+
+        if (existingBirth) {
+          showToast(`ত্রুটি: এই জন্মনিবন্ধন নম্বরটি (${birthNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট ভেরিফাই করা হয়েছে!`, "error");
+          setProfileMessage(`ত্রুটি: এই জন্মনিবন্ধন নম্বরটি (${birthNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট রেজিস্টার্ড রয়েছে!`);
+          setIsSavingProfile(false);
+          return;
+        }
+      }
+
+      // 5. Upload Compressed Images to Supabase Storage Bucket 'kyc_documents'
+      let upNidFront = nidFrontImage;
+      let upNidBack = nidBackImage;
+      let upBirth = birthImage;
+      let upFace = faceImage;
+
+      if (nidFrontImage && nidFrontImage.startsWith('data:')) {
+        upNidFront = await uploadKycImage(nidFrontImage, 'nid_front');
+        setNidFrontImage(upNidFront);
+      }
+      if (nidBackImage && nidBackImage.startsWith('data:')) {
+        upNidBack = await uploadKycImage(nidBackImage, 'nid_back');
+        setNidBackImage(upNidBack);
+      }
+      if (birthImage && birthImage.startsWith('data:')) {
+        upBirth = await uploadKycImage(birthImage, 'birth_cert');
+        setBirthImage(upBirth);
+      }
+      if (faceImage && faceImage.startsWith('data:')) {
+        upFace = await uploadKycImage(faceImage, 'face');
+        setFaceImage(upFace);
+      }
+
+      // 6. Save directly to public.profiles table
+      const statusToSave = verificationStatus === 'verified' ? 'verified' : 'pending';
+      const { error: profError } = await supabase
+        .from('profiles')
+        .update({
+          name: profileName.trim(),
+          phone: profilePhone.trim(),
+          age_group: ageGroup,
+          nid_number: nidNumber.trim() || null,
+          nid_front_url: upNidFront || null,
+          nid_back_url: upNidBack || null,
+          birth_number: birthNumber.trim() || null,
+          birth_cert_url: upBirth || null,
+          face_image_url: upFace || null,
+          website_url: websiteUrl.trim() || null,
+          social_fb: socialFb.trim() || null,
+          social_insta: socialInsta.trim() || null,
+          social_li: socialLi.trim() || null,
+          social_yt: socialYt.trim() || null,
+          verification_status: statusToSave,
+          rejection_reason: statusToSave === 'verified' ? null : null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (profError) {
+        console.error("Profiles table update error:", profError);
+        if (profError.message?.includes('duplicate key') || profError.code === '23505' || profError.message?.includes('unique constraint') || (profError as any).details?.includes('already exists')) {
+          if (profError.message?.includes('nid_number') || (profError as any).details?.includes('nid_number')) {
+            throw new Error(`এই NID নম্বরটি (${nidNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একজন ক্লায়েন্টের অ্যাকাউন্ট ভেরিফাই করা হয়েছে!`);
+          }
+          if (profError.message?.includes('birth_number') || (profError as any).details?.includes('birth_number')) {
+            throw new Error(`এই জন্মনিবন্ধন নম্বরটি (${birthNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একজন ক্লায়েন্টের অ্যাকাউন্ট ভেরিফাই করা হয়েছে!`);
+          }
+          throw new Error('এই NID বা জন্মনিবন্ধন নম্বর দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট বিদ্যমান রয়েছে!');
+        }
+        throw profError;
+      }
+
+      // 7. Sync with Supabase Auth Metadata
+      await supabase.auth.updateUser({
         data: { 
           full_name: profileName, 
           phone: profilePhone,
@@ -1009,19 +1440,82 @@ export default function DashboardShell() {
         }
       });
 
-      if (error) throw error;
-      
+      if (statusToSave !== 'verified') {
+        setVerificationStatus('pending');
+      }
+      setIsIdentityLocked(true);
       if (birthNumber) setIsBirthLocked(true);
       if (nidNumber) setIsNidLocked(true);
       
-      setIsIdentityLocked(true);
-      
-      setProfileMessage('Profile updated successfully!');
-      setTimeout(() => setProfileMessage(''), 3000);
+      showToast('প্রোফাইল ও পরিচয়পত্র সফলভাবে সাবমিট হয়েছে!', 'success');
+      setProfileMessage('প্রোফাইল ও পরিচয়পত্র সফলভাবে জমা হয়েছে। অ্যাডমিন রিভিউয়ের পর ভেরিফাই হবে।');
+      setTimeout(() => setProfileMessage(''), 4000);
     } catch (err: any) {
+      console.error(err);
+      showToast('Error: ' + err.message, 'error');
       setProfileMessage('Error: ' + err.message);
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  // Admin KYC Actions
+  const handleAdminApproveKyc = async (userId: string) => {
+    setIsUpdatingKyc(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          verification_status: 'verified',
+          rejection_reason: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+      showToast("ইউজার ভেরিফিকেশন সফলভাবে অনুমোদন (Approved) করা হয়েছে!", "success");
+      setMockAdminUsers(prev => prev.map(u => u.id === userId ? { ...u, verification: 'Verified', verification_status: 'verified', rejection_reason: null } : u));
+      if (user?.id === userId) {
+        setVerificationStatus('verified');
+      }
+      setKycModalUser(null);
+    } catch (err: any) {
+      showToast("Error approving KYC: " + (err.message || ''), "error");
+    } finally {
+      setIsUpdatingKyc(false);
+    }
+  };
+
+  const handleAdminRejectKyc = async (userId: string, reason: string) => {
+    if (!reason.trim()) {
+      showToast("প্রত্যাখ্যানের কারণ উল্লেখ করুন", "error");
+      return;
+    }
+    setIsUpdatingKyc(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          verification_status: 'rejected',
+          rejection_reason: reason.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+      showToast("ভেরিফিকেশন প্রত্যাখ্যাত হয়েছে।", "success");
+      setMockAdminUsers(prev => prev.map(u => u.id === userId ? { ...u, verification: 'Rejected', verification_status: 'rejected', rejection_reason: reason.trim() } : u));
+      if (user?.id === userId) {
+        setVerificationStatus('rejected');
+        setRejectionReason(reason.trim());
+      }
+      setKycModalUser(null);
+      setShowRejectInputBox(false);
+      setAdminRejectInput('');
+    } catch (err: any) {
+      showToast("Error rejecting KYC: " + (err.message || ''), "error");
+    } finally {
+      setIsUpdatingKyc(false);
     }
   };
 
@@ -1150,167 +1644,346 @@ export default function DashboardShell() {
 
     if (activeSubMenu === 'Profile') {
       return (
-        <div className="max-w-2xl">
-          <h2 className="text-2xl font-bold text-white mb-6">Profile Settings</h2>
-          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 sm:p-6">
+        <div className="max-w-3xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white tracking-tight">Profile & Identity Verification</h2>
+              <p className="text-xs text-slate-400 mt-1">ব্যবসায়িক প্রোফাইল ও নিরাপত্তা ভেরিফিকেশন পরিচালনা করুন</p>
+            </div>
+            <div>
+              {verificationStatus === 'verified' ? (
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Verified Merchant
+                </div>
+              ) : verificationStatus === 'pending' ? (
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold text-xs animate-pulse">
+                  <Clock className="w-4 h-4 text-amber-400" /> Verification Under Review
+                </div>
+              ) : verificationStatus === 'rejected' ? (
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-xs">
+                  <ShieldAlert className="w-4 h-4 text-red-400" /> Verification Rejected
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs">
+                  <ShieldAlert className="w-4 h-4 text-amber-400" /> Unverified Merchant
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Rejection Alert Banner */}
+          {verificationStatus === 'rejected' && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-300 text-xs shadow-lg">
+              <div className="flex items-center gap-2 font-bold text-red-400 text-sm mb-1.5">
+                <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" /> পূর্বের ভেরিফিকেশন আবেদন বাতিল করা হয়েছিল
+              </div>
+              <p className="text-slate-300 leading-relaxed">
+                অ্যাডমিন নোট: <strong className="text-red-200">{rejectionReason || 'তথ্য বা ছবিতে অসঙ্গতি ছিল। অনুগ্রহ করে লাইভ ক্যামেরা দিয়ে স্পষ্ট ছবি তুলে পুনরায় সাবমিট করুন।'}</strong>
+              </p>
+            </div>
+          )}
+
+          {/* Pending Alert Banner */}
+          {verificationStatus === 'pending' && (
+            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-xs flex items-start gap-3 shadow-lg">
+              <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-400 text-sm">পরিচয়পত্র পর্যালোচনায় রয়েছে (Pending)</p>
+                <p className="mt-1 text-slate-300 leading-relaxed">আপনার সাবমিট করা NID এবং লাইভ ফেস ছবি অ্যাডমিন প্যানেল থেকে ম্যানুয়ালি যাচাই করা হচ্ছে। অ্যাডমিন অ্যাপ্রুভ করলেই আপনার প্রোফাইলটি স্থায়ীভাবে ভেরিফাইড হবে।</p>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
             <div className="flex flex-col items-center mb-8">
               <div className="relative mb-3">
-                <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-emerald-500/50 flex items-center justify-center overflow-hidden">
+                <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-emerald-500/50 flex items-center justify-center overflow-hidden shadow-inner">
                   {user?.user_metadata?.avatar_url ? (
                     <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-3xl font-bold text-slate-400">{(user?.email || 'U').charAt(0).toUpperCase()}</span>
+                    <span className="text-3xl font-bold text-slate-400">{(profileName || user?.email || 'U').charAt(0).toUpperCase()}</span>
                   )}
                 </div>
               </div>
               
-              <p className="text-sm font-medium text-slate-400 mb-2">{user?.email}</p>
+              <p className="text-sm font-medium text-slate-400 mb-1">{user?.email}</p>
+              <div className="mt-1">
+                {verificationStatus === 'verified' ? (
+                  <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> আইডি ভেরিফাইড মার্চেন্ট (Verified)
+                  </span>
+                ) : verificationStatus === 'pending' ? (
+                  <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1.5 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" /> ভেরিফিকেশন পর্যালোচনায় (Pending)
+                  </span>
+                ) : verificationStatus === 'rejected' ? (
+                  <span className="text-[11px] font-bold text-red-400 flex items-center gap-1.5 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
+                    <ShieldAlert className="w-3.5 h-3.5 text-red-400" /> ভেরিফিকেশন প্রত্যাখ্যাত (Action Needed)
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" /> আন-ভেরিফাইড প্রোফাইল
+                  </span>
+                )}
+              </div>
             </div>
-
 
             <div className="space-y-5">
               {profileMessage && (
-                <div className={`p-3 rounded-lg text-sm text-center ${profileMessage.includes('Error') ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                <div className={`p-3 rounded-lg text-sm text-center ${profileMessage.includes('Error') || profileMessage.includes('ত্রুটি') ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
                   {profileMessage}
                 </div>
               )}
+
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-2">Email Address (Read-Only)</label>
                 <input type="email" value={user?.email || ''} readOnly className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-500 cursor-not-allowed focus:outline-none transition-colors" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">Full Name</label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">Phone Number</label>
-                <input type="text" placeholder="Enter full name" value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
-                <input type="tel" placeholder="+8801..." value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Full Name <span className="text-red-400">*</span></label>
+                  <input type="text" placeholder="আপনার পূর্ণ নাম লিখুন" value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Phone Number <span className="text-red-400">*</span></label>
+                  <input type="tel" placeholder="+8801..." value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
+                </div>
               </div>
 
               {/* Identity Verification */}
               <div className="pt-6 border-t border-slate-800/50 mt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-medium flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Identity Verification</h3></div>
-              <div className="bg-slate-900 border-y sm:border sm:border-slate-800 sm:rounded-xl p-3 sm:p-6 mb-6 -mx-4 sm:mx-0">
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 sm:p-4">
-                  <div className="flex gap-2 sm:gap-3">
-                    <ShieldAlert className="w-4 sm:w-5 h-4 sm:h-5 text-red-500 shrink-0 mt-0.5" />
-                    <div className="text-xs sm:text-sm text-red-200">
-                      <p className="font-bold text-red-400 mb-2">CRITICAL WARNING</p>
-                      <ul className="list-disc pl-3 sm:pl-4 space-y-2">
-                        <li><strong>১৮ বছরের উপরে হলে NID এবং Birth Certificate উভয়ই বাধ্যতামূলক।</strong></li>
-                        <li>১৮ বছরের নিচে হলে শুধুমাত্র Birth Certificate বাধ্যতামূলক।</li>
-                        <li className="text-amber-400 mt-2 p-2 sm:p-2.5 bg-amber-500/10 border border-amber-500/20 rounded font-medium leading-relaxed">বয়স ১৮ বছরের বেশি হওয়া সত্ত্বেও তা গোপন করলে, অ্যাকাউন্টটি ভেরিফাই করা হবে না এবং নীতিমালা অনুযায়ী সাসপেন্ড করা হতে পারে।</li>
-                        <li className="text-red-400 mt-2 p-2 sm:p-2.5 bg-red-500/10 border border-red-500/30 rounded font-bold animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.2)] leading-relaxed">একাধিক অ্যাকাউন্ট তৈরি বা কাস্টমারের সাথে প্রতারণা প্রমাণিত হলে, অ্যাকাউন্টটি স্থায়ীভাবে টার্মিনেট (Permanent Ban) করা হবে এবং আইনি ব্যবস্থা গ্রহণ করা হতে পারে। উপযুক্ত প্রমাণ সাপেক্ষে এবং নোটিশ প্রদানের মাধ্যমে এই সিদ্ধান্ত কার্যকর করা হবে।</li>
-                      </ul>
-                    </div>
-                  </div>
+                  <h3 className="text-white font-medium flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Identity Verification (পরিচয়পত্র যাচাই)</h3>
                 </div>
-
-                <div className="flex flex-col sm:flex-row sm:space-x-6 space-y-4 sm:space-y-0 mb-6">
-                  <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300 font-bold bg-slate-950 px-4 py-3 rounded-lg border ${ageGroup === '18_plus' ? 'border-emerald-500' : 'border-slate-800'}`}>
-                    <input type="radio" value="18_plus" checked={ageGroup === '18_plus'} onChange={(e) => setAgeGroup('18_plus')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
-                    <span>১৮ বছরের উপরে (18+)</span>
-                  </label>
-                  <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300 font-bold bg-slate-950 px-4 py-3 rounded-lg border ${ageGroup === 'under_18' ? 'border-emerald-500' : 'border-slate-800'}`}>
-                    <input type="radio" value="under_18" checked={ageGroup === 'under_18'} onChange={(e) => setAgeGroup('under_18')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
-                    <span>১৮ বছরের নিচে (Under 18)</span>
-                  </label>
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  {/* Birth Certificate Section */}
-                  <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
-                    <h4 className="text-white font-medium mb-4 flex items-center gap-2 text-sm border-b border-slate-800 pb-2">
-                      <FileText className="w-4 h-4 text-emerald-500" />
-                      Birth Certificate (Online Copy) <span className="text-red-400 text-xs ml-auto">*Mandatory</span>
-                    </h4>
-                    <div className="mb-4">
-                      <label className="block text-xs font-medium text-slate-400 mb-1">Birth Certificate Number</label>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-400 mb-1">Certificate Image</label>
-                      <input type="text" placeholder="Enter number" value={birthNumber} onChange={(e) => setBirthNumber(e.target.value)} disabled={isBirthLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" />
-                      <div className={`aspect-[1/1.414] w-3/4 mx-auto flex flex-col items-center justify-center border-2 border-dashed border-slate-700 bg-slate-900/50 rounded-lg p-2 text-center transition-colors group relative overflow-hidden ${isBirthLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/50'}`}>
-                        {birthImage ? (
-                          <img src={birthImage} alt="Birth Certificate" className="w-full h-full object-cover absolute inset-0" />
-                        ) : (
-                          <>
-                            <Upload className="w-5 h-5 text-slate-500 mb-1 group-hover:text-emerald-400 transition-colors" />
-                            <span className="text-[10px] text-slate-400 group-hover:text-slate-300">Upload Image</span>
-                          </>
-                        )}
-                        <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setBirthImage)} disabled={isBirthLocked} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed" />
+                <div className="bg-slate-900 border-y sm:border sm:border-slate-800 sm:rounded-xl p-3 sm:p-6 mb-6 -mx-4 sm:mx-0">
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 sm:p-4 mb-6">
+                    <div className="flex gap-2 sm:gap-3">
+                      <ShieldAlert className="w-4 sm:w-5 h-4 sm:h-5 text-red-500 shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm text-red-200">
+                        <p className="font-bold text-red-400 mb-2">CRITICAL WARNING & GUIDELINES</p>
+                        <ul className="list-disc pl-3 sm:pl-4 space-y-1.5">
+                          <li><strong>১৮ বছরের উপরে হলে NID এবং Birth Certificate উভয়ই বাধ্যতামূলক।</strong></li>
+                          <li>১৮ বছরের নিচে হলে শুধুমাত্র Birth Certificate বাধ্যতামূলক।</li>
+                          <li className="text-amber-400 font-medium">নিরাপত্তার স্বার্থে লাইভ ক্যামেরা দিয়ে তোলা ছবি জমা নেওয়া হবে।</li>
+                          <li className="text-red-400 font-bold">একটি NID বা জন্মনিবন্ধন দিয়ে কেবল একটি অ্যাকাউন্টই অনুমোদন পাবে। ডুপ্লিকেট অ্যাকাউন্ট নিষিদ্ধ।</li>
+                        </ul>
                       </div>
                     </div>
                   </div>
 
-                  {/* NID Section */}
-                  <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
-                    <h4 className="text-white font-medium mb-4 flex items-start gap-2 border-b border-slate-800 pb-2">
-                      <CreditCard className="w-4 h-4 text-blue-500 mt-0.5" />
+                  <div className="flex flex-col sm:flex-row sm:space-x-6 space-y-4 sm:space-y-0 mb-6">
+                    <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300 font-bold bg-slate-950 px-4 py-3 rounded-lg border ${ageGroup === '18_plus' ? 'border-emerald-500' : 'border-slate-800'}`}>
+                      <input type="radio" value="18_plus" checked={ageGroup === '18_plus'} onChange={(e) => setAgeGroup('18_plus')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
+                      <span>১৮ বছরের উপরে (18+)</span>
+                    </label>
+                    <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300 font-bold bg-slate-950 px-4 py-3 rounded-lg border ${ageGroup === 'under_18' ? 'border-emerald-500' : 'border-slate-800'}`}>
+                      <input type="radio" value="under_18" checked={ageGroup === 'under_18'} onChange={(e) => setAgeGroup('under_18')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
+                      <span>১৮ বছরের নিচে (Under 18)</span>
+                    </label>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Birth Certificate Section */}
+                    <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
                       <div>
-                        <div className="text-sm">National ID</div>
-                        <div className="text-sm">(NID)</div>
+                        <h4 className="text-white font-medium mb-3 flex items-center gap-2 text-sm border-b border-slate-800 pb-2">
+                          <FileText className="w-4 h-4 text-emerald-500" />
+                          Birth Certificate (জন্মনিবন্ধন) <span className="text-red-400 text-xs ml-auto">*Mandatory</span>
+                        </h4>
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium text-slate-400 mb-1">Birth Certificate Number (ইউনিক)</label>
+                          <input type="text" placeholder="জন্মনিবন্ধন নম্বর লিখুন" value={birthNumber} onChange={(e) => setBirthNumber(e.target.value)} disabled={isBirthLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-mono" />
+                        </div>
                       </div>
-                      <span className={`text-xs ml-auto ${ageGroup === '18_plus' ? 'text-red-400' : 'text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded'}`}>
-                        {ageGroup === '18_plus' ? '*Mandatory' : 'Upgrade if you get NID'}
-                      </span>
-                    </h4>
-                    <div className="mb-4">
-                      <label className="block text-xs font-medium text-slate-400 mb-1">NID Number</label>
-                      <input type="text" placeholder="Enter NID number" value={nidNumber} onChange={(e) => setNidNumber(e.target.value)} disabled={isNidLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
+
                       <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">Front Side</label>
-                        <div className={`aspect-video flex flex-col items-center justify-center border-2 border-dashed border-slate-700 bg-slate-900/50 rounded-lg p-2 text-center transition-colors group relative overflow-hidden ${isNidLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/50'}`}>
+                        <label className="block text-xs font-medium text-slate-400 mb-1.5">Certificate Photo</label>
+                        <div className="border border-slate-800 rounded-xl p-3 bg-slate-900/40 text-center">
+                          {birthImage ? (
+                            <div className="relative mb-2 aspect-[4/3] rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
+                              <img src={birthImage} alt="Birth Certificate" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setPreviewZoomImage(birthImage)}
+                                className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded-lg text-xs"
+                                title="বড় করে দেখুন"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="aspect-[4/3] rounded-lg border-2 border-dashed border-slate-800 flex flex-col items-center justify-center p-4 mb-2 text-slate-500">
+                              <Camera className="w-6 h-6 text-slate-600 mb-1" />
+                              <span className="text-xs">ছবি এখনো তোলা হয়নি</span>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => startLiveCamera('birth')}
+                            disabled={isBirthLocked}
+                            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                          >
+                            <Camera className="w-4 h-4" /> {birthImage ? 'ক্যামেরা দিয়ে পুনরায় তুলুন' : '📸 লাইভ ক্যামেরা দিয়ে তুলুন'}
+                          </button>
+                          
+                          {!isBirthLocked && (
+                            <label className="block text-center mt-2 text-[11px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
+                              অথবা ডিভাইস থেকে ফাইল সিলেক্ট করুন
+                              <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setBirthImage)} className="hidden" />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* NID Section */}
+                    <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-white font-medium mb-3 flex items-start gap-2 border-b border-slate-800 pb-2">
+                          <CreditCard className="w-4 h-4 text-blue-500 mt-0.5" />
+                          <span className="text-sm">National ID (NID কার্ড)</span>
+                          <span className={`text-xs ml-auto ${ageGroup === '18_plus' ? 'text-red-400' : 'text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded'}`}>
+                            {ageGroup === '18_plus' ? '*Mandatory' : 'Optional for Under 18'}
+                          </span>
+                        </h4>
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium text-slate-400 mb-1">NID Number (ইউনিক)</label>
+                          <input type="text" placeholder="NID নম্বর লিখুন" value={nidNumber} onChange={(e) => setNidNumber(e.target.value)} disabled={isNidLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-mono" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Front Side */}
+                        <div className="border border-slate-800 rounded-xl p-2.5 bg-slate-900/40 text-center">
+                          <span className="text-xs font-medium text-slate-400 block mb-1">সম্মুখভাগ (Front)</span>
                           {nidFrontImage ? (
-                            <img src={nidFrontImage} alt="NID Front" className="w-full h-full object-cover absolute inset-0" />
+                            <div className="relative mb-2 aspect-video rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
+                              <img src={nidFrontImage} alt="NID Front" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setPreviewZoomImage(nidFrontImage)}
+                                className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded text-xs"
+                                title="বড় করে দেখুন"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </button>
+                            </div>
                           ) : (
-                            <>
-                              <Upload className="w-4 h-4 text-slate-500 mb-1 group-hover:text-emerald-400 transition-colors" />
-                              <span className="text-[10px] text-slate-400 group-hover:text-slate-300">Front Side</span>
-                            </>
+                            <div className="aspect-video rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center mb-2 text-slate-600 text-[11px]">
+                              Front Side
+                            </div>
                           )}
-                          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setNidFrontImage)} disabled={isNidLocked} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed" />
+
+                          <button
+                            type="button"
+                            onClick={() => startLiveCamera('nid_front')}
+                            disabled={isNidLocked}
+                            className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-2 rounded-lg text-[11px] font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                          >
+                            <Camera className="w-3.5 h-3.5" /> {nidFrontImage ? 'রিটেক' : 'ক্যামেরা ফ্রন্ট'}
+                          </button>
+                          {!isNidLocked && (
+                            <label className="block text-center mt-1.5 text-[10px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
+                              ফাইল আপলোড
+                              <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidFrontImage)} className="hidden" />
+                            </label>
+                          )}
                         </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">Back Side</label>
-                        <div className={`aspect-video flex flex-col items-center justify-center border-2 border-dashed border-slate-700 bg-slate-900/50 rounded-lg p-2 text-center transition-colors group relative overflow-hidden ${isNidLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/50'}`}>
+
+                        {/* Back Side */}
+                        <div className="border border-slate-800 rounded-xl p-2.5 bg-slate-900/40 text-center">
+                          <span className="text-xs font-medium text-slate-400 block mb-1">পেছনের ভাগ (Back)</span>
                           {nidBackImage ? (
-                            <img src={nidBackImage} alt="NID Back" className="w-full h-full object-cover absolute inset-0" />
+                            <div className="relative mb-2 aspect-video rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
+                              <img src={nidBackImage} alt="NID Back" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setPreviewZoomImage(nidBackImage)}
+                                className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded text-xs"
+                                title="বড় করে দেখুন"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </button>
+                            </div>
                           ) : (
-                            <>
-                              <Upload className="w-4 h-4 text-slate-500 mb-1 group-hover:text-emerald-400 transition-colors" />
-                              <span className="text-[10px] text-slate-400 group-hover:text-slate-300">Back Side</span>
-                            </>
+                            <div className="aspect-video rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center mb-2 text-slate-600 text-[11px]">
+                              Back Side
+                            </div>
                           )}
-                          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setNidBackImage)} disabled={isNidLocked} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed" />
+
+                          <button
+                            type="button"
+                            onClick={() => startLiveCamera('nid_back')}
+                            disabled={isNidLocked}
+                            className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-2 rounded-lg text-[11px] font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                          >
+                            <Camera className="w-3.5 h-3.5" /> {nidBackImage ? 'রিটেক' : 'ক্যামেরা ব্যাক'}
+                          </button>
+                          {!isNidLocked && (
+                            <label className="block text-center mt-1.5 text-[10px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
+                              ফাইল আপলোড
+                              <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidBackImage)} className="hidden" />
+                            </label>
+                          )}
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Passport Size Face Image <span className="text-red-400 text-xs ml-2">*Mandatory</span></label>
-                  <div className={`w-32 md:w-48 aspect-[3/4] flex flex-col items-center justify-center border-2 border-dashed border-slate-700 bg-slate-900/50 rounded-lg p-4 text-center transition-colors group relative overflow-hidden ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/50'}`}>
-                    {faceImage ? (
-                      <img src={faceImage} alt="Face" className="w-full h-full object-cover absolute inset-0" />
-                    ) : (
-                      <>
-                        <ImageIcon className="w-6 h-6 text-slate-500 mb-2 group-hover:text-emerald-400 transition-colors" />
-                        <span className="text-xs text-slate-400 group-hover:text-slate-300">Upload Face Image</span>
-                      </>
-                    )}
-                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setFaceImage)} disabled={isIdentityLocked} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed" />
+                  {/* Face Image Card */}
+                  <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      লাইভ ফেস সেলফি ফটো (Passport Size) <span className="text-red-400 text-xs ml-2">*Mandatory</span>
+                    </label>
+                    <p className="text-xs text-slate-500 mb-3">ক্যামেরার মুখোমুখি হয়ে পরিষ্কার আলোতে একটি লাইভ সেলফি তুলুন।</p>
+                    
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="w-36 aspect-[3/4] rounded-xl overflow-hidden bg-slate-900 border border-slate-800 relative flex items-center justify-center shadow-md">
+                        {faceImage ? (
+                          <>
+                            <img src={faceImage} alt="Face" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setPreviewZoomImage(faceImage)}
+                              className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded-lg text-xs"
+                              title="বড় করে দেখুন"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <div className="text-center p-3 text-slate-600">
+                            <Camera className="w-8 h-8 mx-auto mb-1 text-slate-700" />
+                            <span className="text-[11px]">সেলফি নেই</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 space-y-3 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => startLiveCamera('face')}
+                          disabled={isIdentityLocked}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <Camera className="w-4 h-4" /> {faceImage ? 'লাইভ সেলফি পুনরায় তুলুন' : '📸 লাইভ ফ্রন্ট ক্যামেরা দিয়ে সেলফি তুলুন'}
+                        </button>
+                        
+                        {!isIdentityLocked && (
+                          <label className="block text-[11px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
+                            অথবা ডিভাইস থেকে ফাইল বেছে নিন
+                            <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setFaceImage)} className="hidden" />
+                          </label>
+                        )}
+                        <p className="text-[11px] text-slate-500">ছবি তোলার সময় চশমা বা মাস্ক পরিহার করুন এবং পর্যাপ্ত আলো নিশ্চিত করুন।</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
               </div>{/* Web & Social Profiles */}
+              
               <div className="pt-6 border-t border-slate-800/50 mt-6 space-y-4">
                 <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Web & Social Profiles</h3>
                 
@@ -1343,10 +2016,10 @@ export default function DashboardShell() {
               <div className="pt-6 flex flex-col sm:flex-row gap-4">
                 <button 
                   onClick={handleSaveProfile}
-                  disabled={isSavingProfile}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+                  disabled={isSavingProfile || verificationStatus === 'verified'}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50"
                 >
-                  {isSavingProfile ? 'Saving...' : 'Save Profile'}
+                  {isSavingProfile ? 'অটো-কম্প্রেস ও সংরক্ষণ হচ্ছে...' : verificationStatus === 'verified' ? 'প্রোফাইল ভেরিফাইড (সংরক্ষিত)' : 'Save & Submit For Verification'}
                 </button>
                 {isAdmin && (
                   <button 
@@ -1517,7 +2190,7 @@ export default function DashboardShell() {
               {buildFeatures.map((feature) => {
                 const selected = feature.available && selectedFeatureIds.includes(feature.id);
                 return <button key={feature.id} disabled={!feature.available} onClick={() => feature.available && setSelectedFeatureIds((current) => selected ? current.filter((id) => id !== feature.id) : [...current, feature.id])} className={`text-left rounded-2xl border p-5 transition-all ${selected ? 'border-indigo-500/70 bg-indigo-500/10 shadow-lg shadow-indigo-950/30' : 'border-slate-800 bg-slate-900/50 hover:border-slate-600'}`}>
-                  <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">{feature.icon}</span><span className="font-bold text-white">{feature.name}</span></div><span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selected ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-600 text-transparent'}`}>✓</span></div>
+                  <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">{(feature as any).icon || <Zap className="w-5 h-5 text-indigo-400" />}</span><span className="font-bold text-white">{feature.name}</span></div><span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selected ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-600 text-transparent'}`}>✓</span></div>
                   <p className="text-sm text-slate-300 mt-4 leading-relaxed">{getFeatureCopy(feature.id, language)[0]}</p>
                   <p className="text-xs text-slate-500 mt-3 leading-relaxed"><strong className="text-slate-400">Example:</strong> {getFeatureCopy(feature.id, language)[1]}</p>
                   <p className="text-sm text-indigo-300 font-bold mt-4">{feature.available ? (feature.price === 0 ? 'FREE' : `$${feature.price}/mo`) : 'N/A'}</p>
@@ -2600,21 +3273,47 @@ export default function DashboardShell() {
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        {client.status === 'Active' ? (
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                          {client.verification_status !== 'verified' ? (
+                            <button 
+                              onClick={() => handleAdminApproveKyc(client.id)}
+                              disabled={isUpdatingKyc}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded text-xs font-bold transition-all shadow-sm flex items-center gap-1 active:scale-95 disabled:opacity-50"
+                              title="সরাসরি অ্যাকাউন্ট ভেরিফাই করুন"
+                            >
+                              <Check className="w-3.5 h-3.5" /> Verify
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                              <ShieldCheck className="w-3.5 h-3.5" /> Verified ✓
+                            </span>
+                          )}
                           <button 
-                            onClick={async () => { if(await showConfirm('Are you sure you want to block this user? They will lose access to all features.')) toggleUserStatus(client.id, client.status) }}
-                            className="bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-500/30 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                            onClick={() => {
+                              setKycModalUser(client);
+                              setShowRejectInputBox(false);
+                              setAdminRejectInput('');
+                            }}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                           >
-                            Block
+                            <Eye className="w-3.5 h-3.5 text-blue-400" /> Review & Details
                           </button>
-                        ) : (
-                          <button 
-                            onClick={async () => { if(await showConfirm('Are you sure you want to unblock this user?')) toggleUserStatus(client.id, client.status) }}
-                            className="bg-slate-800 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 border border-slate-700 hover:border-emerald-500/30 px-3 py-1.5 rounded text-xs font-medium transition-colors"
-                          >
-                            Unblock
-                          </button>
-                        )}
+                          {client.status === 'Active' ? (
+                            <button 
+                              onClick={async () => { if(await showConfirm('Are you sure you want to block this user? They will lose access to all features.')) toggleUserStatus(client.id, client.status) }}
+                              className="bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-500/30 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                            >
+                              Block
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={async () => { if(await showConfirm('Are you sure you want to unblock this user?')) toggleUserStatus(client.id, client.status) }}
+                              className="bg-slate-800 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 border border-slate-700 hover:border-emerald-500/30 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                            >
+                              Unblock
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -3059,7 +3758,17 @@ export default function DashboardShell() {
             <h1 className="text-xl font-bold text-white tracking-tight">MecoPay</h1>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {verificationStatus === 'verified' && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Verified Merchant
+              </span>
+            )}
+            {verificationStatus === 'pending' && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30">
+                <Clock className="w-3.5 h-3.5 text-amber-400" /> Pending Review
+              </span>
+            )}
             <span className="hidden md:block text-sm font-medium text-slate-400">
               {user?.email}
             </span>
@@ -3158,8 +3867,23 @@ export default function DashboardShell() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{user?.user_metadata?.full_name || 'My Profile'}</p>
+                    <p className="text-sm font-bold text-white truncate">{profileName || user?.user_metadata?.full_name || 'My Profile'}</p>
                     <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                    <div className="mt-1">
+                      {verificationStatus === 'verified' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                          <ShieldCheck className="w-3 h-3 text-emerald-400" /> Verified
+                        </span>
+                      ) : verificationStatus === 'pending' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                          <Clock className="w-3 h-3 text-amber-400" /> Under Review
+                        </span>
+                      ) : verificationStatus === 'rejected' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                          <ShieldAlert className="w-3 h-3 text-red-400" /> Rejected
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
              ) : (
@@ -3696,6 +4420,298 @@ export default function DashboardShell() {
           </div>
         </div>
       )}
+
+      {/* Live Camera Capture Modal */}
+      {cameraOpen && (
+        <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
+              <div className="flex items-center gap-2">
+                <Camera className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-white font-bold text-sm">
+                  {cameraTarget === 'birth' && 'জন্মনিবন্ধন লাইভ ক্যামেরা ক্যাপচার'}
+                  {cameraTarget === 'nid_front' && 'NID সম্মুখভাগ (Front) লাইভ ক্যাপচার'}
+                  {cameraTarget === 'nid_back' && 'NID পেছনের ভাগ (Back) লাইভ ক্যাপচার'}
+                  {cameraTarget === 'face' && 'লাইভ ফেস সেলফি ক্যাপচার'}
+                </h3>
+              </div>
+              <button
+                onClick={stopLiveCamera}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative aspect-[4/3] bg-black flex items-center justify-center overflow-hidden">
+              {cameraLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-10 text-emerald-400 gap-2 text-sm font-medium">
+                  <RefreshCw className="w-5 h-5 animate-spin" /> ক্যামেরা প্রস্তুত হচ্ছে...
+                </div>
+              )}
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover ${cameraFacing === 'user' ? '-scale-x-100' : ''}`}
+              />
+              {/* Frame Overlay Guide */}
+              <div className="absolute inset-6 border-2 border-dashed border-emerald-500/60 rounded-xl pointer-events-none flex items-center justify-center">
+                <span className="text-[11px] text-emerald-300/90 bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm">
+                  {cameraTarget === 'face' ? 'আপনার মুখমণ্ডল ফ্রেমের মাঝে রাখুন' : 'ডকুমেন্টটি ফ্রেমের ভেতরে সোজা রাখুন'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={switchCameraFacing}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                title="ক্যামেরা পরিবর্তন (Front / Back)"
+              >
+                <SwitchCamera className="w-4 h-4" /> সুইচ ক্যামেরা
+              </button>
+
+              <button
+                type="button"
+                onClick={capturePhotoFromCamera}
+                className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/30 transition-all active:scale-95"
+              >
+                <Camera className="w-4 h-4" /> ছবি তুলুন (Capture)
+              </button>
+
+              <button
+                type="button"
+                onClick={stopLiveCamera}
+                className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-medium transition-colors"
+              >
+                বাতিল
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin KYC Review Modal */}
+      {kycModalUser && (
+        <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl my-8">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-base">Client Identity & KYC Verification Review</h3>
+                  <p className="text-xs text-slate-400">{kycModalUser.name} ({kycModalUser.email})</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setKycModalUser(null); setShowRejectInputBox(false); }}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+              {/* Status header */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+                <div>
+                  <span className="text-xs text-slate-400">Current Status:</span>
+                  <span className={`ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                    kycModalUser.verification_status === 'verified'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                      : kycModalUser.verification_status === 'rejected'
+                      ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                      : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                  }`}>
+                    {kycModalUser.verification_status?.toUpperCase() || 'PENDING'}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400">
+                  Age Group: <span className="text-white font-medium">{kycModalUser.age_group === 'under_18' ? '১৮ বছরের নিচে (Under 18)' : '১৮ বছরের উপরে (18+)'}</span>
+                </div>
+                <div className="text-xs text-slate-400">
+                  Phone: <span className="text-white font-medium">{kycModalUser.phone || 'N/A'}</span>
+                </div>
+              </div>
+
+              {/* NID and Birth numbers */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl">
+                  <span className="text-xs text-slate-400 block mb-1">National ID (NID) Number</span>
+                  <span className="text-sm font-mono font-bold text-white select-all">
+                    {kycModalUser.nid_number || 'জমা দেওয়া হয়নি'}
+                  </span>
+                </div>
+                <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl">
+                  <span className="text-xs text-slate-400 block mb-1">Birth Certificate Number</span>
+                  <span className="text-sm font-mono font-bold text-white select-all">
+                    {kycModalUser.birth_number || 'জমা দেওয়া হয়নি'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Document Images Grid */}
+              <div>
+                <h4 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-emerald-400" /> সাবমিট করা পরিচয়পত্রের ছবিসমূহ (বড় করে দেখতে ক্লিক করুন)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* NID Front */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                    <span className="text-[11px] text-slate-400 font-medium block mb-1.5">NID Front Side</span>
+                    <div
+                      onClick={() => kycModalUser.nid_front_url && setPreviewZoomImage(kycModalUser.nid_front_url)}
+                      className="aspect-video bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer border border-slate-800 hover:border-emerald-500/50 transition-colors"
+                    >
+                      {kycModalUser.nid_front_url ? (
+                        <img src={kycModalUser.nid_front_url} alt="NID Front" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-slate-600">ছবি নেই</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* NID Back */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                    <span className="text-[11px] text-slate-400 font-medium block mb-1.5">NID Back Side</span>
+                    <div
+                      onClick={() => kycModalUser.nid_back_url && setPreviewZoomImage(kycModalUser.nid_back_url)}
+                      className="aspect-video bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer border border-slate-800 hover:border-emerald-500/50 transition-colors"
+                    >
+                      {kycModalUser.nid_back_url ? (
+                        <img src={kycModalUser.nid_back_url} alt="NID Back" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-slate-600">ছবি নেই</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Birth Certificate */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                    <span className="text-[11px] text-slate-400 font-medium block mb-1.5">Birth Certificate</span>
+                    <div
+                      onClick={() => kycModalUser.birth_cert_url && setPreviewZoomImage(kycModalUser.birth_cert_url)}
+                      className="aspect-video bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer border border-slate-800 hover:border-emerald-500/50 transition-colors"
+                    >
+                      {kycModalUser.birth_cert_url ? (
+                        <img src={kycModalUser.birth_cert_url} alt="Birth Cert" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-slate-600">ছবি নেই</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Face Photo */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                    <span className="text-[11px] text-slate-400 font-medium block mb-1.5">Live Face Photo</span>
+                    <div
+                      onClick={() => kycModalUser.face_image_url && setPreviewZoomImage(kycModalUser.face_image_url)}
+                      className="aspect-video bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer border border-slate-800 hover:border-emerald-500/50 transition-colors"
+                    >
+                      {kycModalUser.face_image_url ? (
+                        <img src={kycModalUser.face_image_url} alt="Face" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-slate-600">ছবি নেই</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Web & Social Links */}
+              <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-xl space-y-2">
+                <span className="text-xs font-bold text-slate-400 block mb-2">Web & Social Profiles</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div>Website: {kycModalUser.website_url ? <a href={kycModalUser.website_url} target="_blank" rel="noreferrer" className="text-emerald-400 underline">{kycModalUser.website_url}</a> : <span className="text-slate-600">None</span>}</div>
+                  <div>Facebook: {kycModalUser.social_fb ? <a href={kycModalUser.social_fb} target="_blank" rel="noreferrer" className="text-emerald-400 underline">{kycModalUser.social_fb}</a> : <span className="text-slate-600">None</span>}</div>
+                  <div>Instagram: {kycModalUser.social_insta ? <a href={kycModalUser.social_insta} target="_blank" rel="noreferrer" className="text-emerald-400 underline">{kycModalUser.social_insta}</a> : <span className="text-slate-600">None</span>}</div>
+                  <div>YouTube: {kycModalUser.social_yt ? <a href={kycModalUser.social_yt} target="_blank" rel="noreferrer" className="text-emerald-400 underline">{kycModalUser.social_yt}</a> : <span className="text-slate-600">None</span>}</div>
+                </div>
+              </div>
+
+              {/* Rejection input box if opened */}
+              {showRejectInputBox && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl space-y-3">
+                  <label className="block text-xs font-bold text-red-300">প্রত্যাখ্যানের সুনির্দিষ্ট কারণ লিখুন (ক্লায়েন্ট দেখতে পারবে):</label>
+                  <textarea
+                    value={adminRejectInput}
+                    onChange={(e) => setAdminRejectInput(e.target.value)}
+                    placeholder="যেমন: NID কার্ডের ছবি ঝাপসা ছিল, স্পষ্ট করে লাইভ ক্যামেরায় পুনরায় তুলুন..."
+                    className="w-full bg-slate-950 border border-red-500/40 rounded-lg p-3 text-xs text-white focus:outline-none focus:border-red-400"
+                    rows={3}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowRejectInputBox(false)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium"
+                    >
+                      বাতিল
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isUpdatingKyc}
+                      onClick={() => handleAdminRejectKyc(kycModalUser.id, adminRejectInput)}
+                      className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
+                    >
+                      রিজেক্ট নিশ্চিত করুন
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer action buttons */}
+            <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <button
+                onClick={() => { setKycModalUser(null); setShowRejectInputBox(false); }}
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+              >
+                বন্ধ করুন
+              </button>
+
+              <div className="flex items-center gap-3">
+                {!showRejectInputBox && (
+                  <button
+                    onClick={() => setShowRejectInputBox(true)}
+                    disabled={isUpdatingKyc}
+                    className="px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold transition-colors flex items-center gap-1.5"
+                  >
+                    <ShieldAlert className="w-4 h-4" /> Reject (প্রত্যাখ্যান)
+                  </button>
+                )}
+
+                <button
+                  onClick={() => handleAdminApproveKyc(kycModalUser.id)}
+                  disabled={isUpdatingKyc}
+                  className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/30 transition-all flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" /> {isUpdatingKyc ? 'Updating...' : 'Approve & Verify (অনুমোদন)'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Image Zoom Preview Modal */}
+      {previewZoomImage && (
+        <div
+          onClick={() => setPreviewZoomImage(null)}
+          className="fixed inset-0 z-[120] bg-black/95 flex items-center justify-center p-4 cursor-pointer animate-in fade-in duration-150"
+        >
+          <div className="relative max-w-4xl max-h-[90vh]">
+            <img src={previewZoomImage} alt="Full Zoom Preview" className="max-w-full max-h-[85vh] object-contain rounded-xl border border-slate-700 shadow-2xl" />
+            <p className="text-center text-xs text-slate-400 mt-2">বন্ধ করতে যেকোনো জায়গায় ক্লিক করুন</p>
+          </div>
+        </div>
+      )}
+
 {toast && (
         <div className="fixed top-12 right-12 z-[9999] pointer-events-none animate-in fade-in slide-in-from-top-5 duration-200">
           <p className={`font-bold text-lg drop-shadow-sm ${toast.type === 'success' ? 'text-emerald-500' : 'text-red-500'}`}>
