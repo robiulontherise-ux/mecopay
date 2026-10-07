@@ -43,6 +43,10 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [selectedSimNumber, setSelectedSimNumber] = useState<string>('');
 
+  // Supabase Permission Fix State
+  const [permissionDeniedDetected, setPermissionDeniedDetected] = useState<boolean>(false);
+  const [sqlCopied, setSqlCopied] = useState<boolean>(false);
+
   // Email Mailbox Verification (Smart Lock Check)
   const [hasBrandMailbox, setHasBrandMailbox] = useState<boolean>(false);
   const [brandMailboxAddress, setBrandMailboxAddress] = useState<string>('');
@@ -97,6 +101,18 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
   </div>
 </body>
 </html>`);
+
+  const SUPABASE_PERMISSION_SQL = `-- Run this in Supabase SQL Editor:
+GRANT ALL ON TABLE public.whatsapp_gateway_settings TO anon, authenticated, service_role, postgres;
+GRANT ALL ON TABLE public.notification_templates TO anon, authenticated, service_role, postgres;
+
+ALTER TABLE public.whatsapp_gateway_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "whatsapp_gateway_settings_all" ON public.whatsapp_gateway_settings;
+CREATE POLICY "whatsapp_gateway_settings_all" ON public.whatsapp_gateway_settings FOR ALL TO public USING (true) WITH CHECK (true);
+
+ALTER TABLE public.notification_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "notification_templates_all" ON public.notification_templates;
+CREATE POLICY "notification_templates_all" ON public.notification_templates FOR ALL TO public USING (true) WITH CHECK (true);`;
 
   const [showEmailPreview, setShowEmailPreview] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -222,7 +238,10 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         query = query.eq('user_id', user.id);
       }
 
-      const { data: rows } = await query;
+      const { data: rows, error: gwSelectErr } = await query;
+      if (gwSelectErr && (gwSelectErr.code === '42501' || gwSelectErr.message?.includes('permission denied'))) {
+        setPermissionDeniedDetected(true);
+      }
       const gw = (rows && rows.length > 0) ? (rows.find((r: any) => r.brand_id === selectedBrandId) || rows[0]) : null;
 
       if (gw) {
@@ -235,7 +254,8 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         setCustomSmsApiUrl(gw.custom_sms_api_url || gw.sms_api_endpoint || '');
         setCustomSmsApiKey(gw.custom_sms_api_key || gw.sms_api_key || '');
         setCustomSmsApiSecret(gw.sms_api_secret || '');
-        setRoutingStrategy(gw.routing_strategy || 'smart_fallback');
+        const strat = gw.routing_strategy || (gw.send_all_channels ? 'send_all' : 'smart_fallback');
+        setRoutingStrategy(strat);
         setFallbackToEmail(gw.fallback_to_email !== false);
         setAutoCourierAdvance(gw.auto_courier_advance !== false);
         setAutoCourierCod(Boolean(gw.auto_courier_cod));
@@ -248,10 +268,14 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
       }
 
       // Templates
-      const { data: tpls } = await supabase
+      const { data: tpls, error: tplsErr } = await supabase
         .from('notification_templates')
         .select('*')
         .eq('brand_id', selectedBrandId);
+
+      if (tplsErr && (tplsErr.code === '42501' || tplsErr.message?.includes('permission denied'))) {
+        setPermissionDeniedDetected(true);
+      }
 
       if (tpls && tpls.length > 0) {
         const payTpl = tpls.find((t: any) => t.event_type === 'payment_success');
@@ -438,7 +462,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
 
     // Auto-save instantly to database
     try {
-      await supabase
+      const { error: autoErr } = await supabase
         .from('whatsapp_gateway_settings')
         .upsert({
           brand_id: selectedBrandId,
@@ -456,11 +480,25 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           sms_api_key: customSmsApiKey || null,
           sms_api_secret: customSmsApiSecret || null,
           routing_strategy: routingStrategy,
+          send_all_channels: routingStrategy === 'send_all',
           updated_at: new Date().toISOString()
         }, { onConflict: 'brand_id' });
+
+      if (autoErr) {
+        if (autoErr.code === '42501' || autoErr.message?.includes('permission denied')) {
+          setPermissionDeniedDetected(true);
+          showToast('Database permission required: Run fix_notification_permissions.sql in Supabase', 'error');
+          return;
+        }
+      }
       showToast('Channel settings auto-saved!', 'success');
     } catch (e: any) {
-      console.warn('Auto-save error:', e);
+      if (e?.code === '42501' || e?.message?.includes('permission denied')) {
+        setPermissionDeniedDetected(true);
+        showToast('Database permission required: Run fix_notification_permissions.sql in Supabase', 'error');
+      } else {
+        console.warn('Auto-save error:', e);
+      }
     }
   };
 
@@ -491,6 +529,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           sms_api_key: customSmsApiKey || null,
           sms_api_secret: customSmsApiSecret || null,
           routing_strategy: routingStrategy,
+          send_all_channels: routingStrategy === 'send_all',
           auto_courier_advance: autoCourierAdvance,
           auto_courier_cod: autoCourierCod,
           digital_product_sms_enabled: digitalProductSmsEnabled,
@@ -500,10 +539,16 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           updated_at: new Date().toISOString()
         }, { onConflict: 'brand_id' });
 
-      if (gwErr) throw gwErr;
+      if (gwErr) {
+        if (gwErr.code === '42501' || gwErr.message?.includes('permission denied')) {
+          setPermissionDeniedDetected(true);
+          throw new Error('Database permission denied for table whatsapp_gateway_settings. Please execute fix_notification_permissions.sql in your Supabase SQL Editor.');
+        }
+        throw gwErr;
+      }
 
       // Save Templates
-      await supabase.from('notification_templates').upsert([
+      const { error: tmplErr } = await supabase.from('notification_templates').upsert([
         {
           brand_id: selectedBrandId,
           user_id: user?.id,
@@ -540,9 +585,18 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
         }
       ], { onConflict: 'brand_id,event_type,channel' });
 
+      if (tmplErr) {
+        if (tmplErr.code === '42501' || tmplErr.message?.includes('permission denied')) {
+          setPermissionDeniedDetected(true);
+          throw new Error('Database permission denied for table notification_templates. Please execute fix_notification_permissions.sql in your Supabase SQL Editor.');
+        }
+        throw tmplErr;
+      }
+
+      setPermissionDeniedDetected(false);
       showToast('All WhatsApp, Email & SMS Gateway Settings Saved!', 'success');
     } catch (err: any) {
-      showToast('Failed to save settings: ' + err.message, 'error');
+      showToast(err.message || 'Failed to save settings', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -567,8 +621,10 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Brand Selector */}
+      {/* Brand Selector & SQL Fix Button */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Brand:</label>
           <select
@@ -587,7 +643,56 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
             )}
           </select>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(SUPABASE_PERMISSION_SQL);
+            setSqlCopied(true);
+            setTimeout(() => setSqlCopied(false), 3000);
+            showToast('SQL Permission Fix copied to clipboard!', 'success');
+          }}
+          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-2 transition-all shadow-sm"
+        >
+          {sqlCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Code className="w-3.5 h-3.5 text-amber-400" />}
+          {sqlCopied ? 'SQL Copied!' : 'Copy Supabase SQL Fix'}
+        </button>
       </div>
+
+      {/* Permission Denied Alert Banner */}
+      {permissionDeniedDetected && (
+        <div className="bg-amber-950/30 border border-amber-500/40 rounded-2xl p-4 sm:p-5 text-amber-200 space-y-3 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                <AlertTriangle className="w-5 h-5" />
+              </span>
+              <div>
+                <h4 className="font-bold text-white text-sm">Supabase Database Permission Required</h4>
+                <p className="text-xs text-amber-300/80 mt-0.5">
+                  Table <code>whatsapp_gateway_settings</code> & <code>notification_templates</code> need GRANT permissions in Supabase.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(SUPABASE_PERMISSION_SQL);
+                setSqlCopied(true);
+                setTimeout(() => setSqlCopied(false), 3000);
+                showToast('SQL Fix Script Copied!', 'success');
+              }}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shrink-0"
+            >
+              {sqlCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {sqlCopied ? 'Copied to Clipboard!' : 'Copy SQL Fix Script'}
+            </button>
+          </div>
+          <div className="text-[11px] text-amber-300/70 border-t border-amber-500/20 pt-2 flex items-center gap-2">
+            <span>👉 How to run: Open <strong>Supabase Dashboard</strong> ➔ <strong>SQL Editor</strong> ➔ Paste this script ➔ Click <strong>RUN</strong>.</span>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSaveAllSettings} className="space-y-6">
         {/* ======================================================== */}
@@ -935,7 +1040,7 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
           {/* Smart Delivery Routing with Email Option */}
           <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-              Smart Cost-Saver Routing Chain
+              Channel Dispatch Logic & Fallback
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
@@ -950,9 +1055,9 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                   className="mt-1"
                 />
                 <div>
-                  <span className="text-xs font-bold block text-white">Smart Cascade Fallback (Cost Saver - 95% Savings)</span>
+                  <span className="text-xs font-bold block text-white">1. Fallback Only (Primary 1st Channel)</span>
                   <span className="text-[11px] text-slate-400">
-                    Try <strong>WhatsApp</strong> first (0 cost). If customer has no WhatsApp ➔ Send <strong>Brand Email</strong>. If no email ➔ Send <strong>SMS</strong>.
+                    কেবোল ১ম চ্যানেলে (যেমন WhatsApp) পাঠাবে। কেবল ১ম চ্যানেল না থাকলে বা ফেইল হলে ২য় চ্যানেলে ফলব্যাক করবে।
                   </span>
                 </div>
               </label>
@@ -969,9 +1074,9 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
                   className="mt-1"
                 />
                 <div>
-                  <span className="text-xs font-bold block text-white">Broadcast to All Channels</span>
+                  <span className="text-xs font-bold block text-white">2. All Active Channels (One by One)</span>
                   <span className="text-[11px] text-slate-400">
-                    Send simultaneously to WhatsApp, Email, and SMS for maximum visibility.
+                    উভয় চ্যানেলেই (WhatsApp + SMS/Email) একে একে চেষ্টা করবে, যাতে কাস্টমার ১০০% নিশ্চিত নোটিফিকেশন পায়।
                   </span>
                 </div>
               </label>
