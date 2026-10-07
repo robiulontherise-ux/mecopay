@@ -618,20 +618,6 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
             )}
           </select>
         </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            navigator.clipboard.writeText(SUPABASE_PERMISSION_SQL);
-            setSqlCopied(true);
-            setTimeout(() => setSqlCopied(false), 3000);
-            showToast('SQL Permission Fix copied to clipboard!', 'success');
-          }}
-          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-2 transition-all shadow-sm"
-        >
-          {sqlCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Code className="w-3.5 h-3.5 text-amber-400" />}
-          {sqlCopied ? 'SQL Copied!' : 'Copy Supabase SQL Fix'}
-        </button>
       </div>
 
       {/* Permission Denied Alert Banner */}
