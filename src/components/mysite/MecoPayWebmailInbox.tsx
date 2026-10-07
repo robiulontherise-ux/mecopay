@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Sparkles,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../lib/supabase';
 import InAppFileViewerModal from './InAppFileViewerModal';
@@ -66,6 +67,7 @@ export default function MecoPayWebmailInbox({
   const [composeBody, setComposeBody] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
   const [composeStatus, setComposeStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [warningToast, setWarningToast] = useState<string | null>(null);
 
   // Update default compose from email
   useEffect(() => {
@@ -78,10 +80,8 @@ export default function MecoPayWebmailInbox({
 
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isEmailServiceActive) {
-      setComposeStatus({ type: 'error', message: 'সার্ভিস Inactive থাকায় ইমেইল পাঠানো সম্ভব নয়!' });
-      return;
-    }
+    setComposeStatus({ type: 'error', message: 'আউটগোয়িং ইমেইল সেন্ডিং ফিচারটি বর্তমানে ডেভেলপমেন্ট পর্যায়ে রয়েছে, খুব শীঘ্রই এটি যুক্ত হবে।' });
+    return;
     if (!composeTo.trim() || !composeSubject.trim()) {
       setComposeStatus({ type: 'error', message: 'Recipient and Subject are required.' });
       return;
@@ -300,7 +300,27 @@ export default function MecoPayWebmailInbox({
   };
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col min-h-[620px]">
+    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col min-h-[620px] relative">
+      {/* Floating Warning Toast for Locked Features */}
+      {warningToast && (
+        <div className="fixed top-6 right-6 z-50 max-w-md bg-slate-900/95 border border-amber-500/50 text-amber-200 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md animate-in slide-in-from-top-4 duration-200">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+            <Lock className="w-4 h-4" />
+          </div>
+          <div className="text-xs leading-relaxed flex-1">
+            <strong className="text-amber-300 block mb-0.5">ফিচারটি লক করা রয়েছে</strong>
+            {warningToast}
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setWarningToast(null)}
+            className="text-amber-400/70 hover:text-amber-200 p-1 rounded-lg hover:bg-amber-500/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Inbox Header Bar */}
       <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/70 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -342,16 +362,21 @@ export default function MecoPayWebmailInbox({
             </select>
           </div>
 
-          {/* Compose Email Button (Disabled if Service is Inactive) */}
+          {/* Compose Email Button (Locked - In Development) */}
           <button
             type="button"
-            onClick={() => setComposeOpen(true)}
-            disabled={!isEmailServiceActive}
-            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/10 transition-all"
-            title={!isEmailServiceActive ? "ইমেইল সার্ভিস Inactive থাকায় সেন্ড ব্লক রয়েছে" : "নতুন মেইল পাঠান"}
+            onClick={() => {
+              setWarningToast('আউটগোয়িং ইমেইল সেন্ডিং (Compose) ফিচারটি বর্তমানে ডেভেলপমেন্ট পর্যায়ে রয়েছে, খুব শীঘ্রই এটি যুক্ত হবে।');
+              setTimeout(() => setWarningToast(null), 4000);
+            }}
+            className="px-3.5 py-1.5 bg-slate-800/90 hover:bg-slate-800 border border-amber-500/30 hover:border-amber-500/50 text-slate-200 hover:text-white font-medium rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer group"
+            title="ইমেইল সেন্ডিং ফিচারটি দ্রুতই আসছে (বিস্তারিত জানতে ক্লিক করুন)"
           >
-            <Send className="w-3.5 h-3.5" />
-            <span>Compose Email</span>
+            <Lock className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+            <span className="font-semibold">Compose Email</span>
+            <span className="text-[9px] bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold px-1.5 py-0.5 rounded">
+              Locked
+            </span>
           </button>
 
           {/* Refresh Button */}
