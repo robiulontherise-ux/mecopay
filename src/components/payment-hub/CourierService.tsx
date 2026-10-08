@@ -29,7 +29,7 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const [activeTab, setActiveTab] = useState<'parcels' | 'settings'>('parcels');
 
   // Courier API Keys & Brand Automation Settings (Domestic + International)
-  const [courierProvider, setCourierProvider] = useState<'steadfast' | 'pathao' | 'redx' | 'dhl' | 'fedex' | 'aramex'>('steadfast');
+  const [courierProvider, setCourierProvider] = useState<'steadfast' | 'pathao' | 'redx' | 'dhl' | 'fedex' | 'aramex' | 'custom'>('steadfast');
   const [steadfastApiKey, setSteadfastApiKey] = useState('');
   const [steadfastSecretKey, setSteadfastSecretKey] = useState('');
   const [pathaoClientId, setPathaoClientId] = useState('');

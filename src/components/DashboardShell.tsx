@@ -29,7 +29,7 @@ export default function DashboardShell() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [hmacSecret, setHmacSecret] = useState<string>('');
-  const isAdmin = user?.email === (import.meta as any).env.VITE_ADMIN_EMAIL || user?.email === 'robiulontherise@gmail.com';
+  const isAdmin = Boolean(user?.email && (user.email === 'robiulontherise@gmail.com' || ((import.meta as any).env.VITE_ADMIN_EMAIL && user.email === (import.meta as any).env.VITE_ADMIN_EMAIL)));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'brand' | 'payments' | 'site' | 'admin'>('brand');
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error', id: number} | null>(null);
@@ -202,58 +202,65 @@ export default function DashboardShell() {
     setIsLoadingUsers(true);
     setAdminWarning('');
     try {
-      // 1. Fetch live profiles from supabase database
-      const { data: dbProfiles, error: profErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let foundUsers: any[] = [];
 
-      if (dbProfiles && dbProfiles.length > 0) {
-        const formatted = dbProfiles.map((p: any) => ({
-          id: p.id,
-          name: p.name || p.email?.split('@')[0] || 'Client',
-          email: p.email,
-          phone: p.phone || 'N/A',
-          provider: 'Email / OAuth',
-          verification: p.verification_status === 'verified'
-            ? 'Verified'
-            : p.verification_status === 'rejected'
-            ? 'Rejected'
-            : 'Pending',
-          verification_status: p.verification_status || 'pending',
-          rejection_reason: p.rejection_reason,
-          age_group: p.age_group,
-          nid_number: p.nid_number,
-          nid_front_url: p.nid_front_url,
-          nid_back_url: p.nid_back_url,
-          birth_number: p.birth_number,
-          birth_cert_url: p.birth_cert_url,
-          face_image_url: p.face_image_url,
-          website_url: p.website_url,
-          social_fb: p.social_fb,
-          social_insta: p.social_insta,
-          social_li: p.social_li,
-          social_yt: p.social_yt,
-          joined: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
-          status: p.status || 'Active'
-        }));
-        setMockAdminUsers(formatted);
-        return;
+      // 1. First attempt: Call backend API route (bypasses RLS with service role and returns all profiles & KYC files)
+      try {
+        const res = await fetch('/api/admin/users');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.users && Array.isArray(data.users) && data.users.length > 0) {
+            foundUsers = data.users;
+          }
+        }
+      } catch (backendErr) {
+        console.warn('Backend admin users fetch:', backendErr);
       }
 
-      const res = await fetch('/api/admin/users');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.warning) setAdminWarning(data.warning);
-        setMockAdminUsers(data.users || []);
-      } else {
-        const err = await res.json();
-        console.error("Failed to fetch users:", err.error);
-        setAdminWarning("Could not load users from server.");
+      // 2. Second attempt: Direct Supabase client query
+      if (foundUsers.length === 0) {
+        const { data: dbProfiles, error: profErr } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (dbProfiles && dbProfiles.length > 0) {
+          foundUsers = dbProfiles.map((p: any) => ({
+            id: p.id,
+            name: p.name || p.email?.split('@')[0] || 'Client',
+            email: p.email,
+            phone: p.phone || 'N/A',
+            provider: 'Email / OAuth',
+            verification: p.verification_status === 'verified'
+              ? 'Verified ✓'
+              : p.verification_status === 'rejected'
+              ? 'Rejected'
+              : p.verification_status === 'pending'
+              ? 'Pending'
+              : 'Unverified',
+            verification_status: p.verification_status || (p.nid_number || p.birth_number || p.nid_front_url || p.birth_cert_url ? 'pending' : 'unverified'),
+            rejection_reason: p.rejection_reason,
+            age_group: p.age_group,
+            nid_number: p.nid_number,
+            nid_front_url: p.nid_front_url,
+            nid_back_url: p.nid_back_url,
+            birth_number: p.birth_number,
+            birth_cert_url: p.birth_cert_url,
+            face_image_url: p.face_image_url,
+            website_url: p.website_url,
+            social_fb: p.social_fb,
+            social_insta: p.social_insta,
+            social_li: p.social_li,
+            social_yt: p.social_yt,
+            joined: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
+            status: p.status || 'Active'
+          }));
+        }
       }
+
+      setMockAdminUsers(foundUsers);
     } catch (e) {
-      console.error(e);
-      setAdminWarning("Failed to connect to backend API.");
+      console.error("Error in fetchUsers:", e);
     } finally {
       setIsLoadingUsers(false);
     }
@@ -954,15 +961,10 @@ export default function DashboardShell() {
         }
       });
       
-      // Unlock if they have full name and phone (or identity documents)
-      const hasBasicInfo = !!(user.user_metadata?.full_name && user.user_metadata?.phone);
-      const hasBirth = !!(user.user_metadata?.birth_number);
-      const hasNid = !!(user.user_metadata?.nid_number);
-      const isVerified = hasBasicInfo || hasBirth || hasNid || !!user.user_metadata?.identity_number;
+      // Only lock identity inputs if the admin has explicitly verified the account
+      // Unverified or pending users can freely edit their profile and take photos
+      const isVerified = verificationStatus === 'verified';
       setIsIdentityLocked(isVerified);
-      if (isVerified) {
-        setActiveSubMenu('Dashboard');
-      }
       
     });
     
@@ -1228,7 +1230,7 @@ export default function DashboardShell() {
         .from('kyc_documents')
         .upload(filePath, blob, {
           contentType: 'image/webp',
-          upsert: true
+          upsert: false
         });
 
       if (uploadError) {
@@ -1490,12 +1492,14 @@ export default function DashboardShell() {
         }
       });
 
-      if (statusToSave !== 'verified') {
+      if (statusToSave === 'verified') {
+        setIsIdentityLocked(true);
+        if (birthNumber) setIsBirthLocked(true);
+        if (nidNumber) setIsNidLocked(true);
+      } else {
         setVerificationStatus('pending');
+        setIsIdentityLocked(false);
       }
-      setIsIdentityLocked(true);
-      if (birthNumber) setIsBirthLocked(true);
-      if (nidNumber) setIsNidLocked(true);
       
       showToast('প্রোফাইল ও পরিচয়পত্র সফলভাবে সাবমিট হয়েছে!', 'success');
       setProfileMessage('প্রোফাইল ও পরিচয়পত্র সফলভাবে জমা হয়েছে। অ্যাডমিন রিভিউয়ের পর ভেরিফাই হবে।');
@@ -3283,35 +3287,23 @@ export default function DashboardShell() {
             </div>
           </div>
           
-          {adminWarning && (
-            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-sm flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 shrink-0" />
-              <div>
-                <p className="font-bold">Missing Backend Configuration</p>
-                <p>{adminWarning}</p>
-                <p className="mt-1 text-xs opacity-80">To see live Google Auth users and actually block them, you must add <code>SUPABASE_SERVICE_ROLE_KEY</code> in the AI Studio Secrets panel.</p>
-              </div>
-            </div>
-          )}
-          
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[900px]">
+              <table className="w-full text-left border-collapse min-w-[1000px]">
                 <thead>
                   <tr className="bg-slate-950/50 border-b border-slate-800">
                     <th className="p-4 text-sm font-bold text-slate-300">Client Info</th>
                     <th className="p-4 text-sm font-bold text-slate-300">Client ID</th>
-                    <th className="p-4 text-sm font-bold text-slate-300">Auth Provider</th>
-                    <th className="p-4 text-sm font-bold text-slate-300">Verification</th>
+                    <th className="p-4 text-sm font-bold text-slate-300">Verification Status</th>
+                    <th className="p-4 text-sm font-bold text-slate-300">Uploaded Documents</th>
                     <th className="p-4 text-sm font-bold text-slate-300">Joined</th>
-                    <th className="p-4 text-sm font-bold text-slate-300">Status</th>
                     <th className="p-4 text-sm font-bold text-slate-300 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-400 text-sm">
+                      <td colSpan={6} className="p-8 text-center text-slate-400 text-sm">
                         No clients found matching your search.
                       </td>
                     </tr>
@@ -3325,6 +3317,9 @@ export default function DashboardShell() {
                           <div>
                             <p className="text-sm font-bold text-white">{client.name}</p>
                             <p className="text-xs text-slate-400">{client.email}</p>
+                            {client.phone && client.phone !== 'N/A' && (
+                              <p className="text-[11px] text-slate-500 font-mono mt-0.5">{client.phone}</p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -3337,22 +3332,80 @@ export default function DashboardShell() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 text-xs font-medium text-slate-300 border border-slate-700">
-                          <Globe className="w-3 h-3 text-blue-400" /> {client.provider}
-                        </span>
+                        {client.verification_status === 'verified' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Verified ✓
+                          </span>
+                        ) : client.verification_status === 'rejected' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                            <ShieldAlert className="w-3.5 h-3.5 text-red-400" /> Rejected
+                          </span>
+                        ) : (client.verification_status === 'pending' || client.nid_number || client.birth_number || client.face_image_url) ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                            <Clock className="w-3.5 h-3.5 text-amber-400" /> রিকোয়েস্ট এসেছে
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                            কোনো আবেদন করেনি
+                          </span>
+                        )}
                       </td>
                       <td className="p-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${client.verification.includes('Verified') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
-                          {client.verification.includes('Verified') ? <ShieldCheck className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
-                          {client.verification}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {client.nid_front_url ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewZoomImage(client.nid_front_url)}
+                              className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 flex items-center gap-1"
+                              title="NID সম্মুখভাগ বড় করে দেখুন"
+                            >
+                              🪪 NID ফ্রন্ট
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-600 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">NID ফ্রন্ট নেই</span>
+                          )}
+
+                          {client.nid_back_url ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewZoomImage(client.nid_back_url)}
+                              className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 flex items-center gap-1"
+                              title="NID পেছনের ভাগ বড় করে দেখুন"
+                            >
+                              🪪 NID ব্যাক
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-600 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">NID ব্যাক নেই</span>
+                          )}
+
+                          {client.birth_cert_url ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewZoomImage(client.birth_cert_url)}
+                              className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 flex items-center gap-1"
+                              title="জন্মনিবন্ধন সনদ বড় করে দেখুন"
+                            >
+                              📜 জন্মনিবন্ধন
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-600 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">জন্মনিবন্ধন নেই</span>
+                          )}
+
+                          {client.face_image_url ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewZoomImage(client.face_image_url)}
+                              className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 flex items-center gap-1"
+                              title="ফেস সেলফি বড় করে দেখুন"
+                            >
+                              🤳 সেলফি
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-600 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">সেলফি নেই</span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 text-sm text-slate-400">{client.joined}</td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${client.status === 'Active' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                          {client.status}
-                        </span>
-                      </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2 flex-wrap">
                           {client.verification_status !== 'verified' ? (

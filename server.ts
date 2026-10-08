@@ -62,55 +62,73 @@ async function startServer() {
   app.get('/api/admin/users', isAdmin, async (req, res) => {
     try {
       if (!supabaseAdmin) {
-        // Return mock data if key is missing so user can see UI
-        return res.json({ 
-          warning: "SUPABASE_SERVICE_ROLE_KEY is missing. Showing mock data.",
-          users: [
-            {
-              id: 'USR-2024-X8F9A2B',
-              name: 'Robiul Islam',
-              email: 'robiulontherise@gmail.com',
-              provider: 'Google Auth',
-              verification: 'Verified',
-              joined: '2/15/2024',
-              status: 'Active'
-            },
-            {
-              id: 'USR-2024-T9G1C4D',
-              name: 'Test User',
-              email: 'test@example.com',
-              provider: 'Google Auth',
-              verification: 'Pending',
-              joined: '2/16/2024',
-              status: 'Blocked'
-            }
-          ]
-        });
+        return res.json({ users: [] });
       }
 
-      const { data: users, error } = await supabaseAdmin.auth.admin.listUsers();
-      if (error) throw error;
-      
-      const formattedUsers = users.users.map(user => {
-        const metadata = user.user_metadata || {};
-        const isIdentityVerified = metadata.identity_number ? true : false;
+      // Fetch all real client profiles directly from public.profiles table
+      const { data: profiles, error: profError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (profError) {
+        console.warn('Error fetching profiles from supabaseAdmin:', profError);
+      }
+
+      // Also get auth users list if available
+      let authUsersMap: Record<string, any> = {};
+      try {
+        const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
+        if (authData?.users) {
+          authData.users.forEach(u => {
+            authUsersMap[u.id] = u;
+          });
+        }
+      } catch (authErr) {
+        console.warn('Could not list auth users:', authErr);
+      }
+
+      const formattedUsers = (profiles || []).map((p: any) => {
+        const authUser = authUsersMap[p.id] || {};
+        const isVerified = p.verification_status === 'verified';
+        const isRejected = p.verification_status === 'rejected';
+        const hasRequested = p.verification_status === 'pending';
         
+        let verificationLabel = 'Unverified (নো রিকোয়েস্ট)';
+        if (isVerified) verificationLabel = 'Verified ✓';
+        else if (isRejected) verificationLabel = 'Rejected (বাতিল)';
+        else if (hasRequested) verificationLabel = 'Pending (রিকোয়েস্ট এসেছে)';
+
         return {
-          id: user.id,
-          name: metadata.full_name || 'Unknown',
-          email: user.email,
-          phone: metadata.phone || user.phone || 'N/A',
-          provider: user.app_metadata?.provider || 'Email',
-          verification: isIdentityVerified ? 'Verified' : 'Pending',
-          joined: new Date(user.created_at).toLocaleDateString(),
-          status: user.banned_until ? 'Blocked' : 'Active'
+          id: p.id,
+          name: p.name || authUser.user_metadata?.full_name || p.email?.split('@')[0] || 'Client',
+          email: p.email || authUser.email || 'N/A',
+          phone: p.phone || authUser.user_metadata?.phone || authUser.phone || 'N/A',
+          provider: authUser.app_metadata?.provider || 'Email / Google',
+          verification: verificationLabel,
+          verification_status: p.verification_status || (p.nid_number || p.birth_number || p.nid_front_url || p.birth_cert_url ? 'pending' : 'unverified'),
+          rejection_reason: p.rejection_reason || null,
+          age_group: p.age_group || '18_plus',
+          nid_number: p.nid_number || null,
+          nid_front_url: p.nid_front_url || null,
+          nid_back_url: p.nid_back_url || null,
+          birth_number: p.birth_number || null,
+          birth_cert_url: p.birth_cert_url || null,
+          face_image_url: p.face_image_url || null,
+          website_url: p.website_url || null,
+          social_fb: p.social_fb || null,
+          social_insta: p.social_insta || null,
+          social_li: p.social_li || null,
+          social_yt: p.social_yt || null,
+          joined: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
+          status: authUser.banned_until ? 'Blocked' : (p.status || 'Active')
         };
       });
 
       res.json({ users: formattedUsers });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message, users: [] });
     }
   });
 
