@@ -1813,11 +1813,11 @@ export default function DashboardShell() {
                       <div className="text-xs sm:text-sm text-red-200">
                         <p className="font-bold text-red-400 mb-2">CRITICAL WARNING & GUIDELINES</p>
                         <ul className="list-disc pl-3 sm:pl-4 space-y-1.5">
-                          <li><strong>১৮ বছরের উপরে হলে NID এবং Birth Certificate উভয়ই বাধ্যতামূলক।</strong></li>
+                          <li><strong>১৮ বছর বা তার বেশি হলে শুধু Birth Certificate দিয়ে অনুমোদন হবে না; NID ও Birth Certificate দুটিই বাধ্যতামূলক।</strong></li>
                           <li>১৮ বছরের নিচে হলে শুধুমাত্র Birth Certificate ও লাইভ ফেস সেলফি বাধ্যতামূলক।</li>
-                          <li className="text-amber-400 font-bold">নিরাপত্তার স্বার্থে ফেস সেলফি শুধুমাত্র সরাসরি লাইভ ক্যামেরা দিয়ে তুলতে হবে (গ্যালারি আপলোড নিষিদ্ধ)।</li>
+                          <li>জন্মনিবন্ধনে জন্মসাল ২০১০ বা তার আগের হতে হবে।</li>
+                          <li className="text-red-400 font-bold">NID-তে থাকা জন্মতারিখ অনুযায়ী বয়স সর্বোচ্চ ৪০ বছর হতে হবে; ৪০ বছরের বেশি হলে অ্যাকাউন্ট যাচাই হবে না।</li>
                           <li className="text-amber-300 font-semibold">জমা দেওয়া তথ্য ও সনদ সরকারি অনলাইন যাচাই ব্যবস্থায় উপলভ্য রেকর্ডের সঙ্গে মিলিয়ে দেখা হবে। তথ্য ভুল হলে, ছবি অস্পষ্ট/পরিবর্তিত হলে বা সরকারি রেকর্ডের সঙ্গে অমিল থাকলে অ্যাকাউন্ট যাচাই বা অনুমোদন করা হবে না।</li>
-                          <li>NID-এর Front ও Back এবং জন্মনিবন্ধনের স্পষ্ট ছবি শুধু ডিভাইসের ফাইল/গ্যালারি থেকে আপলোড করুন; এসব নথির জন্য লাইভ ক্যামেরা ব্যবহার করা যাবে না।</li>
                           <li className="text-red-400 font-bold">একটি NID বা জন্মনিবন্ধন দিয়ে কেবল একটি অ্যাকাউন্টই অনুমোদন পাবে। ডুপ্লিকেট অ্যাকাউন্ট নিষিদ্ধ।</li>
                         </ul>
                       </div>
