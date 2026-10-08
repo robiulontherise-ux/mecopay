@@ -1721,26 +1721,6 @@ export default function DashboardShell() {
             </div>
           </div>
 
-          {/* CRITICAL WARNING & GUIDELINES BANNER (ALWAYS VISIBLE AT TOP) */}
-          <div className="mb-6 p-4 sm:p-5 bg-red-500/10 border-2 border-red-500/40 rounded-2xl text-red-200 shadow-xl">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="w-6 h-6 text-red-400 shrink-0 mt-0.5" />
-              <div className="text-xs sm:text-sm space-y-2">
-                <p className="font-bold text-red-400 text-sm sm:text-base flex items-center gap-2">
-                  <span>🚨 CRITICAL WARNING & IDENTITY GUIDELINES</span>
-                </p>
-                <ul className="list-disc pl-4 space-y-1.5 text-slate-200 leading-relaxed">
-                  <li><strong>১৮ বছরের উপরে হলে:</strong> NID কার্ড (Front & Back) এবং জন্মনিবন্ধন (Birth Certificate) উভয়ই ১০০% বাধ্যতামূলক।</li>
-                  <li><strong>১৮ বছরের নিচে হলে:</strong> শুধুমাত্র জন্মনিবন্ধন সনদ ও লাইভ পাসপোর্ট সাইজ সেলফি বাধ্যতামূলক।</li>
-                  <li className="text-amber-300 font-bold">📸 লাইভ ফেস সেলফি: পরিচয় নিশ্চিতকরণে ফেস ফটোটি শুধুমাত্র সরাসরি লাইভ ক্যামেরা দিয়ে তুলতে হবে (গ্যালারি আপলোড চলবে না)।</li>
-                  <li className="text-blue-300 font-medium">📄 NID ও জন্মনিবন্ধন: ডকুমেন্টের স্পষ্ট ছবি আপলোড করতে পারবেন অথবা ক্যামেরা দিয়েও সরাসরি তুলতে পারবেন।</li>
-                  <li className="text-red-300 font-bold">⚠️ একটি NID বা জন্মনিবন্ধন দিয়ে কেবল ১টি মাত্র অ্যাকাউন্ট অনুমোদন পাবে। ডুপ্লিকেট অ্যাকাউন্ট করলে বা তথ্য জালিয়াতি করলে অ্যাকাউন্ট সাথে সাথে ব্লক/ব্যান করা হবে।</li>
-                  <li>১৮ বছরের বেশি হওয়া সত্ত্বেও NID এড়ানোর জন্য অসত্য বয়স দিলে ভেরিফিকেশন বাতিল ও অ্যাকাউন্ট ব্লক করা হবে।</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
           {/* Rejection Alert Banner */}
           {verificationStatus === 'rejected' && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-300 text-xs shadow-lg">
@@ -1759,7 +1739,7 @@ export default function DashboardShell() {
               <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-amber-400 text-sm">পরিচয়পত্র পর্যালোচনায় রয়েছে (Pending)</p>
-                <p className="mt-1 text-slate-300 leading-relaxed">আপনার সাবমিট করা NID এবং লাইভ ফেস ছবি অ্যাডমিন প্যানেল থেকে ম্যানুয়ালি যাচাই করা হচ্ছে। অ্যাডমিন অ্যাপ্রুভ করলেই আপনার প্রোফাইলটি স্থায়ীভাবে ভেরিফাইড হবে।</p>
+                <p className="mt-1 text-slate-300 leading-relaxed">আপনার জমা দেওয়া তথ্য ও ছবি অ্যাডমিন প্যানেলে পর্যালোচনা করা হবে এবং সরকারি অনলাইন যাচাই ব্যবস্থায় উপলভ্য রেকর্ডের সঙ্গে মিলিয়ে দেখা হবে। সব তথ্য মিললে তবেই প্রোফাইল অনুমোদিত হবে।</p>
               </div>
             </div>
           )}
@@ -1836,7 +1816,8 @@ export default function DashboardShell() {
                           <li><strong>১৮ বছরের উপরে হলে NID এবং Birth Certificate উভয়ই বাধ্যতামূলক।</strong></li>
                           <li>১৮ বছরের নিচে হলে শুধুমাত্র Birth Certificate ও লাইভ ফেস সেলফি বাধ্যতামূলক।</li>
                           <li className="text-amber-400 font-bold">নিরাপত্তার স্বার্থে ফেস সেলফি শুধুমাত্র সরাসরি লাইভ ক্যামেরা দিয়ে তুলতে হবে (গ্যালারি আপলোড নিষিদ্ধ)।</li>
-                          <li>NID ও জন্মনিবন্ধন সনদের স্পষ্ট ছবি ক্যামেরা বা ডিভাইস ফাইল আপলোড উভয়ভাবেই দেওয়া যাবে।</li>
+                          <li className="text-amber-300 font-semibold">জমা দেওয়া তথ্য ও সনদ সরকারি অনলাইন যাচাই ব্যবস্থায় উপলভ্য রেকর্ডের সঙ্গে মিলিয়ে দেখা হবে। তথ্য ভুল হলে, ছবি অস্পষ্ট/পরিবর্তিত হলে বা সরকারি রেকর্ডের সঙ্গে অমিল থাকলে অ্যাকাউন্ট যাচাই বা অনুমোদন করা হবে না।</li>
+                          <li>NID-এর Front ও Back এবং জন্মনিবন্ধনের স্পষ্ট ছবি মোবাইল, ডেস্কটপ বা ল্যাপটপের লাইভ ক্যামেরায় তুলে, অথবা ডিভাইসের ফাইল থেকে বেছে জমা দেওয়া যাবে।</li>
                           <li className="text-red-400 font-bold">একটি NID বা জন্মনিবন্ধন দিয়ে কেবল একটি অ্যাকাউন্টই অনুমোদন পাবে। ডুপ্লিকেট অ্যাকাউন্ট নিষিদ্ধ।</li>
                         </ul>
                       </div>
@@ -1854,7 +1835,7 @@ export default function DashboardShell() {
                     </label>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div className="grid grid-cols-1 gap-6 mb-6">
                     {/* Birth Certificate Section */}
                     <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
                       <div>
@@ -1927,13 +1908,13 @@ export default function DashboardShell() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {/* Front Side */}
-                        <div className="border border-slate-800 rounded-xl p-2.5 bg-slate-900/40 text-center">
+                        <div className="border border-slate-800 rounded-xl p-4 sm:p-5 bg-slate-900/40 text-center">
                           <span className="text-xs font-medium text-slate-400 block mb-1">সম্মুখভাগ (Front)</span>
                           {nidFrontImage ? (
-                            <div className="relative mb-2 aspect-video rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
-                              <img src={nidFrontImage} alt="NID Front" className="w-full h-full object-cover" />
+                            <div className="relative mb-3 aspect-[1.586/1] min-h-[190px] rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
+                              <img src={nidFrontImage} alt="NID Front" className="w-full h-full object-contain p-1" />
                               <button
                                 type="button"
                                 onClick={() => setPreviewZoomImage(nidFrontImage)}
@@ -1944,7 +1925,7 @@ export default function DashboardShell() {
                               </button>
                             </div>
                           ) : (
-                            <div className="aspect-video rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center mb-2 text-slate-600 text-[11px]">
+                            <div className="aspect-[1.586/1] min-h-[190px] rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center mb-3 text-slate-600 text-sm">
                               Front Side
                             </div>
                           )}
@@ -1954,14 +1935,14 @@ export default function DashboardShell() {
                               type="button"
                               onClick={() => startLiveCamera('nid_front')}
                               disabled={isNidLocked}
-                              className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                              className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-3 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
                             >
-                              <Camera className="w-3.5 h-3.5" /> {nidFrontImage ? 'রিটেক' : 'ক্যামেরা'}
+                              <Camera className="w-4 h-4" /> {nidFrontImage ? 'লাইভ ক্যামেরায় আবার তুলুন' : 'লাইভ ক্যামেরায় ছবি তুলুন'}
                             </button>
                             {!isNidLocked && (
-                              <label className="w-full flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-colors">
-                                <Upload className="w-3 h-3 text-blue-400" />
-                                <span>আপলোড</span>
+                              <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors">
+                                <Upload className="w-4 h-4 text-blue-400" />
+                                <span>ডিভাইস থেকে ছবি আপলোড</span>
                                 <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidFrontImage)} className="hidden" />
                               </label>
                             )}
@@ -1969,11 +1950,11 @@ export default function DashboardShell() {
                         </div>
 
                         {/* Back Side */}
-                        <div className="border border-slate-800 rounded-xl p-2.5 bg-slate-900/40 text-center">
+                        <div className="border border-slate-800 rounded-xl p-4 sm:p-5 bg-slate-900/40 text-center">
                           <span className="text-xs font-medium text-slate-400 block mb-1">পেছনের ভাগ (Back)</span>
                           {nidBackImage ? (
-                            <div className="relative mb-2 aspect-video rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
-                              <img src={nidBackImage} alt="NID Back" className="w-full h-full object-cover" />
+                            <div className="relative mb-3 aspect-[1.586/1] min-h-[190px] rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
+                              <img src={nidBackImage} alt="NID Back" className="w-full h-full object-contain p-1" />
                               <button
                                 type="button"
                                 onClick={() => setPreviewZoomImage(nidBackImage)}
@@ -1984,7 +1965,7 @@ export default function DashboardShell() {
                               </button>
                             </div>
                           ) : (
-                            <div className="aspect-video rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center mb-2 text-slate-600 text-[11px]">
+                            <div className="aspect-[1.586/1] min-h-[190px] rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center mb-3 text-slate-600 text-sm">
                               Back Side
                             </div>
                           )}
@@ -1994,14 +1975,14 @@ export default function DashboardShell() {
                               type="button"
                               onClick={() => startLiveCamera('nid_back')}
                               disabled={isNidLocked}
-                              className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                              className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-3 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
                             >
-                              <Camera className="w-3.5 h-3.5" /> {nidBackImage ? 'রিটেক' : 'ক্যামেরা'}
+                              <Camera className="w-4 h-4" /> {nidBackImage ? 'লাইভ ক্যামেরায় আবার তুলুন' : 'লাইভ ক্যামেরায় ছবি তুলুন'}
                             </button>
                             {!isNidLocked && (
-                              <label className="w-full flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-colors">
-                                <Upload className="w-3 h-3 text-blue-400" />
-                                <span>আপলোড</span>
+                              <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors">
+                                <Upload className="w-4 h-4 text-blue-400" />
+                                <span>ডিভাইস থেকে ছবি আপলোড</span>
                                 <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidBackImage)} className="hidden" />
                               </label>
                             )}
