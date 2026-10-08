@@ -1817,7 +1817,7 @@ export default function DashboardShell() {
                           <li>১৮ বছরের নিচে হলে শুধুমাত্র Birth Certificate ও লাইভ ফেস সেলফি বাধ্যতামূলক।</li>
                           <li className="text-amber-400 font-bold">নিরাপত্তার স্বার্থে ফেস সেলফি শুধুমাত্র সরাসরি লাইভ ক্যামেরা দিয়ে তুলতে হবে (গ্যালারি আপলোড নিষিদ্ধ)।</li>
                           <li className="text-amber-300 font-semibold">জমা দেওয়া তথ্য ও সনদ সরকারি অনলাইন যাচাই ব্যবস্থায় উপলভ্য রেকর্ডের সঙ্গে মিলিয়ে দেখা হবে। তথ্য ভুল হলে, ছবি অস্পষ্ট/পরিবর্তিত হলে বা সরকারি রেকর্ডের সঙ্গে অমিল থাকলে অ্যাকাউন্ট যাচাই বা অনুমোদন করা হবে না।</li>
-                          <li>NID-এর Front ও Back এবং জন্মনিবন্ধনের স্পষ্ট ছবি মোবাইল, ডেস্কটপ বা ল্যাপটপের লাইভ ক্যামেরায় তুলে, অথবা ডিভাইসের ফাইল থেকে বেছে জমা দেওয়া যাবে।</li>
+                          <li>NID-এর Front ও Back এবং জন্মনিবন্ধনের স্পষ্ট ছবি শুধু ডিভাইসের ফাইল/গ্যালারি থেকে আপলোড করুন; এসব নথির জন্য লাইভ ক্যামেরা ব্যবহার করা যাবে না।</li>
                           <li className="text-red-400 font-bold">একটি NID বা জন্মনিবন্ধন দিয়ে কেবল একটি অ্যাকাউন্টই অনুমোদন পাবে। ডুপ্লিকেট অ্যাকাউন্ট নিষিদ্ধ।</li>
                         </ul>
                       </div>
@@ -1853,8 +1853,8 @@ export default function DashboardShell() {
                         <label className="block text-xs font-medium text-slate-400 mb-1.5">Certificate Photo</label>
                         <div className="border border-slate-800 rounded-xl p-3 bg-slate-900/40 text-center">
                           {birthImage ? (
-                            <div className="relative mb-2 aspect-[4/3] rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
-                              <img src={birthImage} alt="Birth Certificate" className="w-full h-full object-cover" />
+                            <div className="relative mb-2 mx-auto w-full max-w-xs aspect-[4/3] rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
+                              <img src={birthImage} alt="Birth Certificate" className="w-full h-full object-contain p-2" />
                               <button
                                 type="button"
                                 onClick={() => setPreviewZoomImage(birthImage)}
@@ -1865,21 +1865,13 @@ export default function DashboardShell() {
                               </button>
                             </div>
                           ) : (
-                            <div className="aspect-[4/3] rounded-lg border-2 border-dashed border-slate-800 flex flex-col items-center justify-center p-4 mb-2 text-slate-500">
-                              <Camera className="w-6 h-6 text-slate-600 mb-1" />
-                              <span className="text-xs">ছবি এখনো তোলা বা আপলোড হয়নি</span>
+                            <div className="mx-auto w-full max-w-xs aspect-[4/3] rounded-lg border-2 border-dashed border-slate-800 flex flex-col items-center justify-center p-4 mb-2 text-slate-500">
+                              <Upload className="w-6 h-6 text-slate-600 mb-1" />
+                              <span className="text-xs">ছবি এখনো আপলোড হয়নি</span>
                             </div>
                           )}
 
                           <div className="flex flex-col gap-2">
-                            <button
-                              type="button"
-                              onClick={() => startLiveCamera('birth')}
-                              disabled={isBirthLocked}
-                              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
-                            >
-                              <Camera className="w-4 h-4" /> {birthImage ? 'ক্যামেরা দিয়ে পুনরায় তুলুন' : '📸 ক্যামেরা দিয়ে তুলুন'}
-                            </button>
                             {!isBirthLocked && (
                               <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors">
                                 <Upload className="w-3.5 h-3.5 text-blue-400" />
@@ -1931,14 +1923,6 @@ export default function DashboardShell() {
                           )}
 
                           <div className="flex flex-col gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => startLiveCamera('nid_front')}
-                              disabled={isNidLocked}
-                              className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-3 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
-                            >
-                              <Camera className="w-4 h-4" /> {nidFrontImage ? 'লাইভ ক্যামেরায় আবার তুলুন' : 'লাইভ ক্যামেরায় ছবি তুলুন'}
-                            </button>
                             {!isNidLocked && (
                               <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors">
                                 <Upload className="w-4 h-4 text-blue-400" />
@@ -1971,14 +1955,6 @@ export default function DashboardShell() {
                           )}
 
                           <div className="flex flex-col gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => startLiveCamera('nid_back')}
-                              disabled={isNidLocked}
-                              className="w-full flex items-center justify-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white px-3 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
-                            >
-                              <Camera className="w-4 h-4" /> {nidBackImage ? 'লাইভ ক্যামেরায় আবার তুলুন' : 'লাইভ ক্যামেরায় ছবি তুলুন'}
-                            </button>
                             {!isNidLocked && (
                               <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors">
                                 <Upload className="w-4 h-4 text-blue-400" />
