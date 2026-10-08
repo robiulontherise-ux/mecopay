@@ -12,6 +12,7 @@ import HeadlessOrchestrator from './admin/HeadlessOrchestrator';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
 import { showConfirm } from '../lib/confirm';
+import LocaleSwitcher from './LocaleSwitcher';
 import MfaSettings from './MfaSettings';
 import GatewaySettings from "./payment-hub/GatewaySettings";
 import PaymentLinks from "./payment-hub/PaymentLinks";
@@ -1816,6 +1817,7 @@ export default function DashboardShell() {
               </div>
               
               <p className="text-sm font-medium text-slate-400 mb-1">{user?.email}</p>
+              <LocaleSwitcher variant="dark" className="mt-3 w-full max-w-xl justify-center" />
               <div className="mt-1">
                 {verificationStatus === 'verified' ? (
                   <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]">

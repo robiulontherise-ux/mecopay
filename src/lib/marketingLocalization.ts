@@ -201,14 +201,15 @@ const languageAliases: Record<string, MarketingLanguage> = {
   dan: 'da', da: 'da', danish: 'da'
 };
 const globalLanguages = [
-  { value: 'en', label: 'English (default)' }, { value: 'ar', label: 'Arabic' }, { value: 'es', label: 'Spanish' }, { value: 'fr', label: 'French' },
-  { value: 'zh', label: 'Mandarin Chinese' }, { value: 'hi', label: 'Hindi' }, { value: 'bn', label: 'Bengali' }, { value: 'pt', label: 'Portuguese' },
-  { value: 'ru', label: 'Russian' }, { value: 'de', label: 'German' }, { value: 'ja', label: 'Japanese' }, { value: 'ko', label: 'Korean' }, { value: 'tr', label: 'Turkish' },
-  { value: 'ta', label: 'Tamil' }, { value: 'te', label: 'Telugu' }, { value: 'ur', label: 'Urdu' }, { value: 'it', label: 'Italian' },
-  { value: 'nl', label: 'Dutch' }, { value: 'th', label: 'Thai' }, { value: 'vi', label: 'Vietnamese' }, { value: 'uk', label: 'Ukrainian' },
-  { value: 'pl', label: 'Polish' }, { value: 'el', label: 'Greek' }, { value: 'he', label: 'Hebrew' }, { value: 'ne', label: 'Nepali' },
-  { value: 'si', label: 'Sinhala' }, { value: 'sv', label: 'Swedish' }, { value: 'da', label: 'Danish' }
+  { value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }, { value: 'es', label: 'Español' }, { value: 'fr', label: 'Français' },
+  { value: 'zh', label: '中文' }, { value: 'hi', label: 'हिन्दी' }, { value: 'bn', label: 'বাংলা' }, { value: 'pt', label: 'Português' },
+  { value: 'ru', label: 'Русский' }, { value: 'de', label: 'Deutsch' }, { value: 'ja', label: '日本語' }, { value: 'ko', label: '한국어' }, { value: 'tr', label: 'Türkçe' },
+  { value: 'ta', label: 'தமிழ்' }, { value: 'te', label: 'తెలుగు' }, { value: 'ur', label: 'اردو' }, { value: 'it', label: 'Italiano' },
+  { value: 'nl', label: 'Nederlands' }, { value: 'th', label: 'ไทย' }, { value: 'vi', label: 'Tiếng Việt' }, { value: 'uk', label: 'Українська' },
+  { value: 'pl', label: 'Polski' }, { value: 'el', label: 'Ελληνικά' }, { value: 'he', label: 'עברית' }, { value: 'ne', label: 'नेपाली' },
+  { value: 'si', label: 'සිංහල' }, { value: 'sv', label: 'Svenska' }, { value: 'da', label: 'Dansk' }
 ];
+const globalLanguageLabels = new Map(globalLanguages.map((language) => [language.value, language.label]));
 
 const canonicalLanguage = (code: string, name?: string): string => {
   const normalizedCode = code.trim().toLowerCase();
@@ -231,7 +232,7 @@ export const getCountryLanguageOptions = (country?: CountryLanguage, continentCo
   const options = new Map<string, { value: string; label: string }>();
   allLanguages.forEach((language) => {
     const value = canonicalLanguage(language.code, language.name);
-    if (isSupportedLanguage(value) && !options.has(value)) options.set(value, { value, label: language.name });
+    if (isSupportedLanguage(value) && !options.has(value)) options.set(value, { value, label: globalLanguageLabels.get(value) || language.name });
   });
   globalLanguages.forEach((language) => { if (!options.has(language.value)) options.set(language.value, language); });
   return Array.from(options.values());
