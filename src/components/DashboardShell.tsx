@@ -316,7 +316,8 @@ export default function DashboardShell() {
 
   // Profile States
   const [profileName, setProfileName] = useState<string>('');
-  const [profilePhone, setProfilePhone] = useState<string>('+8801');
+  const [profilePhone, setProfilePhone] = useState<string>('');
+  const [phoneType, setPhoneType] = useState<'whatsapp' | 'telegram' | 'both'>('whatsapp');
   const [ageGroup, setAgeGroup] = useState<'18_plus' | 'under_18'>('18_plus');
   const [nidNumber, setNidNumber] = useState<string>('');
   const [nidFrontImage, setNidFrontImage] = useState<string>('');
@@ -344,6 +345,7 @@ export default function DashboardShell() {
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const liveCameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -818,7 +820,8 @@ export default function DashboardShell() {
 
           if (dbProf && isMounted) {
             setProfileName(dbProf.name || user.user_metadata?.full_name || '');
-            setProfilePhone(dbProf.phone || user.user_metadata?.phone || '+8801');
+            setProfilePhone(dbProf.phone || user.user_metadata?.phone || '');
+            setPhoneType((user.user_metadata?.phone_type as any) || dbProf.phone_type || 'whatsapp');
             setAgeGroup(dbProf.age_group || user.user_metadata?.age_group || '18_plus');
             setNidNumber(dbProf.nid_number || user.user_metadata?.nid_number || '');
             setNidFrontImage(dbProf.nid_front_url || user.user_metadata?.nid_front_image || '');
@@ -842,8 +845,8 @@ export default function DashboardShell() {
 
             const isLocked = vStatus === 'verified';
             setIsIdentityLocked(isLocked);
-            setIsBirthLocked(!!dbProf.birth_number && isLocked);
-            setIsNidLocked(!!dbProf.nid_number && isLocked);
+            setIsBirthLocked(!!dbProf.birth_number);
+            setIsNidLocked(!!dbProf.nid_number);
             return;
           }
         } catch (e) {
@@ -852,7 +855,7 @@ export default function DashboardShell() {
 
         if (isMounted) {
           setProfileName(user.user_metadata?.full_name || '');
-          setProfilePhone(user.user_metadata?.phone || '+8801');
+          setProfilePhone(user.user_metadata?.phone || '');
           setAgeGroup(user.user_metadata?.age_group || '18_plus');
           setNidNumber(user.user_metadata?.nid_number || '');
           setBirthNumber(user.user_metadata?.birth_number || '');
@@ -1045,6 +1048,7 @@ export default function DashboardShell() {
     setCameraFacing(facing);
     setCameraOpen(true);
     setCameraLoading(true);
+    setCameraError('');
 
     try {
       if (cameraStream) {
@@ -1053,70 +1057,51 @@ export default function DashboardShell() {
       }
 
       if (!navigator?.mediaDevices?.getUserMedia) {
-        throw new Error("Direct getUserMedia not supported in this environment");
+        throw new Error("আপনার ব্রাউজারে সরাসরি ওয়েবক্যাম সমর্থন পাওয়া যায়নি");
       }
 
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       let stream: MediaStream | null = null;
 
-      if (!isMobile) {
-        // Desktop / Laptop PC: Simple direct video constraint opens instantaneously in 50ms without resolution negotiation lag
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: isMobile ? { facingMode: { ideal: facing } } : true,
+          audio: false
+        });
+      } catch (err1: any) {
+        console.warn("First camera attempt failed:", err1);
         try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false
-          });
-        } catch (pcErr) {
-          console.warn("PC camera direct attempt:", pcErr);
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 1280 } },
-            audio: false
-          });
-        }
-      } else {
-        // Mobile device: Front or back camera
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: facing } },
-            audio: false
-          });
-        } catch (mErr1) {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: facing },
-              audio: false
-            });
-          } catch (mErr2) {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: true,
-              audio: false
-            });
-          }
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } catch (err2: any) {
+          console.warn("Second camera attempt failed:", err2);
+          throw err1;
         }
       }
 
-      if (!stream) throw new Error("No camera stream acquired");
+      if (!stream) throw new Error("ক্যামেরা থেকে ভিডিও সিগন্যাল পাওয়া যায়নি");
 
       setCameraStream(stream);
       setCameraLoading(false);
+      setCameraError('');
+
       setTimeout(() => {
-        if (videoRef.current) {
+        if (videoRef.current && stream) {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(e => console.warn("Video play error:", e));
         }
       }, 50);
     } catch (err: any) {
-      console.warn("Live WebRTC camera unavailable:", err);
+      console.warn("Live WebRTC camera error:", err);
       setCameraLoading(false);
-      setCameraOpen(false);
-
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isMobile && liveCameraInputRef.current) {
-        liveCameraInputRef.current.setAttribute('capture', facing);
-        liveCameraInputRef.current.click();
+      let msg = "ক্যামেরা চালু করা যায়নি।";
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        msg = "ব্রাউজার ক্যামেরা পারমিশন ব্লক করেছে বা আইফ্রেমে ক্যামেরা অ্যাক্সেস নেই। আপনার ব্রাউজারের উপরে ক্যামেরা 'Allow' করুন অথবা নিচের বিকল্প বাটন ব্যবহার করুন।";
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        msg = "কোনো সংযুক্ত ক্যামেরা বা ওয়েবক্যাম পাওয়া যায়নি। অনুগ্রহ করে নিচের বাটন দিয়ে সেলফি তুলুন।";
       } else {
-        showToast("ক্যামেরা অন করা যায়নি! ব্রাউজারের ক্যামেরা পারমিশন 'Allow' করুন।", "error");
+        msg = `ক্যামেরা চালু করা যায়নি (${err.message || 'Error'})। নিচের বাটন দিয়ে সরাসরি সেলফি তুলুন বা ফাইল দিন।`;
       }
+      setCameraError(msg);
     }
   };
 
@@ -1354,7 +1339,45 @@ export default function DashboardShell() {
         return;
       }
       if (!profilePhone.trim()) {
-        showToast("অনুগ্রহ করে আপনার ফোন নম্বর প্রদান করুন", "error");
+        showToast("অনুগ্রহ করে যোগাযোগের নম্বর প্রদান করুন", "error");
+        setIsSavingProfile(false);
+        return;
+      }
+
+      // If already verified, allow updating Website, Social Profiles & Contact anytime without re-uploading documents
+      if (verificationStatus === 'verified') {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            name: profileName.trim(),
+            phone: profilePhone.trim(),
+            website_url: websiteUrl.trim() || null,
+            social_fb: socialFb.trim() || null,
+            social_insta: socialInsta.trim() || null,
+            social_li: socialLi.trim() || null,
+            social_yt: socialYt.trim() || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+
+        if (updateError) throw updateError;
+
+        await supabase.auth.updateUser({
+          data: {
+            full_name: profileName.trim(),
+            phone: profilePhone.trim(),
+            phone_type: phoneType,
+            website_url: websiteUrl.trim() || null,
+            social_fb: socialFb.trim() || null,
+            social_insta: socialInsta.trim() || null,
+            social_li: socialLi.trim() || null,
+            social_yt: socialYt.trim() || null
+          }
+        });
+
+        showToast("ওয়েবসাইট ও সোশ্যাল লিঙ্ক সফলভাবে আপডেট হয়েছে!", "success");
+        setProfileMessage("আপনার যোগাযোগের নম্বর, ওয়েবসাইট ও সোশ্যাল মিডিয়া লিঙ্ক সফলভাবে সংরক্ষণ করা হয়েছে।");
+        setTimeout(() => setProfileMessage(''), 4000);
         setIsSavingProfile(false);
         return;
       }
@@ -1458,7 +1481,7 @@ export default function DashboardShell() {
       }
 
       // 6. Save directly to public.profiles table
-      const statusToSave = verificationStatus === 'verified' ? 'verified' : 'pending';
+      const statusToSave = 'pending';
       const { error: profError } = await supabase
         .from('profiles')
         .update({
@@ -1477,7 +1500,7 @@ export default function DashboardShell() {
           social_li: socialLi.trim() || null,
           social_yt: socialYt.trim() || null,
           verification_status: statusToSave,
-          rejection_reason: statusToSave === 'verified' ? null : null,
+          rejection_reason: null,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -1501,6 +1524,7 @@ export default function DashboardShell() {
         data: { 
           full_name: profileName, 
           phone: profilePhone,
+          phone_type: phoneType,
           age_group: ageGroup,
           nid_number: nidNumber,
           birth_number: birthNumber,
@@ -1512,14 +1536,10 @@ export default function DashboardShell() {
         }
       });
 
-      if (statusToSave === 'verified') {
-        setIsIdentityLocked(true);
-        if (birthNumber) setIsBirthLocked(true);
-        if (nidNumber) setIsNidLocked(true);
-      } else {
-        setVerificationStatus('pending');
-        setIsIdentityLocked(false);
-      }
+      if (birthNumber) setIsBirthLocked(true);
+      if (nidNumber) setIsNidLocked(true);
+      setVerificationStatus('pending');
+      setIsIdentityLocked(false);
       
       showToast('প্রোফাইল ও পরিচয়পত্র সফলভাবে সাবমিট হয়েছে!', 'success');
       setProfileMessage('প্রোফাইল ও পরিচয়পত্র সফলভাবে জমা হয়েছে। অ্যাডমিন রিভিউয়ের পর ভেরিফাই হবে।');
@@ -1835,9 +1855,71 @@ export default function DashboardShell() {
                   <input type="text" placeholder="আপনার পূর্ণ নাম লিখুন" value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">WhatsApp / Telegram নম্বর <span className="text-red-400">*</span></label>
-                  <input type="tel" placeholder="+8801... (সচল WhatsApp বা Telegram নম্বর)" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors font-mono" />
-                  <p className="text-[11px] text-slate-500 mt-1">জরুরি নোটিফিকেশন ও যোগাযোগের জন্য সচল WhatsApp বা Telegram নম্বর লিখুন।</p>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium text-slate-300">
+                      যোগাযোগের নম্বর <span className="text-red-400">*</span>
+                    </label>
+                    <span className="text-[11px] text-slate-400">টিক দিয়ে মাধ্যম বেছে নিন:</span>
+                  </div>
+
+                  {/* WhatsApp / Telegram Selector with checkmark ticks */}
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setPhoneType('whatsapp')}
+                      className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                        phoneType === 'whatsapp'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500 shadow-sm ring-1 ring-emerald-500/30'
+                          : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="text-emerald-400">💬</span> WhatsApp
+                      {phoneType === 'whatsapp' && <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPhoneType('telegram')}
+                      className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                        phoneType === 'telegram'
+                          ? 'bg-blue-500/20 text-blue-300 border-blue-500 shadow-sm ring-1 ring-blue-500/30'
+                          : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="text-blue-400">✈️</span> Telegram
+                      {phoneType === 'telegram' && <Check className="w-3.5 h-3.5 text-blue-400 stroke-[3]" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPhoneType('both')}
+                      className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                        phoneType === 'both'
+                          ? 'bg-purple-500/20 text-purple-300 border-purple-500 shadow-sm ring-1 ring-purple-500/30'
+                          : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="text-purple-400">⚡</span> উভয়টি
+                      {phoneType === 'both' && <Check className="w-3.5 h-3.5 text-purple-400 stroke-[3]" />}
+                    </button>
+                  </div>
+
+                  <input
+                    type="tel"
+                    placeholder={
+                      phoneType === 'whatsapp'
+                        ? 'e.g. +1... / +44... / +880... (দেশের কোডসহ WhatsApp নম্বর)'
+                        : phoneType === 'telegram'
+                        ? 'e.g. +1... / +880... বা @username (Telegram নম্বর বা ইউজারনেম)'
+                        : 'e.g. +1... / +44... / +880... (দেশের কোডসহ নম্বর)'
+                    }
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors font-mono"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    জরুরি নোটিফিকেশন ও যোগাযোগের জন্য নির্বাচিত মাধ্যমে সচল নম্বর দিন।
+                  </p>
                 </div>
               </div>
 
@@ -2137,10 +2219,19 @@ export default function DashboardShell() {
               <div className="pt-6 flex flex-col sm:flex-row gap-4">
                 <button 
                   onClick={handleSaveProfile}
-                  disabled={isSavingProfile || verificationStatus === 'verified'}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                  disabled={isSavingProfile}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isSavingProfile ? 'অটো-কম্প্রেস ও সংরক্ষণ হচ্ছে...' : verificationStatus === 'verified' ? 'প্রোফাইল ভেরিফাইড (সংরক্ষিত)' : 'Save & Submit For Verification'}
+                  {isSavingProfile ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>সংরক্ষণ ও আপডেট হচ্ছে...</span>
+                    </>
+                  ) : verificationStatus === 'verified' ? (
+                    <span>তথ্য ও সোশ্যাল লিঙ্ক আপডেট করুন</span>
+                  ) : (
+                    <span>Save & Submit For Verification</span>
+                  )}
                 </button>
                 {isAdmin && (
                   <button 
@@ -3354,7 +3445,16 @@ export default function DashboardShell() {
                             <p className="text-sm font-bold text-white">{client.name}</p>
                             <p className="text-xs text-slate-400">{client.email}</p>
                             {client.phone && client.phone !== 'N/A' && (
-                              <p className="text-[11px] text-slate-500 font-mono mt-0.5">{client.phone}</p>
+                              <p className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
+                                {client.phone_type === 'telegram' ? (
+                                  <span className="text-blue-300 font-sans text-[10px] bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.2 rounded font-bold">✈️ Telegram</span>
+                                ) : client.phone_type === 'both' ? (
+                                  <span className="text-purple-300 font-sans text-[10px] bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.2 rounded font-bold">⚡ WA/TG</span>
+                                ) : (
+                                  <span className="text-emerald-300 font-sans text-[10px] bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded font-bold">💬 WhatsApp</span>
+                                )}
+                                <span>{client.phone}</span>
+                              </p>
                             )}
                           </div>
                         </div>
@@ -4231,11 +4331,11 @@ export default function DashboardShell() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">Support Phone</label>
-                      <input type="tel" placeholder="+8801XXXXXXXXX" className="w-full bg-[#242d42] border border-slate-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" />
+                      <input type="tel" placeholder="+1XXXXXXXXXX / +8801XXXXXXXXX" className="w-full bg-[#242d42] border border-slate-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-mono" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">WhatsApp Number</label>
-                      <input type="text" placeholder="+8801XXXXXXXXX" className="w-full bg-[#242d42] border border-slate-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" />
+                      <input type="text" placeholder="+1XXXXXXXXXX / +8801XXXXXXXXX" className="w-full bg-[#242d42] border border-slate-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-mono" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">Support Page Link</label>
@@ -4619,19 +4719,51 @@ export default function DashboardShell() {
                   <RefreshCw className="w-5 h-5 animate-spin" /> ক্যামেরা প্রস্তুত হচ্ছে...
                 </div>
               )}
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${cameraFacing === 'user' ? '-scale-x-100' : ''}`}
-              />
-              {/* Frame Overlay Guide */}
-              <div className="absolute inset-6 border-2 border-dashed border-emerald-500/60 rounded-xl pointer-events-none flex items-center justify-center">
-                <span className="text-[11px] text-emerald-300/90 bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm">
-                  {cameraTarget === 'face' ? 'আপনার মুখমণ্ডল ফ্রেমের মাঝে রাখুন' : 'ডকুমেন্টটি ফ্রেমের ভেতরে সোজা রাখুন'}
-                </span>
-              </div>
+              {cameraError ? (
+                <div className="p-6 text-center z-10 max-w-sm flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+                    <ShieldAlert className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs text-red-300 leading-relaxed">{cameraError}</p>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => cameraTarget && startLiveCamera(cameraTarget)}
+                      className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> পুনরায় চেষ্টা
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = cameraTarget;
+                        stopLiveCamera();
+                        setCameraTarget(target);
+                        liveCameraInputRef.current?.click();
+                      }}
+                      className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Camera className="w-3.5 h-3.5" /> ডিভাইস ক্যামেরা
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`w-full h-full object-cover ${cameraFacing === 'user' ? '-scale-x-100' : ''}`}
+                  />
+                  {/* Frame Overlay Guide */}
+                  <div className="absolute inset-6 border-2 border-dashed border-emerald-500/60 rounded-xl pointer-events-none flex items-center justify-center">
+                    <span className="text-[11px] text-emerald-300/90 bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm">
+                      {cameraTarget === 'face' ? 'আপনার মুখমণ্ডল ফ্রেমের মাঝে রাখুন' : 'ডকুমেন্টটি ফ্রেমের ভেতরে সোজা রাখুন'}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">

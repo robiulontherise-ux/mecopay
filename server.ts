@@ -80,7 +80,7 @@ async function startServer() {
       try {
         const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
         if (authData?.users) {
-          authData.users.forEach(u => {
+          authData.users.forEach((u: any) => {
             authUsersMap[u.id] = u;
           });
         }
@@ -104,6 +104,7 @@ async function startServer() {
           name: p.name || authUser.user_metadata?.full_name || p.email?.split('@')[0] || 'Client',
           email: p.email || authUser.email || 'N/A',
           phone: p.phone || authUser.user_metadata?.phone || authUser.phone || 'N/A',
+          phone_type: p.phone_type || authUser.user_metadata?.phone_type || 'whatsapp',
           provider: authUser.app_metadata?.provider || 'Email / Google',
           verification: verificationLabel,
           verification_status: p.verification_status || (p.nid_number || p.birth_number || p.nid_front_url || p.birth_cert_url ? 'pending' : 'unverified'),
