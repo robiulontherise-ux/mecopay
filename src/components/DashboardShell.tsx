@@ -336,6 +336,7 @@ export default function DashboardShell() {
   const [profileMessage, setProfileMessage] = useState('');
   const [verificationStatus, setVerificationStatus] = useState<'unverified' | 'pending' | 'verified' | 'rejected' | 'banned'>('unverified');
   const [rejectionReason, setRejectionReason] = useState<string>('');
+  const isDashboardUnlocked = verificationStatus === 'pending' || verificationStatus === 'verified' || isAdmin;
 
   // Live Camera Capture States
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -830,11 +831,16 @@ export default function DashboardShell() {
             setSocialInsta(dbProf.social_insta || user.user_metadata?.social_insta || '');
             setSocialLi(dbProf.social_li || user.user_metadata?.social_li || '');
             setSocialYt(dbProf.social_yt || user.user_metadata?.social_yt || '');
-            const vStatus = dbProf.verification_status || (dbProf.nid_number || dbProf.birth_number || dbProf.nid_front_url || dbProf.birth_cert_url ? 'pending' : 'unverified');
+            const hasSubmittedDocs = !!(dbProf.nid_number || dbProf.birth_number || dbProf.nid_front_url || dbProf.birth_cert_url || dbProf.face_image_url);
+            let vStatus: 'unverified' | 'pending' | 'verified' | 'rejected' = 'unverified';
+            if (dbProf.verification_status === 'verified') vStatus = 'verified';
+            else if (dbProf.verification_status === 'rejected') vStatus = 'rejected';
+            else if (hasSubmittedDocs) vStatus = 'pending';
+            else vStatus = 'unverified';
             setVerificationStatus(vStatus as any);
             setRejectionReason(dbProf.rejection_reason || '');
 
-            const isLocked = dbProf.verification_status === 'verified';
+            const isLocked = vStatus === 'verified';
             setIsIdentityLocked(isLocked);
             setIsBirthLocked(!!dbProf.birth_number && isLocked);
             setIsNidLocked(!!dbProf.nid_number && isLocked);
@@ -1050,29 +1056,42 @@ export default function DashboardShell() {
         throw new Error("Direct getUserMedia not supported in this environment");
       }
 
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       let stream: MediaStream | null = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: facing },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          audio: false
-        });
-      } catch (e1) {
-        console.warn("First camera constraint attempt failed, trying simple video:", e1);
+
+      if (!isMobile) {
+        // Desktop / Laptop PC: Simple direct video constraint opens instantaneously in 50ms without resolution negotiation lag
         try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: facing },
-            audio: false
-          });
-        } catch (e2) {
-          console.warn("Second camera constraint attempt failed, trying any video:", e2);
           stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: false
           });
+        } catch (pcErr) {
+          console.warn("PC camera direct attempt:", pcErr);
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 } },
+            audio: false
+          });
+        }
+      } else {
+        // Mobile device: Front or back camera
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facing } },
+            audio: false
+          });
+        } catch (mErr1) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: facing },
+              audio: false
+            });
+          } catch (mErr2) {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false
+            });
+          }
         }
       }
 
@@ -1085,17 +1104,18 @@ export default function DashboardShell() {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(e => console.warn("Video play error:", e));
         }
-      }, 100);
+      }, 50);
     } catch (err: any) {
-      console.warn("Live WebRTC camera unavailable, switching to native camera shutter:", err);
+      console.warn("Live WebRTC camera unavailable:", err);
       setCameraLoading(false);
       setCameraOpen(false);
 
-      if (liveCameraInputRef.current) {
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile && liveCameraInputRef.current) {
         liveCameraInputRef.current.setAttribute('capture', facing);
         liveCameraInputRef.current.click();
       } else {
-        showToast("ক্যামেরা অন করা যায়নি! ব্রাউজারের ক্যামেরা পারমিশন চেক করুন।", "error");
+        showToast("ক্যামেরা অন করা যায়নি! ব্রাউজারের ক্যামেরা পারমিশন 'Allow' করুন।", "error");
       }
     }
   };
@@ -1742,8 +1762,23 @@ export default function DashboardShell() {
             <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-xs flex items-start gap-3 shadow-lg">
               <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-amber-400 text-sm">পরিচয়পত্র পর্যালোচনায় রয়েছে (Pending)</p>
-                <p className="mt-1 text-slate-300 leading-relaxed">আপনার জমা দেওয়া তথ্য ও ছবি অ্যাডমিন প্যানেলে পর্যালোচনা করা হবে এবং সরকারি অনলাইন যাচাই ব্যবস্থায় উপলভ্য রেকর্ডের সঙ্গে মিলিয়ে দেখা হবে। সব তথ্য মিললে তবেই প্রোফাইল অনুমোদিত হবে।</p>
+                <p className="font-bold text-amber-400 text-sm">পরিচয়পত্র পর্যালোচনায় রয়েছে (Under Review) — ড্যাশবোর্ড আনলক করা হয়েছে</p>
+                <p className="mt-1 text-slate-300 leading-relaxed">
+                  আপনার জমা দেওয়া তথ্য ও ছবি সফলভাবে গৃহীত হয়েছে এবং ২৪ ঘণ্টার মধ্যে অ্যাডমিন প্যানেল থেকে সরকারি রেকর্ডের সঙ্গে মিলিয়ে ভেরিফাই করা হবে। <strong>ইতিমধ্যে আপনার ড্যাশবোর্ডের সকল ফিচার ব্যবহারের জন্য সম্পূর্ণ আনলক করে দেওয়া হয়েছে।</strong> কোনো তথ্য ভুল বা অসত্য পাওয়া গেলে অ্যাডমিন অ্যাকাউন্ট ব্লক করার অধিকার সংরক্ষণ করে।
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Unverified / Action Required Banner */}
+          {verificationStatus === 'unverified' && (
+            <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-blue-200 text-xs flex items-start gap-3 shadow-lg">
+              <ShieldAlert className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-blue-400 text-sm">ড্যাশবোর্ড সম্পূর্ণ আনলক করতে নিচের তথ্য ও পরিচয়পত্র দিন</p>
+                <p className="mt-1 text-slate-300 leading-relaxed">
+                  নিচের তথ্য, NID বা জন্মনিবন্ধন সনদ এবং লাইভ ফেস সেলফি পূরণ করে <strong>"Save Profile & Documents"</strong> বাটনে ক্লিক করলেই আপনার ড্যাশবোর্ডের সব ফিচার ব্যবহারের জন্য সাথে সাথে আনলক হয়ে যাবে। এরপর অ্যাডমিন ২৪ ঘণ্টার মধ্যে আপনার তথ্য সরকারি রেকর্ডের সাথে যাচাই করে চূড়ান্ত অনুমোদন প্রদান করবে।
+                </p>
               </div>
             </div>
           )}
@@ -1768,7 +1803,7 @@ export default function DashboardShell() {
                   </span>
                 ) : verificationStatus === 'pending' ? (
                   <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1.5 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" /> ভেরিফিকেশন পর্যালোচনায় (Pending)
+                    <Clock className="w-3.5 h-3.5 text-amber-400" /> ভেরিফিকেশন পর্যালোচনায় (ড্যাশবোর্ড আনলক)
                   </span>
                 ) : verificationStatus === 'rejected' ? (
                   <span className="text-[11px] font-bold text-red-400 flex items-center gap-1.5 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
@@ -1800,8 +1835,9 @@ export default function DashboardShell() {
                   <input type="text" placeholder="আপনার পূর্ণ নাম লিখুন" value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Phone Number <span className="text-red-400">*</span></label>
-                  <input type="tel" placeholder="+8801..." value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
+                  <label className="block text-sm font-medium text-slate-400 mb-2">WhatsApp / Telegram নম্বর <span className="text-red-400">*</span></label>
+                  <input type="tel" placeholder="+8801... (সচল WhatsApp বা Telegram নম্বর)" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors font-mono" />
+                  <p className="text-[11px] text-slate-500 mt-1">জরুরি নোটিফিকেশন ও যোগাযোগের জন্য সচল WhatsApp বা Telegram নম্বর লিখুন।</p>
                 </div>
               </div>
 
@@ -3862,8 +3898,8 @@ export default function DashboardShell() {
   };
 
   const handleTabChange = (tab: 'brand' | 'payments' | 'site' | 'admin') => {
-    if (!isIdentityLocked && tab !== 'brand' && tab !== 'admin') {
-      showToast("Complete Identity Verification first!", "error");
+    if (!isDashboardUnlocked && tab !== 'brand' && tab !== 'admin') {
+      showToast("ড্যাশবোর্ড সম্পূর্ণ আনলক করতে প্রোফাইলে তথ্য ও পরিচয়পত্র জমা দিন!", "error");
       return;
     }
     setActiveTab(tab);
@@ -3934,13 +3970,13 @@ export default function DashboardShell() {
             className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 ${
               activeTab === 'payments' 
                 ? 'bg-emerald-600 text-white shadow-sm' 
-                : !isIdentityLocked
+                : !isDashboardUnlocked
                   ? 'bg-slate-900/50 text-slate-600 border border-slate-800/50 cursor-not-allowed'
                   : 'bg-slate-900/50 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
             }`}
           >
             Payments Hub
-            {!isIdentityLocked && <Lock className="w-3.5 h-3.5 text-red-500" />}
+            {!isDashboardUnlocked && <Lock className="w-3.5 h-3.5 text-red-500" />}
           </button>
 
           <button
@@ -3948,13 +3984,13 @@ export default function DashboardShell() {
             className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 ${
               activeTab === 'site' 
                 ? 'bg-emerald-600 text-white shadow-sm' 
-                : !isIdentityLocked
+                : !isDashboardUnlocked
                   ? 'bg-slate-900/50 text-slate-600 border border-slate-800/50 cursor-not-allowed'
                   : 'bg-slate-900/50 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
             }`}
           >
             My Site
-            {!isIdentityLocked && <Lock className="w-3.5 h-3.5 text-red-500" />}
+            {!isDashboardUnlocked && <Lock className="w-3.5 h-3.5 text-red-500" />}
           </button>
 
           {isAdmin && (
@@ -4033,8 +4069,8 @@ export default function DashboardShell() {
                 <button
                   key={idx}
                   onClick={() => {
-                    if (!isIdentityLocked && item !== 'Profile') {
-                      showToast("Complete Identity Verification first!", "error");
+                    if (!isDashboardUnlocked && item !== 'Profile') {
+                      showToast("ড্যাশবোর্ড সম্পূর্ণ আনলক করতে প্রোফাইলে তথ্য ও পরিচয়পত্র জমা দিন!", "error");
                       return;
                     }
                     setActiveSubMenu(item);
@@ -4043,14 +4079,14 @@ export default function DashboardShell() {
                   className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
                     isSubActive
                       ? 'text-emerald-400 bg-emerald-500/10 font-bold'
-                      : !isIdentityLocked && item !== 'Profile'
+                      : !isDashboardUnlocked && item !== 'Profile'
                         ? 'text-slate-600 cursor-not-allowed opacity-50'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     {item}
-                    {!isIdentityLocked && item !== 'Profile' && <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />}
+                    {!isDashboardUnlocked && item !== 'Profile' && <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />}
                   </div>
                   {isSubActive && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />}
                 </button>
@@ -4614,21 +4650,6 @@ export default function DashboardShell() {
                 className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/30 transition-all active:scale-95"
               >
                 <Camera className="w-4 h-4" /> ছবি তুলুন (Capture)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  stopLiveCamera();
-                  if (liveCameraInputRef.current) {
-                    liveCameraInputRef.current.setAttribute('capture', cameraFacing);
-                    liveCameraInputRef.current.click();
-                  }
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
-                title="সরাসরি ডিভাইসের ক্যামেরা অ্যাপ চালু করুন"
-              >
-                <Smartphone className="w-4 h-4 text-emerald-400" /> ডিভাইস ক্যামেরা
               </button>
 
               <button
