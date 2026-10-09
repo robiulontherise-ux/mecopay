@@ -144,7 +144,10 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const activeLanguage = language || 'en';
     document.documentElement.lang = activeLanguage;
-    document.documentElement.dir = ['ar', 'he', 'ur'].includes(activeLanguage) ? 'rtl' : 'ltr';
+    // Keep the application shell and all page layouts stable in LTR.
+    // Arabic/Urdu/Hebrew copy can still render in its native script without
+    // flipping the sidebar, cards, navigation, pricing, or footer globally.
+    document.documentElement.dir = 'ltr';
     // Do not persist the temporary English render before country detection and language resolution finish.
     if (isLocaleReady) window.localStorage.setItem(LANGUAGE_KEY, activeLanguage);
   }, [language, isLocaleReady]);
