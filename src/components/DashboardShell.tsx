@@ -848,6 +848,12 @@ export default function DashboardShell() {
             setIsIdentityLocked(isLocked);
             setIsBirthLocked(!!dbProf.birth_number);
             setIsNidLocked(!!dbProf.nid_number);
+
+            // If user already submitted documents / verified / pending, unlock into Dashboard
+            if (vStatus === 'verified' || vStatus === 'pending') {
+              setActiveTab('brand');
+              setActiveSubMenu('Dashboard');
+            }
             return;
           }
         } catch (e) {
@@ -1545,6 +1551,10 @@ export default function DashboardShell() {
       showToast('প্রোফাইল ও পরিচয়পত্র সফলভাবে সাবমিট হয়েছে!', 'success');
       setProfileMessage('প্রোফাইল ও পরিচয়পত্র সফলভাবে জমা হয়েছে। অ্যাডমিন রিভিউয়ের পর ভেরিফাই হবে।');
       setTimeout(() => setProfileMessage(''), 4000);
+
+      // Instantly unlock and navigate to Dashboard in Your MecoPay
+      setActiveTab('brand');
+      setActiveSubMenu('Dashboard');
     } catch (err: any) {
       console.error(err);
       showToast('Error: ' + err.message, 'error');
