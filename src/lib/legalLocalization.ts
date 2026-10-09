@@ -147,7 +147,7 @@ export const legalCopy = {
       ]
     },
     "docs": {
-      "title": "API ডকুমেন্টেশন",
+      "title": "Docs",
       "alertTitle": "",
       "alert": "",
       "sections": [
@@ -309,7 +309,7 @@ export const legalCopy = {
       ]
     },
     "docs": {
-      "title": "API Documentation",
+      "title": "Docs",
       "alertTitle": "",
       "alert": "",
       "sections": [

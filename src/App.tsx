@@ -7,6 +7,7 @@ import DashboardRoute from './components/DashboardRoute';
 import CheckoutPage from './components/checkout/CheckoutPage';
 import AccessPage from './components/checkout/AccessPage';
 import { PrivacyPolicy, TermsConditions, RefundPolicy, CustomerRightsAndAntiFraud, DeveloperDocsPage } from './components/Legal';
+import FeaturesPage from './components/FeaturesPage';
 import TimeSpentBeaconTracker from './components/analytics/TimeSpentBeaconTracker';
 import { LocaleProvider } from './lib/LocaleContext';
 
@@ -97,12 +98,14 @@ function App() {
           <Route path="/pay/:slug" element={<CheckoutPage />} />
           <Route path="/access/:invoiceId" element={<AccessPage />} />
 
-          {/* Legal Pages */}
+          {/* Legal Pages & Docs / Features */}
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
           <Route path="/customer-rights" element={<CustomerRightsAndAntiFraud />} />
           <Route path="/anti-fraud" element={<CustomerRightsAndAntiFraud />} />
+          <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/docs" element={<DeveloperDocsPage />} />
           <Route path="/developers" element={<DeveloperDocsPage />} />
           
           {/* Dashboard Workspace */}

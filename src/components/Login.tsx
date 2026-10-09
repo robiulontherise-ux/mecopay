@@ -168,9 +168,9 @@ export default function Login() {
         
         <div className="flex items-center gap-6 sm:gap-10 mt-3 text-[15px] sm:text-[17px] font-bold text-neutral-300">
           <a href="#home" className="hover:text-white transition-colors">Home</a>
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
+          <Link to="/features" className="hover:text-white transition-colors">Features</Link>
           <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-          <Link to="/developers" className="hover:text-white transition-colors">Developers</Link>
+          <Link to="/docs" className="hover:text-white transition-colors">Docs</Link>
         </div>
 </nav>
       <div className="flex flex-wrap justify-center items-center gap-2 border-b border-neutral-900 bg-neutral-950 px-4 py-3">
@@ -248,82 +248,6 @@ export default function Login() {
             </span>
           </a>
 
-        </div>
-      </section>
-
-      
-      {/* Features Section */}
-      <section id="features" className="relative z-10 pt-32 pb-16 px-4 sm:px-6 max-w-7xl mx-auto flex flex-col items-center">
-        <h2 className="text-4xl md:text-6xl font-black text-white mb-20 tracking-tight text-center">
-          Our Service Category
-        </h2>
-
-        {/* Tree Diagram */}
-        <div className="relative flex flex-col items-center mb-16 w-full max-w-4xl">
-          {/* Top Node */}
-          <div className="w-5 h-5 rounded-full bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.8)] z-10 relative"></div>
-          
-          {/* Branch Lines Container */}
-          <div className="relative w-full h-20 sm:h-32 -mt-2">
-            {/* SVG lines for branches */}
-            <svg className="absolute inset-0 w-full h-full drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" preserveAspectRatio="none" viewBox="0 0 100 100">
-              <defs>
-                <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
-                  <polygon points="0 0, 6 2, 0 4" fill="#3b82f6" />
-                </marker>
-              </defs>
-              <path d="M 50 0 L 16.66 96" stroke="#3b82f6" strokeWidth="1.5" fill="none" className="opacity-80" markerEnd="url(#arrowhead)" />
-              <path d="M 50 0 L 50 96" stroke="#3b82f6" strokeWidth="1.5" fill="none" className="opacity-80" markerEnd="url(#arrowhead)" />
-              <path d="M 50 0 L 83.33 96" stroke="#3b82f6" strokeWidth="1.5" fill="none" className="opacity-80" markerEnd="url(#arrowhead)" />
-            </svg>
-          </div>
-
-          {/* Leaf Nodes */}
-          <div className="flex w-full justify-between items-start pt-2">
-            <div className="text-white font-extrabold text-lg sm:text-2xl md:text-3xl lg:text-4xl text-center font-black w-1/3 px-1 drop-shadow-[0_2px_10px_rgba(59,130,246,0.5)]">
-              Personal <br/> mfs
-            </div>
-            <div className="text-white font-extrabold text-lg sm:text-2xl md:text-3xl lg:text-4xl text-center font-black w-1/3 px-1 drop-shadow-[0_2px_10px_rgba(59,130,246,0.5)]">
-              Merchant mfs <br/> /Bank/Card
-            </div>
-            <div className="text-white font-extrabold text-lg sm:text-2xl md:text-3xl lg:text-4xl text-center font-black w-1/3 px-1 drop-shadow-[0_2px_10px_rgba(59,130,246,0.5)]">
-              Bangla QR
-            </div>
-          </div>
-        </div>
-
-        {/* Animated Marquee / Scrolling text for Use Cases */}
-        <div className="w-screen overflow-hidden bg-neutral-900/50 py-6 border-y border-neutral-800 mb-20 relative">
-           <motion.div 
-             animate={{ x: ["0%", "-50%"] }} 
-             transition={{ ease: "linear", duration: 35, repeat: Infinity }}
-             className="flex w-max whitespace-nowrap gap-16"
-           >
-             <span className="text-xl md:text-3xl font-bold text-neutral-300">{getTickerCopy(language)}</span>
-             <span className="text-xl md:text-3xl font-bold text-neutral-300">{getTickerCopy(language)}</span>
-           </motion.div>
-        </div>
-        
-        {/* Descriptive feature cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left">
-           <div className="bg-neutral-900/80 p-6 md:p-8 rounded-2xl border border-neutral-800 transition-all hover:border-pink-500/30 hover:bg-neutral-800/80 group">
-             <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-               <svg className="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-             </div>
-             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">{getSectionCopy('scale', language)[0]}</h3><p className="text-lg text-neutral-400 leading-relaxed">{getSectionCopy('scale', language)[1]}</p>
-           </div>
-           <div className="bg-neutral-900/80 p-6 md:p-8 rounded-2xl border border-neutral-800 transition-all hover:border-pink-500/30 hover:bg-neutral-800/80 group">
-             <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-               <svg className="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-             </div>
-             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">{getSectionCopy('personal', language)[0]}</h3><p className="text-lg text-neutral-400 leading-relaxed">{getSectionCopy('personal', language)[1]}</p>
-           </div>
-           <div className="bg-neutral-900/80 p-6 md:p-8 rounded-2xl border border-neutral-800 transition-all hover:border-pink-500/30 hover:bg-neutral-800/80 group">
-             <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-               <svg className="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-             </div>
-             <h3 className="text-2xl md:text-3xl font-black text-white mb-4">{getSectionCopy('physical', language)[0]}</h3><p className="text-lg text-neutral-400 leading-relaxed">{getSectionCopy('physical', language)[1]}</p>
-           </div>
         </div>
       </section>
 
