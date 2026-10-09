@@ -1,3 +1,5 @@
+import { generatedProfileTranslations } from './profileGeneratedTranslations';
+
 export type ProfileLanguage = 'en' | 'bn' | 'hi' | 'ar' | 'fr' | 'es' | 'pt';
 
 type ProfileCopy = {
@@ -82,5 +84,5 @@ const fr: ProfileCopy = { ...en, subtitle: 'Gérez votre profil professionnel et
 const es: ProfileCopy = { ...en, subtitle: 'Administra tu perfil empresarial y la verificación de seguridad', rejectedTitle: 'La solicitud de verificación anterior fue rechazada', adminNote: 'Nota del administrador:', pendingTitle: 'Los documentos de identidad están en revisión — panel desbloqueado', pendingStrong: 'Todas las funciones de tu panel ya están desbloqueadas.', unlockTitle: 'Proporciona la información y los documentos de identidad para desbloquear tu panel', contactNumber: 'Número de contacto', chooseContact: 'Selecciona un medio de contacto:', both: 'Ambos', contactNote: 'Proporciona un número activo para notificaciones urgentes y comunicación.', identityVerification: 'Verificación de identidad', liveCameraOnly: 'Solo cámara en vivo', noSelfie: 'No hay selfie', saveUpdating: 'Guardando y actualizando...' };
 const pt: ProfileCopy = { ...en, subtitle: 'Gerencie seu perfil comercial e a verificação de segurança', rejectedTitle: 'A solicitação de verificação anterior foi rejeitada', adminNote: 'Nota do administrador:', pendingTitle: 'Os documentos de identidade estão em análise — painel desbloqueado', pendingStrong: 'Todos os recursos do seu painel já foram desbloqueados.', unlockTitle: 'Forneça as informações e os documentos de identidade abaixo para desbloquear seu painel', contactNumber: 'Número de contato', chooseContact: 'Selecione um meio de contato:', both: 'Ambos', contactNote: 'Forneça um número ativo para notificações urgentes e comunicação.', identityVerification: 'Verificação de identidade', liveCameraOnly: 'Apenas câmera ao vivo', noSelfie: 'Sem selfie', saveUpdating: 'Salvando e atualizando...' };
 
-const copies: Record<string, ProfileCopy> = { en, bn, hi, ar, fr, es, pt };
+const copies: Record<string, ProfileCopy> = { en, bn, hi, ar, fr, es, pt, ...(generatedProfileTranslations as unknown as Record<string, ProfileCopy>) };
 export const getProfileCopy = (language: string): ProfileCopy => copies[language.toLowerCase().split('-')[0]] || en;
