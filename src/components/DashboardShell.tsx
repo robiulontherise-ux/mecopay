@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck, Key, Plug, CreditCard, LayoutTemplate, Settings, ChevronRight, Menu, X, ChevronDown, CheckCircle2, Zap, Rocket, Globe, Wallet, Crown, Plus, Video, MoreVertical, Copy, Edit, RefreshCw, Trash2, Image as ImageIcon, Save, Info, Download, Smartphone, FileText, ExternalLink, ShieldAlert, Inbox, Book, Sparkles, Link as LinkIcon, ArrowRight, PlayCircle, Camera, Clock, Eye, SwitchCamera, Check } from 'lucide-react';
 import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
 import { useLocale } from '../lib/LocaleContext';
+import { getProfileCopy } from '../lib/profileLocalization';
 
 export default function DashboardShell() {
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +77,8 @@ export default function DashboardShell() {
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
   const { continent, country: selectedCountry, language, countries, isDetecting: isDetectingContinent, countryData: selectedCountryData, languageOptions: countryLanguageOptions, setCountry: setSelectedCountry, setLanguage } = useLocale();
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
+  const profileCopy = getProfileCopy(language);
+  const profileUiText = (bengali: string, english: string) => language === 'bn' ? bengali : english;
 
   useEffect(() => {
     setSelectedFeatureIds(pricingMode === 'nocode' ? ['no-code-website'] : ['custom-domain']);
@@ -1341,12 +1344,12 @@ export default function DashboardShell() {
     try {
       // 1. Mandatory Text Validation
       if (!profileName.trim()) {
-        showToast("অনুগ্রহ করে আপনার পূর্ণ নাম প্রদান করুন", "error");
+        showToast(profileUiText("অনুগ্রহ করে আপনার পূর্ণ নাম প্রদান করুন", "Please provide your full name"), "error");
         setIsSavingProfile(false);
         return;
       }
       if (!profilePhone.trim()) {
-        showToast("অনুগ্রহ করে যোগাযোগের নম্বর প্রদান করুন", "error");
+        showToast(profileUiText("অনুগ্রহ করে যোগাযোগের নম্বর প্রদান করুন", "Please provide a contact number"), "error");
         setIsSavingProfile(false);
         return;
       }
@@ -1382,8 +1385,8 @@ export default function DashboardShell() {
           }
         });
 
-        showToast("ওয়েবসাইট ও সোশ্যাল লিঙ্ক সফলভাবে আপডেট হয়েছে!", "success");
-        setProfileMessage("আপনার যোগাযোগের নম্বর, ওয়েবসাইট ও সোশ্যাল মিডিয়া লিঙ্ক সফলভাবে সংরক্ষণ করা হয়েছে।");
+        showToast(profileUiText("ওয়েবসাইট ও সোশ্যাল লিঙ্ক সফলভাবে আপডেট হয়েছে!", "Website and social links updated successfully!"), "success");
+        setProfileMessage(profileUiText("আপনার যোগাযোগের নম্বর, ওয়েবসাইট ও সোশ্যাল মিডিয়া লিঙ্ক সফলভাবে সংরক্ষণ করা হয়েছে।", "Your contact number, website, and social media links were saved successfully."));
         setTimeout(() => setProfileMessage(''), 4000);
         setIsSavingProfile(false);
         return;
@@ -1392,40 +1395,40 @@ export default function DashboardShell() {
       // 2. Identity Document Mandatory Validation
       if (ageGroup === '18_plus') {
         if (!nidNumber.trim()) {
-          showToast("১৮ বছরের বেশি বয়সীদের ক্ষেত্রে NID নম্বর বাধ্যতামূলক!", "error");
+          showToast(profileUiText("১৮ বছরের বেশি বয়সীদের ক্ষেত্রে NID নম্বর বাধ্যতামূলক!", "NID number is required for applicants above 18."), "error");
           setIsSavingProfile(false);
           return;
         }
         if (!birthNumber.trim()) {
-          showToast("জন্মনিবন্ধন নম্বর প্রদান করুন!", "error");
+          showToast(profileUiText("জন্মনিবন্ধন নম্বর প্রদান করুন!", "Please provide the birth certificate number."), "error");
           setIsSavingProfile(false);
           return;
         }
         if (!nidFrontImage || !nidBackImage) {
-          showToast("NID কার্ডের সম্মুখভাগ ও পেছনের ভাগের ছবি আবশ্যক!", "error");
+          showToast(profileUiText("NID কার্ডের সম্মুখভাগ ও পেছনের ভাগের ছবি আবশ্যক!", "Both front and back images of the NID card are required."), "error");
           setIsSavingProfile(false);
           return;
         }
         if (!birthImage) {
-          showToast("জন্মনিবন্ধন সনদের ছবি আবশ্যক!", "error");
+          showToast(profileUiText("জন্মনিবন্ধন সনদের ছবি আবশ্যক!", "A birth certificate image is required."), "error");
           setIsSavingProfile(false);
           return;
         }
       } else {
         if (!birthNumber.trim()) {
-          showToast("জন্মনিবন্ধন নম্বর প্রদান করা বাধ্যতামূলক!", "error");
+          showToast(profileUiText("জন্মনিবন্ধন নম্বর প্রদান করা বাধ্যতামূলক!", "Birth certificate number is required."), "error");
           setIsSavingProfile(false);
           return;
         }
         if (!birthImage) {
-          showToast("জন্মনিবন্ধন সনদের ছবি আবশ্যক!", "error");
+          showToast(profileUiText("জন্মনিবন্ধন সনদের ছবি আবশ্যক!", "A birth certificate image is required."), "error");
           setIsSavingProfile(false);
           return;
         }
       }
 
       if (!faceImage) {
-        showToast("লাইভ ফেস ফটো সেলফি আবশ্যক!", "error");
+        showToast(profileUiText("লাইভ ফেস ফটো সেলফি আবশ্যক!", "A live face selfie is required."), "error");
         setIsSavingProfile(false);
         return;
       }
@@ -1548,8 +1551,8 @@ export default function DashboardShell() {
       setVerificationStatus('pending');
       setIsIdentityLocked(false);
       
-      showToast('প্রোফাইল ও পরিচয়পত্র সফলভাবে সাবমিট হয়েছে!', 'success');
-      setProfileMessage('প্রোফাইল ও পরিচয়পত্র সফলভাবে জমা হয়েছে। অ্যাডমিন রিভিউয়ের পর ভেরিফাই হবে।');
+      showToast(profileUiText('প্রোফাইল ও পরিচয়পত্র সফলভাবে সাবমিট হয়েছে!', 'Profile and identity documents submitted successfully!'), 'success');
+      setProfileMessage(profileUiText('প্রোফাইল ও পরিচয়পত্র সফলভাবে জমা হয়েছে। অ্যাডমিন রিভিউয়ের পর ভেরিফাই হবে।', 'Profile and identity documents submitted successfully. Verification will follow admin review.'));
       setTimeout(() => setProfileMessage(''), 4000);
 
       // Instantly unlock and navigate to Dashboard in Your MecoPay
@@ -1753,7 +1756,7 @@ export default function DashboardShell() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-bold text-white tracking-tight">Profile & Identity Verification</h2>
-              <p className="text-xs text-slate-400 mt-1">ব্যবসায়িক প্রোফাইল ও নিরাপত্তা ভেরিফিকেশন পরিচালনা করুন</p>
+              <p className="text-xs text-slate-400 mt-1">{profileCopy.subtitle}</p>
             </div>
             <div>
               {verificationStatus === 'verified' ? (
@@ -1780,10 +1783,10 @@ export default function DashboardShell() {
           {verificationStatus === 'rejected' && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-300 text-xs shadow-lg">
               <div className="flex items-center gap-2 font-bold text-red-400 text-sm mb-1.5">
-                <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" /> পূর্বের ভেরিফিকেশন আবেদন বাতিল করা হয়েছিল
+                <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" /> {profileCopy.rejectedTitle}
               </div>
               <p className="text-slate-300 leading-relaxed">
-                অ্যাডমিন নোট: <strong className="text-red-200">{rejectionReason || 'তথ্য বা ছবিতে অসঙ্গতি ছিল। অনুগ্রহ করে লাইভ ক্যামেরা দিয়ে স্পষ্ট ছবি তুলে পুনরায় সাবমিট করুন।'}</strong>
+                {profileCopy.adminNote} <strong className="text-red-200">{rejectionReason || profileCopy.rejectedReason}</strong>
               </p>
             </div>
           )}
@@ -1793,9 +1796,9 @@ export default function DashboardShell() {
             <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-xs flex items-start gap-3 shadow-lg">
               <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-amber-400 text-sm">পরিচয়পত্র পর্যালোচনায় রয়েছে (Under Review) — ড্যাশবোর্ড আনলক করা হয়েছে</p>
+                <p className="font-bold text-amber-400 text-sm">{profileCopy.pendingTitle}</p>
                 <p className="mt-1 text-slate-300 leading-relaxed">
-                  আপনার জমা দেওয়া তথ্য ও ছবি সফলভাবে গৃহীত হয়েছে এবং ২৪ ঘণ্টার মধ্যে অ্যাডমিন প্যানেল থেকে সরকারি রেকর্ডের সঙ্গে মিলিয়ে ভেরিফাই করা হবে। <strong>ইতিমধ্যে আপনার ড্যাশবোর্ডের সকল ফিচার ব্যবহারের জন্য সম্পূর্ণ আনলক করে দেওয়া হয়েছে।</strong> কোনো তথ্য ভুল বা অসত্য পাওয়া গেলে অ্যাডমিন অ্যাকাউন্ট ব্লক করার অধিকার সংরক্ষণ করে।
+                  {profileCopy.pendingBody} <strong>{profileCopy.pendingStrong}</strong> {profileCopy.pendingTail}
                 </p>
               </div>
             </div>
@@ -1806,9 +1809,9 @@ export default function DashboardShell() {
             <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-blue-200 text-xs flex items-start gap-3 shadow-lg">
               <ShieldAlert className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-blue-400 text-sm">ড্যাশবোর্ড সম্পূর্ণ আনলক করতে নিচের তথ্য ও পরিচয়পত্র দিন</p>
+                <p className="font-bold text-blue-400 text-sm">{profileCopy.unlockTitle}</p>
                 <p className="mt-1 text-slate-300 leading-relaxed">
-                  নিচের তথ্য, NID বা জন্মনিবন্ধন সনদ এবং লাইভ ফেস সেলফি পূরণ করে <strong>"Save Profile & Documents"</strong> বাটনে ক্লিক করলেই আপনার ড্যাশবোর্ডের সব ফিচার ব্যবহারের জন্য সাথে সাথে আনলক হয়ে যাবে। এরপর অ্যাডমিন ২৪ ঘণ্টার মধ্যে আপনার তথ্য সরকারি রেকর্ডের সাথে যাচাই করে চূড়ান্ত অনুমোদন প্রদান করবে।
+                  {profileCopy.unlockBody}
                 </p>
               </div>
             </div>
@@ -1831,19 +1834,19 @@ export default function DashboardShell() {
               <div className="mt-1">
                 {verificationStatus === 'verified' ? (
                   <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> আইডি ভেরিফাইড মার্চেন্ট (Verified)
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> {profileCopy.verifiedMerchant}
                   </span>
                 ) : verificationStatus === 'pending' ? (
                   <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1.5 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" /> ভেরিফিকেশন পর্যালোচনায় (ড্যাশবোর্ড আনলক)
+                    <Clock className="w-3.5 h-3.5 text-amber-400" /> {profileCopy.underReview}
                   </span>
                 ) : verificationStatus === 'rejected' ? (
                   <span className="text-[11px] font-bold text-red-400 flex items-center gap-1.5 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
-                    <ShieldAlert className="w-3.5 h-3.5 text-red-400" /> ভেরিফিকেশন প্রত্যাখ্যাত (Action Needed)
+                    <ShieldAlert className="w-3.5 h-3.5 text-red-400" /> {profileCopy.rejected}
                   </span>
                 ) : (
                   <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" /> আন-ভেরিফাইড প্রোফাইল
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" /> {profileCopy.unverified}
                   </span>
                 )}
               </div>
@@ -1851,7 +1854,7 @@ export default function DashboardShell() {
 
             <div className="space-y-5">
               {profileMessage && (
-                <div className={`p-3 rounded-lg text-sm text-center ${profileMessage.includes('Error') || profileMessage.includes('ত্রুটি') ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                <div className={`p-3 rounded-lg text-sm text-center ${profileMessage.includes('Error') || profileMessage.includes(profileCopy.errorPrefix) ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
                   {profileMessage}
                 </div>
               )}
@@ -1864,14 +1867,14 @@ export default function DashboardShell() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Full Name <span className="text-red-400">*</span></label>
-                  <input type="text" placeholder="আপনার পূর্ণ নাম লিখুন" value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
+                  <input type="text" placeholder={profileCopy.fullNamePlaceholder} value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-sm font-medium text-slate-300">
-                      যোগাযোগের নম্বর <span className="text-red-400">*</span>
+                      {profileCopy.contactNumber} <span className="text-red-400">*</span>
                     </label>
-                    <span className="text-[11px] text-slate-400">টিক দিয়ে মাধ্যম বেছে নিন:</span>
+                    <span className="text-[11px] text-slate-400">{profileCopy.chooseContact}</span>
                   </div>
 
                   {/* WhatsApp / Telegram Selector with checkmark ticks */}
@@ -1911,7 +1914,7 @@ export default function DashboardShell() {
                           : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700'
                       }`}
                     >
-                      <span className="text-purple-400">⚡</span> উভয়টি
+                      <span className="text-purple-400">⚡</span> {profileCopy.both}
                       {phoneType === 'both' && <Check className="w-3.5 h-3.5 text-purple-400 stroke-[3]" />}
                     </button>
                   </div>
@@ -1920,17 +1923,17 @@ export default function DashboardShell() {
                     type="tel"
                     placeholder={
                       phoneType === 'whatsapp'
-                        ? 'e.g. +1... / +44... / +880... (দেশের কোডসহ WhatsApp নম্বর)'
+                        ? profileCopy.whatsappPlaceholder
                         : phoneType === 'telegram'
-                        ? 'e.g. +1... / +880... বা @username (Telegram নম্বর বা ইউজারনেম)'
-                        : 'e.g. +1... / +44... / +880... (দেশের কোডসহ নম্বর)'
+                        ? profileCopy.telegramPlaceholder
+                        : profileCopy.phonePlaceholder
                     }
                     value={profilePhone}
                     onChange={(e) => setProfilePhone(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors font-mono"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
-                    জরুরি নোটিফিকেশন ও যোগাযোগের জন্য নির্বাচিত মাধ্যমে সচল নম্বর দিন।
+                    {profileCopy.contactNote}
                   </p>
                 </div>
               </div>
@@ -1938,21 +1941,21 @@ export default function DashboardShell() {
               {/* Identity Verification */}
               <div className="pt-6 border-t border-slate-800/50 mt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-medium flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Identity Verification (পরিচয়পত্র যাচাই)</h3>
+                  <h3 className="text-white font-medium flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> {profileCopy.identityVerification}</h3>
                 </div>
                 <div className="bg-slate-900 border-y sm:border sm:border-slate-800 sm:rounded-xl p-3 sm:p-6 mb-6 -mx-4 sm:mx-0">
                   <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 sm:p-4 mb-6">
                     <div className="flex gap-2 sm:gap-3">
                       <ShieldAlert className="w-4 sm:w-5 h-4 sm:h-5 text-red-500 shrink-0 mt-0.5" />
                       <div className="text-xs sm:text-sm text-red-200">
-                        <p className="font-bold text-red-400 mb-2">CRITICAL WARNING & GUIDELINES</p>
+                        <p className="font-bold text-red-400 mb-2">{profileCopy.criticalWarning}</p>
                         <ul className="list-disc pl-3 sm:pl-4 space-y-1.5">
-                          <li><strong>১৮ বছর বা তার বেশি হলে শুধু Birth Certificate দিয়ে অনুমোদন হবে না; NID ও Birth Certificate দুটিই বাধ্যতামূলক।</strong></li>
-                          <li>১৮ বছরের নিচে হলে শুধুমাত্র Birth Certificate ও লাইভ ফেস সেলফি বাধ্যতামূলক।</li>
-                          <li>জন্মনিবন্ধনে জন্মসাল ২০১০ বা তার আগের হতে হবে।</li>
-                          <li className="text-red-400 font-bold">NID-তে থাকা জন্মতারিখ অনুযায়ী বয়স সর্বোচ্চ ৪০ বছর হতে হবে; ৪০ বছরের বেশি হলে অ্যাকাউন্ট যাচাই হবে না।</li>
-                          <li className="text-amber-300 font-semibold">জমা দেওয়া তথ্য ও সনদ সরকারি অনলাইন যাচাই ব্যবস্থায় উপলভ্য রেকর্ডের সঙ্গে মিলিয়ে দেখা হবে। তথ্য ভুল হলে, ছবি অস্পষ্ট/পরিবর্তিত হলে বা সরকারি রেকর্ডের সঙ্গে অমিল থাকলে অ্যাকাউন্ট যাচাই বা অনুমোদন করা হবে না।</li>
-                          <li className="text-red-400 font-bold">একটি NID বা জন্মনিবন্ধন দিয়ে কেবল একটি অ্যাকাউন্টই অনুমোদন পাবে। ডুপ্লিকেট অ্যাকাউন্ট নিষিদ্ধ।</li>
+                          <li><strong>{profileCopy.rules[0]}</strong></li>
+                          <li>{profileCopy.rules[1]}</li>
+                          <li>{profileCopy.rules[2]}</li>
+                          <li className="text-red-400 font-bold">{profileCopy.rules[3]}</li>
+                          <li className="text-amber-300 font-semibold">{profileCopy.rules[4]}</li>
+                          <li className="text-red-400 font-bold">{profileCopy.rules[5]}</li>
                         </ul>
                       </div>
                     </div>
@@ -1961,11 +1964,11 @@ export default function DashboardShell() {
                   <div className="flex flex-col sm:flex-row sm:space-x-6 space-y-4 sm:space-y-0 mb-6">
                     <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300 font-bold bg-slate-950 px-4 py-3 rounded-lg border ${ageGroup === '18_plus' ? 'border-emerald-500' : 'border-slate-800'}`}>
                       <input type="radio" value="18_plus" checked={ageGroup === '18_plus'} onChange={(e) => setAgeGroup('18_plus')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
-                      <span>১৮ বছরের উপরে (18+)</span>
+                      <span>{profileCopy.age18}</span>
                     </label>
                     <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300 font-bold bg-slate-950 px-4 py-3 rounded-lg border ${ageGroup === 'under_18' ? 'border-emerald-500' : 'border-slate-800'}`}>
                       <input type="radio" value="under_18" checked={ageGroup === 'under_18'} onChange={(e) => setAgeGroup('under_18')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
-                      <span>১৮ বছরের নিচে (Under 18)</span>
+                      <span>{profileCopy.under18}</span>
                     </label>
                   </div>
                   
@@ -1975,11 +1978,11 @@ export default function DashboardShell() {
                       <div>
                         <h4 className="text-white font-medium mb-3 flex items-center gap-2 text-sm border-b border-slate-800 pb-2">
                           <FileText className="w-4 h-4 text-emerald-500" />
-                          Birth Certificate (জন্মনিবন্ধন) <span className="text-red-400 text-xs ml-auto">*Mandatory</span>
+                          {profileCopy.birthCertificate} <span className="text-red-400 text-xs ml-auto">*Mandatory</span>
                         </h4>
                         <div className="mb-3">
-                          <label className="block text-xs font-medium text-slate-400 mb-1">Birth Certificate Number (ইউনিক)</label>
-                          <input type="text" placeholder="জন্মনিবন্ধন নম্বর লিখুন" value={birthNumber} onChange={(e) => setBirthNumber(e.target.value)} disabled={isBirthLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-mono" />
+                          <label className="block text-xs font-medium text-slate-400 mb-1">{profileCopy.birthNumber}</label>
+                          <input type="text" placeholder={profileCopy.birthPlaceholder} value={birthNumber} onChange={(e) => setBirthNumber(e.target.value)} disabled={isBirthLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-mono" />
                         </div>
                       </div>
 
@@ -1993,7 +1996,7 @@ export default function DashboardShell() {
                                 type="button"
                                 onClick={() => setPreviewZoomImage(birthImage)}
                                 className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded-lg text-xs"
-                                title="বড় করে দেখুন"
+                                title={profileCopy.zoom}
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
@@ -2001,7 +2004,7 @@ export default function DashboardShell() {
                           ) : (
                             <div className="mx-auto w-full max-w-xs aspect-[4/3] rounded-lg border-2 border-dashed border-slate-800 flex flex-col items-center justify-center p-4 mb-2 text-slate-500">
                               <Upload className="w-6 h-6 text-slate-600 mb-1" />
-                              <span className="text-xs">ছবি এখনো আপলোড হয়নি</span>
+                              <span className="text-xs">{profileCopy.notUploaded}</span>
                             </div>
                           )}
 
@@ -2009,7 +2012,7 @@ export default function DashboardShell() {
                             {!isBirthLocked && (
                               <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors">
                                 <Upload className="w-3.5 h-3.5 text-blue-400" />
-                                <span>ফাইল / গ্যালারি থেকে আপলোড</span>
+                                <span>{profileCopy.uploadGallery}</span>
                                 <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setBirthImage)} className="hidden" />
                               </label>
                             )}
@@ -2023,21 +2026,21 @@ export default function DashboardShell() {
                       <div>
                         <h4 className="text-white font-medium mb-3 flex items-start gap-2 border-b border-slate-800 pb-2">
                           <CreditCard className="w-4 h-4 text-blue-500 mt-0.5" />
-                          <span className="text-sm">National ID (NID কার্ড)</span>
+                          <span className="text-sm">{profileCopy.nidCard}</span>
                           <span className={`text-xs ml-auto ${ageGroup === '18_plus' ? 'text-red-400' : 'text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded'}`}>
                             {ageGroup === '18_plus' ? '*Mandatory' : 'Optional for Under 18'}
                           </span>
                         </h4>
                         <div className="mb-3">
-                          <label className="block text-xs font-medium text-slate-400 mb-1">NID Number (ইউনিক)</label>
-                          <input type="text" placeholder="NID নম্বর লিখুন" value={nidNumber} onChange={(e) => setNidNumber(e.target.value)} disabled={isNidLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-mono" />
+                          <label className="block text-xs font-medium text-slate-400 mb-1">{profileCopy.nidNumber}</label>
+                          <input type="text" placeholder={profileCopy.nidPlaceholder} value={nidNumber} onChange={(e) => setNidNumber(e.target.value)} disabled={isNidLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-mono" />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {/* Front Side */}
                         <div className="border border-slate-800 rounded-xl p-4 sm:p-5 bg-slate-900/40 text-center">
-                          <span className="text-xs font-medium text-slate-400 block mb-1">সম্মুখভাগ (Front)</span>
+                          <span className="text-xs font-medium text-slate-400 block mb-1">{profileCopy.front}</span>
                           {nidFrontImage ? (
                             <div className="relative mb-3 aspect-[1.586/1] min-h-[190px] rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
                               <img src={nidFrontImage} alt="NID Front" className="w-full h-full object-contain p-1" />
@@ -2045,7 +2048,7 @@ export default function DashboardShell() {
                                 type="button"
                                 onClick={() => setPreviewZoomImage(nidFrontImage)}
                                 className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded text-xs"
-                                title="বড় করে দেখুন"
+                                title={profileCopy.zoom}
                               >
                                 <Eye className="w-3 h-3" />
                               </button>
@@ -2060,7 +2063,7 @@ export default function DashboardShell() {
                             {!isNidLocked && (
                               <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors">
                                 <Upload className="w-4 h-4 text-blue-400" />
-                                <span>ডিভাইস থেকে ছবি আপলোড</span>
+                                <span>{profileCopy.uploadDevice}</span>
                                 <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidFrontImage)} className="hidden" />
                               </label>
                             )}
@@ -2069,7 +2072,7 @@ export default function DashboardShell() {
 
                         {/* Back Side */}
                         <div className="border border-slate-800 rounded-xl p-4 sm:p-5 bg-slate-900/40 text-center">
-                          <span className="text-xs font-medium text-slate-400 block mb-1">পেছনের ভাগ (Back)</span>
+                          <span className="text-xs font-medium text-slate-400 block mb-1">{profileCopy.back}</span>
                           {nidBackImage ? (
                             <div className="relative mb-3 aspect-[1.586/1] min-h-[190px] rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
                               <img src={nidBackImage} alt="NID Back" className="w-full h-full object-contain p-1" />
@@ -2077,7 +2080,7 @@ export default function DashboardShell() {
                                 type="button"
                                 onClick={() => setPreviewZoomImage(nidBackImage)}
                                 className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded text-xs"
-                                title="বড় করে দেখুন"
+                                title={profileCopy.zoom}
                               >
                                 <Eye className="w-3 h-3" />
                               </button>
@@ -2092,7 +2095,7 @@ export default function DashboardShell() {
                             {!isNidLocked && (
                               <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors">
                                 <Upload className="w-4 h-4 text-blue-400" />
-                                <span>ডিভাইস থেকে ছবি আপলোড</span>
+                                <span>{profileCopy.uploadDevice}</span>
                                 <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setNidBackImage)} className="hidden" />
                               </label>
                             )}
@@ -2105,11 +2108,11 @@ export default function DashboardShell() {
                   {/* Face Image Card (LIVE CAMERA ONLY) */}
                   <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
                     <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-                      <span>লাইভ ফেস সেলফি ফটো (Passport Size)</span>
+                      <span>{profileCopy.liveSelfie}</span>
                       <span className="text-red-400 text-xs">*Mandatory</span>
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">লাইভ ক্যামেরা অনলি</span>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">{profileCopy.liveCameraOnly}</span>
                     </label>
-                    <p className="text-xs text-slate-500 mb-3">ক্যামেরার মুখোমুখি হয়ে পরিষ্কার আলোতে একটি লাইভ সেলফি তুলুন।</p>
+                    <p className="text-xs text-slate-500 mb-3">{profileCopy.selfieInstruction}</p>
                     
                     <div className="flex flex-col sm:flex-row items-center gap-6">
                       <div className="w-36 aspect-[3/4] rounded-xl overflow-hidden bg-slate-900 border border-slate-800 relative flex items-center justify-center shadow-md">
@@ -2120,7 +2123,7 @@ export default function DashboardShell() {
                               type="button"
                               onClick={() => setPreviewZoomImage(faceImage)}
                               className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded-lg text-xs"
-                              title="বড় করে দেখুন"
+                              title={profileCopy.zoom}
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
@@ -2128,7 +2131,7 @@ export default function DashboardShell() {
                         ) : (
                           <div className="text-center p-3 text-slate-600">
                             <Camera className="w-8 h-8 mx-auto mb-1 text-slate-700" />
-                            <span className="text-[11px]">সেলফি নেই</span>
+                            <span className="text-[11px]">{profileCopy.noSelfie}</span>
                           </div>
                         )}
                       </div>
@@ -2140,10 +2143,10 @@ export default function DashboardShell() {
                           disabled={isIdentityLocked}
                           className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition-all active:scale-95 disabled:opacity-50"
                         >
-                          <Camera className="w-4 h-4" /> {faceImage ? 'লাইভ সেলফি পুনরায় তুলুন' : '📸 লাইভ ফ্রন্ট ক্যামেরা দিয়ে সেলফি তুলুন'}
+                          <Camera className="w-4 h-4" /> {faceImage ? profileCopy.retakeSelfie : profileCopy.takeSelfie}
                         </button>
-                        <p className="text-[11px] text-amber-300 font-medium">⚠️ জালিয়াতি প্রতিরোধে ফেস সেলফি শুধুমাত্র লাইভ ক্যামেরা দিয়ে নেওয়া হবে (গ্যালারি আপলোড বন্ধ)।</p>
-                        <p className="text-[11px] text-slate-400">ছবি তোলার সময় চশমা বা মাস্ক পরিহার করুন এবং পর্যাপ্ত আলো নিশ্চিত করুন।</p>
+                        <p className="text-[11px] text-amber-300 font-medium">{profileCopy.selfieWarning}</p>
+                        <p className="text-[11px] text-slate-400">{profileCopy.selfieTip}</p>
                       </div>
                     </div>
                   </div>
@@ -2187,7 +2190,7 @@ export default function DashboardShell() {
                             else if (cameraTarget === 'nid_back') setNidBackImage(compressedDataUrl);
                             else if (cameraTarget === 'face') setFaceImage(compressedDataUrl);
 
-                            showToast("লাইভ ক্যামেরা দিয়ে ছবি সফলভাবে নেওয়া হয়েছে!", "success");
+                            showToast(profileCopy.cameraSuccess, "success");
                           }
                         };
                       };
@@ -2237,10 +2240,10 @@ export default function DashboardShell() {
                   {isSavingProfile ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>সংরক্ষণ ও আপডেট হচ্ছে...</span>
+                      <span>{profileCopy.saveUpdating}</span>
                     </>
                   ) : verificationStatus === 'verified' ? (
-                    <span>তথ্য ও সোশ্যাল লিঙ্ক আপডেট করুন</span>
+                    <span>{profileCopy.updateLinks}</span>
                   ) : (
                     <span>Save & Submit For Verification</span>
                   )}
@@ -4712,8 +4715,8 @@ export default function DashboardShell() {
                 <Camera className="w-5 h-5 text-emerald-400" />
                 <h3 className="text-white font-bold text-sm">
                   {cameraTarget === 'birth' && 'জন্মনিবন্ধন লাইভ ক্যামেরা ক্যাপচার'}
-                  {cameraTarget === 'nid_front' && 'NID সম্মুখভাগ (Front) লাইভ ক্যাপচার'}
-                  {cameraTarget === 'nid_back' && 'NID পেছনের ভাগ (Back) লাইভ ক্যাপচার'}
+                  {cameraTarget === 'nid_front' && 'NID {profileCopy.front} লাইভ ক্যাপচার'}
+                  {cameraTarget === 'nid_back' && 'NID {profileCopy.back} লাইভ ক্যাপচার'}
                   {cameraTarget === 'face' && 'লাইভ ফেস সেলফি ক্যাপচার'}
                 </h3>
               </div>
