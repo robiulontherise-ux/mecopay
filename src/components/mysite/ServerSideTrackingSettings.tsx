@@ -388,7 +388,7 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
           };
 
           for (const syncHost of targetHostnames) {
-            await fetch('/api/internal/sync-cache', {
+            await fetch('https://cname.mecopay.space/api/internal/sync-cache', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

@@ -237,12 +237,12 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
 
       setCustomDomain(cleanInputDomain);
 
-      // Sync to Cloudflare Edge Worker KV cache with Auth Token
+      // Sync to Cloudflare Edge Worker KV cache with Auth Token (Live cname edge endpoint)
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const authToken = sessionData?.session?.access_token || '';
 
-        await fetch('/api/internal/sync-cache', {
+        await fetch('https://cname.mecopay.space/api/internal/sync-cache', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -327,7 +327,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           try {
             const { data: sessionData } = await supabase.auth.getSession();
             const authToken = sessionData?.session?.access_token || '';
-            await fetch('/api/internal/sync-cache', {
+            await fetch('https://cname.mecopay.space/api/internal/sync-cache', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
