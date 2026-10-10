@@ -237,30 +237,6 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
 
       setCustomDomain(cleanInputDomain);
 
-      // Sync to Cloudflare Edge Worker KV cache with Auth Token (Live cname edge endpoint)
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const authToken = sessionData?.session?.access_token || '';
-
-        await fetch('https://cname.mecopay.space/api/internal/sync-cache', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-          },
-          body: JSON.stringify({
-            hostname: cleanInputDomain,
-            subdomain: currentSubdomain || existing?.subdomain || '',
-            domain: cleanInputDomain,
-            client_id: user.id,
-            brand_id: selectedBrandId,
-            app_type: activeTab === 'nocode' ? 'no_code' : activeTab
-          })
-        });
-      } catch (e) {
-        console.warn('Edge KV sync skipped in local dev:', e);
-      }
-
       // Automated Cloudflare for SaaS Custom Hostname provisioning
       try {
         const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-custom-hostname', {
@@ -320,32 +296,6 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         setDomainStatus('active');
         setSslStatus('active');
         showToast(`🎉 Domain & SSL Active! Your store is securely live on ${customDomain}`, 'success');
-
-        // Sync subdomain to custom domain 301 redirect in Edge KV cache
-        const actualSubdomain = (currentSubdomain || '').trim().toLowerCase();
-        if (actualSubdomain && user?.id) {
-          try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const authToken = sessionData?.session?.access_token || '';
-            await fetch('https://cname.mecopay.space/api/internal/sync-cache', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-              },
-              body: JSON.stringify({
-                hostname: `${actualSubdomain}.mecopay.space`,
-                subdomain: actualSubdomain,
-                custom_domain: customDomain,
-                client_id: user.id,
-                brand_id: selectedBrandId,
-                app_type: 'no_code'
-              })
-            });
-          } catch (e) {
-            console.warn('Subdomain redirect sync skipped:', e);
-          }
-        }
 
         fetchDomainSettings();
       } else {
