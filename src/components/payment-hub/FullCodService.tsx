@@ -184,30 +184,30 @@ export default function FullCodService({ brands = [], user }: FullCodServiceProp
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
-            {isFullCodFree ? (
-              <div className="px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>আপনার জন্য সম্পূর্ণ ফ্রি ও সক্রিয়</span>
+            {isFullCodFree && (
+              <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>ফ্রি সুবিধা সংযুক্ত</span>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleToggleFullCod}
-                disabled={toggling || loading}
-                className={`px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2.5 shadow-lg ${
-                  fullCodActive
-                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                }`}
-              >
-                {toggling ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                ) : (
-                  <span className={`w-2.5 h-2.5 rounded-full ${fullCodActive ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                )}
-                {fullCodActive ? 'Service: ACTIVE (ON)' : 'Service: INACTIVE (OFF)'}
-              </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleToggleFullCod}
+              disabled={toggling || loading}
+              className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2.5 shadow-lg ${
+                fullCodActive
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+              }`}
+            >
+              {toggling ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <span className={`w-2.5 h-2.5 rounded-full ${fullCodActive ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+              )}
+              {fullCodActive ? 'Full COD: ON' : 'Full COD: OFF'}
+            </button>
           </div>
         </div>
 
