@@ -341,73 +341,52 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
       // 2. Also keep localStorage as client cache backup
       localStorage.setItem(`mecopay_tracking_config_${user?.id}_${selectedBrandId}`, JSON.stringify(payload));
 
-      // 3. Immediately trigger Edge Worker KV Cache Sync with Auth Token for both Custom Domain and Subdomain
-      if (user?.id) {
+      // 3. Sync to Cloudflare Gateway Worker KV (Auto-Merge with domain settings)
+      if (activeDomain) {
         try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const authToken = sessionData?.session?.access_token || '';
-
-          // Fetch subdomain and custom domain for this brand
-          const { data: siteData } = await supabase
-            .from('site_settings')
-            .select('subdomain, domain')
-            .or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`)
-            .maybeSingle();
-
-          const targetHostnames = new Set<string>();
-          if (activeDomain) targetHostnames.add(activeDomain.toLowerCase());
-          if (siteData?.domain) targetHostnames.add(siteData.domain.toLowerCase());
-          if (siteData?.subdomain) targetHostnames.add(`${siteData.subdomain.toLowerCase()}.mecopay.space`);
-
-          const trackingCachePayload = {
-            meta_enabled: metaEnabled && !isExpired(metaExpiresAt),
-            meta_pixel_id: metaPixelId.trim(),
-            meta_access_token: metaAccessToken.trim(),
-            meta_test_code: metaTestCode.trim(),
-
-            ga4_enabled: ga4Enabled && !isExpired(ga4ExpiresAt),
-            ga4_measurement_id: ga4MeasurementId.trim(),
-            ga4_api_secret: ga4ApiSecret.trim(),
-
-            tiktok_enabled: tiktokEnabled && !isExpired(tiktokExpiresAt),
-            tiktok_pixel_id: tiktokPixelId.trim(),
-            tiktok_access_token: tiktokAccessToken.trim(),
-
-            twitter_enabled: twitterEnabled && !isExpired(twitterExpiresAt),
-            twitter_pixel_id: twitterPixelId.trim(),
-            twitter_token: twitterToken.trim(),
-
-            linkedin_enabled: linkedinEnabled && !isExpired(linkedinExpiresAt),
-            linkedin_partner_id: linkedinPartnerId.trim(),
-            linkedin_access_token: linkedinAccessToken.trim(),
-
-            pinterest_enabled: pinterestEnabled && !isExpired(pinterestExpiresAt),
-            pinterest_tag_id: pinterestTagId.trim(),
-            pinterest_access_token: pinterestAccessToken.trim(),
-            pinterest_ad_account_id: pinterestAdAccountId.trim(),
-          };
-
-          for (const syncHost of targetHostnames) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
             await fetch('https://cname.mecopay.space/api/internal/sync-cache', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+                'Authorization': `Bearer ${session.access_token}`
               },
               body: JSON.stringify({
-                hostname: syncHost,
+                hostname: activeDomain,
                 client_id: user.id,
-                brand_id: selectedBrandId,
-                tracking: trackingCachePayload
+                brand_id: selectedBrandId || null,
+                tracking: {
+                  meta_enabled: metaEnabled && !isExpired(metaExpiresAt),
+                  meta_pixel_id: metaPixelId.trim(),
+                  meta_access_token: metaAccessToken.trim(),
+                  meta_test_code: metaTestCode.trim(),
+                  ga4_enabled: ga4Enabled && !isExpired(ga4ExpiresAt),
+                  ga4_measurement_id: ga4MeasurementId.trim(),
+                  ga4_api_secret: ga4ApiSecret.trim(),
+                  tiktok_enabled: tiktokEnabled && !isExpired(tiktokExpiresAt),
+                  tiktok_pixel_id: tiktokPixelId.trim(),
+                  tiktok_access_token: tiktokAccessToken.trim(),
+                  twitter_enabled: twitterEnabled && !isExpired(twitterExpiresAt),
+                  twitter_pixel_id: twitterPixelId.trim(),
+                  twitter_token: twitterToken.trim(),
+                  linkedin_enabled: linkedinEnabled && !isExpired(linkedinExpiresAt),
+                  linkedin_partner_id: linkedinPartnerId.trim(),
+                  linkedin_access_token: linkedinAccessToken.trim(),
+                  pinterest_enabled: pinterestEnabled && !isExpired(pinterestExpiresAt),
+                  pinterest_tag_id: pinterestTagId.trim(),
+                  pinterest_access_token: pinterestAccessToken.trim(),
+                  pinterest_ad_account_id: pinterestAdAccountId.trim()
+                }
               })
-            }).catch(() => {});
+            });
           }
         } catch (syncErr) {
-          // Silent catch in dev
+          console.warn('Edge tracking sync note:', syncErr);
         }
       }
 
-      showToast('Server-Side Tracking settings saved & edge synced!', 'success');
+      showToast('Server-Side Tracking settings saved & synced to Edge successfully!', 'success');
     } catch (err: any) {
       console.error('Error saving tracking settings:', err);
       showToast(err.message || 'Saved locally, but database sync had an issue.', 'error');

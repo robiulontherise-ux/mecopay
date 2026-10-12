@@ -55,6 +55,8 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
 
   const [autoCourierOnAdvance, setAutoCourierOnAdvance] = useState(true);
   const [autoCourierOnFullCod, setAutoCourierOnFullCod] = useState(false);
+  const [fullCodActive, setFullCodActive] = useState(false);
+  const [togglingFullCod, setTogglingFullCod] = useState(false);
   const [savingKeys, setSavingKeys] = useState(false);
 
   // New Parcel Booking Form Modal
@@ -84,6 +86,12 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       if (typeof currentBrand.auto_courier_on_full_cod === 'boolean') {
         setAutoCourierOnFullCod(currentBrand.auto_courier_on_full_cod);
       }
+      if (typeof currentBrand.auto_courier_on_advance === 'boolean') {
+        setAutoCourierOnAdvance(currentBrand.auto_courier_on_advance);
+      }
+      if (typeof currentBrand.full_cod_active === 'boolean') {
+        setFullCodActive(currentBrand.full_cod_active);
+      }
     }
 
     fetchParcels();
@@ -93,6 +101,18 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const loadCourierSettings = async () => {
     if (!selectedBrandId) return;
     try {
+      const { data: bData } = await supabase
+        .from('brands')
+        .select('full_cod_active, auto_courier_on_full_cod, auto_courier_on_advance')
+        .eq('id', selectedBrandId)
+        .maybeSingle();
+
+      if (bData) {
+        if (typeof bData.full_cod_active === 'boolean') setFullCodActive(bData.full_cod_active);
+        if (typeof bData.auto_courier_on_full_cod === 'boolean') setAutoCourierOnFullCod(bData.auto_courier_on_full_cod);
+        if (typeof bData.auto_courier_on_advance === 'boolean') setAutoCourierOnAdvance(bData.auto_courier_on_advance);
+      }
+
       const { data: cb } = await supabase
         .from('courier_bookings')
         .select('*')
@@ -108,6 +128,43 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
         if (cb.provider) setCustomCourierProviderName(cb.provider);
       }
     } catch (_err) {}
+  };
+
+  const handleToggleFullCod = async () => {
+    if (!selectedBrandId) return;
+    setTogglingFullCod(true);
+    try {
+      const nextVal = !fullCodActive;
+      const expiresAt = nextVal ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+
+      const { error } = await supabase
+        .from('brands')
+        .update({
+          full_cod_active: nextVal,
+          full_cod_expires_at: expiresAt
+        })
+        .eq('id', selectedBrandId);
+
+      if (error) throw error;
+
+      setFullCodActive(nextVal);
+      const curBrand = brands.find(b => b.id === selectedBrandId);
+      if (curBrand) {
+        curBrand.full_cod_active = nextVal;
+        curBrand.full_cod_expires_at = expiresAt;
+      }
+
+      showToast(
+        nextVal
+          ? 'Full COD Service activated successfully! (Valid for 30 days)'
+          : 'Full COD Service deactivated.',
+        'success'
+      );
+    } catch (err: any) {
+      showToast('Failed to toggle Full COD service: ' + (err.message || ''), 'error');
+    } finally {
+      setTogglingFullCod(false);
+    }
   };
 
   const fetchParcels = async () => {
@@ -175,7 +232,9 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       await supabase
         .from('brands')
         .update({
-          auto_courier_on_full_cod: autoCourierOnFullCod
+          auto_courier_on_full_cod: autoCourierOnFullCod,
+          auto_courier_on_advance: autoCourierOnAdvance,
+          full_cod_active: fullCodActive
         })
         .eq('id', selectedBrandId);
 
@@ -296,6 +355,20 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     }
   };
 
+  const currentBrand = brands.find(b => b.id === selectedBrandId);
+  const hasPaymentGateway = Boolean(
+    currentBrand?.personal_api ||
+    currentBrand?.merchant_api ||
+    currentBrand?.international_api
+  );
+  const hasCourierActive = Boolean(
+    autoCourierOnAdvance ||
+    autoCourierOnFullCod ||
+    currentBrand?.auto_courier_on_advance ||
+    currentBrand?.auto_courier_on_full_cod
+  );
+  const isFullCodFree = hasPaymentGateway || hasCourierActive;
+
   return (
     <div className="max-w-6xl space-y-6">
       {/* Header */}
@@ -335,6 +408,80 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
             <Plus className="w-4 h-4" />
             Book New Parcel
           </button>
+        </div>
+      </div>
+
+      {/* 📦 Standalone 100% Full COD Service Card */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center flex-wrap gap-2">
+              <Zap className="w-5 h-5 text-indigo-400" />
+              <h3 className="text-base font-bold text-white">
+                Standalone 100% Full COD Service (Form-Only API & Website)
+              </h3>
+              {isFullCodFree ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  FREE FOR YOU (INCLUDED)
+                </span>
+              ) : (
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                  fullCodActive
+                    ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>
+                  {fullCodActive ? 'ACTIVE (ON)' : 'INACTIVE (OFF)'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-3xl">
+              যেসব ক্লায়েন্ট কোনো পেমেন্ট গেটওয়ে বা অটো কুরিয়ার ব্যবহার না করে শুধুমাত্র ওয়েবসাইট/ল্যান্ডিং পেজের ফর্মের মাধ্যমে ১০০% Cash on Delivery (COD) অর্ডার গ্রহণ করতে চান (যেমন: এশিয়া বা আফ্রিকার ফর্ম-অনলি মার্কেট), তাদের জন্য এই সার্ভিস।
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            {isFullCodFree ? (
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>অটোমেটিক সক্রিয় (ফ্রি)</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleToggleFullCod}
+                disabled={togglingFullCod}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  fullCodActive
+                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                }`}
+              >
+                {togglingFullCod ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                ) : (
+                  <span className={`w-2 h-2 rounded-full ${fullCodActive ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+                )}
+                {fullCodActive ? 'Full COD: ON' : 'Full COD: OFF'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Explain Rule Clearly */}
+        <div className={`p-3.5 rounded-xl border text-xs leading-relaxed flex items-start gap-3 ${
+          isFullCodFree
+            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300'
+            : 'bg-slate-950/60 border-slate-800/80 text-slate-400'
+        }`}>
+          <ShieldCheck className={`w-4 h-4 shrink-0 mt-0.5 ${isFullCodFree ? 'text-emerald-400' : 'text-slate-500'}`} />
+          <div>
+            <strong className={isFullCodFree ? 'text-emerald-200' : 'text-slate-200'}>
+              {isFullCodFree ? 'আপনার জন্য এই সার্ভিসটি কেন সম্পূর্ণ ফ্রি?' : 'সার্ভিসের নিয়ম ও শর্তাবলী:'}
+            </strong>
+            <p className="mt-0.5">
+              যেকোনো ১টি পেমেন্ট গেটওয়ে (Personal, Merchant, International) অথবা কুরিয়ার সার্ভিস (অ্যাডভান্স বা ফুল সিওডি অটো কুরিয়ার) অন থাকলে এই সার্ভিসটি আপনার জন্য সম্পূর্ণ ফ্রি! আপনার ক্ষেত্রে এটি আলাদা কেনার বা অন করার প্রয়োজন নেই। আর যাদের কোনো গেটওয়ে বা কুরিয়ার সার্ভিস নেই, তাদের কেবল ওয়েবসাইট ফর্মের মাধ্যমে ফুল সিওডি অর্ডার ইনভয়েসে নিতে এই সার্ভিসটি অন রাখতে হবে।
+            </p>
+          </div>
         </div>
       </div>
 
