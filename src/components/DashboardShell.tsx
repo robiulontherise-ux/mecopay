@@ -618,8 +618,8 @@ export default function DashboardShell() {
       transaction_fee_type: brand.transaction_fee_type || 'fixed',
       verify_trx_id: brand.redirect_links?.verify_trx_id ?? true,
       verify_phone: brand.redirect_links?.verify_phone ?? false,
-      merchant_api: brand.redirect_links?.merchant_api ?? true,
-      personal_api: brand.redirect_links?.personal_api ?? false
+      merchant_api: (typeof brand.merchant_api === 'boolean') ? brand.merchant_api : (brand.redirect_links?.merchant_api ?? true),
+      personal_api: (typeof brand.personal_api === 'boolean') ? brand.personal_api : (brand.redirect_links?.personal_api ?? false)
     });
     setActiveBrandDropdown(null);
     setShowBrandModal(true);
@@ -640,6 +640,8 @@ export default function DashboardShell() {
       amount_format: brandForm.amount_format,
       transaction_fee: Number(brandForm.transaction_fee) || 0,
       transaction_fee_type: brandForm.transaction_fee_type,
+      personal_api: Boolean(brandForm.personal_api),
+      merchant_api: Boolean(brandForm.merchant_api),
       redirect_links: {
         allow_telegram: brandForm.allow_telegram,
         allow_tally: brandForm.allow_tally,
