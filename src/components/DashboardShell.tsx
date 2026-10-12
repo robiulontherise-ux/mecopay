@@ -590,7 +590,7 @@ export default function DashboardShell() {
       allow_youtube: false,
       logo_url: '',
       support_email: '',
-      verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false,
+      verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false, international_api: false,
       payment_amount_type: 'equal',
       amount_format: 'as_is',
       transaction_fee: '0',
@@ -619,7 +619,8 @@ export default function DashboardShell() {
       verify_trx_id: brand.redirect_links?.verify_trx_id ?? true,
       verify_phone: brand.redirect_links?.verify_phone ?? false,
       merchant_api: (typeof brand.merchant_api === 'boolean') ? brand.merchant_api : (brand.redirect_links?.merchant_api ?? true),
-      personal_api: (typeof brand.personal_api === 'boolean') ? brand.personal_api : (brand.redirect_links?.personal_api ?? false)
+      personal_api: (typeof brand.personal_api === 'boolean') ? brand.personal_api : (brand.redirect_links?.personal_api ?? false),
+      international_api: (typeof brand.international_api === 'boolean') ? brand.international_api : (brand.redirect_links?.international_api ?? false)
     });
     setActiveBrandDropdown(null);
     setShowBrandModal(true);
@@ -642,6 +643,7 @@ export default function DashboardShell() {
       transaction_fee_type: brandForm.transaction_fee_type,
       personal_api: Boolean(brandForm.personal_api),
       merchant_api: Boolean(brandForm.merchant_api),
+      international_api: Boolean(brandForm.international_api),
       redirect_links: {
         allow_telegram: brandForm.allow_telegram,
         allow_tally: brandForm.allow_tally,
@@ -650,7 +652,8 @@ export default function DashboardShell() {
         verify_trx_id: brandForm.verify_trx_id,
         verify_phone: brandForm.verify_phone,
         merchant_api: brandForm.merchant_api,
-        personal_api: brandForm.personal_api
+        personal_api: brandForm.personal_api,
+        international_api: brandForm.international_api
       }
     };
     
@@ -668,6 +671,10 @@ export default function DashboardShell() {
             if (!error && data && data.length > 0) {
               updatedList = brands.map(b => b.id === editingBrandId ? data[0] : b);
               showToast("Updated successfully!", 'success');
+              // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
+              supabase.functions.invoke('cloudflare-custom-hostname', {
+                body: { action: 'sync_brand', brand_id: editingBrandId }
+              }).catch(err => console.warn('Edge KV sync error:', err));
             } else {
               throw new Error(error?.message || "Failed to update brand");
             }
@@ -702,6 +709,10 @@ export default function DashboardShell() {
             if (data && data.length > 0) {
               updatedList = [data[0], ...brands];
               showToast("Created successfully!", "success");
+              // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
+              supabase.functions.invoke('cloudflare-custom-hostname', {
+                body: { action: 'sync_brand', brand_id: data[0].id }
+              }).catch(err => console.warn('Edge KV sync error:', err));
             }
           } catch(e: any) {
             console.error(e);
@@ -4397,7 +4408,7 @@ export default function DashboardShell() {
                      <h4 className="text-sm font-bold text-slate-200">API Gateway Selection</h4>
                      <span className="text-xs text-slate-400">Optional (Select as needed)</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <label className="cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -4405,14 +4416,14 @@ export default function DashboardShell() {
                         onChange={(e) => setBrandForm({...brandForm, merchant_api: e.target.checked})}
                         className="peer hidden" 
                       />
-                      <div className="p-4 rounded-xl border-2 border-slate-700 bg-[#242d42] peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 transition-all">
+                      <div className="p-3.5 rounded-xl border-2 border-slate-700 bg-[#242d42] peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 transition-all">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="w-5 h-5 rounded-md border-2 border-slate-500 peer-checked:border-emerald-500 peer-checked:bg-emerald-500 flex items-center justify-center transition-all">
+                          <div className="w-5 h-5 rounded-md border-2 border-slate-500 peer-checked:border-emerald-500 peer-checked:bg-emerald-500 flex items-center justify-center transition-all shrink-0">
                              <CheckCircle2 className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100" />
                           </div>
-                          <span className="font-bold text-white text-sm">Official Merchant API</span>
+                          <span className="font-bold text-white text-xs sm:text-sm">Official Merchant</span>
                         </div>
-                        <p className="text-xs text-slate-400 ml-7">Direct bKash/Nagad PGW. Auto-creates Official Merchant Key.</p>
+                        <p className="text-[11px] text-slate-400 ml-7">bKash/Nagad PGW</p>
                       </div>
                     </label>
                     <label className="cursor-pointer">
@@ -4422,14 +4433,31 @@ export default function DashboardShell() {
                         onChange={(e) => setBrandForm({...brandForm, personal_api: e.target.checked})}
                         className="peer hidden" 
                       />
-                      <div className="p-4 rounded-xl border-2 border-slate-700 bg-[#242d42] peer-checked:border-purple-500 peer-checked:bg-purple-500/10 transition-all">
+                      <div className="p-3.5 rounded-xl border-2 border-slate-700 bg-[#242d42] peer-checked:border-purple-500 peer-checked:bg-purple-500/10 transition-all">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="w-5 h-5 rounded-md border-2 border-slate-500 peer-checked:border-purple-500 peer-checked:bg-purple-500 flex items-center justify-center transition-all">
+                          <div className="w-5 h-5 rounded-md border-2 border-slate-500 peer-checked:border-purple-500 peer-checked:bg-purple-500 flex items-center justify-center transition-all shrink-0">
                              <CheckCircle2 className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100" />
                           </div>
-                          <span className="font-bold text-white text-sm">Personal SMS API</span>
+                          <span className="font-bold text-white text-xs sm:text-sm">Personal SMS API</span>
                         </div>
-                        <p className="text-xs text-slate-400 ml-7">Android SMS Forwarding. Auto-creates Personal API Key.</p>
+                        <p className="text-[11px] text-slate-400 ml-7">Android MFS Forwarder</p>
+                      </div>
+                    </label>
+                    <label className="cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={brandForm.international_api} 
+                        onChange={(e) => setBrandForm({...brandForm, international_api: e.target.checked})}
+                        className="peer hidden" 
+                      />
+                      <div className="p-3.5 rounded-xl border-2 border-slate-700 bg-[#242d42] peer-checked:border-blue-500 peer-checked:bg-blue-500/10 transition-all">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-5 h-5 rounded-md border-2 border-slate-500 peer-checked:border-blue-500 peer-checked:bg-blue-500 flex items-center justify-center transition-all shrink-0">
+                             <CheckCircle2 className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100" />
+                          </div>
+                          <span className="font-bold text-white text-xs sm:text-sm">International Gateway</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 ml-7">Stripe/PayPal/Global Cards</p>
                       </div>
                     </label>
                   </div>

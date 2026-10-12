@@ -55,8 +55,6 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
 
   const [autoCourierOnAdvance, setAutoCourierOnAdvance] = useState(true);
   const [autoCourierOnFullCod, setAutoCourierOnFullCod] = useState(false);
-  const [fullCodActive, setFullCodActive] = useState(false);
-  const [togglingFullCod, setTogglingFullCod] = useState(false);
   const [savingKeys, setSavingKeys] = useState(false);
 
   // New Parcel Booking Form Modal
@@ -89,9 +87,6 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       if (typeof currentBrand.auto_courier_on_advance === 'boolean') {
         setAutoCourierOnAdvance(currentBrand.auto_courier_on_advance);
       }
-      if (typeof currentBrand.full_cod_active === 'boolean') {
-        setFullCodActive(currentBrand.full_cod_active);
-      }
     }
 
     fetchParcels();
@@ -103,12 +98,11 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     try {
       const { data: bData } = await supabase
         .from('brands')
-        .select('full_cod_active, auto_courier_on_full_cod, auto_courier_on_advance')
+        .select('auto_courier_on_full_cod, auto_courier_on_advance')
         .eq('id', selectedBrandId)
         .maybeSingle();
 
       if (bData) {
-        if (typeof bData.full_cod_active === 'boolean') setFullCodActive(bData.full_cod_active);
         if (typeof bData.auto_courier_on_full_cod === 'boolean') setAutoCourierOnFullCod(bData.auto_courier_on_full_cod);
         if (typeof bData.auto_courier_on_advance === 'boolean') setAutoCourierOnAdvance(bData.auto_courier_on_advance);
       }
@@ -128,43 +122,6 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
         if (cb.provider) setCustomCourierProviderName(cb.provider);
       }
     } catch (_err) {}
-  };
-
-  const handleToggleFullCod = async () => {
-    if (!selectedBrandId) return;
-    setTogglingFullCod(true);
-    try {
-      const nextVal = !fullCodActive;
-      const expiresAt = nextVal ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
-
-      const { error } = await supabase
-        .from('brands')
-        .update({
-          full_cod_active: nextVal,
-          full_cod_expires_at: expiresAt
-        })
-        .eq('id', selectedBrandId);
-
-      if (error) throw error;
-
-      setFullCodActive(nextVal);
-      const curBrand = brands.find(b => b.id === selectedBrandId);
-      if (curBrand) {
-        curBrand.full_cod_active = nextVal;
-        curBrand.full_cod_expires_at = expiresAt;
-      }
-
-      showToast(
-        nextVal
-          ? 'Full COD Service activated successfully! (Valid for 30 days)'
-          : 'Full COD Service deactivated.',
-        'success'
-      );
-    } catch (err: any) {
-      showToast('Failed to toggle Full COD service: ' + (err.message || ''), 'error');
-    } finally {
-      setTogglingFullCod(false);
-    }
   };
 
   const fetchParcels = async () => {
@@ -229,12 +186,22 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       const currentBrand = brands.find(b => b.id === selectedBrandId);
 
       // Save directly to brands table & whatsapp_gateway_settings
+      const now = Date.now();
+      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+      const fullCodCourierExpiry = autoCourierOnFullCod
+        ? (currentBrand?.auto_courier_full_cod_expires_at || new Date(now + thirtyDays).toISOString())
+        : null;
+      const advanceCourierExpiry = autoCourierOnAdvance
+        ? (currentBrand?.auto_courier_advance_expires_at || new Date(now + thirtyDays).toISOString())
+        : null;
+
       await supabase
         .from('brands')
         .update({
           auto_courier_on_full_cod: autoCourierOnFullCod,
+          auto_courier_full_cod_expires_at: fullCodCourierExpiry,
           auto_courier_on_advance: autoCourierOnAdvance,
-          full_cod_active: fullCodActive
+          auto_courier_advance_expires_at: advanceCourierExpiry
         })
         .eq('id', selectedBrandId);
 
@@ -279,6 +246,11 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
         personal_api_active: currentBrand?.personal_api ?? true,
         merchant_api_active: currentBrand?.merchant_api ?? false
       });
+
+      // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
+      supabase.functions.invoke('cloudflare-custom-hostname', {
+        body: { action: 'sync_brand', brand_id: selectedBrandId }
+      }).catch(err => console.warn('Edge KV sync error:', err));
 
       showToast('Courier automation settings saved & real-time webhook dispatched!', 'success');
     } catch (err: any) {
@@ -354,20 +326,6 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       setBookingLoading(false);
     }
   };
-
-  const currentBrand = brands.find(b => b.id === selectedBrandId);
-  const hasPaymentGateway = Boolean(
-    currentBrand?.personal_api ||
-    currentBrand?.merchant_api ||
-    currentBrand?.international_api
-  );
-  const hasCourierActive = Boolean(
-    autoCourierOnAdvance ||
-    autoCourierOnFullCod ||
-    currentBrand?.auto_courier_on_advance ||
-    currentBrand?.auto_courier_on_full_cod
-  );
-  const isFullCodFree = hasPaymentGateway || hasCourierActive;
 
   return (
     <div className="max-w-6xl space-y-6">

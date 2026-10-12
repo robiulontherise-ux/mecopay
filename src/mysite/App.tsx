@@ -441,8 +441,17 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
   const handleSaveSiteSettings = async (settings: SiteSettings) => {
     if (!user?.id) return alert('No client ID found (not logged in).');
     settings.client_id = user.id;
+
+    const sitePayload: any = { ...settings };
+    if (sitePayload.website_service_active === undefined) {
+      sitePayload.website_service_active = true;
+    }
+    if (!sitePayload.website_service_expires_at) {
+      sitePayload.website_service_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    }
+
     // Try to update first
-    const { error: updateError, data: updateData } = await supabase.from('site_settings').update(settings).eq('client_id', user.id).select();
+    const { error: updateError, data: updateData } = await supabase.from('site_settings').update(sitePayload).eq('client_id', user.id).select();
     
     if (updateError) {
       console.error('Supabase settings update error:', updateError);

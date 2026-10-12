@@ -114,6 +114,9 @@ export default function WebsiteBuilderHub({ user }) {
         text_size: 'medium',
         show_default_home: true,
         default_home_content: 'Welcome to my site!',
+        website_service_active: true,
+        website_service_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        service_status: 'active'
       }).select('id').single();
       
       if (error) throw error;

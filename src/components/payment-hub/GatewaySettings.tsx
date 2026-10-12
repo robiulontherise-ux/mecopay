@@ -196,10 +196,15 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       };
 
       // 1. Update Supabase brands table
+      const merchantExpiry = merchantActive
+        ? (brand?.merchant_api_expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
+        : null;
+
       const { error: brandErr } = await supabase
         .from('brands')
         .update({
           merchant_api: merchantActive,
+          merchant_api_expires_at: merchantExpiry,
           merchant_provider: selectedMerchantProvider,
           merchant_config: updatedMerchantConfig
         })
@@ -209,6 +214,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
 
       if (brand) {
         brand.merchant_api = merchantActive;
+        brand.merchant_api_expires_at = merchantExpiry;
         brand.merchant_provider = selectedMerchantProvider;
         brand.merchant_config = updatedMerchantConfig;
       }
