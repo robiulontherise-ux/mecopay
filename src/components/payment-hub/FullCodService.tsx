@@ -85,30 +85,29 @@ export default function FullCodService({ brands = [], user }: FullCodServiceProp
     setToggling(true);
     try {
       const nextVal = !fullCodActive;
-      const nextExpiresAt = nextVal
-        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        : null;
 
       const { error } = await supabase
         .from('brands')
         .update({
-          full_cod_active: nextVal,
-          full_cod_expires_at: nextExpiresAt
+          full_cod_active: nextVal
         })
         .eq('id', selectedBrandId);
 
       if (error) throw error;
 
       setFullCodActive(nextVal);
-      setExpiresAt(nextExpiresAt);
       if (currentBrand) {
         currentBrand.full_cod_active = nextVal;
-        currentBrand.full_cod_expires_at = nextExpiresAt;
       }
+
+      // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
+      supabase.functions.invoke('cloudflare-custom-hostname', {
+        body: { action: 'sync_brand', brand_id: selectedBrandId }
+      }).catch(err => console.warn('Edge KV sync error:', err));
 
       showToast(
         nextVal
-          ? 'Full COD Service activated for 30 days!'
+          ? 'Full COD Service activated!'
           : 'Full COD Service deactivated.',
         'success'
       );

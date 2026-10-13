@@ -186,22 +186,11 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       const currentBrand = brands.find(b => b.id === selectedBrandId);
 
       // Save directly to brands table & whatsapp_gateway_settings
-      const now = Date.now();
-      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-      const fullCodCourierExpiry = autoCourierOnFullCod
-        ? (currentBrand?.auto_courier_full_cod_expires_at || new Date(now + thirtyDays).toISOString())
-        : null;
-      const advanceCourierExpiry = autoCourierOnAdvance
-        ? (currentBrand?.auto_courier_advance_expires_at || new Date(now + thirtyDays).toISOString())
-        : null;
-
       await supabase
         .from('brands')
         .update({
           auto_courier_on_full_cod: autoCourierOnFullCod,
-          auto_courier_full_cod_expires_at: fullCodCourierExpiry,
-          auto_courier_on_advance: autoCourierOnAdvance,
-          auto_courier_advance_expires_at: advanceCourierExpiry
+          auto_courier_on_advance: autoCourierOnAdvance
         })
         .eq('id', selectedBrandId);
 

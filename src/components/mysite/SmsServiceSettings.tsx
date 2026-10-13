@@ -486,27 +486,16 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
     }
     setIsSaving(true);
     try {
-      const now = Date.now();
-      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-      const waExpiry = whatsappEnabled ? new Date(now + thirtyDays).toISOString() : null;
-      const localSmsExpiry = localSmsEnabled ? new Date(now + thirtyDays).toISOString() : null;
-      const intlSmsExpiry = internationalSmsEnabled ? new Date(now + thirtyDays).toISOString() : null;
-      const emailExpiry = emailEnabled ? new Date(now + thirtyDays).toISOString() : null;
-
       const { error: gwErr } = await supabase
         .from('whatsapp_gateway_settings')
         .upsert({
           brand_id: selectedBrandId,
           user_id: user?.id,
           whatsapp_enabled: whatsappEnabled,
-          whatsapp_expires_at: waExpiry,
           email_notification_enabled: emailEnabled,
-          email_notification_expires_at: emailExpiry,
           fallback_to_email: fallbackToEmail,
           fallback_to_sms: localSmsEnabled,
-          sms_service_expires_at: localSmsExpiry,
           international_sms_enabled: internationalSmsEnabled,
-          international_sms_expires_at: intlSmsExpiry,
           international_provider: internationalProvider,
           sms_sender_mode: smsSenderMode,
           custom_sms_api_url: customSmsApiUrl || null,

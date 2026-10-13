@@ -202,8 +202,6 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         existing = clientExisting;
       }
 
-      const domainExpiry = existing?.custom_domain_expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
       if (existing) {
         // UPDATE THAT EXACT ROW in site_settings:
         // Keeps the existing subdomain in its column and updates the domain column!
@@ -212,8 +210,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           .update({
             domain: cleanInputDomain,
             brand_id: selectedBrandId || existing.brand_id,
-            app_type: activeTab === 'nocode' ? 'no_code' : activeTab,
-            custom_domain_expires_at: domainExpiry
+            app_type: activeTab === 'nocode' ? 'no_code' : activeTab
           })
           .eq('id', existing.id);
 
@@ -232,8 +229,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           site_name: selectedBrand.name || 'My Store',
           domain: cleanInputDomain,
           subdomain: autoSub,
-          app_type: activeTab === 'nocode' ? 'no_code' : activeTab,
-          custom_domain_expires_at: domainExpiry
+          app_type: activeTab === 'nocode' ? 'no_code' : activeTab
         });
 
         if (error) throw error;

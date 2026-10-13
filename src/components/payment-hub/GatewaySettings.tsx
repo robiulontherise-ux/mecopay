@@ -196,15 +196,10 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       };
 
       // 1. Update Supabase brands table
-      const merchantExpiry = merchantActive
-        ? (brand?.merchant_api_expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
-        : null;
-
       const { error: brandErr } = await supabase
         .from('brands')
         .update({
           merchant_api: merchantActive,
-          merchant_api_expires_at: merchantExpiry,
           merchant_provider: selectedMerchantProvider,
           merchant_config: updatedMerchantConfig
         })
@@ -214,7 +209,6 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
 
       if (brand) {
         brand.merchant_api = merchantActive;
-        brand.merchant_api_expires_at = merchantExpiry;
         brand.merchant_provider = selectedMerchantProvider;
         brand.merchant_config = updatedMerchantConfig;
       }
@@ -265,6 +259,11 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
         merchant_api_active: true,
         auto_courier_on_full_cod: brand?.auto_courier_on_full_cod ?? false
       });
+
+      // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
+      supabase.functions.invoke('cloudflare-custom-hostname', {
+        body: { action: 'sync_brand', brand_id: selectedBrandId }
+      }).catch(err => console.warn('Edge KV sync error:', err));
     } catch (err: any) {
       showToast("Failed to save merchant credentials: " + err.message, "error");
     } finally {
@@ -315,6 +314,11 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
         merchant_api_active: Object.keys(updatedConfig).length > 0,
         auto_courier_on_full_cod: brand?.auto_courier_on_full_cod ?? false
       });
+
+      // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
+      supabase.functions.invoke('cloudflare-custom-hostname', {
+        body: { action: 'sync_brand', brand_id: brandId }
+      }).catch(err => console.warn('Edge KV sync error:', err));
     } catch (e: any) {
       showToast("Error deleting merchant gateway: " + e.message, "error");
     }
@@ -434,6 +438,11 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
           merchant_api_active: brand?.merchant_api ?? false,
           auto_courier_on_full_cod: brand?.auto_courier_on_full_cod ?? false
         });
+
+        // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
+        supabase.functions.invoke('cloudflare-custom-hostname', {
+          body: { action: 'sync_brand', brand_id: selectedBrandId }
+        }).catch(err => console.warn('Edge KV sync error:', err));
       }
     } catch (err: any) {
       console.error("Save gateway error:", err);
