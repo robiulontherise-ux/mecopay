@@ -491,53 +491,67 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/nagad.png'
     }
   ];
-  const internationalProviders = [
-    { id: 'stripe', name: 'Stripe', logoUrl: '/assets/international/stripe.png', badge: 'Cards & Wallets' },
-    { id: 'binance', name: 'Binance', logoUrl: '/assets/international/binance.png', badge: 'Crypto Payments' },
-    { id: 'oxapay', name: 'OxaPay', logoUrl: '/assets/international/oxapay.png', badge: 'Crypto Gateway' },
-    { id: 'wise', name: 'Wise', logoUrl: '/assets/international/wise.png', badge: 'Global Transfers' },
-    { id: 'payoneer', name: 'Payoneer', logoUrl: '/assets/international/payoneer.png', badge: 'Global Payouts' },
-    { id: 'payeer', name: 'Payeer', logoUrl: '/assets/international/payeer.png', badge: 'E-wallet Payments' },
-    { id: 'paypal', name: 'PayPal', logoUrl: '/assets/international/paypal.png', badge: 'Online Payments' },
-    { id: 'taptap-send', name: 'TapTap Send', logoUrl: '/assets/international/taptap-send.png', badge: 'Remittance' }
+  type InternationalField = { label: string; key: string; type?: string; placeholder?: string; required?: boolean; options?: string[] };
+  type InternationalProvider = { id: string; name: string; logoUrl: string; badge: string; capability: string; gateway: boolean; note: string };
+  const internationalProviders: InternationalProvider[] = [
+    { id: 'stripe', name: 'Stripe', logoUrl: '/assets/international/stripe.png', badge: 'Cards & Wallets', capability: 'Hosted card checkout', gateway: true, note: 'সাধারণ international card/Wallet checkout-এর জন্য উপযুক্ত।' },
+    { id: 'binance', name: 'Binance', logoUrl: '/assets/international/binance.png', badge: 'Crypto Payments', capability: 'Binance Pay crypto checkout', gateway: true, note: 'শুধু Binance Pay Merchant account এবং crypto payment-এর জন্য।' },
+    { id: 'oxapay', name: 'OxaPay', logoUrl: '/assets/international/oxapay.png', badge: 'Crypto Gateway', capability: 'Hosted crypto invoice', gateway: true, note: 'Crypto invoice/payment URL; সাধারণ card gateway নয়।' },
+    { id: 'wise', name: 'Wise', logoUrl: '/assets/international/wise.png', badge: 'Global Transfers', capability: 'Payout / bank transfer', gateway: false, note: 'এটি customer checkout নয়; payout/transfer module-এর জন্য।' },
+    { id: 'payoneer', name: 'Payoneer', logoUrl: '/assets/international/payoneer.png', badge: 'Checkout / Payout', capability: 'Approved Checkout only', gateway: true, note: 'Payoneer Checkout approval ছাড়া enable করা যাবে না।' },
+    { id: 'payeer', name: 'Payeer', logoUrl: '/assets/international/payeer.png', badge: 'Hosted Payments', capability: 'Redirect checkout', gateway: true, note: 'Hosted redirect flow; REST/API mode আলাদা approval-এর ওপর নির্ভর করে।' },
+    { id: 'paypal', name: 'PayPal', logoUrl: '/assets/international/paypal.png', badge: 'Online Payments', capability: 'Orders + capture checkout', gateway: true, note: 'Single-merchant PayPal checkout-এর জন্য উপযুক্ত।' },
+    { id: 'taptap-send', name: 'TapTap Send', logoUrl: '/assets/international/taptap-send.png', badge: 'Remittance', capability: 'Manual / approval required', gateway: false, note: 'Public programmable payment API পাওয়া যায়নি; automated gateway নয়।' }
   ];
-  const internationalFieldConfig: Record<string, { label: string; key: string; type?: string; placeholder?: string }[]> = {
+  const internationalFieldConfig: Record<string, InternationalField[]> = {
     stripe: [
-      { label: 'Publishable Key', key: 'publishableKey', placeholder: 'pk_live_...' },
-      { label: 'Secret Key', key: 'secretKey', type: 'password', placeholder: 'sk_live_...' }
+      { label: 'Environment', key: 'environment', options: ['Sandbox / Test', 'Live'], required: true },
+      { label: 'Server API Key (Restricted key recommended)', key: 'serverApiKey', type: 'password', placeholder: 'rk_live_... or sk_live_...', required: true },
+      { label: 'Publishable Key (optional for hosted Checkout)', key: 'publishableKey', placeholder: 'pk_live_...', required: false },
+      { label: 'Webhook Signing Secret', key: 'webhookSecret', type: 'password', placeholder: 'whsec_...', required: true }
     ],
     binance: [
-      { label: 'API Key', key: 'apiKey', placeholder: 'Binance merchant API key' },
-      { label: 'Secret Key', key: 'secretKey', type: 'password', placeholder: 'Binance secret key' },
-      { label: 'Merchant ID', key: 'merchantId', placeholder: 'Your Binance Pay merchant ID' }
+      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
+      { label: 'Merchant API Identity Key / Certificate SN', key: 'certificateSn', placeholder: 'BinancePay-Certificate-SN', required: true },
+      { label: 'Merchant API Secret Key', key: 'merchantApiSecret', type: 'password', placeholder: 'Binance Pay merchant secret', required: true },
+      { label: 'Webhook Callback URL', key: 'webhookUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/binance', required: true }
     ],
     oxapay: [
-      { label: 'Merchant API Key', key: 'merchantApiKey', type: 'password', placeholder: 'OxaPay merchant API key' }
+      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
+      { label: 'Merchant API Key', key: 'merchantApiKey', type: 'password', placeholder: 'OxaPay merchant API key', required: true },
+      { label: 'Callback URL', key: 'callbackUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/oxapay', required: true },
+      { label: 'Return URL', key: 'returnUrl', type: 'url', placeholder: 'https://your-domain.com/payment/success', required: false }
     ],
     wise: [
-      { label: 'API Token', key: 'apiToken', type: 'password', placeholder: 'Wise API token' },
-      { label: 'Profile ID', key: 'profileId', placeholder: 'Wise business profile ID' }
+      { label: 'Integration Type', key: 'integrationType', options: ['Business payout', 'Wise Platform partner'], required: true },
+      { label: 'API Token (server-side only)', key: 'apiToken', type: 'password', placeholder: 'Wise bearer token', required: true },
+      { label: 'Business Profile ID', key: 'profileId', placeholder: 'Wise business profile ID', required: true },
+      { label: 'Webhook URL', key: 'webhookUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/wise', required: true }
     ],
     payoneer: [
-      { label: 'Client ID', key: 'clientId', placeholder: 'Payoneer client ID' },
-      { label: 'Client Secret', key: 'clientSecret', type: 'password', placeholder: 'Payoneer client secret' },
-      { label: 'Program ID', key: 'programId', placeholder: 'Payoneer program ID' }
+      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
+      { label: 'Checkout API Username', key: 'checkoutUsername', placeholder: 'Payoneer Checkout API username', required: true },
+      { label: 'Payment API Token', key: 'paymentApiToken', type: 'password', placeholder: 'Payoneer Checkout payment token', required: true },
+      { label: 'Store Code / Division', key: 'division', placeholder: 'Payoneer store division code', required: true },
+      { label: 'Notification URL', key: 'notificationUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/payoneer', required: true }
     ],
     payeer: [
-      { label: 'Merchant ID', key: 'merchantId', placeholder: 'Payeer merchant ID' },
-      { label: 'Secret Key', key: 'secretKey', type: 'password', placeholder: 'Payeer secret key' },
-      { label: 'API ID', key: 'apiId', placeholder: 'Payeer API ID' },
-      { label: 'API Key', key: 'apiKey', type: 'password', placeholder: 'Payeer API key' }
+      { label: 'Integration Mode', key: 'integrationMode', options: ['Hosted Merchant Redirect', 'REST Invoice (if approved)'], required: true },
+      { label: 'Merchant Store ID (m_shop)', key: 'merchantStoreId', placeholder: 'Payeer merchant/store ID', required: true },
+      { label: 'Merchant Signing Secret', key: 'merchantSecret', type: 'password', placeholder: 'Merchant Settings secret key', required: true },
+      { label: 'Payeer Account Number (REST only)', key: 'accountNumber', placeholder: 'P1000000', required: false },
+      { label: 'API ID (REST only)', key: 'apiId', placeholder: 'Payeer API ID', required: false },
+      { label: 'API Pass (REST only)', key: 'apiPass', type: 'password', placeholder: 'Payeer API user secret', required: false },
+      { label: 'Status URL', key: 'statusUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/payeer', required: true }
     ],
     paypal: [
-      { label: 'Client ID', key: 'clientId', placeholder: 'PayPal client ID' },
-      { label: 'Client Secret', key: 'clientSecret', type: 'password', placeholder: 'PayPal client secret' },
-      { label: 'Webhook ID', key: 'webhookId', placeholder: 'PayPal webhook ID' }
+      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
+      { label: 'Client ID', key: 'clientId', placeholder: 'PayPal client ID', required: true },
+      { label: 'Client Secret', key: 'clientSecret', type: 'password', placeholder: 'PayPal client secret', required: true },
+      { label: 'Webhook ID', key: 'webhookId', placeholder: 'PayPal webhook ID', required: true },
+      { label: 'Webhook URL / Event Registration', key: 'webhookUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/paypal', required: true }
     ],
-    'taptap-send': [
-      { label: 'API Key', key: 'apiKey', type: 'password', placeholder: 'TapTap Send API key' },
-      { label: 'API Secret', key: 'apiSecret', type: 'password', placeholder: 'TapTap Send API secret' }
-    ]
+    'taptap-send': []
   };
 
   return (
@@ -918,8 +932,13 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                       <img src={provider?.logoUrl} alt={provider?.name} className="h-9 max-w-[120px] object-contain" />
                       <div>
                         <h3 className="text-xl font-bold text-white">{provider?.name} International Gateway</h3>
-                        <p className="text-xs text-slate-400">UI-only setup form. Database connection will be added next.</p>
+                        <p className="text-xs text-cyan-300 font-semibold">{provider?.capability}</p>
                       </div>
+                    </div>
+
+                    <div className={`rounded-xl border p-4 text-sm ${provider?.gateway ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
+                      <div className="font-bold mb-1">{provider?.gateway ? 'Payment gateway capability' : 'Not a generic payment gateway'}</div>
+                      <div className="text-xs leading-5 opacity-90">{provider?.note}</div>
                     </div>
 
                     <div className="space-y-6">
@@ -935,18 +954,33 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {fields.map(field => (
+                        {fields.length > 0 ? fields.map(field => (
                           <div key={field.key} className={field.key === 'callbackUrl' ? 'md:col-span-2' : ''}>
-                            <label className="block text-xs font-semibold text-slate-300 mb-1">{field.label} *</label>
-                            <input
-                              type={field.type || 'text'}
-                              value={internationalForm[field.key] || ''}
-                              onChange={e => setInternationalForm(prev => ({ ...prev, [field.key]: e.target.value }))}
-                              placeholder={field.placeholder}
-                              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 font-mono"
-                            />
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">{field.label} {field.required !== false ? '*' : '(optional)'}</label>
+                            {field.options ? (
+                              <select
+                                value={internationalForm[field.key] || field.options[0]}
+                                onChange={e => setInternationalForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500"
+                              >
+                                {field.options.map(option => <option key={option} value={option}>{option}</option>)}
+                              </select>
+                            ) : (
+                              <input
+                                type={field.type || 'text'}
+                                value={internationalForm[field.key] || ''}
+                                onChange={e => setInternationalForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                placeholder={field.placeholder}
+                                required={field.required !== false}
+                                className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                              />
+                            )}
                           </div>
-                        ))}
+                        )) : (
+                          <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                            TapTap Send-এর জন্য official public API credential বা programmable checkout endpoint পাওয়া যায়নি। এই provider-কে automated gateway হিসেবে enable করা যাবে না।
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl">
@@ -967,8 +1001,8 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                         <button type="button" onClick={() => setSelectedInternationalProvider(null)} className="px-5 py-3 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 font-bold">
                           Cancel
                         </button>
-                        <button type="button" onClick={() => showToast('International gateway UI saved locally for preview. Database connection is not enabled yet.', 'success')} className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-3 px-4 rounded-xl transition-colors">
-                          Save International Gateway UI
+                        <button type="button" disabled={!provider?.gateway} onClick={() => showToast(provider?.gateway ? 'Gateway configuration saved for preview. Backend API connection is not enabled yet.' : 'This provider cannot be enabled as an automated payment gateway.', provider?.gateway ? 'success' : 'error')} className="flex-1 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 font-bold py-3 px-4 rounded-xl transition-colors">
+                          {provider?.gateway ? 'Save Gateway Configuration' : 'Gateway Unavailable'}
                         </button>
                       </div>
                     </div>
