@@ -15,10 +15,12 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [activeCategory, setActiveCategory] = useState<'Personal MFS' | 'Merchant' | 'Bangla QR'>('Personal MFS');
+  const [activeCategory, setActiveCategory] = useState<'Personal MFS' | 'Merchant' | 'International' | 'Bangla QR'>('Personal MFS');
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [selectedMerchantProvider, setSelectedMerchantProvider] = useState<'bkash' | 'nagad' | null>(null);
+  const [selectedInternationalProvider, setSelectedInternationalProvider] = useState<string | null>(null);
+  const [internationalForm, setInternationalForm] = useState<Record<string, string>>({});
 
   // Merchant Credentials State
   const [merchantAppKey, setMerchantAppKey] = useState('');
@@ -489,6 +491,54 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/nagad.png'
     }
   ];
+  const internationalProviders = [
+    { id: 'stripe', name: 'Stripe', logoUrl: 'https://cdn.simpleicons.org/stripe/635bff', badge: 'Cards & Wallets' },
+    { id: 'binance', name: 'Binance', logoUrl: 'https://cdn.simpleicons.org/binance/f0b90b', badge: 'Crypto Payments' },
+    { id: 'oxapay', name: 'OxaPay', logoUrl: 'https://cdn.simpleicons.org/oxapay/ffffff', badge: 'Crypto Gateway' },
+    { id: 'wise', name: 'Wise', logoUrl: 'https://cdn.simpleicons.org/wise/9fe870', badge: 'Global Transfers' },
+    { id: 'payoneer', name: 'Payoneer', logoUrl: 'https://cdn.simpleicons.org/payoneer/ff4800', badge: 'Global Payouts' },
+    { id: 'payeer', name: 'Payeer', logoUrl: 'https://cdn.simpleicons.org/payeer/8b5cf6', badge: 'E-wallet Payments' },
+    { id: 'paypal', name: 'PayPal', logoUrl: 'https://cdn.simpleicons.org/paypal/0070ba', badge: 'Online Payments' },
+    { id: 'taptap-send', name: 'TapTap Send', logoUrl: 'https://cdn.simpleicons.org/taptapsend/ffffff', badge: 'Remittance' }
+  ];
+  const internationalFieldConfig: Record<string, { label: string; key: string; type?: string; placeholder?: string }[]> = {
+    stripe: [
+      { label: 'Publishable Key', key: 'publishableKey', placeholder: 'pk_live_...' },
+      { label: 'Secret Key', key: 'secretKey', type: 'password', placeholder: 'sk_live_...' }
+    ],
+    binance: [
+      { label: 'API Key', key: 'apiKey', placeholder: 'Binance merchant API key' },
+      { label: 'Secret Key', key: 'secretKey', type: 'password', placeholder: 'Binance secret key' },
+      { label: 'Merchant ID', key: 'merchantId', placeholder: 'Your Binance Pay merchant ID' }
+    ],
+    oxapay: [
+      { label: 'Merchant API Key', key: 'merchantApiKey', type: 'password', placeholder: 'OxaPay merchant API key' }
+    ],
+    wise: [
+      { label: 'API Token', key: 'apiToken', type: 'password', placeholder: 'Wise API token' },
+      { label: 'Profile ID', key: 'profileId', placeholder: 'Wise business profile ID' }
+    ],
+    payoneer: [
+      { label: 'Client ID', key: 'clientId', placeholder: 'Payoneer client ID' },
+      { label: 'Client Secret', key: 'clientSecret', type: 'password', placeholder: 'Payoneer client secret' },
+      { label: 'Program ID', key: 'programId', placeholder: 'Payoneer program ID' }
+    ],
+    payeer: [
+      { label: 'Merchant ID', key: 'merchantId', placeholder: 'Payeer merchant ID' },
+      { label: 'Secret Key', key: 'secretKey', type: 'password', placeholder: 'Payeer secret key' },
+      { label: 'API ID', key: 'apiId', placeholder: 'Payeer API ID' },
+      { label: 'API Key', key: 'apiKey', type: 'password', placeholder: 'Payeer API key' }
+    ],
+    paypal: [
+      { label: 'Client ID', key: 'clientId', placeholder: 'PayPal client ID' },
+      { label: 'Client Secret', key: 'clientSecret', type: 'password', placeholder: 'PayPal client secret' },
+      { label: 'Webhook ID', key: 'webhookId', placeholder: 'PayPal webhook ID' }
+    ],
+    'taptap-send': [
+      { label: 'API Key', key: 'apiKey', type: 'password', placeholder: 'TapTap Send API key' },
+      { label: 'API Secret', key: 'apiSecret', type: 'password', placeholder: 'TapTap Send API secret' }
+    ]
+  };
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -510,6 +560,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
               setAdditionalNumbers([]);
               setSelectedProvider(null);
               setSelectedMerchantProvider(null);
+              setSelectedInternationalProvider(null);
             }}
             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
           >
@@ -709,10 +760,10 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
             ← Back to Gateways
           </button>
 
-          {!selectedProvider && !selectedMerchantProvider ? (
+          {!selectedProvider && !selectedMerchantProvider && !selectedInternationalProvider ? (
             <div className="space-y-6">
               {/* Category Switcher Tabs */}
-              <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+              <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 pb-4">
                 <button
                   type="button"
                   onClick={() => setActiveCategory('Personal MFS')}
@@ -737,6 +788,19 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                 >
                   <span className="w-2 h-2 rounded-full bg-purple-400"></span>
                   Merchant (MFS / Bank / Card)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('International')}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
+                    activeCategory === 'International'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                      : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  International
                 </button>
               </div>
 
@@ -770,7 +834,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                     ))}
                   </div>
                 </div>
-              ) : (
+              ) : activeCategory === 'Merchant' ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-purple-500"></span>
@@ -800,7 +864,113 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                     ))}
                   </div>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    <h3 className="text-lg font-bold text-white">International Payment Gateways</h3>
+                  </div>
+                  <p className="text-xs text-slate-400">Choose a provider to view the required connection fields.</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {internationalProviders.map(provider => (
+                      <button
+                        key={provider.id}
+                        onClick={() => {
+                          setSelectedMerchantProvider(null);
+                          setSelectedInternationalProvider(provider.id);
+                          setInternationalForm({});
+                        }}
+                        className="flex flex-col items-center justify-center p-5 bg-[#0f1523] border border-slate-800/80 rounded-xl hover:border-cyan-500/60 hover:bg-slate-900/60 transition-all gap-4 h-36 relative group"
+                      >
+                        <div className="h-10 flex items-center justify-center w-full">
+                          <img src={provider.logoUrl} alt={provider.name} className="max-h-10 max-w-[125px] object-contain" />
+                        </div>
+                        <div className="text-center">
+                          <span className="font-bold text-slate-100 text-[15px] block">{provider.name}</span>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">{provider.badge}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
+            </div>
+          ) : selectedInternationalProvider ? (
+            /* International Gateway UI Form - persistence will be connected separately */
+            <div className="bg-[#1a2234] border border-slate-800 rounded-xl p-6 relative max-w-3xl">
+              <button
+                onClick={() => setSelectedInternationalProvider(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+
+              {(() => {
+                const provider = internationalProviders.find(item => item.id === selectedInternationalProvider);
+                const fields = internationalFieldConfig[selectedInternationalProvider] || [];
+                return (
+                  <>
+                    <div className="flex items-center gap-3 mb-6">
+                      <img src={provider?.logoUrl} alt={provider?.name} className="h-9 max-w-[120px] object-contain" />
+                      <div>
+                        <h3 className="text-xl font-bold text-white">{provider?.name} International Gateway</h3>
+                        <p className="text-xs text-slate-400">UI-only setup form. Database connection will be added next.</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm text-blue-400 font-medium mb-1.5">🏢 Select Brand</label>
+                        <select
+                          value={selectedBrandId}
+                          onChange={e => setSelectedBrandId(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-cyan-500 font-semibold"
+                        >
+                          {Array.isArray(brands) && brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {fields.map(field => (
+                          <div key={field.key} className={field.key === 'callbackUrl' ? 'md:col-span-2' : ''}>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">{field.label} *</label>
+                            <input
+                              type={field.type || 'text'}
+                              value={internationalForm[field.key] || ''}
+                              onChange={e => setInternationalForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+                              placeholder={field.placeholder}
+                              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl">
+                        <div>
+                          <div className="text-sm font-semibold text-white">Enable Gateway Status</div>
+                          <div className="text-xs text-slate-400">Allow customers to use this gateway after API connection is completed</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setInternationalForm(prev => ({ ...prev, active: prev.active === 'false' ? 'true' : 'false' }))}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold ${internationalForm.active !== 'false' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'}`}
+                        >
+                          {internationalForm.active !== 'false' ? 'ACTIVE (ON)' : 'INACTIVE (OFF)'}
+                        </button>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-800 flex gap-4">
+                        <button type="button" onClick={() => setSelectedInternationalProvider(null)} className="px-5 py-3 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 font-bold">
+                          Cancel
+                        </button>
+                        <button type="button" onClick={() => showToast('International gateway UI saved locally for preview. Database connection is not enabled yet.', 'success')} className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-3 px-4 rounded-xl transition-colors">
+                          Save International Gateway UI
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           ) : selectedMerchantProvider ? (
             /* Merchant Setup Form */
