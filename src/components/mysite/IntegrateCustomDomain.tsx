@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Globe,
   CheckCircle2,
@@ -43,6 +43,30 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const [purging, setPurging] = useState(false);
   const [copied, setCopied] = useState<string | false>(false);
   const [activeTab, setActiveTab] = useState<'wordpress' | 'laravel' | 'nocode'>('wordpress');
+
+  // Ref and state for Origin URL 3-line auto-resize and overflow detection
+  const originTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isOriginOverflowing, setIsOriginOverflowing] = useState<boolean>(false);
+
+  // Auto-resize originUrl textarea (1 line = 44px matching Custom Domain, 2 lines = 64px, max 3 lines = 86px)
+  // If text exceeds 3 lines, clips with overflow-hidden and shows ellipsis (...) indicator
+  useEffect(() => {
+    if (originTextareaRef.current) {
+      const el = originTextareaRef.current;
+      el.style.height = '44px';
+      const scrollH = el.scrollHeight;
+      if (scrollH <= 44) {
+        el.style.height = '44px';
+        setIsOriginOverflowing(false);
+      } else if (scrollH <= 66) {
+        el.style.height = '64px';
+        setIsOriginOverflowing(false);
+      } else {
+        el.style.height = '86px';
+        setIsOriginOverflowing(scrollH > 88);
+      }
+    }
+  }, [originUrl]);
 
   // URL normalizer helper: strips protocol, www, trailing slashes, path, and port
   const normalizeDomain = (url: string): string => {
@@ -553,41 +577,37 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         </p>
 
         <form onSubmit={handleSaveDomain} className="space-y-4">
-          {/* Side-by-Side: Custom Domain (Left) + Origin URL (Right - 1 Line) */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-start">
-            {/* 1. Custom Domain Input (Left side) */}
-            <div className="md:col-span-5 space-y-1.5">
-              <div className="flex items-center justify-between">
+          {/* Side-by-Side: Custom Domain (Left, fixed ~20 chars) + Origin URL (Right, long flexible, max 3 lines) */}
+          <div className="flex flex-col sm:flex-row gap-3.5 items-start">
+            {/* 1. Custom Domain Input: Fixed width for ~20 characters */}
+            <div className="w-full sm:w-[220px] shrink-0 space-y-1.5">
+              <div className="flex items-center justify-between h-5">
                 <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Custom Domain <span className="text-emerald-400">*</span></span>
                 </label>
-                {cleanBrandWebsite && (
-                  <span className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]" title={cleanBrandWebsite}>
-                    {cleanBrandWebsite}
-                  </span>
-                )}
               </div>
               <input
                 type="text"
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
-                placeholder={cleanBrandWebsite ? `e.g. ${cleanBrandWebsite}` : 'e.g. yourstore.com'}
-                className={`w-full bg-slate-950 border ${
+                placeholder={cleanBrandWebsite ? cleanBrandWebsite : 'yourbrand.com'}
+                title={customDomain || cleanBrandWebsite || 'Custom Domain'}
+                className={`w-full h-[44px] bg-slate-950 border ${
                   cleanInputDomain && !isDomainMatching
-                    ? 'border-rose-500 focus:border-rose-400'
+                    ? 'border-rose-500 focus:border-rose-400 focus:ring-1 focus:ring-rose-500/30'
                     : cleanInputDomain && isDomainMatching
-                    ? 'border-emerald-500 focus:border-emerald-400'
-                    : 'border-slate-800 focus:border-emerald-500'
-                } rounded-xl px-3.5 py-2.5 text-white placeholder:text-slate-600 focus:outline-none transition-colors text-sm font-mono`}
+                    ? 'border-emerald-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/30'
+                    : 'border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30'
+                } rounded-xl px-3.5 text-white placeholder:text-slate-600 focus:outline-none transition-all text-sm font-mono`}
               />
             </div>
 
-            {/* 2. Origin URL Input (Right side - Soja 1 Line) */}
-            <div className="md:col-span-7 space-y-1.5">
-              <div className="flex items-center justify-between">
+            {/* 2. Origin URL Input: Long / flex-1, initial size matches domain (44px), up to 3 lines max */}
+            <div className="flex-1 w-full min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between h-5">
                 <div className="flex items-center gap-1.5">
-                  <Server className="w-3.5 h-3.5 text-cyan-400" />
+                  <Server className="w-3.5 h-3.5 text-emerald-400" />
                   <label className="text-xs font-semibold text-slate-300">Origin URL (সার্ভার/হোস্টিং)</label>
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
                     ঐচ্ছিক / Optional
@@ -596,7 +616,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 <button
                   type="button"
                   onClick={() => setShowOriginDetails(!showOriginDetails)}
-                  className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium transition-colors hover:underline cursor-pointer"
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium transition-colors hover:underline cursor-pointer"
                   title="Origin URL কী এবং কাদের প্রয়োজন বিস্তারিত জানুন"
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
@@ -604,24 +624,34 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 </button>
               </div>
 
-              {/* Textarea for Origin URL so long links easily wrap into 2nd/3rd line with full visibility */}
+              {/* Textarea: identical color and initial height as domain, wraps up to 3 lines, clips and shows ... if >3 lines */}
               <div className="relative">
                 <textarea
-                  rows={2}
+                  ref={originTextareaRef}
+                  rows={1}
                   value={originUrl}
                   onChange={(e) => setOriginUrl(e.target.value)}
                   placeholder="e.g. https://cpanel.yourhosting.com বা হোস্টিং আইপি (No-Code ওয়েবসাইট হলে খালি রাখুন)"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-600 focus:outline-none transition-colors text-xs font-mono break-all resize-none leading-relaxed"
+                  title={originUrl || 'Origin URL'}
+                  className="w-full h-[44px] min-h-[44px] max-h-[86px] bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3.5 py-2.5 text-white placeholder:text-slate-600 focus:outline-none transition-all text-sm font-mono break-all resize-none overflow-hidden leading-relaxed pr-9"
                 />
                 {originUrl && (
                   <button
                     type="button"
                     onClick={() => setOriginUrl('')}
-                    className="absolute top-2 right-2 text-slate-500 hover:text-slate-300 text-xs px-1.5 py-0.5 bg-slate-900 rounded border border-slate-800 transition-colors"
+                    className="absolute top-2.5 right-2.5 text-slate-500 hover:text-slate-300 text-xs px-1.5 py-0.5 bg-slate-900 rounded border border-slate-800 transition-colors cursor-pointer z-10"
                     title="Clear Origin URL"
                   >
                     ✕
                   </button>
+                )}
+                {isOriginOverflowing && (
+                  <span
+                    className="absolute bottom-2 right-2 text-emerald-400 font-black tracking-widest text-xs bg-slate-900/95 px-2 py-0.5 rounded border border-slate-700 shadow-md pointer-events-none select-none z-10"
+                    title="URL exceeds 3 lines (view truncated, full value preserved in system)"
+                  >
+                    ...
+                  </span>
                 )}
               </div>
             </div>
@@ -629,9 +659,9 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
 
           {/* Details / Explanation Box */}
           {showOriginDetails && (
-            <div className="p-4 bg-slate-950/80 border border-cyan-500/30 rounded-xl text-xs space-y-3 text-slate-300 animate-in fade-in duration-200">
+            <div className="p-4 bg-slate-950/80 border border-emerald-500/30 rounded-xl text-xs space-y-3 text-slate-300 animate-in fade-in duration-200">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                <div className="flex items-center gap-2 font-bold text-cyan-400">
+                <div className="flex items-center gap-2 font-bold text-emerald-400">
                   <Info className="w-4 h-4" />
                   <span>Origin URL কী এবং আপনার ব্র্যান্ডে কখন ব্যবহার করবেন?</span>
                 </div>
@@ -656,7 +686,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 </div>
 
                 <div className="bg-slate-900/70 p-3 rounded-lg border border-slate-800">
-                  <div className="font-semibold text-cyan-400 flex items-center gap-1.5 mb-1.5">
+                  <div className="font-semibold text-emerald-400 flex items-center gap-1.5 mb-1.5">
                     <Server className="w-3.5 h-3.5" />
                     কাস্টম সাইট (WordPress, WooCommerce, Custom Site):
                   </div>
@@ -679,8 +709,8 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
             <div className="text-xs text-slate-400">
               {originUrl ? (
-                <span className="flex items-center gap-1.5 text-cyan-300">
-                  <Server className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="flex items-center gap-1.5 text-emerald-300">
+                  <Server className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span className="truncate max-w-xs md:max-w-md">Target: <code className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-[11px]">{originUrl}</code></span>
                 </span>
               ) : (
