@@ -495,13 +495,9 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
   type InternationalProvider = { id: string; name: string; logoUrl: string; badge: string; capability: string; gateway: boolean; note: string };
   const internationalProviders: InternationalProvider[] = [
     { id: 'stripe', name: 'Stripe', logoUrl: '/assets/international/stripe.png', badge: 'Cards & Wallets', capability: 'Hosted card checkout', gateway: true, note: 'সাধারণ international card/Wallet checkout-এর জন্য উপযুক্ত।' },
-    { id: 'binance', name: 'Binance', logoUrl: '/assets/international/binance.png', badge: 'Crypto Payments', capability: 'Binance Pay crypto checkout', gateway: true, note: 'শুধু Binance Pay Merchant account এবং crypto payment-এর জন্য।' },
-    { id: 'oxapay', name: 'OxaPay', logoUrl: '/assets/international/oxapay.png', badge: 'Crypto Gateway', capability: 'Hosted crypto invoice', gateway: true, note: 'Crypto invoice/payment URL; সাধারণ card gateway নয়।' },
-    { id: 'wise', name: 'Wise', logoUrl: '/assets/international/wise.png', badge: 'Global Transfers', capability: 'Payout / bank transfer', gateway: false, note: 'এটি customer checkout নয়; payout/transfer module-এর জন্য।' },
-    { id: 'payoneer', name: 'Payoneer', logoUrl: '/assets/international/payoneer.png', badge: 'Checkout / Payout', capability: 'Approved Checkout only', gateway: true, note: 'Payoneer Checkout approval ছাড়া enable করা যাবে না।' },
-    { id: 'payeer', name: 'Payeer', logoUrl: '/assets/international/payeer.png', badge: 'Hosted Payments', capability: 'Redirect checkout', gateway: true, note: 'Hosted redirect flow; REST/API mode আলাদা approval-এর ওপর নির্ভর করে।' },
     { id: 'paypal', name: 'PayPal', logoUrl: '/assets/international/paypal.png', badge: 'Online Payments', capability: 'Orders + capture checkout', gateway: true, note: 'Single-merchant PayPal checkout-এর জন্য উপযুক্ত।' },
-    { id: 'taptap-send', name: 'TapTap Send', logoUrl: '/assets/international/taptap-send.png', badge: 'Remittance', capability: 'Manual / approval required', gateway: false, note: 'Public programmable payment API পাওয়া যায়নি; automated gateway নয়।' }
+    { id: 'oxapay', name: 'OxaPay', logoUrl: '/assets/international/oxapay.png', badge: 'Crypto Gateway', capability: 'Hosted crypto invoice', gateway: true, note: 'Crypto invoice/payment URL; সাধারণ card gateway নয়।' },
+    { id: 'binance', name: 'Binance', logoUrl: '/assets/international/binance.png', badge: 'Crypto Payments', capability: 'Binance Pay crypto checkout', gateway: true, note: 'শুধু Binance Pay Merchant account এবং crypto payment-এর জন্য।' }
   ];
   const internationalFieldConfig: Record<string, InternationalField[]> = {
     stripe: [
@@ -510,48 +506,22 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       { label: 'Publishable Key (optional for hosted Checkout)', key: 'publishableKey', placeholder: 'pk_live_...', required: false },
       { label: 'Webhook Signing Secret', key: 'webhookSecret', type: 'password', placeholder: 'whsec_...', required: true }
     ],
-    binance: [
-      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
-      { label: 'Merchant API Identity Key / Certificate SN', key: 'certificateSn', placeholder: 'BinancePay-Certificate-SN', required: true },
-      { label: 'Merchant API Secret Key', key: 'merchantApiSecret', type: 'password', placeholder: 'Binance Pay merchant secret', required: true },
-      { label: 'Webhook Callback URL', key: 'webhookUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/binance', required: true }
-    ],
-    oxapay: [
-      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
-      { label: 'Merchant API Key', key: 'merchantApiKey', type: 'password', placeholder: 'OxaPay merchant API key', required: true },
-      { label: 'Callback URL', key: 'callbackUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/oxapay', required: true },
-      { label: 'Return URL', key: 'returnUrl', type: 'url', placeholder: 'https://your-domain.com/payment/success', required: false }
-    ],
-    wise: [
-      { label: 'Integration Type', key: 'integrationType', options: ['Business payout', 'Wise Platform partner'], required: true },
-      { label: 'API Token (server-side only)', key: 'apiToken', type: 'password', placeholder: 'Wise bearer token', required: true },
-      { label: 'Business Profile ID', key: 'profileId', placeholder: 'Wise business profile ID', required: true },
-      { label: 'Webhook URL', key: 'webhookUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/wise', required: true }
-    ],
-    payoneer: [
-      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
-      { label: 'Checkout API Username', key: 'checkoutUsername', placeholder: 'Payoneer Checkout API username', required: true },
-      { label: 'Payment API Token', key: 'paymentApiToken', type: 'password', placeholder: 'Payoneer Checkout payment token', required: true },
-      { label: 'Store Code / Division', key: 'division', placeholder: 'Payoneer store division code', required: true },
-      { label: 'Notification URL', key: 'notificationUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/payoneer', required: true }
-    ],
-    payeer: [
-      { label: 'Integration Mode', key: 'integrationMode', options: ['Hosted Merchant Redirect', 'REST Invoice (if approved)'], required: true },
-      { label: 'Merchant Store ID (m_shop)', key: 'merchantStoreId', placeholder: 'Payeer merchant/store ID', required: true },
-      { label: 'Merchant Signing Secret', key: 'merchantSecret', type: 'password', placeholder: 'Merchant Settings secret key', required: true },
-      { label: 'Payeer Account Number (REST only)', key: 'accountNumber', placeholder: 'P1000000', required: false },
-      { label: 'API ID (REST only)', key: 'apiId', placeholder: 'Payeer API ID', required: false },
-      { label: 'API Pass (REST only)', key: 'apiPass', type: 'password', placeholder: 'Payeer API user secret', required: false },
-      { label: 'Status URL', key: 'statusUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/payeer', required: true }
-    ],
     paypal: [
       { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
       { label: 'Client ID', key: 'clientId', placeholder: 'PayPal client ID', required: true },
       { label: 'Client Secret', key: 'clientSecret', type: 'password', placeholder: 'PayPal client secret', required: true },
-      { label: 'Webhook ID', key: 'webhookId', placeholder: 'PayPal webhook ID', required: true },
-      { label: 'Webhook URL / Event Registration', key: 'webhookUrl', type: 'url', placeholder: 'https://your-domain.com/api/webhooks/paypal', required: true }
+      { label: 'Webhook ID', key: 'webhookId', placeholder: 'PayPal webhook ID', required: true }
     ],
-    'taptap-send': []
+    oxapay: [
+      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
+      { label: 'Merchant API Key', key: 'merchantApiKey', type: 'password', placeholder: 'OxaPay merchant API key', required: true },
+      { label: 'Return URL', key: 'returnUrl', type: 'url', placeholder: 'https://your-domain.com/payment/success', required: false }
+    ],
+    binance: [
+      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
+      { label: 'Merchant API Identity Key / Certificate SN', key: 'certificateSn', placeholder: 'BinancePay-Certificate-SN', required: true },
+      { label: 'Merchant API Secret Key', key: 'merchantApiSecret', type: 'password', placeholder: 'Binance Pay merchant secret', required: true }
+    ]
   };
 
   return (
@@ -899,7 +869,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                           <img 
                             src={provider.logoUrl} 
                             alt={provider.name} 
-                            className={`max-h-10 max-w-[124px] object-contain ${provider.id === 'oxapay' || provider.id === 'payeer' || provider.id === 'taptap-send' ? 'opacity-90 contrast-125' : ''}`}
+                            className={`max-h-10 max-w-[124px] object-contain ${provider.id === 'oxapay' ? 'opacity-90 contrast-125' : ''}`}
                             onError={(e) => {
                                // Fallback if needed
                                (e.target as any).src = `https://ui-avatars.com/api/?name=${provider.name}&background=1a2234&color=7fd6c3&bold=true`;
@@ -926,6 +896,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
               {(() => {
                 const provider = internationalProviders.find(item => item.id === selectedInternationalProvider);
                 const fields = internationalFieldConfig[selectedInternationalProvider] || [];
+                const webhookEndpoint = `https://api.mecopay.space/api/webhooks/${selectedInternationalProvider}`;
                 return (
                   <>
                     <div className="flex items-center gap-3 mb-6">
@@ -953,6 +924,13 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                         </select>
                       </div>
 
+                      <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4">
+                        <div className="text-sm font-bold text-cyan-200 mb-1">MecoPay Webhook URL — provider dashboard-এ বসাবেন</div>
+                        <div className="text-xs text-cyan-100/80 mb-3">Client এই URL নিজের provider account-এর Webhooks / Callback / Notification settings-এ যোগ করবে। Client-এর নিজের webhook URL এখানে দেওয়ার দরকার নেই; provider event আগে MecoPay-তে আসবে, তারপর MecoPay client website-এ configured merchant webhook পাঠাবে।</div>
+                        <code className="block rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-emerald-300 break-all">{webhookEndpoint}</code>
+                        <div className="text-[11px] text-slate-400 mt-2">Provider dashboard-এ payment completed/succeeded এবং refund/failed events enable করুন। Secret/signature verification MecoPay backend-এ হবে।</div>
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {fields.length > 0 ? fields.map(field => (
                           <div key={field.key} className={field.key === 'callbackUrl' ? 'md:col-span-2' : ''}>
@@ -976,11 +954,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                               />
                             )}
                           </div>
-                        )) : (
-                          <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                            TapTap Send-এর জন্য official public API credential বা programmable checkout endpoint পাওয়া যায়নি। এই provider-কে automated gateway হিসেবে enable করা যাবে না।
-                          </div>
-                        )}
+                        )) : null}
                       </div>
 
                       <div className="flex items-center justify-between p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl">
