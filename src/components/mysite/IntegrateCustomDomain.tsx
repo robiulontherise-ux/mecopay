@@ -47,6 +47,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   // Ref and state for Origin URL 3-line auto-resize and overflow detection
   const originTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [isOriginOverflowing, setIsOriginOverflowing] = useState<boolean>(false);
+  const [isOriginFocused, setIsOriginFocused] = useState<boolean>(false);
 
   // Auto-resize originUrl textarea (1 line = 44px matching Custom Domain, 2 lines = 64px, max 3 lines = 86px)
   // If text exceeds 3 lines, clips with overflow-hidden and shows ellipsis (...) indicator
@@ -603,35 +604,43 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
               />
             </div>
 
-            {/* 2. Origin URL Input: Long / flex-1, initial size matches domain (44px), up to 3 lines max */}
-            <div className="flex-1 w-full min-w-0 space-y-1.5">
+            {/* 2. Origin URL Input: Initial width matches domain (w-full sm:w-[220px]), expands when focused or has content */}
+            <div
+              className={`w-full ${
+                originUrl || isOriginFocused
+                  ? 'sm:flex-1'
+                  : 'sm:w-[220px] shrink-0'
+              } transition-all duration-300 space-y-1.5 min-w-0`}
+            >
               <div className="flex items-center justify-between h-5">
-                <div className="flex items-center gap-1.5">
-                  <Server className="w-3.5 h-3.5 text-emerald-400" />
-                  <label className="text-xs font-semibold text-slate-300">Origin URL (সার্ভার/হোস্টিং)</label>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
-                    ঐচ্ছিক / Optional
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Server className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <label className="text-xs font-semibold text-slate-300 truncate">Origin URL</label>
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60 shrink-0">
+                    ঐচ্ছিক
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowOriginDetails(!showOriginDetails)}
-                  className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium transition-colors hover:underline cursor-pointer"
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium transition-colors hover:underline cursor-pointer shrink-0 ml-1"
                   title="Origin URL কী এবং কাদের প্রয়োজন বিস্তারিত জানুন"
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
-                  <span>{showOriginDetails ? 'Hide Details' : 'Details (বিস্তারিত)'}</span>
+                  <span>{showOriginDetails ? 'Hide' : 'Details'}</span>
                 </button>
               </div>
 
-              {/* Textarea: identical color and initial height as domain, wraps up to 3 lines, clips and shows ... if >3 lines */}
+              {/* Textarea: identical width (220px) and height (44px) at start, expands when typing/filled, wraps up to 3 lines, clips and shows ... if >3 lines */}
               <div className="relative">
                 <textarea
                   ref={originTextareaRef}
                   rows={1}
                   value={originUrl}
+                  onFocus={() => setIsOriginFocused(true)}
+                  onBlur={() => setIsOriginFocused(false)}
                   onChange={(e) => setOriginUrl(e.target.value)}
-                  placeholder="e.g. https://cpanel.yourhosting.com বা হোস্টিং আইপি (No-Code ওয়েবসাইট হলে খালি রাখুন)"
+                  placeholder={originUrl || isOriginFocused ? "e.g. https://cpanel.yourhosting.com বা আইপি" : "e.g. https://cpanel.yourhosting.com"}
                   title={originUrl || 'Origin URL'}
                   className="w-full h-[44px] min-h-[44px] max-h-[86px] bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3.5 py-2.5 text-white placeholder:text-slate-600 focus:outline-none transition-all text-sm font-mono break-all resize-none overflow-hidden leading-relaxed pr-9"
                 />
