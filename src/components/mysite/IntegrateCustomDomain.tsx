@@ -47,7 +47,6 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   // Ref and state for Origin URL 3-line auto-resize and overflow detection
   const originTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [isOriginOverflowing, setIsOriginOverflowing] = useState<boolean>(false);
-  const [isOriginFocused, setIsOriginFocused] = useState<boolean>(false);
 
   // Auto-resize originUrl textarea (1 line = 44px matching Custom Domain, 2 lines = 64px, max 3 lines = 86px)
   // If text exceeds 3 lines, clips with overflow-hidden and shows ellipsis (...) indicator
@@ -578,10 +577,10 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         </p>
 
         <form onSubmit={handleSaveDomain} className="space-y-4">
-          {/* Side-by-Side: Custom Domain (Left, fixed ~20 chars) + Origin URL (Right, long flexible, max 3 lines) */}
-          <div className="flex flex-col sm:flex-row gap-3.5 items-start">
-            {/* 1. Custom Domain Input: Fixed width for ~20 characters */}
-            <div className="w-full sm:w-[220px] shrink-0 space-y-1.5">
+          {/* Side-by-Side: Custom Domain & Origin URL with identical width (Equal columns) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-start">
+            {/* 1. Custom Domain Input */}
+            <div className="w-full space-y-1.5 min-w-0">
               <div className="flex items-center justify-between h-5">
                 <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5 text-emerald-400" />
@@ -604,14 +603,8 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
               />
             </div>
 
-            {/* 2. Origin URL Input: Initial width matches domain (w-full sm:w-[220px]), expands when focused or has content */}
-            <div
-              className={`w-full ${
-                originUrl || isOriginFocused
-                  ? 'sm:flex-1'
-                  : 'sm:w-[220px] shrink-0'
-              } transition-all duration-300 space-y-1.5 min-w-0`}
-            >
+            {/* 2. Origin URL Input: Same width as domain, initial height matches domain (44px), up to 3 lines max */}
+            <div className="w-full space-y-1.5 min-w-0">
               <div className="flex items-center justify-between h-5">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <Server className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -631,17 +624,15 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 </button>
               </div>
 
-              {/* Textarea: identical width (220px) and height (44px) at start, expands when typing/filled, wraps up to 3 lines, clips and shows ... if >3 lines */}
+              {/* Textarea: identical width (50% equal column), 44px initial height, wraps up to 3 lines, clips and shows ... if >3 lines */}
               <div className="relative">
                 <textarea
                   ref={originTextareaRef}
                   rows={1}
                   value={originUrl}
-                  onFocus={() => setIsOriginFocused(true)}
-                  onBlur={() => setIsOriginFocused(false)}
                   onChange={(e) => setOriginUrl(e.target.value)}
-                  placeholder={originUrl || isOriginFocused ? "e.g. https://cpanel.yourhosting.com বা আইপি" : "e.g. https://cpanel.yourhosting.com"}
-                  title={originUrl || 'Origin URL'}
+                  placeholder="ঐচ্ছিক (নো-কোড ওয়েবসাইটের জন্য লাগবে না)"
+                  title={originUrl || 'ঐচ্ছিক (নো-কোড ওয়েবসাইটের জন্য লাগবে না)'}
                   className="w-full h-[44px] min-h-[44px] max-h-[86px] bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3.5 py-2.5 text-white placeholder:text-slate-600 focus:outline-none transition-all text-sm font-mono break-all resize-none overflow-hidden leading-relaxed pr-9"
                 />
                 {originUrl && (
