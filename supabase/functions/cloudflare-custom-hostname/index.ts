@@ -311,12 +311,16 @@ serve(async (req) => {
 
         if (existingHost) {
           if (brandId) {
+            const updatePayload: any = {
+              custom_hostname_id: existingHost.id,
+              domain_status: existingHost.status === 'active' && existingHost.ssl?.status === 'active' ? 'active' : 'pending_validation'
+            }
+            if (payload.origin_url !== undefined) {
+              updatePayload.origin_url = payload.origin_url ? String(payload.origin_url).trim() : null
+            }
             await adminSupabase
               .from('site_settings')
-              .update({
-                custom_hostname_id: existingHost.id,
-                domain_status: existingHost.status === 'active' && existingHost.ssl?.status === 'active' ? 'active' : 'pending_validation'
-              })
+              .update(updatePayload)
               .or(`id.eq.${brandId},brand_id.eq.${brandId}`)
           }
 
@@ -343,12 +347,16 @@ serve(async (req) => {
 
       const result = cfData.result
       if (brandId && result?.id) {
+        const updatePayload: any = {
+          custom_hostname_id: result.id,
+          domain_status: result.status === 'active' && result.ssl?.status === 'active' ? 'active' : 'pending_validation'
+        }
+        if (payload.origin_url !== undefined) {
+          updatePayload.origin_url = payload.origin_url ? String(payload.origin_url).trim() : null
+        }
         await adminSupabase
           .from('site_settings')
-          .update({
-            custom_hostname_id: result.id,
-            domain_status: result.status === 'active' && result.ssl?.status === 'active' ? 'active' : 'pending_validation'
-          })
+          .update(updatePayload)
           .or(`id.eq.${brandId},brand_id.eq.${brandId}`)
       }
 

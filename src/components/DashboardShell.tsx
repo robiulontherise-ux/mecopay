@@ -418,7 +418,7 @@ export default function DashboardShell() {
     allow_youtube: false,
     logo_url: '',
     support_email: '',
-    verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false,
+    verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false, international_api: false,
     payment_amount_type: 'equal',
     amount_format: 'as_is',
     transaction_fee: '0',
@@ -727,7 +727,7 @@ export default function DashboardShell() {
       setShowBrandModal(false);
       setEditingBrandId(null);
       setBrandForm({
-        name: '', website_url: '', allow_telegram: false, allow_tally: false, allow_facebook: false, allow_whatsapp: false, allow_drive: false, allow_youtube: false, logo_url: '', support_email: '', verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false,
+        name: '', website_url: '', allow_telegram: false, allow_tally: false, allow_facebook: false, allow_whatsapp: false, allow_drive: false, allow_youtube: false, logo_url: '', support_email: '', verify_trx_id: true, verify_phone: false, merchant_api: true, personal_api: false, international_api: false,
         payment_amount_type: 'equal', amount_format: 'as_is', transaction_fee: '0', transaction_fee_type: 'fixed'
       });
     }

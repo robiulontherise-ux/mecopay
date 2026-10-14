@@ -15,7 +15,9 @@ import {
   ExternalLink,
   Check,
   AlertTriangle,
-  Mail
+  Mail,
+  HelpCircle,
+  Info
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
@@ -30,6 +32,8 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [currentSubdomain, setCurrentSubdomain] = useState<string>('');
   const [customDomain, setCustomDomain] = useState<string>('');
+  const [originUrl, setOriginUrl] = useState<string>('');
+  const [showOriginDetails, setShowOriginDetails] = useState<boolean>(false);
   const [domainStatus, setDomainStatus] = useState<'none' | 'pending_validation' | 'active'>('none');
   const [hostnameId, setHostnameId] = useState<string>('');
   const [sslStatus, setSslStatus] = useState<string>('');
@@ -106,6 +110,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       if (!error && data) {
         setCurrentSubdomain(data.subdomain || '');
         setCustomDomain(data.domain || '');
+        setOriginUrl(data.origin_url || '');
         setDomainStatus(data.domain_status || (data.domain ? 'pending_validation' : 'none'));
         setHostnameId(data.custom_hostname_id || '');
         if (data.app_type) {
@@ -122,6 +127,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         if (fallbackData) {
           setCurrentSubdomain(fallbackData.subdomain || '');
           setCustomDomain(fallbackData.domain || '');
+          setOriginUrl(fallbackData.origin_url || '');
           setDomainStatus(fallbackData.domain_status || (fallbackData.domain ? 'pending_validation' : 'none'));
           setHostnameId(fallbackData.custom_hostname_id || '');
           if (fallbackData.app_type) {
@@ -129,6 +135,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           }
         } else {
           setCustomDomain('');
+          setOriginUrl('');
           setCurrentSubdomain('');
           setDomainStatus('none');
           setHostnameId('');
@@ -202,13 +209,16 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         existing = clientExisting;
       }
 
+      const cleanOrigin = originUrl.trim();
+
       if (existing) {
         // UPDATE THAT EXACT ROW in site_settings:
-        // Keeps the existing subdomain in its column and updates the domain column!
+        // Keeps the existing subdomain in its column and updates domain & origin_url!
         const { error } = await supabase
           .from('site_settings')
           .update({
             domain: cleanInputDomain,
+            origin_url: cleanOrigin || null,
             brand_id: selectedBrandId || existing.brand_id,
             app_type: activeTab === 'nocode' ? 'no_code' : activeTab
           })
@@ -228,6 +238,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           client_id: user.id,
           site_name: selectedBrand.name || 'My Store',
           domain: cleanInputDomain,
+          origin_url: cleanOrigin || null,
           subdomain: autoSub,
           app_type: activeTab === 'nocode' ? 'no_code' : activeTab
         });
@@ -236,6 +247,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       }
 
       setCustomDomain(cleanInputDomain);
+      setOriginUrl(cleanOrigin);
 
       // Automated Cloudflare for SaaS Custom Hostname provisioning
       try {
@@ -243,6 +255,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           body: {
             action: 'create',
             domain: cleanInputDomain,
+            origin_url: cleanOrigin || null,
             brand_id: selectedBrandId
           }
         });
@@ -261,7 +274,19 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         console.warn('Cloudflare SaaS auto-provisioning note:', cfErr);
       }
 
-      showToast(`Custom domain (${cleanInputDomain}) integrated and saved successfully!`, 'success');
+      // KV সিঙ্ক নিশ্চিত করা (গেটওয়ে ওয়ার্কার ও এজ সিঙ্ক)
+      try {
+        await supabase.functions.invoke('cloudflare-custom-hostname', {
+          body: {
+            action: 'sync_brand',
+            brand_id: selectedBrandId
+          }
+        });
+      } catch (syncErr) {
+        console.warn('Cloudflare KV sync note:', syncErr);
+      }
+
+      showToast(`Custom domain (${cleanInputDomain}) and origin settings saved successfully!`, 'success');
       fetchDomainSettings();
     } catch (err: any) {
       console.error(err);
@@ -296,6 +321,18 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         setDomainStatus('active');
         setSslStatus('active');
         showToast(`🎉 Domain & SSL Active! Your store is securely live on ${customDomain}`, 'success');
+
+        // KV সিঙ্ক নিশ্চিত করা
+        try {
+          await supabase.functions.invoke('cloudflare-custom-hostname', {
+            body: {
+              action: 'sync_brand',
+              brand_id: selectedBrandId
+            }
+          });
+        } catch (e) {
+          console.warn('KV sync error on verify:', e);
+        }
 
         fetchDomainSettings();
       } else {
@@ -516,8 +553,21 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         </p>
 
         <form onSubmit={handleSaveDomain} className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+          {/* Side-by-Side: Custom Domain (Left) + Origin URL (Right - 1 Line) */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-start">
+            {/* 1. Custom Domain Input (Left side) */}
+            <div className="md:col-span-5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Custom Domain <span className="text-emerald-400">*</span></span>
+                </label>
+                {cleanBrandWebsite && (
+                  <span className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]" title={cleanBrandWebsite}>
+                    {cleanBrandWebsite}
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={customDomain}
@@ -529,13 +579,121 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                     : cleanInputDomain && isDomainMatching
                     ? 'border-emerald-500 focus:border-emerald-400'
                     : 'border-slate-800 focus:border-emerald-500'
-                } rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none transition-colors text-sm font-mono`}
+                } rounded-xl px-3.5 py-2.5 text-white placeholder:text-slate-600 focus:outline-none transition-colors text-sm font-mono`}
               />
             </div>
+
+            {/* 2. Origin URL Input (Right side - Soja 1 Line) */}
+            <div className="md:col-span-7 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5 text-cyan-400" />
+                  <label className="text-xs font-semibold text-slate-300">Origin URL (সার্ভার/হোস্টিং)</label>
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+                    ঐচ্ছিক / Optional
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOriginDetails(!showOriginDetails)}
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium transition-colors hover:underline cursor-pointer"
+                  title="Origin URL কী এবং কাদের প্রয়োজন বিস্তারিত জানুন"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>{showOriginDetails ? 'Hide Details' : 'Details (বিস্তারিত)'}</span>
+                </button>
+              </div>
+
+              {/* Textarea for Origin URL so long links easily wrap into 2nd/3rd line with full visibility */}
+              <div className="relative">
+                <textarea
+                  rows={2}
+                  value={originUrl}
+                  onChange={(e) => setOriginUrl(e.target.value)}
+                  placeholder="e.g. https://cpanel.yourhosting.com বা হোস্টিং আইপি (No-Code ওয়েবসাইট হলে খালি রাখুন)"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-600 focus:outline-none transition-colors text-xs font-mono break-all resize-none leading-relaxed"
+                />
+                {originUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setOriginUrl('')}
+                    className="absolute top-2 right-2 text-slate-500 hover:text-slate-300 text-xs px-1.5 py-0.5 bg-slate-900 rounded border border-slate-800 transition-colors"
+                    title="Clear Origin URL"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Details / Explanation Box */}
+          {showOriginDetails && (
+            <div className="p-4 bg-slate-950/80 border border-cyan-500/30 rounded-xl text-xs space-y-3 text-slate-300 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-2 font-bold text-cyan-400">
+                  <Info className="w-4 h-4" />
+                  <span>Origin URL কী এবং আপনার ব্র্যান্ডে কখন ব্যবহার করবেন?</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOriginDetails(false)}
+                  className="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-slate-800"
+                >
+                  ✕ বন্ধ করুন
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs leading-relaxed">
+                <div className="bg-slate-900/70 p-3 rounded-lg border border-slate-800">
+                  <div className="font-semibold text-emerald-400 flex items-center gap-1.5 mb-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    No-Code ওয়েবসাইট (MecoPay হোস্টেড):
+                  </div>
+                  <p className="text-slate-400">
+                    কোনো Origin URL দেওয়ার প্রয়োজন নেই (<strong>সম্পূর্ণ খালি রাখুন</strong>)। MecoPay-এর নিজস্ব হাই-স্পিড ইনফ্রাস্ট্রাকচার থেকেই সরাসরি আপনার ব্র্যান্ডের ওয়েবসাইট লাইভ পরিচালিত হয়।
+                  </p>
+                </div>
+
+                <div className="bg-slate-900/70 p-3 rounded-lg border border-slate-800">
+                  <div className="font-semibold text-cyan-400 flex items-center gap-1.5 mb-1.5">
+                    <Server className="w-3.5 h-3.5" />
+                    কাস্টম সাইট (WordPress, WooCommerce, Custom Site):
+                  </div>
+                  <p className="text-slate-400">
+                    ক্রেতা বা ভিজিটররা যখন আপনার ব্র্যান্ডের ডোমেইনে (<strong className="text-white">{selectedBrand?.name || 'আপনার ব্র্যান্ড'}</strong>) প্রবেশ করবে, MecoPay সিস্টেম সেই ট্রাফিক আপনার মূল হোস্টিং সার্ভারে পাঠাতে এই <strong>Origin URL</strong> ব্যবহার করে (যেমন: আপনার cPanel হোস্টিং ডোমেইন বা সার্ভার লিংক)।
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2.5 rounded-lg border border-slate-800 flex items-start gap-2">
+                <Zap className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong>একত্রে অটো-সিঙ্ক:</strong> আপনি যখন নিচে <strong className="text-white">Save &amp; Connect Domain</strong>-এ ক্লিক করবেন অথবা ডোমেইন ভেরিফাই হবে, তখন ডোমেইনের সাথে এই Origin URL-ও একই সাথে আপনার ব্র্যান্ডের ডাটাবেজ (<code className="text-emerald-400 font-mono">site_settings</code>) এবং সিস্টেমে ফ্রেশভাবে সংরক্ষিত হয়ে যাবে।
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Form Action Row: Save & Connect Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            <div className="text-xs text-slate-400">
+              {originUrl ? (
+                <span className="flex items-center gap-1.5 text-cyan-300">
+                  <Server className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="truncate max-w-xs md:max-w-md">Target: <code className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-[11px]">{originUrl}</code></span>
+                </span>
+              ) : (
+                <span className="text-slate-500">
+                  Origin URL খালি থাকলে নো-কোড MecoPay ইন্টারনাল রাউটিং সক্রিয় থাকবে।
+                </span>
+              )}
+            </div>
+
             <button
               type="submit"
               disabled={saving || !isDomainMatching}
-              className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
               Save &amp; Connect Domain
