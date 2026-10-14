@@ -31,7 +31,7 @@ Provider dashboard setup:
 - **Stripe:** Developers → Webhooks → Add endpoint → Stripe URL paste → `checkout.session.completed`, async success/failure এবং refund events select → signing secret নিয়ে MecoPay form-এ দিন।
 - **PayPal:** Developer Dashboard → My Apps & Credentials → Webhooks → Add Webhook → PayPal URL paste → payment capture completed/denied এবং refund events select → Webhook ID MecoPay form-এ দিন।
 - **OxaPay:** Merchant/API settings-এ callback URL হিসেবে OxaPay URL paste করুন। OxaPay API invoice create করার সময়ও একই MecoPay callback URL server-side পাঠানো হবে।
-- **Cryptomus:** Merchant dashboard-এর webhook/callback settings-এ Cryptomus URL paste করুন। Cryptomus API request-এ `merchant` header ও `sign` value তৈরি হবে; webhook-এর `sign`-ও একই API key দিয়ে verify হবে।
+- **Cryptomus:** Merchant dashboard-এর webhook/callback settings-এ Cryptomus URL paste করুন। Frontend-এ শুধু **Merchant UUID** এবং **Payment API Key** রাখবেন; Payout API Key ব্যবহার করবেন না এবং আলাদা webhook secret field লাগবে না। Invoice create করার সময় backend `amount`, `currency`, unique `order_id`, `url_callback` এবং optional `url_return` পাঠাবে। Cryptomus API request-এ `merchant` header ও `sign` value তৈরি হবে; webhook-এর `sign`-ও Payment API Key দিয়ে verify হবে।
 - **Binance Pay:** Binance Pay Merchant Admin-এর webhook/notification setting-এ Binance URL paste করুন এবং payment success/close events চালু করুন।
 
 Flow হবে:
@@ -644,3 +644,11 @@ BINANCE_PAY_SECRET=...
 - Provider webhook signature verify না করে fulfil করবেন না।
 
 বর্তমান MecoPay frontend configuration UI এই guide-এর field names-এর সঙ্গে align করা হয়েছে, কিন্তু backend adapter, database migration, webhook route এবং live provider credentials আলাদাভাবে deploy ও test করতে হবে।
+
+
+## Cryptomus official references
+
+- Request authentication: https://doc.cryptomus.com/merchant-api/request-format
+- Create invoice: https://doc.cryptomus.com/merchant-api/payments/creating-invoice
+- Payment webhook and signature verification: https://doc.cryptomus.com/merchant-api/payments/webhook
+- Test webhook: https://doc.cryptomus.com/merchant-api/payments/testing-webhook

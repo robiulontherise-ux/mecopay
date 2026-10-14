@@ -497,7 +497,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
     { id: 'stripe', name: 'Stripe', logoUrl: '/assets/international/stripe.png', badge: 'Cards & Wallets', capability: 'Hosted card checkout', gateway: true, note: 'সাধারণ international card/Wallet checkout-এর জন্য উপযুক্ত।' },
     { id: 'paypal', name: 'PayPal', logoUrl: '/assets/international/paypal.png', badge: 'Online Payments', capability: 'Orders + capture checkout', gateway: true, note: 'Single-merchant PayPal checkout-এর জন্য উপযুক্ত।' },
     { id: 'oxapay', name: 'OxaPay', logoUrl: '/assets/international/oxapay.png', badge: 'Crypto Gateway', capability: 'Hosted crypto invoice', gateway: true, note: 'Crypto invoice/payment URL; সাধারণ card gateway নয়।' },
-    { id: 'cryptomus', name: 'Cryptomus', logoUrl: '/assets/international/cryptomus.svg', badge: 'Crypto Gateway', capability: 'Crypto invoice checkout', gateway: true, note: 'Merchant ID ও API key দিয়ে crypto invoice তৈরি করে।' },
+    { id: 'cryptomus', name: 'Cryptomus', logoUrl: '/assets/international/cryptomus.png', badge: 'Crypto Gateway', capability: 'Crypto invoice checkout', gateway: true, note: 'Official Merchant UUID ও Payment API Key দিয়ে crypto invoice তৈরি করে; আলাদা webhook secret নেই।' },
     { id: 'binance', name: 'Binance', logoUrl: '/assets/international/binance.png', badge: 'Crypto Payments', capability: 'Binance Pay crypto checkout', gateway: true, note: 'শুধু Binance Pay Merchant account এবং crypto payment-এর জন্য।' }
   ];
   const internationalFieldConfig: Record<string, InternationalField[]> = {
@@ -519,8 +519,8 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       { label: 'Return URL', key: 'returnUrl', type: 'url', placeholder: 'https://your-domain.com/payment/success', required: false }
     ],
     cryptomus: [
-      { label: 'Merchant ID', key: 'merchantId', placeholder: 'Cryptomus merchant UUID', required: true },
-      { label: 'Payment API Key', key: 'apiKey', type: 'password', placeholder: 'Cryptomus payment API key', required: true },
+      { label: 'Merchant UUID', key: 'merchantId', placeholder: 'Cryptomus merchant UUID', required: true },
+      { label: 'Payment API Key (not Payout API Key)', key: 'apiKey', type: 'password', placeholder: 'Cryptomus payment API key', required: true },
       { label: 'Return URL', key: 'returnUrl', type: 'url', placeholder: 'https://your-domain.com/payment/success', required: false }
     ],
     binance: [
