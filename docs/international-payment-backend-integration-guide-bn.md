@@ -2,14 +2,15 @@
 
 এই guide-টি বর্তমান MecoPay-এর Express `server.ts` এবং Supabase structure ধরে লেখা। Frontend credential form একা payment process করবে না। Backend-এ provider API call, order mapping, webhook verification এবং idempotent fulfilment লাগবে।
 
-## 1. এই release-এ কেবল চারটি gateway
+## 1. এই release-এ কেবল পাঁচটি gateway
 
-International Gateway UI এবং backend rollout কেবল এই চার provider-এর জন্য রাখুন:
+International Gateway UI এবং backend rollout কেবল এই পাঁচ provider-এর জন্য রাখুন:
 
 1. **Stripe** — সাধারণ international card/hosted Checkout
 2. **PayPal** — Orders + buyer approval + capture
 3. **OxaPay** — hosted crypto invoice
-4. **Binance Pay** — Binance Pay crypto checkout
+4. **Cryptomus** — crypto invoice/payment
+5. **Binance Pay** — Binance Pay crypto checkout
 
 **Wise, Payoneer, Payeer এবং TapTap Send এই release থেকে বাদ।** এগুলোর adapter, frontend card এবং active gateway option রাখবেন না। পরে আলাদা product requirement ও provider approval থাকলে নতুন release-এ যোগ করা যাবে।
 
@@ -20,8 +21,9 @@ Client নিজের website-এর webhook URL MecoPay form-এ দেবে 
 ```text
 Stripe:  https://api.mecopay.space/api/webhooks/stripe
 PayPal:  https://api.mecopay.space/api/webhooks/paypal
-OxaPay:  https://api.mecopay.space/api/webhooks/oxapay
-Binance: https://api.mecopay.space/api/webhooks/binance
+OxaPay:   https://api.mecopay.space/api/webhooks/oxapay
+Cryptomus: https://api.mecopay.space/api/webhooks/cryptomus
+Binance:  https://api.mecopay.space/api/webhooks/binance
 ```
 
 Provider dashboard setup:
@@ -29,6 +31,7 @@ Provider dashboard setup:
 - **Stripe:** Developers → Webhooks → Add endpoint → Stripe URL paste → `checkout.session.completed`, async success/failure এবং refund events select → signing secret নিয়ে MecoPay form-এ দিন।
 - **PayPal:** Developer Dashboard → My Apps & Credentials → Webhooks → Add Webhook → PayPal URL paste → payment capture completed/denied এবং refund events select → Webhook ID MecoPay form-এ দিন।
 - **OxaPay:** Merchant/API settings-এ callback URL হিসেবে OxaPay URL paste করুন। OxaPay API invoice create করার সময়ও একই MecoPay callback URL server-side পাঠানো হবে।
+- **Cryptomus:** Merchant dashboard-এর webhook/callback settings-এ Cryptomus URL paste করুন। Cryptomus API request-এ `merchant` header ও `sign` value তৈরি হবে; webhook-এর `sign`-ও একই API key দিয়ে verify হবে।
 - **Binance Pay:** Binance Pay Merchant Admin-এর webhook/notification setting-এ Binance URL paste করুন এবং payment success/close events চালু করুন।
 
 Flow হবে:
@@ -64,11 +67,13 @@ src/server/
       stripe.adapter.ts
       paypal.adapter.ts
       oxapay.adapter.ts
+      cryptomus.adapter.ts
       binance-pay.adapter.ts
     webhooks/
       stripe.webhook.ts
       paypal.webhook.ts
       oxapay.webhook.ts
+      cryptomus.webhook.ts
       binance.webhook.ts
     routes/
       payment.routes.ts
@@ -209,11 +214,11 @@ export function getAdapter(provider: string) {
 }
 ```
 
-এই checkout registry-তে কেবল Stripe, PayPal, OxaPay এবং Binance রাখবেন।
+এই checkout registry-তে কেবল Stripe, PayPal, OxaPay, Cryptomus এবং Binance রাখবেন।
 
 ## 6. Express raw-body webhook handling
 
-Stripe, Binance এবং OxaPay raw request body দিয়ে signature verify করে। তাই webhook route-এ `express.json()` চলার আগে `express.raw()` ব্যবহার করতে হবে।
+Stripe, Binance, OxaPay এবং Cryptomus raw request body দিয়ে signature verify করে। তাই webhook route-এ `express.json()` চলার আগে `express.raw()` ব্যবহার করতে হবে।
 
 ```ts
 // server.ts — express.json() middleware-এর আগে
