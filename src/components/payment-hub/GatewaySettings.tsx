@@ -865,13 +865,12 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                    <h3 className="text-lg font-bold text-white">International Payment Gateways</h3>
+                <div className="border-t-2 border-red-600 pt-2.5 space-y-4">
+                  <div className="flex items-center gap-2 px-0.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#7fd6c3]"></span>
+                    <h3 className="text-[15px] leading-none font-bold text-slate-100">International</h3>
                   </div>
-                  <p className="text-xs text-slate-400">Choose a provider to view the required connection fields.</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
                     {internationalProviders.map(provider => (
                       <button
                         key={provider.id}
@@ -880,15 +879,12 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                           setSelectedInternationalProvider(provider.id);
                           setInternationalForm({});
                         }}
-                        className="flex flex-col items-center justify-center p-5 bg-[#0f1523] border border-slate-800/80 rounded-xl hover:border-cyan-500/60 hover:bg-slate-900/60 transition-all gap-4 h-36 relative group"
+                        className="flex flex-col items-center justify-center px-4 py-4 bg-[#111a2e] border border-[#263653] rounded-[14px] hover:border-cyan-400/70 hover:bg-[#15213a] transition-all gap-3.5 h-[134px] relative group shadow-[0_8px_22px_rgba(2,8,23,0.16)]"
                       >
-                        <div className="h-10 flex items-center justify-center w-full">
-                          <img src={provider.logoUrl} alt={provider.name} className="max-h-10 max-w-[125px] object-contain" />
+                        <div className="h-10 w-full flex items-center justify-center">
+                          <img src={provider.logoUrl} alt={provider.name} className="max-h-9 max-w-[116px] object-contain" />
                         </div>
-                        <div className="text-center">
-                          <span className="font-bold text-slate-100 text-[15px] block">{provider.name}</span>
-                          <span className="text-[11px] text-slate-400 block mt-0.5">{provider.badge}</span>
-                        </div>
+                        <span className="font-bold text-slate-200 text-[15px] leading-none block">{provider.name}</span>
                       </button>
                     ))}
                   </div>
