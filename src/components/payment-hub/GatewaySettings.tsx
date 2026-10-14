@@ -492,14 +492,14 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
     }
   ];
   const internationalProviders = [
-    { id: 'stripe', name: 'Stripe', logoUrl: 'https://cdn.simpleicons.org/stripe/635bff', badge: 'Cards & Wallets' },
-    { id: 'binance', name: 'Binance', logoUrl: 'https://cdn.simpleicons.org/binance/f0b90b', badge: 'Crypto Payments' },
-    { id: 'oxapay', name: 'OxaPay', logoUrl: 'https://cdn.simpleicons.org/oxapay/ffffff', badge: 'Crypto Gateway' },
-    { id: 'wise', name: 'Wise', logoUrl: 'https://cdn.simpleicons.org/wise/9fe870', badge: 'Global Transfers' },
-    { id: 'payoneer', name: 'Payoneer', logoUrl: 'https://cdn.simpleicons.org/payoneer/ff4800', badge: 'Global Payouts' },
-    { id: 'payeer', name: 'Payeer', logoUrl: 'https://cdn.simpleicons.org/payeer/8b5cf6', badge: 'E-wallet Payments' },
-    { id: 'paypal', name: 'PayPal', logoUrl: 'https://cdn.simpleicons.org/paypal/0070ba', badge: 'Online Payments' },
-    { id: 'taptap-send', name: 'TapTap Send', logoUrl: 'https://cdn.simpleicons.org/taptapsend/ffffff', badge: 'Remittance' }
+    { id: 'stripe', name: 'Stripe', logoUrl: '/assets/international/stripe.png', badge: 'Cards & Wallets' },
+    { id: 'binance', name: 'Binance', logoUrl: '/assets/international/binance.png', badge: 'Crypto Payments' },
+    { id: 'oxapay', name: 'OxaPay', logoUrl: '/assets/international/oxapay.png', badge: 'Crypto Gateway' },
+    { id: 'wise', name: 'Wise', logoUrl: '/assets/international/wise.png', badge: 'Global Transfers' },
+    { id: 'payoneer', name: 'Payoneer', logoUrl: '/assets/international/payoneer.png', badge: 'Global Payouts' },
+    { id: 'payeer', name: 'Payeer', logoUrl: '/assets/international/payeer.png', badge: 'E-wallet Payments' },
+    { id: 'paypal', name: 'PayPal', logoUrl: '/assets/international/paypal.png', badge: 'Online Payments' },
+    { id: 'taptap-send', name: 'TapTap Send', logoUrl: '/assets/international/taptap-send.png', badge: 'Remittance' }
   ];
   const internationalFieldConfig: Record<string, { label: string; key: string; type?: string; placeholder?: string }[]> = {
     stripe: [
@@ -881,8 +881,16 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                         }}
                         className="flex flex-col items-center justify-center px-4 py-4 bg-[#111a2e] border border-[#263653] rounded-[14px] hover:border-cyan-400/70 hover:bg-[#15213a] transition-all gap-3.5 h-[134px] relative group shadow-[0_8px_22px_rgba(2,8,23,0.16)]"
                       >
-                        <div className="h-10 w-full flex items-center justify-center">
-                          <img src={provider.logoUrl} alt={provider.name} className="max-h-9 max-w-[116px] object-contain" />
+                        <div className="h-11 w-full flex items-center justify-center">
+                          <img 
+                            src={provider.logoUrl} 
+                            alt={provider.name} 
+                            className={`max-h-10 max-w-[124px] object-contain ${provider.id === 'oxapay' || provider.id === 'payeer' || provider.id === 'taptap-send' ? 'opacity-90 contrast-125' : ''}`}
+                            onError={(e) => {
+                               // Fallback if needed
+                               (e.target as any).src = `https://ui-avatars.com/api/?name=${provider.name}&background=1a2234&color=7fd6c3&bold=true`;
+                            }}
+                          />
                         </div>
                         <span className="font-bold text-slate-200 text-[15px] leading-none block">{provider.name}</span>
                       </button>
