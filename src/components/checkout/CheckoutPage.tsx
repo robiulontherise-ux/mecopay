@@ -427,7 +427,8 @@ export default function CheckoutPage() {
             callback_url: sessionObj.callback_url,
             cancel_url: sessionObj.cancel_url,
             is_dynamic_session: true,
-            invoice_number: sessionObj.invoice_number
+            invoice_number: sessionObj.invoice_number,
+            currency: sessionObj.currency ? String(sessionObj.currency).trim() : null
           };
 
           setLinkData(dynamicLink);
@@ -479,6 +480,7 @@ export default function CheckoutPage() {
           if (inv) {
             setInvoiceId(inv.id);
             const brand = inv.brands;
+            const invoiceCurrency = inv.metadata?.currency || inv.currency || null;
             const dynamicLink = {
               id: inv.id,
               brand_id: inv.brand_id,
@@ -488,7 +490,8 @@ export default function CheckoutPage() {
               product_name: inv.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Order Payment'),
               redirect_link: inv.redirect_url || '',
               invoice_number: inv.invoice_number,
-              is_dynamic_session: true
+              is_dynamic_session: true,
+              currency: invoiceCurrency ? String(invoiceCurrency).trim() : null
             };
             setLinkData(dynamicLink);
             if (brand) setBrandData(brand);
@@ -610,6 +613,64 @@ export default function CheckoutPage() {
     }
     return { subtotal, fee: Number(fee.toFixed(2)), total };
   }, [linkData, brandData]);
+
+  // Dynamic currency code & display formatter (supports BDT, USD, EUR, USDT, BTC, symbols and Bangla text)
+  const currencyCode = useMemo(() => {
+    let raw = linkData?.currency;
+    if (!raw && selectedGateway) {
+      if (selectedGateway.currency) {
+        raw = selectedGateway.currency;
+      } else {
+        const gwName = String(selectedGateway.provider || selectedGateway.method || selectedGateway.channel || '').toLowerCase();
+        if (gwName.includes('bkash') || gwName.includes('nagad') || gwName.includes('rocket') || gwName.includes('upay')) {
+          raw = 'BDT';
+        }
+      }
+    }
+    if (!raw && brandData?.currency) {
+      raw = brandData.currency;
+    }
+    if (!raw) {
+      raw = 'USD';
+    }
+    const trimmed = String(raw).trim();
+    return /^[a-zA-Z]{2,6}$/.test(trimmed) ? trimmed.toUpperCase() : trimmed;
+  }, [linkData, selectedGateway, brandData]);
+
+  const formatCurrency = (amt: number | string, forceCode: boolean = false) => {
+    const num = typeof amt === 'number' ? amt : (Number(amt) || 0);
+    if (forceCode) {
+      return `${currencyCode} ${num}`;
+    }
+    switch (currencyCode) {
+      case 'BDT':
+      case '৳':
+      case 'টাকা':
+        return `৳ ${num}`;
+      case 'USD':
+      case '$':
+      case 'ডলার':
+        return `$${num}`;
+      case 'EUR':
+      case '€':
+      case 'ইউরো':
+        return `€${num}`;
+      case 'GBP':
+      case '£':
+      case 'পাউন্ড':
+        return `£${num}`;
+      case 'INR':
+      case '₹':
+      case 'রুপি':
+        return `₹${num}`;
+      case 'CAD':
+        return `CA$${num}`;
+      case 'AUD':
+        return `AU$${num}`;
+      default:
+        return `${currencyCode} ${num}`;
+    }
+  };
 
   const handleFieldChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -1004,10 +1065,10 @@ export default function CheckoutPage() {
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-lg leading-tight mb-1 truncate" title={linkData?.product_name || linkData?.title || 'Payment'}>{linkData?.product_name || linkData?.title || 'Payment'}</h3>
                 <div className="text-white font-bold text-xl flex flex-col items-start">
-                  <div>৳ {checkoutAmounts.total}</div>
+                  <div>{formatCurrency(checkoutAmounts.total)}</div>
                   {checkoutAmounts.fee > 0 && (
                     <div className="text-[10px] text-white/90 font-normal">
-                      Includes ৳{checkoutAmounts.fee} fee
+                      Includes {formatCurrency(checkoutAmounts.fee)} fee
                     </div>
                   )}
                 </div>
@@ -1089,7 +1150,7 @@ export default function CheckoutPage() {
                 <div className="border border-white/30 rounded-lg p-4 flex justify-between items-center mb-2">
                   <div>
                     <div className="text-[10px] font-bold opacity-80 uppercase tracking-wider mb-1">Total Amount:</div>
-                    <div className="text-2xl font-bold">BDT {checkoutAmounts.total}</div>
+                    <div className="text-2xl font-bold">{currencyCode} {checkoutAmounts.total}</div>
                   </div>
                   <button onClick={() => copyToClipboard(checkoutAmounts.total?.toString() || '', 'amount')} className="bg-white text-[#ED1C24] p-2.5 rounded-full transition-transform hover:scale-105">
                     {copied === 'amount' ? <div className="bg-[#00FF00] rounded-full p-1"><CheckCircle2 className="w-4 h-4 text-white" /></div> : <Copy className="w-5 h-5" />}
@@ -1097,19 +1158,19 @@ export default function CheckoutPage() {
                 </div>
               )}
               {providerKey === 'nagad' && (
-                <div className="text-sm font-bold opacity-90">Charge: <span className="font-normal">BDT 0</span></div>
+                <div className="text-sm font-bold opacity-90">Charge: <span className="font-normal">{currencyCode} 0</span></div>
               )}
               
               {providerKey !== 'nagad' && (
                  <div className={`${providerKey === 'upay' ? 'bg-white text-slate-800 rounded-2xl py-4 px-6 text-center shadow-sm' : 'flex justify-between items-center border-t border-black/10 pt-4'}`}>
                     {providerKey === 'upay' ? (
-                       <div className="text-lg font-bold flex items-center justify-center gap-2">Amount: <span className="font-black">BDT {checkoutAmounts.total}</span>
+                       <div className="text-lg font-bold flex items-center justify-center gap-2">Amount: <span className="font-black">{currencyCode} {checkoutAmounts.total}</span>
     <button onClick={() => copyToClipboard(checkoutAmounts.total?.toString() || '', 'amount')} className="text-slate-500 hover:text-[#0033A0] transition-colors">
       {copied === 'amount' ? <div className="bg-[#00FF00] rounded-full p-1"><CheckCircle2 className="w-4 h-4 text-white" /></div> : <Copy className="w-5 h-5" />}
     </button>
   </div>
                     ) : (
-                       <div className="text-xl font-bold flex items-center gap-2">৳{checkoutAmounts.total}
+                       <div className="text-xl font-bold flex items-center gap-2">{formatCurrency(checkoutAmounts.total)}
     <button onClick={() => copyToClipboard(checkoutAmounts.total?.toString() || '', 'amount')} className="text-slate-500 hover:text-slate-800 transition-colors">
       {copied === 'amount' ? <div className="bg-[#00FF00] rounded-full p-1"><CheckCircle2 className="w-4 h-4 text-white" /></div> : <Copy className="w-5 h-5" />}
     </button>
@@ -1550,8 +1611,8 @@ export default function CheckoutPage() {
               ) : (
                 <p className="text-slate-500 mb-10 text-lg">
                   {lang === 'EN'
-                    ? <>Thank you, <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>. Your payment of ৳{linkData.price} via {selectedGateway?.provider} has been received and is being verified.</>
-                    : <>ধন্যবাদ <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>। {selectedGateway?.provider}-এর মাধ্যমে আপনার ৳{linkData.price} পেমেন্টটি গ্রহণ করা হয়েছে এবং ভেরিফাই করা হচ্ছে।</>}
+                    ? <>Thank you, <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>. Your payment of {formatCurrency(linkData.price)} via {selectedGateway?.provider} has been received and is being verified.</>
+                    : <>ধন্যবাদ <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>। {selectedGateway?.provider}-এর মাধ্যমে আপনার {formatCurrency(linkData.price)} পেমেন্টটি গ্রহণ করা হয়েছে এবং ভেরিফাই করা হচ্ছে।</>}
                 </p>
               )}
               

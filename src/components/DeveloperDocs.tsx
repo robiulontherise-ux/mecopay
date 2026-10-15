@@ -18,7 +18,7 @@ import { showToast } from '../lib/toast';
 
 export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'three-products' | 'laravel' | 'webhook' | 'worker-code' | 'overview'>('three-products');
+  const [activeTab, setActiveTab] = useState<'three-products' | 'laravel' | 'webhook' | 'overview'>('three-products');
   const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
   const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
 
@@ -155,16 +155,7 @@ export default function DeveloperDocs() {
           <Webhook className="w-4 h-4" /> ৩. Webhook & রিয়েল-টাইম সিঙ্ক
         </button>
 
-        <button
-          onClick={() => setActiveTab('worker-code')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 border-b-2 whitespace-nowrap ${
-            activeTab === 'worker-code'
-              ? 'border-emerald-500 text-emerald-400 bg-slate-900'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          <Cpu className="w-4 h-4" /> ৪. Cloudflare Worker কোড (Final)
-        </button>
+        
 
         <button
           onClick={() => setActiveTab('overview')}
@@ -174,7 +165,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <ShieldCheck className="w-4 h-4" /> ৫. API Credentials & Base URL
+          <ShieldCheck className="w-4 h-4" /> ৪. API Credentials & Base URL
         </button>
       </div>
 
@@ -279,6 +270,11 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">মান হতে হবে <code>"digital"</code>।</td>
                     </tr>
                     <tr>
+                      <td className="p-3 font-mono text-blue-300">currency</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
+                      <td className="p-3 text-slate-300">মুদ্রার কোড (যেমন: <code>"USD"</code>, <code>"BDT"</code>, <code>"EUR"</code>, <code>"GBP"</code>, <code>"USDT"</code>)। <strong>বাধ্যতামূলক:</strong> যেহেতু দেশ ও গেটওয়েভেদে একই সংখ্যার মূল্যের বিশাল পার্থক্য (যেমন ১০০ USD এবং ১০০ BDT এক নয়), তাই সঠিক কারেন্সি কোড পাঠানো বাধ্যতামূলক। পে-লোডে না পাঠালে সিস্টেম স্বয়ংক্রিয়ভাবে ব্র্যান্ড/গেটওয়ের ডিফল্ট কারেন্সি ফ্রন্টএন্ডে প্রদর্শন করবে।</td>
+                    </tr>
+                    <tr>
                       <td className="p-3 font-mono text-blue-300">amount</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">ডিজিটাল পণ্যের ১০০% সম্পূর্ণ মূল্য।</td>
@@ -370,6 +366,11 @@ export default function DeveloperDocs() {
                       <td className="p-3 font-mono text-amber-300">product_type</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">মান হতে হবে <code>"physical_advance"</code>।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-amber-300">currency</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
+                      <td className="p-3 text-slate-300">মুদ্রার কোড (যেমন: <code>"USD"</code>, <code>"BDT"</code>, <code>"EUR"</code>, <code>"GBP"</code>)। <strong>বাধ্যতামূলক:</strong> বিভিন্ন দেশে ও গেটওয়েতে মুদ্রার মানের ভিন্নতার কারণে কারেন্সি উল্লেখ করা বাধ্যতামূলক। পে-লোডে না পেলে ব্র্যান্ড/গেটওয়ে কনফিগ থেকে ফ্রন্টএন্ডে কারেন্সি প্রদর্শিত হবে।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-amber-300">total_amount</td>
@@ -480,6 +481,11 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">মান হতে হবে <code>"physical_cod"</code>।</td>
                     </tr>
                     <tr>
+                      <td className="p-3 font-mono text-emerald-300">currency</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
+                      <td className="p-3 text-slate-300">মুদ্রার কোড (যেমন: <code>"USD"</code>, <code>"BDT"</code>, <code>"INR"</code>)। <strong>বাধ্যতামূলক:</strong> অর্ডার ভ্যালু ও কুরিয়ার অ্যামাউন্ট সঠিক রাখতে কারেন্সি পাঠানো আবশ্যক। পে-লোডে না পেলে ব্র্যান্ড/গেটওয়ে কনফিগ থেকে ফ্রন্টএন্ডে প্রদর্শিত হবে।</td>
+                    </tr>
+                    <tr>
                       <td className="p-3 font-mono text-emerald-300">total_amount</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">পণ্যের মোট মূল্য (যেমন: ১২০০ ৳)।</td>
@@ -549,6 +555,52 @@ export default function DeveloperDocs() {
               <p className="text-xs text-slate-400 mt-1">
                 আপনার পছন্দের প্রোগ্রামিং ল্যাঙ্গুয়েজ বা ফ্রেমওয়ার্ক নির্বাচন করুন (Laravel, Raw PHP, Node.js, JavaScript, Python):
               </p>
+            </div>
+
+            {/* End-to-End Product Lifecycle & Currency Flow Explainer */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-emerald-400">
+                <Info className="w-4 h-4 shrink-0" />
+                <span>ক্লায়েন্টের সাইটে প্রোডাক্ট কারেন্সি ও টাইপ কিভাবে কাজ করে? (Architecture Flow)</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+                  <div className="font-bold text-amber-400 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[10px]">১</span>
+                    স্টোরের ডাটাবেজ
+                  </div>
+                  <p className="text-slate-400 leading-relaxed text-[11px]">
+                    মার্চেন্টের সাইটে প্রোডাক্ট টেবিলে <code>product_type</code> (digital, physical_advance, physical_cod) এবং <code>currency</code> (BDT, USD, EUR) সেট থাকে।
+                  </p>
+                </div>
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+                  <div className="font-bold text-blue-400 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center text-[10px]">২</span>
+                    ফ্রন্টএন্ড ফর্ম / Buy Now
+                  </div>
+                  <p className="text-slate-400 leading-relaxed text-[11px]">
+                    গ্রাহক যখন সাইটে কোনো প্রোডাক্টে "অর্ডার করুন" চাপেন, ফ্রন্টএন্ড থেকে শুধু <code>product_id</code> অথবা কার্ট ডেটা আপনার ব্যাকএন্ড কন্ট্রোলারে যায়।
+                  </p>
+                </div>
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+                  <div className="font-bold text-purple-400 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px]">৩</span>
+                    ব্যাকএন্ড কন্ট্রোলার
+                  </div>
+                  <p className="text-slate-400 leading-relaxed text-[11px]">
+                    কন্ট্রোলার প্রোডাক্টের ধরণ ও কারেন্সি রিড করে স্বয়ংক্রিয়ভাবে MecoPay API Worker এর <code>/v1/create-checkout</code> এ পে-লোড পাঠিয়ে <code>checkout_url</code> পায়।
+                  </p>
+                </div>
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+                  <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[10px]">৪</span>
+                    MecoPay চেকআউট
+                  </div>
+                  <p className="text-slate-400 leading-relaxed text-[11px]">
+                    পে-লোডে BDT থাকলে চেকআউটে <strong>৳</strong> ও বিকাশ/নগদ/কার্ড আসে; USD থাকলে <strong>$</strong> ও ইন্টারন্যাশনাল কার্ড আসে; আর কারেন্সি না দিলে গেটওয়ে সেটিং থেকে অটো শো হয়!
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Language & Framework Switcher */}
@@ -794,35 +846,8 @@ HEADERS:
       )}
 
       {/* TAB 4: CLOUDFLARE WORKER CODE (FINAL) */}
-      {activeTab === 'worker-code' && (
-        <div className="space-y-6">
-          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20 mb-2">
-                  <Cpu className="w-3.5 h-3.5" /> Production Ready Edge Worker
-                </div>
-                <h3 className="text-lg font-bold text-white">Cloudflare Worker: create-checkout Function</h3>
-                <p className="text-xs text-slate-400">
-                  সম্পূর্ণ ৩ ধরনের প্রোডাক্ট ভ্যালিডেশন, কুরিয়ার চার্জ হ্যান্ডলিং এবং সেশন তৈরির ফুল প্রডাকশন কোড।
-                </p>
-              </div>
-              <button
-                onClick={() => handleCopy(cloudflareWorkerCode, 6)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-500/20 shrink-0 self-start sm:self-auto"
-              >
-                {copiedIndex === 6 ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />} Copy Worker Code
-              </button>
-            </div>
-
-            <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto leading-relaxed max-h-[500px]">
-{cloudflareWorkerCode}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: API CREDENTIALS & BASE URL */}
+      {/* TAB 4: API CREDENTIALS & BASE URL */}
+      
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5">
@@ -874,6 +899,7 @@ const digitalJsonPayload = `{
   "order_id": "ORD-9812",
   "product_name": "Fullstack AI Mastery Course",
   "product_type": "digital",
+  "currency": "USD",
   "amount": 1500,
   "callback_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
@@ -889,6 +915,7 @@ const advanceJsonPayload = `{
   "order_id": "ORD-7734",
   "product_name": "Wireless Noise Cancelling Headphones",
   "product_type": "physical_advance",
+  "currency": "USD",
   "total_amount": 1250,
   "courier_charge": 120,
   "amount": 150,
@@ -906,6 +933,7 @@ const codJsonPayload = `{
   "order_id": "ORD-5519",
   "product_name": "Leather Executive Wallet",
   "product_type": "physical_cod",
+  "currency": "USD",
   "total_amount": 1200,
   "courier_charge": 120,
   "amount": 0,
@@ -983,12 +1011,16 @@ class PaymentController extends Controller
         }
 
         $price = (float) $request->input('price', 0);
-        $courierCharge = (float) $request->input('courier_charge', 120);
+        // কুরিয়ার চার্জ ডাইনামিকালি রিকোয়েস্ট বা প্রোডাক্ট থেকে নিন (ফ্রি ডেলিভারি হলে ০ থাকবে):
+        $courierCharge = (float) $request->input('courier_charge', 0);
+        // আপনার ডাটাবেজ বা রিকোয়েস্ট থেকে কারেন্সি নিন (যেমন: BDT, USD, EUR ইত্যাদি):
+        $currency = strtoupper(trim($request->input('currency', 'BDT')));
 
         $payload = [
             'order_id'         => $orderId ?: ('ORD-' . time()),
             'product_name'     => $productName ?: 'General Item',
             'product_type'     => $productType,
+            'currency'         => $currency,
             'customer_name'    => $request->input('customer_name', 'Guest Customer'),
             'customer_phone'   => $request->input('customer_phone', ''),
             'customer_address' => $request->input('customer_address', ''),
@@ -1010,7 +1042,8 @@ class PaymentController extends Controller
             if ($price <= 0) {
                 return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য টোটাল মূল্য আবশ্যক।');
             }
-            $advanceAmount = (float) $request->input('advance_amount', 150);
+            // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি (০ হলে ১০০% ফুল ক্যাশ অন ডেলিভারি):
+            $advanceAmount = (float) $request->input('advance_amount', 0);
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
             $payload['amount']         = min($advanceAmount, $price);
@@ -1092,18 +1125,20 @@ if (!empty($cart)) {
 $productType = $_POST['product_type'] ?? 'digital'; // 'digital' | 'physical_advance' | 'physical_cod'
 $orderId = $_POST['order_id'] ?? ("ORD-" . time());
 $productName = $_POST['product_name'] ?? "E-Commerce Product";
-$price = (float) ($_POST['price'] ?? 1500);
-$courierCharge = (float) ($_POST['courier_charge'] ?? 120);
+// প্রোডাক্টের আসল মূল্য ও কুরিয়ার চার্জ ফর্ম বা ডাটাবেজ থেকে ডাইনামিকালি নিন:
+    $price = (float) ($_POST['price'] ?? 0);
+$courierCharge = (float) ($_POST['courier_charge'] ?? 0); // ফ্রি ডেলিভারি হলে ০
 
 $payload = [
     "order_id"         => $orderId,
     "product_name"     => $productName,
     "product_type"     => $productType,
     "customer_name"    => $_POST['customer_name'] ?? "Customer Name",
-    "customer_phone"   => $_POST['customer_phone'] ?? "01700000000",
-    "customer_address" => $_POST['customer_address'] ?? "Dhaka, Bangladesh",
-    "callback_url"     => "https://yourwebsite.com/payment_success.php",
-    "cancel_url"       => "https://yourwebsite.com/checkout.php"
+    "customer_phone"   => $_POST['customer_phone'] ?? "",
+    "customer_address" => $_POST['customer_address'] ?? "",
+    // সাইটের নিজস্ব ডোমেন ও ডাইনামিক রিটার্ন পাথ:
+    "callback_url"     => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/payment_success.php",
+    "cancel_url"       => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/cart.php"
 ];
 
 if ($productType === 'digital') {
@@ -1111,7 +1146,7 @@ if ($productType === 'digital') {
     $payload['amount'] = $price;
     $payload['telegram_link'] = "https://t.me/+join_chat";
 } elseif ($productType === 'physical_advance') {
-    $advance = (float) ($_POST['advance_amount'] ?? 150);
+    $advance = (float) ($_POST['advance_amount'] ?? 0); // ০ হলে ১০০% ফুল COD
     $payload['total_amount']   = $price;
     $payload['courier_charge'] = $courierCharge;
     $payload['amount']         = $advance;
@@ -1143,7 +1178,7 @@ if ($httpCode === 200 && !empty($result['checkout_url'])) {
     header("Location: " . $result['checkout_url']);
     exit;
 } elseif ($httpCode === 200 && empty($result['requires_payment'])) {
-    header("Location: https://yourwebsite.com/order_success.php?inv=" . $result['invoice_number']);
+    header("Location: " . $result['checkout_url']);
     exit;
 } else {
     echo "MecoPay Error: " . ($result['error'] ?? 'Connection Failed');
@@ -1178,8 +1213,8 @@ app.post('/api/checkout', async (req, res) => {
       product_name, 
       product_type = 'digital', 
       price = 0, 
-      courier_charge = 120, 
-      advance_amount = 150,
+      courier_charge = 0, // ফ্রি ডেলিভারি হলে ০ 
+      advance_amount = 0, // ০ হলে ১০০% ফুল COD
       cart_items = [],
       customer_name, 
       customer_phone, 
@@ -1215,8 +1250,9 @@ app.post('/api/checkout', async (req, res) => {
       customer_name: customer_name || 'Guest Customer',
       customer_phone: customer_phone || '',
       customer_address: customer_address || '',
-      callback_url: 'https://yourshop.com/payment/callback',
-      cancel_url: 'https://yourshop.com/checkout'
+      // ডাইনামিক সাইট ডোমেন ও পাথ:
+      callback_url: ,
+      cancel_url: 
     };
 
     if (product_type === 'digital') {
@@ -1294,24 +1330,26 @@ async function initiateMecoPayCheckout(orderData) {
   // =========================================================================
   const productType = orderData.product_type || 'digital';
   const price = Number(orderData.price || 0);
-  const courierCharge = Number(orderData.courier_charge || 120);
+  const courierCharge = Number(orderData.courier_charge || 0); // ফ্রি ডেলিভারি হলে ০
 
   const payload = {
     order_id: orderData.order_id || ("ORD-" + Date.now()),
-    product_name: orderData.product_name || "Premium Item",
+    product_name: orderData.product_name || "Order Item",
     product_type: productType,
+    currency: orderData.currency || "USD",
     customer_name: orderData.customer_name || "Customer Name",
-    customer_phone: orderData.customer_phone || "01812345678",
-    customer_address: orderData.customer_address || "Dhaka, Bangladesh",
-    callback_url: "https://yourshop.com/order-success",
-    cancel_url: "https://yourshop.com/cart"
+    customer_phone: orderData.customer_phone || "",
+    customer_address: orderData.customer_address || "",
+    // ব্রাউজারের ডাইনামিক অরিজিন URL:
+    callback_url: window.location.origin + "/order-success",
+    cancel_url: window.location.origin + "/cart"
   };
 
   if (productType === 'digital') {
     payload.amount = price;
     payload.telegram_link = orderData.telegram_link || "https://t.me/+vip_invite";
   } else if (productType === 'physical_advance') {
-    const advance = Number(orderData.advance_amount || 150);
+    const advance = Number(orderData.advance_amount || 0); // ০ হলে ১০০% ফুল COD
     payload.total_amount = price;
     payload.courier_charge = courierCharge;
     payload.amount = advance;
@@ -1383,18 +1421,20 @@ def create_checkout_session(request_data):
     # গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
     # =========================================================================
     product_type = request_data.get('product_type', 'digital') # 'digital' | 'physical_advance' | 'physical_cod'
-    price = float(request_data.get('price', 1500))
-    courier_charge = float(request_data.get('courier_charge', 120))
+    price = float(request_data.get('price') or request_data.get('amount') or 0)
+    courier_charge = float(request_data.get('courier_charge') or 0)
 
     payload = {
         "order_id": request_data.get('order_id', f"ORD-{int(time.time())}"),
         "product_name": request_data.get('product_name', "Digital E-Book"),
         "product_type": product_type,
+        "currency": request_data.get('currency', 'USD'),
         "customer_name": request_data.get('customer_name', "Guest"),
-        "customer_phone": request_data.get('customer_phone', "01700000000"),
+        "customer_phone": request_data.get('customer_phone', ""),
         "customer_address": request_data.get('customer_address', "Dhaka"),
-        "callback_url": "https://yourwebsite.com/payment/callback",
-        "cancel_url": "https://yourwebsite.com/checkout"
+        # সাইটের ডাইনামিক ডোমেন বা রিকোয়েস্ট URL:
+        "callback_url": request_data.get('callback_url') or "/payment/callback",
+        "cancel_url": request_data.get('cancel_url') or "/cart"
     }
 
     if product_type == 'digital':
@@ -1403,7 +1443,7 @@ def create_checkout_session(request_data):
         payload["amount"] = price
         payload["telegram_link"] = "https://t.me/+vip_invite"
     elif product_type == 'physical_advance':
-        advance = float(request_data.get('advance_amount', 150))
+        advance = float(request_data.get('advance_amount') or 0)
         payload["total_amount"] = price
         payload["courier_charge"] = courier_charge
         payload["amount"] = advance
@@ -1497,359 +1537,3 @@ class MecoPayWebhookController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 }`;
-
-const cloudflareWorkerCode = `// Cloudflare Worker (worker.js) - 100% Native & Zero-Dependency
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-};
-
-// =========================================================================
-// ব্যাকগ্রাউন্ড কুরিয়ার বুকিং প্রসেসর (Cloudflare ctx.waitUntil Background Task)
-// =========================================================================
-async function processBackgroundCourierBooking(env, brand, invoice) {
-  try {
-    if (!brand.auto_courier_on_full_cod || !brand.courier_api_key) {
-      console.log('Manual Mode: কুরিয়ার অটোমেশন বন্ধ থাকায় বুকিং পেন্ডিং রাখা হয়েছে।');
-      return;
-    }
-
-    const courierProvider = brand.courier_provider || 'steadfast';
-    let trackingCode = \`STDF-\${Date.now().toString().slice(-6)}\`;
-    let trackingUrl = \`https://steadfast.com.bd/tracking/\${trackingCode}\`;
-
-    // Steadfast API Integration
-    if (courierProvider === 'steadfast' && brand.courier_api_key && brand.courier_secret_key) {
-      const sfRes = await fetch('https://portal.steadfast.com.bd/api/v1/create_order', {
-        method: 'POST',
-        headers: {
-          'Api-Key': brand.courier_api_key,
-          'Secret-Key': brand.courier_secret_key,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          invoice: invoice.invoice_number,
-          recipient_name: invoice.customer_name,
-          recipient_phone: invoice.customer_phone,
-          recipient_address: invoice.customer_address,
-          cod_amount: invoice.amount
-        })
-      });
-      const sfData = await sfRes.json();
-      if (sfData?.consignment?.tracking_code) {
-        trackingCode = sfData.consignment.tracking_code;
-        trackingUrl = \`https://steadfast.com.bd/tracking/\${trackingCode}\`;
-      }
-    }
-
-    const courierInfo = {
-      provider: courierProvider,
-      tracking_code: trackingCode,
-      tracking_url: trackingUrl,
-      booked_at: new Date().toISOString()
-    };
-
-    const supabaseUrl = env.SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co';
-    const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
-
-    // ১. ইনভয়েস মেটাডাটাতে কুরিয়ার ট্র্যাকিং সংরক্ষণ
-    await fetch(\`\${supabaseUrl}/rest/v1/invoices?id=eq.\${invoice.id}\`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': \`Bearer \${supabaseKey}\`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({
-        metadata: {
-          ...(invoice.metadata || {}),
-          courier: courierInfo
-        }
-      })
-    });
-
-    // ২. মার্চেন্টের সাইটে Webhook পাঠানো
-    const webhookRes = await fetch(\`\${supabaseUrl}/rest/v1/webhooks?brand_id=eq.\${brand.id}&select=*\`, {
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': \`Bearer \${supabaseKey}\`
-      }
-    });
-    const webhooks = await webhookRes.json();
-    const webhook = Array.isArray(webhooks) && webhooks.length > 0 ? webhooks[0] : null;
-
-    if (webhook?.payload_url) {
-      await fetch(webhook.payload_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: 'order.courier_booked',
-          data: {
-            order_id: invoice.metadata?.order_id,
-            invoice_number: invoice.invoice_number,
-            courier: courierInfo
-          }
-        })
-      }).catch(() => {});
-    }
-  } catch (err) {
-    console.error('Background courier error:', err);
-  }
-}
-
-// =========================================================================
-// MecoPay Server Engine মেইন হ্যান্ডলার (POST /v1/create-checkout)
-// =========================================================================
-export default {
-  async fetch(request, env, ctx) {
-    if (request.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders });
-    }
-
-    const url = new URL(request.url);
-    const host = (request.headers.get('host') || '').toLowerCase().trim();
-
-    // =========================================================================
-    // ১. সাবডোমেন টু কাস্টম ডোমেন ৩০১ অটো-রিডাইরেক্ট (Canonical SEO Engine)
-    // =========================================================================
-    // ক্লায়েন্টের যদি ফ্রি সাবডোমেন এবং নিজস্ব কাস্টম ডোমেন ২টাই থাকে, সাবডোমেনে ভিজিটর এলে
-    // এই ইঞ্জিন স্বয়ংক্রিয়ভাবে ৩০১ পার্মানেন্ট রিডাইরেক্ট করে কাস্টম ডোমেনে পাঠিয়ে দেবে।
-    if (host.endsWith('.mecopay.space') && !host.startsWith('api.') && !host.startsWith('checkout.') && host !== 'mecopay.space' && host !== 'www.mecopay.space') {
-      try {
-        const subSlug = host.replace('.mecopay.space', '').trim();
-        const supabaseUrl = (env.SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co').replace(/\\/+$/, '');
-        const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3b251YWt2aGVyem9mcXhpbW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MzA5MDEsImV4cCI6MjEwMDQwNjkwMX0.29mIqf8zwUczPXIfIILw6ybJRKJ_l8HUttNU-6s-cL0';
-        
-        const siteCheck = await fetch(\`\${supabaseUrl}/rest/v1/site_settings?subdomain=eq.\${subSlug}&select=domain,canonical_domain&limit=1\`, {
-          headers: { 'apikey': supabaseKey, 'Authorization': \`Bearer \${supabaseKey}\` }
-        });
-        if (siteCheck.ok) {
-          const siteList = await siteCheck.json();
-          const targetDomain = siteList?.[0]?.domain || siteList?.[0]?.canonical_domain;
-          if (targetDomain && targetDomain !== host) {
-            return Response.redirect(\`https://\${targetDomain}\${url.pathname}\${url.search}\`, 301);
-          }
-        }
-      } catch (redirectErr) {
-        console.warn('Subdomain canonical redirect check failed:', redirectErr);
-      }
-    }
-
-    try {
-      let payload = {};
-      try {
-        payload = await request.json();
-      } catch (_) {
-        throw new Error('Invalid JSON payload');
-      }
-
-      // ১. ব্র্যান্ড অথেন্টিকেশন (Bearer Token)
-      const authHeader = request.headers.get('Authorization');
-      const apiKey = authHeader ? authHeader.replace(/Bearer\\s+/i, '').trim() : payload.api_key;
-
-      if (!apiKey) {
-        return new Response(JSON.stringify({ success: false, error: 'Missing Brand API Key in Authorization header.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
-        });
-      }
-
-      const supabaseUrl = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co').replace(/\/+$/, '');
-      const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY || env.SUPABASE_KEY || env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3b251YWt2aGVyem9mcXhpbW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MzA5MDEsImV4cCI6MjEwMDQwNjkwMX0.29mIqf8zwUczPXIfIILw6ybJRKJ_l8HUttNU-6s-cL0';
-
-      const brandRes = await fetch(\`\${supabaseUrl}/rest/v1/brands?api_key=eq.\${apiKey}&select=*\`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': \`Bearer \${supabaseKey}\`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!brandRes.ok) {
-        const errText = await brandRes.text();
-        return new Response(JSON.stringify({ success: false, error: \`Supabase query failed (\${brandRes.status}): \${errText}\` }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500,
-        });
-      }
-      const brands = await brandRes.json();
-      const brand = Array.isArray(brands) && brands.length > 0 ? brands[0] : null;
-
-      if (!brand) {
-        return new Response(JSON.stringify({ success: false, error: 'Invalid Brand API Key. No brand matched this key.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403,
-        });
-      }
-
-      const {
-        order_id,
-        product_name,
-        product_type = 'digital',
-        amount = 0,
-        total_amount = 0,
-        courier_charge = 0,
-        cod_due = 0,
-        callback_url,
-        cancel_url,
-        customer_name = 'Guest Customer',
-        customer_phone = '',
-        customer_email = '',
-        customer_address = '',
-        telegram_link,
-        facebook_group_link,
-        google_drive_link,
-        metadata = {}
-      } = payload;
-
-      // ২. সার্বজনীন ফিল্ড ভ্যালিডেশন
-      if (!order_id && !product_name) {
-        return new Response(JSON.stringify({ success: false, error: "Validation Error: At least one of 'order_id' or 'product_name' is mandatory." }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-
-      const invoiceNumber = 'INV-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
-
-      // =========================================================================
-      // CASE ১: ১০০% Full COD (সরাসরি DB ইনসার্ট + অটো কুরিয়ার বুকিং + নো চেকআউট লিঙ্ক)
-      // =========================================================================
-      if (product_type === 'physical_cod' || amount === 0) {
-        const insertRes = await fetch(\`\${supabaseUrl}/rest/v1/invoices\`, {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': \`Bearer \${supabaseKey}\`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify({
-            user_id: brand.user_id,
-            brand_id: brand.id,
-            invoice_number: invoiceNumber,
-            customer_name,
-            customer_phone,
-            customer_email,
-            customer_address,
-            amount: total_amount || amount || 0,
-            status: 'cod_confirmed',
-            product_type: 'physical_cod',
-            metadata: {
-              ...metadata,
-              order_id: order_id || ('ORD-' + Date.now()),
-              product_name: product_name || 'General COD Order',
-              courier_charge: courier_charge || 120,
-              cod_total: (total_amount || 0) + (courier_charge || 120)
-            }
-          })
-        });
-
-        const insertedInvoices = await insertRes.json();
-        const codInvoice = Array.isArray(insertedInvoices) && insertedInvoices.length > 0 
-          ? insertedInvoices[0] 
-          : { id: 'temp', invoice_number: invoiceNumber };
-
-        const response = new Response(JSON.stringify({
-          success: true,
-          product_type: 'physical_cod',
-          status: 'cod_confirmed',
-          invoice_id: codInvoice.id,
-          invoice_number: codInvoice.invoice_number,
-          requires_payment: false
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        });
-
-        // ব্যাকগ্রাউন্ডে নন-ব্লকিং কুরিয়ার বুকিং রান করা
-        if (ctx && ctx.waitUntil) {
-          ctx.waitUntil(processBackgroundCourierBooking(env, brand, codInvoice));
-        }
-
-        return response;
-      }
-
-      // =========================================================================
-      // CASE ২: Digital বা Advance COD (কোনো DB ইনসার্ট নেই - প্রি-পেমেন্ট সেশন URL রিটার্ন)
-      // =========================================================================
-      if (product_type === 'digital') {
-        if (!amount || typeof amount !== 'number' || amount <= 0) {
-          return new Response(JSON.stringify({ success: false, error: "Validation Error: 'amount' (100% price) is mandatory for digital products." }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-          });
-        }
-        if (!callback_url) {
-          return new Response(JSON.stringify({ success: false, error: "Validation Error: 'callback_url' is mandatory for digital products." }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-          });
-        }
-      } else if (product_type === 'physical_advance') {
-        if (!total_amount || typeof total_amount !== 'number' || total_amount <= 0) {
-          return new Response(JSON.stringify({ success: false, error: "Validation Error: 'total_amount' is mandatory for physical_advance." }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-          });
-        }
-        if (!amount || typeof amount !== 'number' || amount <= 0) {
-          return new Response(JSON.stringify({ success: false, error: "Validation Error: 'amount' (advance fee) is mandatory for physical_advance." }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-          });
-        }
-      }
-
-      // স্টেটলেস সিকিউর সেশন পে-লোড (বেস৬৪ লোগো বাদ দিয়ে কমপ্যাক্ট URL তৈরি)
-      const sessionData = {
-        brand_id: brand.id,
-        brand_name: brand.name,
-        brand_logo: brand.logo_url?.startsWith('http') ? brand.logo_url : undefined,
-        order_id: order_id || ('ORD-' + Date.now()),
-        product_name: product_name || 'Item',
-        product_type,
-        payable_amount: amount,
-        total_amount: total_amount || amount,
-        courier_charge: courier_charge || 0,
-        cod_due: cod_due || 0,
-        callback_url: callback_url || null,
-        cancel_url: cancel_url || null,
-        customer_name,
-        customer_phone,
-        customer_email,
-        customer_address,
-        telegram_link: telegram_link || null,
-        facebook_group_link: facebook_group_link || null,
-        google_drive_link: google_drive_link || null,
-        invoice_number: invoiceNumber,
-        created_at: Date.now()
-      };
-
-      // সেশন টোকেন এনকোড
-      const sessionToken = btoa(unescape(encodeURIComponent(JSON.stringify(sessionData))));
-      const appOrigin = env.APP_URL || 'https://checkout.mecopay.space';
-      const checkoutUrl = \`\${appOrigin}/pay?session=\${sessionToken}\`;
-
-      return new Response(JSON.stringify({
-        success: true,
-        product_type,
-        invoice_number: invoiceNumber,
-        payable_amount: amount,
-        checkout_url: checkoutUrl,
-        requires_payment: true
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      });
-
-    } catch (error) {
-      return new Response(JSON.stringify({ success: false, error: error.message }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    }
-  }
-};`;
-

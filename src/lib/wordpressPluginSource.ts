@@ -86,6 +86,13 @@ function mecopay_init_smart_gateway_class() {
                     'default'     => '',
                     'placeholder' => 'mp_live_...',
                     'desc_tip'    => true,
+                ),
+                'advance_amount' => array(
+                    'title'       => __('Physical Advance Amount', 'mecopay-gateway'),
+                    'type'        => 'number',
+                    'description' => __('Enter advance fee to charge online for physical products. Set 0 for 100% Cash On Delivery (Just Form).', 'mecopay-gateway'),
+                    'default'     => '150',
+                    'desc_tip'    => true,
                 )
             );
         }
@@ -135,27 +142,30 @@ function mecopay_init_smart_gateway_class() {
 
             $total_amount = (float) $order->get_total();
 
-            // ১. কার্ট স্ক্যান: ডিজিটাল নাকি ফিজিক্যাল প্রোডাক্ট
+            // ১. স্মার্ট কার্ট স্ক্যান: বুলেটপ্রুফ ডিজিটাল বনাম ফিজিক্যাল ডিটেকশন
             $is_digital = true;
             foreach ($order->get_items() as $item) {
                 $product = $item->get_product();
-                if ($product && !$product->is_virtual() && !$product->is_downloadable()) {
-                    $is_digital = false;
-                    break;
+                if ($product) {
+                    // যদি পণ্যটির শিপিং প্রয়োজন হয় অথবা ভার্চুয়াল/ডাউনলোডযোগ্য না হয় = ফিজিক্যাল
+                    if ($product->needs_shipping() || (!$product->is_virtual() && !$product->is_downloadable())) {
+                        $is_digital = false;
+                        break;
+                    }
                 }
             }
 
-            // ২. পে-লোড প্রস্তুতি (বাধ্যতামূলক ও ঐচ্ছিক ফিল্ড রুলস)
+            // ২. পে-লোড প্রস্তুতি (মাল্টি-কারেন্সি, ফ্রি ডেলিভারি ও অ্যাডভান্স/সিওডি চেকার)
             $first_item = reset($order->get_items());
             $first_product_name = $first_item ? $first_item->get_name() : ('Order #' . $order_id);
-            $shipping_fee = (float) $order->get_shipping_total();
-            if ($shipping_fee <= 0) {
-                $shipping_fee = 120.0; // ডিফল্ট কুরিয়ার ডেলিভারি চার্জ
-            }
+            $shipping_fee = (float) $order->get_shipping_total(); // ফ্রি ডেলিভারি হলে ০ থাকবে, ভুল করে ওভাররাইড হবে না
+            $order_currency = $order->get_currency(); // WooCommerce স্টোর কারেন্সি (BDT, USD, EUR ইত্যাদি)
+            $advance_config = (float) $this->get_option('advance_amount', 150);
 
             $payload = array(
                 'order_id'         => (string) $order_id,
                 'product_name'     => $first_product_name,
+                'currency'         => $order_currency,
                 'customer_name'    => trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()),
                 'customer_phone'   => $order->get_billing_phone(),
                 'customer_address' => trim($order->get_billing_address_1() . ', ' . $order->get_billing_city()),
@@ -164,17 +174,26 @@ function mecopay_init_smart_gateway_class() {
             );
 
             if ($is_digital) {
-                // ডিজিটাল প্রোডাক্ট: ১০০% পেমেন্ট + সফলতার পর রিডাইরেক্ট URL আবশ্যক
+                // ডিজিটাল প্রোডাক্ট: ১০০% ফুল পেমেন্ট
                 $payload['product_type'] = 'digital';
                 $payload['amount']       = $total_amount;
             } else {
-                // ফিজিক্যাল প্রোডাক্ট (অ্যাডভান্স ডেলিভারি চার্জ + কুরিয়ার ডিউ)
-                $advance_charge = min(150.0, $total_amount); // অগ্রিম গেটওয়ে চার্জ
-                $payload['product_type']   = 'physical_advance';
+                // ফিজিক্যাল প্রোডাক্ট চেকার: ১০০% সিওডি নাকি অ্যাডভান্স
                 $payload['total_amount']   = $total_amount;
                 $payload['courier_charge'] = $shipping_fee;
-                $payload['amount']         = $advance_charge;
-                $payload['cod_due']        = max(0, ($total_amount + $shipping_fee) - $advance_charge);
+
+                if ($advance_config <= 0) {
+                    // ১০০% ক্যাশ অন ডেলিভারি (Just Form): গেটওয়ে চার্জ ০
+                    $payload['product_type'] = 'physical_cod';
+                    $payload['amount']       = 0;
+                    $payload['cod_due']      = $total_amount;
+                } else {
+                    // অ্যাডভান্স ডেলিভারি ফি চার্জ + বাকি টাকা COD
+                    $advance_charge = min($advance_config, $total_amount);
+                    $payload['product_type'] = 'physical_advance';
+                    $payload['amount']       = $advance_charge;
+                    $payload['cod_due']      = max(0, $total_amount - $advance_charge);
+                }
             }
 
             // ৩. MecoPay Cloudflare Worker API-তে রিকোয়েস্ট পাঠানো

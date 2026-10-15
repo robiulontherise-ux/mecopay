@@ -1230,6 +1230,199 @@ async function startServer() {
   });
 
   // =========================================================================
+  // Standard Checkout API Endpoint (POST /v1/create-checkout & /api/checkout)
+  // Supports Digital Products, Advance COD & Full COD
+  // =========================================================================
+  app.post(['/v1/create-checkout', '/api/checkout', '/api/v1/create-checkout'], async (req, res) => {
+    try {
+      if (!supabaseAdmin) {
+        return res.status(500).json({ success: false, error: "Database client not initialized" });
+      }
+
+      const authHeader = req.headers.authorization;
+      const apiKey = authHeader ? authHeader.replace(/Bearer\s+/i, '').trim() : req.body.api_key;
+
+      if (!apiKey) {
+        return res.status(401).json({
+          success: false,
+          error: 'Missing Brand API Key in Authorization header or body.'
+        });
+      }
+
+      // 1. Authenticate Brand from Database
+      const { data: brand, error: brandErr } = await supabaseAdmin
+        .from('brands')
+        .select('*')
+        .eq('api_key', apiKey)
+        .maybeSingle();
+
+      if (brandErr) {
+        return res.status(500).json({
+          success: false,
+          error: `Database query failed: ${brandErr.message}`
+        });
+      }
+
+      if (!brand) {
+        return res.status(403).json({
+          success: false,
+          error: 'Invalid Brand API Key. No brand matched this key.'
+        });
+      }
+
+      const {
+        order_id,
+        product_name,
+        product_type = 'digital',
+        amount = 0,
+        total_amount = 0,
+        courier_charge = 0,
+        cod_due = 0,
+        callback_url,
+        cancel_url,
+        customer_name = 'Guest Customer',
+        customer_phone = '',
+        customer_email = '',
+        customer_address = '',
+        telegram_link,
+        facebook_group_link,
+        google_drive_link,
+        metadata = {}
+      } = req.body;
+
+      // 2. Universal Field Validation
+      if (!order_id && !product_name) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation Error: At least one of 'order_id' or 'product_name' is mandatory."
+        });
+      }
+
+      const invoiceNumber = 'INV-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
+
+      // CASE 1: 100% Full COD (Direct order booking without payment)
+      if (product_type === 'physical_cod' || amount === 0) {
+        const { data: codInvoice, error: codErr } = await supabaseAdmin
+          .from('invoices')
+          .insert({
+            user_id: brand.user_id,
+            brand_id: brand.id,
+            invoice_number: invoiceNumber,
+            customer_name,
+            customer_phone,
+            customer_email,
+            customer_address,
+            amount: total_amount || amount || 0,
+            status: 'cod_confirmed',
+            product_type: 'physical_cod',
+            metadata: {
+              ...metadata,
+              order_id: order_id || ('ORD-' + Date.now()),
+              product_name: product_name || 'General COD Order',
+              courier_charge: courier_charge || 120,
+              cod_total: (total_amount || 0) + (courier_charge || 120)
+            }
+          })
+          .select()
+          .maybeSingle();
+
+        if (codErr) {
+          console.warn('Error inserting COD invoice:', codErr);
+        }
+
+        return res.json({
+          success: true,
+          product_type: 'physical_cod',
+          status: 'cod_confirmed',
+          invoice_id: codInvoice?.id || 'temp',
+          invoice_number: codInvoice?.invoice_number || invoiceNumber,
+          requires_payment: false
+        });
+      }
+
+      // CASE 2: Digital Product
+      if (product_type === 'digital') {
+        const numAmount = Number(amount);
+        if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: "Validation Error: 'amount' (100% price) is mandatory for digital products."
+          });
+        }
+        if (!callback_url) {
+          return res.status(400).json({
+            success: false,
+            error: "Validation Error: 'callback_url' is mandatory for digital products."
+          });
+        }
+      } else if (product_type === 'physical_advance') {
+        const numTotal = Number(total_amount);
+        const numAdvance = Number(amount);
+        if (!numTotal || isNaN(numTotal) || numTotal <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: "Validation Error: 'total_amount' is mandatory for physical_advance."
+          });
+        }
+        if (!numAdvance || isNaN(numAdvance) || numAdvance <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: "Validation Error: 'amount' (advance fee) is mandatory for physical_advance."
+          });
+        }
+      }
+
+      // 3. Generate Stateless Secure Session
+      const sessionData = {
+        brand_id: brand.id,
+        brand_name: brand.name,
+        brand_logo: brand.logo_url?.startsWith('http') ? brand.logo_url : undefined,
+        order_id: order_id || ('ORD-' + Date.now()),
+        product_name: product_name || 'Item',
+        product_type,
+        payable_amount: Number(amount) || 0,
+        total_amount: Number(total_amount) || Number(amount) || 0,
+        courier_charge: Number(courier_charge) || 0,
+        cod_due: Number(cod_due) || 0,
+        callback_url: callback_url || null,
+        cancel_url: cancel_url || null,
+        customer_name,
+        customer_phone,
+        customer_email,
+        customer_address,
+        telegram_link: telegram_link || null,
+        facebook_group_link: facebook_group_link || null,
+        google_drive_link: google_drive_link || null,
+        invoice_number: invoiceNumber,
+        created_at: Date.now()
+      };
+
+      const sessionToken = Buffer.from(unescape(encodeURIComponent(JSON.stringify(sessionData)))).toString('base64');
+      
+      const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase();
+      let appOrigin = 'https://checkout.mecopay.space';
+      if (host && (host.includes('run.app') || host.includes('localhost') || host.includes('pages.dev'))) {
+        const proto = req.headers['x-forwarded-proto'] || (host.includes('localhost') ? 'http' : 'https');
+        appOrigin = `${proto}://${host}`;
+      }
+
+      const checkoutUrl = `${appOrigin}/pay?session=${sessionToken}`;
+
+      return res.json({
+        success: true,
+        product_type,
+        invoice_number: invoiceNumber,
+        payable_amount: Number(amount),
+        checkout_url: checkoutUrl,
+        requires_payment: true
+      });
+    } catch (error: any) {
+      console.error('Error in /v1/create-checkout:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // =========================================================================
   // Custom Domain & Subdomain Routing Middleware
   // Features:
   // 1. Subdomain-to-Custom-Domain 301 Permanent Canonical Redirect
@@ -1249,7 +1442,7 @@ async function startServer() {
       host === '127.0.0.1';
     
     const isCheckoutPath = req.path.startsWith('/pay') || req.path.startsWith('/checkout') || req.path.startsWith('/access');
-    const isApi = req.path.startsWith('/api');
+    const isApi = req.path.startsWith('/api') || req.path.startsWith('/v1');
     const isAsset = /\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/i.test(req.path);
 
     // SUBDOMAIN TO CUSTOM DOMAIN 301 AUTO-REDIRECT CHECK:
