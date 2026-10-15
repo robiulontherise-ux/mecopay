@@ -7,9 +7,10 @@ import { CheckCircle2, ArrowUp, ArrowDown, Edit, Trash2 } from 'lucide-react';
 
 interface GatewaySettingsProps {
   brands: any[];
+  isAdmin: boolean;
 }
 
-export default function GatewaySettings({ brands }: GatewaySettingsProps) {
+export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProps) {
   const [gateways, setGateways] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -496,6 +497,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
   const internationalProviders: InternationalProvider[] = [
     { id: 'stripe', name: 'Stripe', logoUrl: '/assets/international/stripe.png', badge: 'Cards & Wallets', capability: 'Hosted card checkout', gateway: true, note: 'সাধারণ international card/Wallet checkout-এর জন্য উপযুক্ত।' },
     { id: 'paypal', name: 'PayPal', logoUrl: '/assets/international/paypal.png', badge: 'Online Payments', capability: 'Orders + capture checkout', gateway: true, note: 'Single-merchant PayPal checkout-এর জন্য উপযুক্ত।' },
+    { id: 'payoneer', name: 'Payoneer', logoUrl: '/assets/international/payoneer.png', badge: 'Approved Checkout', capability: 'Payoneer Checkout', gateway: true, note: 'শুধুমাত্র Payoneer Checkout approval থাকা merchant-এর জন্য।' },
     { id: 'cryptomus', name: 'Cryptomus', logoUrl: '/assets/international/cryptomus.png', badge: 'Crypto Gateway', capability: 'Crypto invoice checkout', gateway: true, note: 'Official Merchant UUID ও Payment API Key দিয়ে crypto invoice তৈরি করে; আলাদা webhook secret নেই।' }
   ];
   const internationalFieldConfig: Record<string, InternationalField[]> = {
@@ -510,6 +512,13 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       { label: 'Client ID', key: 'clientId', placeholder: 'PayPal client ID', required: true },
       { label: 'Client Secret', key: 'clientSecret', type: 'password', placeholder: 'PayPal client secret', required: true },
       { label: 'Webhook ID', key: 'webhookId', placeholder: 'PayPal webhook ID', required: true }
+    ],
+    payoneer: [
+      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
+      { label: 'Checkout API Username', key: 'checkoutUsername', placeholder: 'Payoneer Checkout API username', required: true },
+      { label: 'Payment API Token', key: 'paymentApiToken', type: 'password', placeholder: 'Payoneer Checkout payment token', required: true },
+      { label: 'Store Code / Division', key: 'division', placeholder: 'Payoneer store division code', required: true },
+      { label: 'Notification URL', key: 'notificationUrl', type: 'url', placeholder: 'https://api.mecopay.space/api/webhooks/payoneer', required: false }
     ],
     cryptomus: [
       { label: 'Merchant UUID', key: 'merchantId', placeholder: 'Cryptomus merchant UUID', required: true },
@@ -849,7 +858,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                     <h3 className="text-[15px] leading-none font-bold text-slate-100">International</h3>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-                    {internationalProviders.map(provider => (
+                    {internationalProviders.filter(provider => provider.id !== 'cryptomus' || isAdmin).map(provider => (
                       <button
                         key={provider.id}
                         onClick={() => {

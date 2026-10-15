@@ -2452,7 +2452,7 @@ export default function DashboardShell() {
     }
     
     if (activeSubMenu === 'Gateway Settings') {
-      return <GatewaySettings brands={brands} />;
+      return <GatewaySettings brands={brands} isAdmin={isAdmin} />;
     }
 
     if (activeSubMenu === 'Payment Links') {
