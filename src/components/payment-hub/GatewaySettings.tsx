@@ -824,7 +824,7 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
                         className={`flex flex-col items-center justify-center p-6 bg-[#0f1523] border border-slate-800/80 rounded-xl hover:border-slate-600 transition-colors gap-5 h-36`}
                       >
                         <div className="h-10 flex items-center justify-center w-full">
-                          <img src={provider.logoUrl} alt={provider.name} className="h-full max-w-[100px] object-contain" />
+                          <img src={provider.logoUrl} alt={provider.name} className={`h-full max-w-[100px] object-contain ${provider.id === 'mcash' ? 'rounded-2xl' : ''}`} />
                         </div>
                         <span className="font-bold text-slate-100 text-[15px]">{provider.name}</span>
                       </button>
@@ -1250,7 +1250,7 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
                             }}
                           />
                           <div className="flex items-center gap-2">
-                            <img src={provider.logoUrl} alt={provider.name} className="h-5 w-5 object-contain" />
+                            <img src={provider.logoUrl} alt={provider.name} className={`h-5 w-5 object-contain ${provider.id === 'mcash' ? 'rounded-lg' : ''}`} />
                             <span className="font-medium text-sm">{provider.name}</span>
                           </div>
                         </label>

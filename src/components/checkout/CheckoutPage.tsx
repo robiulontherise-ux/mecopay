@@ -1141,7 +1141,7 @@ export default function CheckoutPage() {
                      </div>
                    </div>
                  ) : (
-                   <img src={logoUrl} alt={selectedGateway.provider} className="h-12 object-contain mb-4" />
+                   <img src={logoUrl} alt={selectedGateway.provider} className={`h-12 object-contain mb-4 ${providerKey === 'mcash' ? 'rounded-2xl' : ''}`} />
                  )}
                  <div className="w-full px-4 overflow-hidden">
                    <h2 className="text-lg font-bold text-center tracking-wide truncate" title={linkData?.product_name || brandData?.name}>{linkData?.product_name || brandData?.name}</h2>
@@ -1261,7 +1261,7 @@ export default function CheckoutPage() {
                             className="p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-500 hover:shadow-md flex flex-col items-center justify-center gap-2 transition-all h-24 group"
                           >
                             {gwLogo ? (
-                              <img src={gwLogo} alt={gw.provider} className="h-12 object-contain group-hover:scale-105 transition-transform" />
+                              <img src={gwLogo} alt={gw.provider} className={`h-12 object-contain group-hover:scale-105 transition-transform ${gw.provider.toLowerCase() === 'mcash' ? 'rounded-2xl' : ''}`} />
                             ) : (
                               <span className="text-sm font-bold text-slate-700 capitalize">{gw.provider}</span>
                             )}
