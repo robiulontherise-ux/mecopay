@@ -2,17 +2,15 @@
 
 এই guide-টি বর্তমান MecoPay-এর Express `server.ts` এবং Supabase structure ধরে লেখা। Frontend credential form একা payment process করবে না। Backend-এ provider API call, order mapping, webhook verification এবং idempotent fulfilment লাগবে।
 
-## 1. এই release-এ কেবল পাঁচটি gateway
+## 1. এই release-এ কেবল তিনটি gateway
 
-International Gateway UI এবং backend rollout কেবল এই পাঁচ provider-এর জন্য রাখুন:
+International Gateway UI এবং backend rollout কেবল এই তিন provider-এর জন্য রাখুন:
 
 1. **Stripe** — সাধারণ international card/hosted Checkout
 2. **PayPal** — Orders + buyer approval + capture
-3. **OxaPay** — hosted crypto invoice
-4. **Cryptomus** — crypto invoice/payment
-5. **Binance Pay** — Binance Pay crypto checkout
+3. **Cryptomus** — crypto invoice/payment
 
-**Wise, Payoneer, Payeer এবং TapTap Send এই release থেকে বাদ।** এগুলোর adapter, frontend card এবং active gateway option রাখবেন না। পরে আলাদা product requirement ও provider approval থাকলে নতুন release-এ যোগ করা যাবে।
+**OxaPay, Binance Pay, Wise, Payoneer, Payeer এবং TapTap Send এই release থেকে বাদ।** এগুলোর adapter, frontend card এবং active gateway option রাখবেন না। পরে আলাদা product requirement ও provider approval থাকলে নতুন release-এ যোগ করা যাবে।
 
 ## 2. Client webhook কোথায় বসাবে
 
@@ -21,18 +19,14 @@ Client নিজের website-এর webhook URL MecoPay form-এ দেবে 
 ```text
 Stripe:  https://api.mecopay.space/api/webhooks/stripe
 PayPal:  https://api.mecopay.space/api/webhooks/paypal
-OxaPay:   https://api.mecopay.space/api/webhooks/oxapay
 Cryptomus: https://api.mecopay.space/api/webhooks/cryptomus
-Binance:  https://api.mecopay.space/api/webhooks/binance
 ```
 
 Provider dashboard setup:
 
 - **Stripe:** Developers → Webhooks → Add endpoint → Stripe URL paste → `checkout.session.completed`, async success/failure এবং refund events select → signing secret নিয়ে MecoPay form-এ দিন।
 - **PayPal:** Developer Dashboard → My Apps & Credentials → Webhooks → Add Webhook → PayPal URL paste → payment capture completed/denied এবং refund events select → Webhook ID MecoPay form-এ দিন।
-- **OxaPay:** Merchant/API settings-এ callback URL হিসেবে OxaPay URL paste করুন। OxaPay API invoice create করার সময়ও একই MecoPay callback URL server-side পাঠানো হবে।
 - **Cryptomus:** Merchant dashboard-এর webhook/callback settings-এ Cryptomus URL paste করুন। Frontend-এ শুধু **Merchant UUID** এবং **Payment API Key** রাখবেন; Payout API Key ব্যবহার করবেন না এবং আলাদা webhook secret field লাগবে না। Invoice create করার সময় backend `amount`, `currency`, unique `order_id`, `url_callback` এবং optional `url_return` পাঠাবে। Cryptomus API request-এ `merchant` header ও `sign` value তৈরি হবে; webhook-এর `sign`-ও Payment API Key দিয়ে verify হবে।
-- **Binance Pay:** Binance Pay Merchant Admin-এর webhook/notification setting-এ Binance URL paste করুন এবং payment success/close events চালু করুন।
 
 Flow হবে:
 
@@ -48,7 +42,7 @@ MecoPay signature verify করে local order paid করে
 MecoPay → client website-এর configured merchant webhook পাঠায়
 ```
 
-Client website-এর webhook হলো **দ্বিতীয় ধাপের merchant notification**; এটি Stripe/PayPal/OxaPay/Binance-এর provider webhook-এর বিকল্প নয়।
+Client website-এর webhook হলো **দ্বিতীয় ধাপের merchant notification**; এটি Stripe/PayPal/Cryptomus-এর provider webhook-এর বিকল্প নয়।
 
 ## 3. Suggested folder structure
 
@@ -66,15 +60,11 @@ src/server/
     adapters/
       stripe.adapter.ts
       paypal.adapter.ts
-      oxapay.adapter.ts
       cryptomus.adapter.ts
-      binance-pay.adapter.ts
     webhooks/
       stripe.webhook.ts
       paypal.webhook.ts
-      oxapay.webhook.ts
       cryptomus.webhook.ts
-      binance.webhook.ts
     routes/
       payment.routes.ts
       webhook.routes.ts
@@ -197,14 +187,10 @@ export interface PaymentAdapter {
 // src/server/payments/provider-registry.ts
 import { stripeAdapter } from './adapters/stripe.adapter';
 import { paypalAdapter } from './adapters/paypal.adapter';
-import { oxapayAdapter } from './adapters/oxapay.adapter';
-import { binancePayAdapter } from './adapters/binance-pay.adapter';
 
 export const adapters = {
   stripe: stripeAdapter,
   paypal: paypalAdapter,
-  oxapay: oxapayAdapter,
-  binance: binancePayAdapter,
 };
 
 export function getAdapter(provider: string) {
@@ -214,11 +200,11 @@ export function getAdapter(provider: string) {
 }
 ```
 
-এই checkout registry-তে কেবল Stripe, PayPal, OxaPay, Cryptomus এবং Binance রাখবেন।
+এই checkout registry-তে কেবল Stripe, PayPal এবং Cryptomus রাখবেন।
 
 ## 6. Express raw-body webhook handling
 
-Stripe, Binance, OxaPay এবং Cryptomus raw request body দিয়ে signature verify করে। তাই webhook route-এ `express.json()` চলার আগে `express.raw()` ব্যবহার করতে হবে।
+Stripe এবং Cryptomus raw request body দিয়ে signature verify করে। তাই webhook route-এ `express.json()` চলার আগে `express.raw()` ব্যবহার করতে হবে।
 
 ```ts
 // server.ts — express.json() middleware-এর আগে
@@ -229,17 +215,7 @@ app.post(
 );
 
 app.post(
-  '/api/webhooks/oxapay',
-  express.raw({ type: 'application/json' }),
-  oxapayWebhookHandler
-);
-
 app.post(
-  '/api/webhooks/binance',
-  express.raw({ type: 'application/json' }),
-  binanceWebhookHandler
-);
-
 
 // এই routes register করার পরে সাধারণ JSON middleware
 app.use(express.json({ limit: '1mb' }));
@@ -467,60 +443,6 @@ async function capturePayPalOrder(providerOrderId: string, credentials: Record<s
 
 Capture response এবং webhook—দুটোকেই idempotentভাবে process করুন। `Webhook ID` একা webhook verification করে না; PayPal transmission signature বা verification API ব্যবহার করতে হবে।
 
-## 10. OxaPay adapter flow
-
-```ts
-async function createOxaPayInvoice(input: CreatePaymentInput, credentials: Record<string, string>) {
-  const response = await fetch('https://api.oxapay.com/v1/payment/invoice', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      merchant_api_key: credentials.merchantApiKey,
-    },
-    body: JSON.stringify({
-      amount: input.amount,
-      currency: input.currency,
-      order_id: input.orderId,
-      callback_url: credentials.callbackUrl,
-      return_url: input.returnUrl,
-      description: input.description || `Order ${input.orderId}`,
-    }),
-  });
-
-  const result = await response.json();
-  if (!response.ok || result.status !== 200 || !result.data?.track_id) {
-    throw new Error(result.message || 'OxaPay invoice creation failed');
-  }
-
-  return {
-    providerPaymentId: result.data.track_id,
-    checkoutUrl: result.data.payment_url,
-    status: 'awaiting_customer' as const,
-    raw: result,
-  };
-}
-```
-
-OxaPay webhook raw body-এর HMAC-SHA512 `merchantApiKey` দিয়ে verify করতে হবে:
-
-```ts
-import crypto from 'node:crypto';
-
-function verifyOxaPay(rawBody: Buffer, signature: string, merchantApiKey: string) {
-  const expected = crypto
-    .createHmac('sha512', merchantApiKey)
-    .update(rawBody)
-    .digest('hex');
-
-  return crypto.timingSafeEqual(
-    Buffer.from(expected, 'utf8'),
-    Buffer.from(signature, 'utf8')
-  );
-}
-```
-
-শুধু `paid` status, expected `track_id`/`order_id`, amount এবং currency মিললে fulfil করুন।
-
 ## 11. Generic webhook handler ও idempotency
 
 ```ts
@@ -612,9 +534,6 @@ STRIPE_WEBHOOK_SECRET=...
 PAYPAL_CLIENT_ID=...
 PAYPAL_CLIENT_SECRET=...
 PAYPAL_WEBHOOK_ID=...
-OXAPAY_MERCHANT_API_KEY=...
-BINANCE_PAY_CERTIFICATE_SN=...
-BINANCE_PAY_SECRET=...
 ```
 
 `VITE_*` variable browser bundle-এ চলে যেতে পারে। Secret কখনো `VITE_*` নামে রাখবেন না।

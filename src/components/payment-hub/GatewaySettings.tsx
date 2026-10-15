@@ -496,9 +496,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
   const internationalProviders: InternationalProvider[] = [
     { id: 'stripe', name: 'Stripe', logoUrl: '/assets/international/stripe.png', badge: 'Cards & Wallets', capability: 'Hosted card checkout', gateway: true, note: 'সাধারণ international card/Wallet checkout-এর জন্য উপযুক্ত।' },
     { id: 'paypal', name: 'PayPal', logoUrl: '/assets/international/paypal.png', badge: 'Online Payments', capability: 'Orders + capture checkout', gateway: true, note: 'Single-merchant PayPal checkout-এর জন্য উপযুক্ত।' },
-    { id: 'oxapay', name: 'OxaPay', logoUrl: '/assets/international/oxapay.png', badge: 'Crypto Gateway', capability: 'Hosted crypto invoice', gateway: true, note: 'Crypto invoice/payment URL; সাধারণ card gateway নয়।' },
-    { id: 'cryptomus', name: 'Cryptomus', logoUrl: '/assets/international/cryptomus.png', badge: 'Crypto Gateway', capability: 'Crypto invoice checkout', gateway: true, note: 'Official Merchant UUID ও Payment API Key দিয়ে crypto invoice তৈরি করে; আলাদা webhook secret নেই।' },
-    { id: 'binance', name: 'Binance', logoUrl: '/assets/international/binance.png', badge: 'Crypto Payments', capability: 'Binance Pay crypto checkout', gateway: true, note: 'শুধু Binance Pay Merchant account এবং crypto payment-এর জন্য।' }
+    { id: 'cryptomus', name: 'Cryptomus', logoUrl: '/assets/international/cryptomus.png', badge: 'Crypto Gateway', capability: 'Crypto invoice checkout', gateway: true, note: 'Official Merchant UUID ও Payment API Key দিয়ে crypto invoice তৈরি করে; আলাদা webhook secret নেই।' }
   ];
   const internationalFieldConfig: Record<string, InternationalField[]> = {
     stripe: [
@@ -513,20 +511,10 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
       { label: 'Client Secret', key: 'clientSecret', type: 'password', placeholder: 'PayPal client secret', required: true },
       { label: 'Webhook ID', key: 'webhookId', placeholder: 'PayPal webhook ID', required: true }
     ],
-    oxapay: [
-      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
-      { label: 'Merchant API Key', key: 'merchantApiKey', type: 'password', placeholder: 'OxaPay merchant API key', required: true },
-      { label: 'Return URL', key: 'returnUrl', type: 'url', placeholder: 'https://your-domain.com/payment/success', required: false }
-    ],
     cryptomus: [
       { label: 'Merchant UUID', key: 'merchantId', placeholder: 'Cryptomus merchant UUID', required: true },
       { label: 'Payment API Key (not Payout API Key)', key: 'apiKey', type: 'password', placeholder: 'Cryptomus payment API key', required: true },
       { label: 'Return URL', key: 'returnUrl', type: 'url', placeholder: 'https://your-domain.com/payment/success', required: false }
-    ],
-    binance: [
-      { label: 'Environment', key: 'environment', options: ['Sandbox', 'Live'], required: true },
-      { label: 'Merchant API Identity Key / Certificate SN', key: 'certificateSn', placeholder: 'BinancePay-Certificate-SN', required: true },
-      { label: 'Merchant API Secret Key', key: 'merchantApiSecret', type: 'password', placeholder: 'Binance Pay merchant secret', required: true }
     ]
   };
 
@@ -875,7 +863,7 @@ export default function GatewaySettings({ brands }: GatewaySettingsProps) {
                           <img 
                             src={provider.logoUrl} 
                             alt={provider.name} 
-                            className={`max-h-10 max-w-[124px] object-contain ${provider.id === 'oxapay' ? 'opacity-90 contrast-125' : ''}`}
+                            className={`max-h-10 max-w-[124px] object-contain ${''}`}
                             onError={(e) => {
                                // Fallback if needed
                                (e.target as any).src = `https://ui-avatars.com/api/?name=${provider.name}&background=1a2234&color=7fd6c3&bold=true`;
