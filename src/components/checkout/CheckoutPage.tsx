@@ -15,6 +15,7 @@ const LOGOS = {
   tap: '/assets/mfs/tap.png',
   mcash: '/assets/mfs/mcash.png',
   cellfin: '/assets/mfs/cellfin.png',
+  pathao_pay: '/assets/mfs/pathao-pay.png',
 };
 
 // Gateway Configs
@@ -56,6 +57,12 @@ const getGatewayConfig = (provider: string) => {
         headerBg: 'bg-white', headerText: 'text-[#075b3f]',
         bodyBg: 'bg-gradient-to-br from-[#075b3f] via-[#0d8a5a] to-[#e4342b]', bodyText: 'text-white', inputColor: 'text-[#075b3f]',
         btnPrimary: 'bg-white text-[#075b3f]', btnSecondary: 'bg-white/20 text-white'
+      };
+    case 'pathao_pay':
+      return {
+        headerBg: 'bg-white', headerText: 'text-[#243a4e]',
+        bodyBg: 'bg-gradient-to-br from-[#1976d2] via-[#2d8de5] to-[#eef3f8]', bodyText: 'text-white', inputColor: 'text-[#1976d2]',
+        btnPrimary: 'bg-white text-[#1976d2]', btnSecondary: 'bg-white/20 text-white'
       };
     case 'upay':
       return { 
@@ -775,7 +782,8 @@ export default function CheckoutPage() {
       rocket: { dailyCount: 100000, dailyAmt: 50000, monthlyCount: 1000000, monthlyAmt: 300000 },
       tap: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
       mcash: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
-      cellfin: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 }
+      cellfin: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
+      pathao_pay: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 }
     };
     
     const limit = limits[gw.provider as keyof typeof limits];

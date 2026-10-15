@@ -490,6 +490,11 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
       id: 'cellfin',
       name: 'CellFin',
       logoUrl: '/assets/mfs/cellfin.png'
+    },
+    {
+      id: 'pathao_pay',
+      name: 'Pathao Pay',
+      logoUrl: '/assets/mfs/pathao-pay.png'
     }
   ];
 
