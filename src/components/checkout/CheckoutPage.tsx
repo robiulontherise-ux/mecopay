@@ -5,6 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { ShieldCheck, X, Loader2, Lock, Copy, Clock, RefreshCw, AlertCircle, CheckCircle2, Flag, QrCode, ShoppingCart, AlertTriangle } from 'lucide-react';
 import LocaleSwitcher from '../LocaleSwitcher';
+import { useLocale } from '../../lib/LocaleContext';
 
 // Brand Logos
 const LOGOS = {
@@ -112,6 +113,7 @@ export default function CheckoutPage() {
     };
   }, []);
   const { slug } = useParams();
+  const { language } = useLocale();
   const navigate = useNavigate();
   
   const [linkData, setLinkData] = useState<any>(null);
@@ -124,7 +126,6 @@ export default function CheckoutPage() {
   const [clientHomeUrl, setClientHomeUrl] = useState<string>('/');
   
   const [step, setStep] = useState(1);
-  const [lang, setLang] = useState<'EN' | 'BN'>('BN');
   const [invoiceId, setInvoiceId] = useState('');
 
   const [copied, setCopied] = useState<string | false>(false);
@@ -1067,28 +1068,15 @@ export default function CheckoutPage() {
   const providerKey = selectedGateway?.provider?.toLowerCase() || '';
   const gConfig = getGatewayConfig(providerKey);
   const logoUrl = LOGOS[providerKey as keyof typeof LOGOS] || '';
+  const personalMfsProviderIds = new Set(['bkash', 'nagad', 'rocket', 'upay', 'tap', 'mcash', 'cellfin', 'pathao_pay', 'ok_wallet', 'islamic_wallet']);
+  const isPersonalMfsCheckout = gateways.length > 0 && gateways.every(gw => personalMfsProviderIds.has(String(gw.provider || '').toLowerCase()));
+  const gatewayGridColumns = isPersonalMfsCheckout && gateways.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">
       <LocaleSwitcher className="w-full max-w-md mx-auto px-4 pt-3 justify-end" />
       <div className="max-w-md w-full mx-auto p-4 pt-8 pb-20 relative">
         
-        {/* Language Toggle */}
-        <div className="absolute top-4 right-4 flex bg-white rounded-full shadow-sm border border-slate-200 overflow-hidden z-10">
-          <button 
-            onClick={() => setLang('EN')} 
-            className={`px-3 py-1 text-xs font-bold transition-colors ${lang === 'EN' ? 'bg-[#00B300] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-          >
-            EN
-          </button>
-          <button 
-            onClick={() => setLang('BN')} 
-            className={`px-3 py-1 text-xs font-bold transition-colors ${lang === 'BN' ? 'bg-[#00B300] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-          >
-            BN
-          </button>
-        </div>
-       
         {/* Title / Brand (Only show on Steps 1, 2, 3) */}
         {step < 4 && (
           <div className="text-center mb-6">
@@ -1283,7 +1271,7 @@ export default function CheckoutPage() {
                       This brand has not configured any payment methods yet.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className={`grid ${gatewayGridColumns} gap-3`}>
                       {gateways.map(gw => {
                         let gwLogo = LOGOS[gw.provider.toLowerCase() as keyof typeof LOGOS] || '';
                         return (
@@ -1330,7 +1318,7 @@ export default function CheckoutPage() {
                           <span className="font-bold text-slate-800 text-xl tracking-tight">Live Auto-Verification</span>
                         </div>
                         <p className="text-sm text-slate-600 leading-relaxed mt-3">
-                          {lang === 'EN' 
+                          {language !== 'bn'
                              ? 'Select this method, enter your sender number on the next page and confirm. A 10-min live session will start, send money within this time to auto-verify.' 
                              : 'লাইভ মেথড সিলেক্ট করলে, পরের পেইজে আপনি যে একাউন্ট নম্বর থেকে টাকা পাঠাবেন সেটি দিয়ে নিশ্চিত করলে ১০ মিনিটের লাইভ সেশন চালু হবে। এর মধ্যে সেন্ড মানি করলেই পেমেন্ট অটো-ভেরিফাই হবে।'}
                         </p>
@@ -1353,7 +1341,7 @@ export default function CheckoutPage() {
                           <span className="font-bold text-slate-800 text-xl tracking-tight">TrxID Auto-Verification</span>
                         </div>
                         <p className="text-sm text-slate-600 leading-relaxed mt-3">
-                          {lang === 'EN' 
+                          {language !== 'bn'
                              ? 'Cash In from a shop or ask someone else to Send Money. Then auto-verify using the Transaction ID (TrxID).' 
                              : 'দোকান থেকে ক্যাশ-ইন করুন বা দূরের কাউকে দিয়ে সেন্ড মানি করান। এরপর ট্রানজেকশন আইডি (TrxID) দিয়ে অটো-ভেরিফাই করুন।'}
                         </p>
@@ -1388,7 +1376,7 @@ export default function CheckoutPage() {
                         placeholder="e.g 01XXXXXXXXX"
                       />
                       <p className="text-sm font-medium opacity-90 mb-8 px-2 leading-relaxed">
-                        {lang === 'EN' 
+                        {language !== 'bn'
                           ? `Enter your number and click '${providerKey === 'nagad' ? 'Proceed' : 'Confirm'}'.`
                           : `আপনার নম্বর দিয়ে '${providerKey === 'nagad' ? 'Proceed' : 'Confirm'}' বাটনে ক্লিক করুন।`}
                       </p>
@@ -1400,10 +1388,10 @@ export default function CheckoutPage() {
                          <div className="bg-black/20 border border-white/20 rounded-xl p-4 mb-6 text-center animate-in fade-in">
                            <div className="inline-flex items-center justify-center gap-2 text-yellow-300 font-bold mb-1">
                              <AlertTriangle className="w-5 h-5" /> 
-                             {lang === 'EN' ? 'Merchant Device Offline' : 'মার্চেন্ট ডিভাইস অফলাইন'}
+                             {language !== 'bn' ? 'Merchant Device Offline' : 'মার্চেন্ট ডিভাইস অফলাইন'}
                            </div>
                            <p className="text-white/90 text-sm font-medium">
-                             {lang === 'EN' ? 'Auto-verification is temporarily unavailable.' : 'অটো-ভেরিফিকেশন সাময়িকভাবে বন্ধ আছে।'}
+                             {language !== 'bn' ? 'Auto-verification is temporarily unavailable.' : 'অটো-ভেরিফিকেশন সাময়িকভাবে বন্ধ আছে।'}
                            </p>
                          </div>
                       )}
@@ -1435,7 +1423,7 @@ export default function CheckoutPage() {
 
                       <div className="space-y-3 text-sm mb-8 font-medium">
                         {verifyMethod === 'offline' ? (
-                          lang === 'EN' ? (
+                          language !== 'bn' ? (
                             <>
                               <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">1</span> Copy the Personal Account number above.</p>
                               <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">2</span> Please Send Money, Cash In, or ask someone else to send money to this number.</p>
@@ -1449,7 +1437,7 @@ export default function CheckoutPage() {
                             </>
                           )
                         ) : (
-                          lang === 'EN' ? (
+                          language !== 'bn' ? (
                             <>
                               <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">1</span> Copy the Personal Account number above.</p>
                               <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">2</span> {providerKey === 'nagad' ? 'Cash In is not allowed in Nagad, so please Send Money from another account.' : 'Before Cash In, ask the shopkeeper if they will provide the TrxID. Otherwise, ask someone to Send Money.'}</p>
@@ -1518,7 +1506,7 @@ export default function CheckoutPage() {
                   )}
 
                   <div className="space-y-3 text-sm mb-8 font-medium">
-                     {lang === 'EN' ? (
+                     {language !== 'bn' ? (
     <>
       <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">1</span> <span>Copy the Personal Account number above.</span></p>
       <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">2</span> <span>Go to {selectedGateway.provider} app or dial {providerKey === 'bkash' ? '*247#' : providerKey === 'nagad' ? '*167#' : providerKey === 'rocket' ? '*322#' : '*268#'} and select 'Send Money'.</span></p>
@@ -1622,7 +1610,7 @@ export default function CheckoutPage() {
                 >
                   <div className="text-sm font-bold text-red-700 flex items-center gap-2 group-hover:scale-105 transition-transform">
                     <AlertTriangle className="w-4 h-4 text-red-700" /> 
-                    {lang === 'EN' ? "Cut Invoice" : "Cut Invoice"}
+                    {language !== 'bn' ? "Cut Invoice" : "Cut Invoice"}
                   </div>
                 </button>
               </div>
@@ -1652,13 +1640,13 @@ export default function CheckoutPage() {
               <h2 className="text-2xl font-bold text-slate-800 mb-2">Verification Submitted!</h2>
               {verifyMethod === 'offline' ? (
                 <p className="text-slate-500 mb-10 text-lg">
-                  {lang === 'EN' 
+                  {language !== 'bn'
                     ? <><span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>, your transaction has been recorded. The merchant is currently offline. You will be notified via email once they come back online and verify your payment.</>
                     : <>ধন্যবাদ <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>। আপনার ট্রানজেকশনটি রেকর্ড করা হয়েছে। মার্চেন্ট বর্তমানে অফলাইনে আছেন। তিনি অনলাইনে এসে আপনার পেমেন্ট ভেরিফাই করলে আপনাকে ইমেইলে জানানো হবে।</>}
                 </p>
               ) : (
                 <p className="text-slate-500 mb-10 text-lg">
-                  {lang === 'EN'
+                  {language !== 'bn'
                     ? <>Thank you, <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>. Your payment of {formatCurrency(linkData.price)} via {selectedGateway?.provider} has been received and is being verified.</>
                     : <>ধন্যবাদ <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>। {selectedGateway?.provider}-এর মাধ্যমে আপনার {formatCurrency(linkData.price)} পেমেন্টটি গ্রহণ করা হয়েছে এবং ভেরিফাই করা হচ্ছে।</>}
                 </p>
