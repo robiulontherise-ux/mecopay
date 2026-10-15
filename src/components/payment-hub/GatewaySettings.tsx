@@ -495,6 +495,11 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
       id: 'pathao_pay',
       name: 'Pathao Pay',
       logoUrl: '/assets/mfs/pathao-pay.png'
+    },
+    {
+      id: 'ok_wallet',
+      name: 'OK Wallet',
+      logoUrl: '/assets/mfs/ok-wallet.png'
     }
   ];
 

@@ -16,6 +16,7 @@ const LOGOS = {
   mcash: '/assets/mfs/mcash.png',
   cellfin: '/assets/mfs/cellfin.png',
   pathao_pay: '/assets/mfs/pathao-pay.png',
+  ok_wallet: '/assets/mfs/ok-wallet.png',
 };
 
 // Gateway Configs
@@ -63,6 +64,12 @@ const getGatewayConfig = (provider: string) => {
         headerBg: 'bg-white', headerText: 'text-[#243a4e]',
         bodyBg: 'bg-gradient-to-br from-[#1976d2] via-[#2d8de5] to-[#eef3f8]', bodyText: 'text-white', inputColor: 'text-[#1976d2]',
         btnPrimary: 'bg-white text-[#1976d2]', btnSecondary: 'bg-white/20 text-white'
+      };
+    case 'ok_wallet':
+      return {
+        headerBg: 'bg-white', headerText: 'text-[#263238]',
+        bodyBg: 'bg-gradient-to-br from-[#263238] via-[#455a64] to-[#00a86b]', bodyText: 'text-white', inputColor: 'text-[#263238]',
+        btnPrimary: 'bg-white text-[#263238]', btnSecondary: 'bg-white/20 text-white'
       };
     case 'upay':
       return { 
@@ -783,7 +790,8 @@ export default function CheckoutPage() {
       tap: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
       mcash: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
       cellfin: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
-      pathao_pay: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 }
+      pathao_pay: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
+      ok_wallet: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 }
     };
     
     const limit = limits[gw.provider as keyof typeof limits];
