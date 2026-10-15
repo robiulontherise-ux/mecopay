@@ -17,6 +17,7 @@ const LOGOS = {
   cellfin: '/assets/mfs/cellfin.png',
   pathao_pay: '/assets/mfs/pathao-pay.png',
   ok_wallet: '/assets/mfs/ok-wallet.png',
+  islamic_wallet: '/assets/mfs/islamic-wallet.webp',
 };
 
 // Gateway Configs
@@ -70,6 +71,12 @@ const getGatewayConfig = (provider: string) => {
         headerBg: 'bg-white', headerText: 'text-[#263238]',
         bodyBg: 'bg-gradient-to-br from-[#263238] via-[#455a64] to-[#00a86b]', bodyText: 'text-white', inputColor: 'text-[#263238]',
         btnPrimary: 'bg-white text-[#263238]', btnSecondary: 'bg-white/20 text-white'
+      };
+    case 'islamic_wallet':
+      return {
+        headerBg: 'bg-white', headerText: 'text-[#155f4a]',
+        bodyBg: 'bg-gradient-to-br from-[#075e4a] via-[#0d8b69] to-[#d6b24c]', bodyText: 'text-white', inputColor: 'text-[#075e4a]',
+        btnPrimary: 'bg-white text-[#075e4a]', btnSecondary: 'bg-white/20 text-white'
       };
     case 'upay':
       return { 
@@ -791,7 +798,8 @@ export default function CheckoutPage() {
       mcash: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
       cellfin: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
       pathao_pay: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
-      ok_wallet: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 }
+      ok_wallet: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 },
+      islamic_wallet: { dailyCount: 100, dailyAmt: 50000, monthlyCount: 250, monthlyAmt: 300000 }
     };
     
     const limit = limits[gw.provider as keyof typeof limits];

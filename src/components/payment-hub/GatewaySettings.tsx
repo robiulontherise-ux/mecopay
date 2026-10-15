@@ -500,6 +500,11 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
       id: 'ok_wallet',
       name: 'OK Wallet',
       logoUrl: '/assets/mfs/ok-wallet.png'
+    },
+    {
+      id: 'islamic_wallet',
+      name: 'Islamic Wallet',
+      logoUrl: '/assets/mfs/islamic-wallet.webp'
     }
   ];
 
