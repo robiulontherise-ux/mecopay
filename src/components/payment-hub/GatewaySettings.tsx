@@ -475,11 +475,16 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
       id: 'rocket', 
       name: 'Rocket', 
       logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/rocket.png'
-    }
+    },
     {
       id: 'tap',
       name: 'TAP',
       logoUrl: '/assets/mfs/tap.png'
+    },
+    {
+      id: 'mcash',
+      name: 'mCash',
+      logoUrl: '/assets/mfs/mcash.png'
     }
   ];
 
