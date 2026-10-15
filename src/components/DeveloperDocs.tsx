@@ -603,6 +603,124 @@ export default function DeveloperDocs() {
               </div>
             </div>
 
+            {/* 500+ Old Products & Mixed Catalog Auto-Detection Guide */}
+            <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 sm:p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      ৫০+ বা ৫০০+ পুরোনো প্রোডাক্ট ও মিক্সড ক্যাটালগ অটো-ডিটেকশন গাইড
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold">Zero-Edit Solution</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      আপনার সাইটে ১-২ বছর আগে তৈরি করা ৫০০টি পণ্য থাকলে এবং ডাটাবেজে কোনো <code>product_type</code> কলাম না থাকলেও কিভাবে প্লাগিন বা কন্ট্রোলার প্রতিটি পণ্য স্বয়ংক্রিয়ভাবে চিনে নেবে?
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Detection Strategies */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {/* Method 1: WooCommerce */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-2">
+                  <div className="font-bold text-emerald-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[10px]">১</span>
+                      WooCommerce প্লাগিন (১০০% অটোমেটিক)
+                    </span>
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded">নো কোডিং</span>
+                  </div>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    WooCommerce-এর নেটিভ মেথড <code>is_virtual()</code>, <code>is_downloadable()</code> ও <code>needs_shipping()</code> দেখে প্লাগিন নিজে থেকেই বুঝে ফেলে। ক্লায়েন্টকে ১টি পুরোনো প্রডাক্টেও হাত দিতে হবে না।
+                  </p>
+                </div>
+
+                {/* Method 2: Custom Site Category */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-2">
+                  <div className="font-bold text-blue-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center text-[10px]">২</span>
+                      কাস্টম সাইট: ক্যাটাগরি আইডি দিয়ে অটো-ডিটেকশন
+                    </span>
+                    <span className="text-[10px] bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded">সুপারিশকৃত</span>
+                  </div>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    কন্ট্রোলারে মাত্র ২ লাইনে ক্যাটাগরি আইডি দিয়ে ফিল্টার করুন:
+                  </p>
+                  <pre className="bg-slate-950 p-2 rounded-lg text-[10px] font-mono text-cyan-300 overflow-x-auto">
+                    {'$isDigital = in_array($product->category_id, [3, 7]); // ৩=কোর্স, ৭=সফটওয়্যার\n$productType = $isDigital ? "digital" : (($adv > 0) ? "physical_advance" : "physical_cod");'}
+                  </pre>
+                </div>
+
+                {/* Method 3: Feature & Download Link */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-2">
+                  <div className="font-bold text-amber-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[10px]">৩</span>
+                      কাস্টম সাইট: ডাউনলোড লিংক বা ফাইল ফিল্ড দেখে
+                    </span>
+                    <span className="text-[10px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded">বৈশিষ্ট্যভিত্তিক</span>
+                  </div>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    ডিজিটাল পণ্যে কোনো ফাইল বা গুগল ড্রাইভ লিংক থাকে যা ফিজিক্যালে থাকে না:
+                  </p>
+                  <pre className="bg-slate-950 p-2 rounded-lg text-[10px] font-mono text-amber-300 overflow-x-auto">
+                    {'$productType = !empty($product->download_link) ? "digital" : "physical_advance";'}
+                  </pre>
+                </div>
+
+                {/* Method 4: 1-Second SQL Bulk Update */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-2">
+                  <div className="font-bold text-purple-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px]">৪</span>
+                      ডাটাবেজে ১ সেকেন্ডের বাল্ক SQL কমান্ড
+                    </span>
+                    <span className="text-[10px] bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded">পার্মানেন্ট</span>
+                  </div>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    ডাটাবেজে ১ সেকেন্ডে ৫০০ প্রোডাক্ট আপডেট করার কুয়েরি:
+                  </p>
+                  <pre className="bg-slate-950 p-2 rounded-lg text-[10px] font-mono text-purple-300 overflow-x-auto">
+                    {'ALTER TABLE products ADD COLUMN product_type VARCHAR(20) DEFAULT "physical_advance";\nUPDATE products SET product_type = "digital" WHERE category_id IN (3, 7);'}
+                  </pre>
+                </div>
+              </div>
+
+              {/* 3 Important Architectural Rules */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 space-y-1">
+                  <div className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 shrink-0" /> ফ্রি ডেলিভারি (Free Shipping)
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    শিপিং ফি ০ টাকা হলে <code>courier_charge: 0</code> পাঠাবেন। সিস্টেমে <strong>"Free (৳0)"</strong> শো করবে, কোনো এরর হবে না।
+                  </p>
+                </div>
+
+                <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 space-y-1">
+                  <div className="text-[11px] font-bold text-cyan-400 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 shrink-0" /> ডাইনামিক কারেন্সি (Multi-Currency)
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    স্টোরের যেকোনো কারেন্সি (<code>BDT</code>, <code>USD</code>, <code>EUR</code>) পাঠাতে পারবেন। না পাঠালে গেটওয়ে থেকে অটো শো হবে।
+                  </p>
+                </div>
+
+                <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 space-y-1">
+                  <div className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> মিক্সড কার্ট প্রটেকশন
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    একই অর্ডারে ডিজিটাল + ফিজিক্যাল প্রোডাক্ট অর্ডার করা ব্লক করা হয় ক্রেতার ফুল ডিজিটাল চুরি ঠেকাতে।
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Language & Framework Switcher */}
             <div className="flex gap-2 overflow-x-auto pb-1">
               <button
@@ -1000,9 +1118,12 @@ class PaymentController extends Controller
         }
 
         // =========================================================================
-        // গার্ড ৩: ৩ ধরনের প্রোডাক্টের আবশ্যিক ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+        // গার্ড ৩: ৩ ধরনের প্রোডাক্টের স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
         // =========================================================================
-        $productType = $request->input('product_type', 'digital'); // 'digital' | 'physical_advance' | 'physical_cod'
+        // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
+        //  = (!empty(->download_link) || in_array(->category_id, [1, 5]));
+        //  =  ? 'digital' : (( > 0) ? 'physical_advance' : 'physical_cod');
+         = ->input('product_type') ?: ( ?? 'digital'); // 'digital' | 'physical_advance' | 'physical_cod'
         $orderId = $request->input('order_id');
         $productName = $request->input('product_name');
 
@@ -1120,19 +1241,27 @@ if (!empty($cart)) {
 }
 
 // =========================================================================
-// গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+// গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
 // =========================================================================
-$productType = $_POST['product_type'] ?? 'digital'; // 'digital' | 'physical_advance' | 'physical_cod'
+// ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
+// $isDigital = (!empty($product['download_link']) || in_array($product['category_id'] ?? 0, [3, 7]));
+// $detectedType = $isDigital ? 'digital' : (($advance > 0) ? 'physical_advance' : 'physical_cod');
+$productType = $_POST['product_type'] ?? ($detectedType ?? 'digital');
 $orderId = $_POST['order_id'] ?? ("ORD-" . time());
 $productName = $_POST['product_name'] ?? "E-Commerce Product";
-// প্রোডাক্টের আসল মূল্য ও কুরিয়ার চার্জ ফর্ম বা ডাটাবেজ থেকে ডাইনামিকালি নিন:
-    $price = (float) ($_POST['price'] ?? 0);
-$courierCharge = (float) ($_POST['courier_charge'] ?? 0); // ফ্রি ডেলিভারি হলে ০
+
+// ডাইনামিক কারেন্সি (BDT, USD, EUR ইত্যাদি):
+$currency = strtoupper(trim($_POST['currency'] ?? $order['currency'] ?? 'BDT'));
+
+// প্রোডাক্টের আসল মূল্য ও কুরিয়ার চার্জ ফর্ম বা ডাটাবেজ থেকে ডাইনামিকালি নিন (ফ্রি ডেলিভারি হলে ০):
+$price = (float) ($_POST['price'] ?? 0);
+$courierCharge = (float) ($_POST['courier_charge'] ?? 0);
 
 $payload = [
     "order_id"         => $orderId,
     "product_name"     => $productName,
     "product_type"     => $productType,
+    "currency"         => $currency,
     "customer_name"    => $_POST['customer_name'] ?? "Customer Name",
     "customer_phone"   => $_POST['customer_phone'] ?? "",
     "customer_address" => $_POST['customer_address'] ?? "",
@@ -1237,22 +1366,29 @@ app.post('/api/checkout', async (req, res) => {
     }
 
     // =========================================================================
-    // গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+    // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     // =========================================================================
+    // ৫০০+ পুরোনো পণ্যের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
+    // const isDigital = Boolean(product?.download_link || [3, 7].includes(product?.category_id));
+    // const detectedType = isDigital ? 'digital' : (advance_amount > 0 ? 'physical_advance' : 'physical_cod');
+    const finalProductType = product_type || (typeof detectedType !== 'undefined' ? detectedType : 'digital');
+    const finalCurrency = (req.body.currency || 'BDT').toUpperCase();
+
     if (!order_id && !product_name) {
       return res.status(400).json({ error: 'order_id অথবা product_name যেকোনো একটি ফিল্ড আবশ্যক।' });
     }
 
     const payload = {
-      order_id: order_id || \`ORD-\${Date.now()}\`,
+      order_id: order_id || ('ORD-' + Date.now()),
       product_name: product_name || 'Item',
-      product_type,
+      product_type: finalProductType,
+      currency: finalCurrency,
       customer_name: customer_name || 'Guest Customer',
       customer_phone: customer_phone || '',
       customer_address: customer_address || '',
       // ডাইনামিক সাইট ডোমেন ও পাথ:
-      callback_url: ,
-      cancel_url: 
+      callback_url: (req.protocol + '://' + req.get('host') + '/payment/success'),
+      cancel_url: (req.protocol + '://' + req.get('host') + '/cart')
     };
 
     if (product_type === 'digital') {
@@ -1326,17 +1462,20 @@ async function initiateMecoPayCheckout(orderData) {
   }
 
   // =========================================================================
-  // গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+  // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
   // =========================================================================
-  const productType = orderData.product_type || 'digital';
+  // ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন ফলব্যাক:
+  // const isDigital = Boolean(item.download_link || [3, 7].includes(item.category_id));
+  // const detectedType = isDigital ? 'digital' : (Number(item.advance_amount) > 0 ? 'physical_advance' : 'physical_cod');
+  const finalProductType = orderData.product_type || (typeof detectedType !== 'undefined' ? detectedType : 'digital');
   const price = Number(orderData.price || 0);
-  const courierCharge = Number(orderData.courier_charge || 0); // ফ্রি ডেলিভারি হলে ০
+  const courierCharge = Number(orderData.courier_charge || 0); // ফ্রি ডেলিভারি হলে ০ থাকবে
 
   const payload = {
     order_id: orderData.order_id || ("ORD-" + Date.now()),
     product_name: orderData.product_name || "Order Item",
-    product_type: productType,
-    currency: orderData.currency || "USD",
+    product_type: finalProductType,
+    currency: (orderData.currency || "BDT").toUpperCase(),
     customer_name: orderData.customer_name || "Customer Name",
     customer_phone: orderData.customer_phone || "",
     customer_address: orderData.customer_address || "",
@@ -1418,17 +1557,20 @@ def create_checkout_session(request_data):
             return {"error": "কার্ট পলিসি এরর: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।"}
 
     # =========================================================================
-    # গার্ড ৩: ৩ ধরনের প্রোডাক্ট ফিল্ড ভ্যালিডেশন ও পে-লোড প্রস্তুতি
+    # গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     # =========================================================================
-    product_type = request_data.get('product_type', 'digital') # 'digital' | 'physical_advance' | 'physical_cod'
+    # ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
+    # is_digital = bool(product.get("download_link") or product.get("category_id") in [3, 7])
+    # detected_type = "digital" if is_digital else ("physical_advance" if advance_amount > 0 else "physical_cod")
+    product_type = request_data.get('product_type') or locals().get('detected_type', 'digital')
     price = float(request_data.get('price') or request_data.get('amount') or 0)
-    courier_charge = float(request_data.get('courier_charge') or 0)
+    courier_charge = float(request_data.get('courier_charge') or 0) # ফ্রি ডেলিভারি হলে ০ থাকবে
 
     payload = {
         "order_id": request_data.get('order_id', f"ORD-{int(time.time())}"),
         "product_name": request_data.get('product_name', "Digital E-Book"),
         "product_type": product_type,
-        "currency": request_data.get('currency', 'USD'),
+        "currency": (request_data.get('currency') or "BDT").upper(),
         "customer_name": request_data.get('customer_name', "Guest"),
         "customer_phone": request_data.get('customer_phone', ""),
         "customer_address": request_data.get('customer_address', "Dhaka"),
