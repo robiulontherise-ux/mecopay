@@ -1288,6 +1288,7 @@ async function startServer() {
         customer_address = '',
         telegram_link,
         facebook_group_link,
+        facebook_access_code,
         google_drive_link,
         metadata = {}
       } = req.body;
@@ -1330,6 +1331,7 @@ async function startServer() {
               cod_due: cod_due || ((total_amount || 0) + (courier_charge || 120)),
               telegram_link: telegram_link || null,
               facebook_group_link: facebook_group_link || null,
+              facebook_access_code: facebook_access_code || null,
               google_drive_link: google_drive_link || null,
               callback_url: callback_url || null,
               cancel_url: cancel_url || null,
@@ -1407,6 +1409,7 @@ async function startServer() {
         customer_address,
         telegram_link: telegram_link || null,
         facebook_group_link: facebook_group_link || null,
+        facebook_access_code: facebook_access_code || null,
         google_drive_link: google_drive_link || null,
         invoice_number: invoiceNumber,
         created_at: Date.now()

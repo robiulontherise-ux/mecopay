@@ -239,6 +239,7 @@ serve(async (req) => {
             delivery: {
               telegram_link: metadata.telegram_link || invoice.telegram_link || null,
               facebook_group_link: metadata.facebook_group_link || invoice.facebook_group_link || null,
+              facebook_access_code: metadata.facebook_access_code || invoice.facebook_access_code || null,
               google_drive_link: metadata.google_drive_link || invoice.google_drive_link || null,
               callback_url: metadata.callback_url || invoice.callback_url || null,
               digital_access: digitalAccess || null

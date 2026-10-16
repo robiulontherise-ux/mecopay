@@ -468,6 +468,7 @@ export default function CheckoutPage() {
             redirect_link: sessionObj.callback_url || sessionObj.telegram_link || sessionObj.facebook_group_link || sessionObj.google_drive_link,
             telegram_link: sessionObj.telegram_link,
             facebook_group_link: sessionObj.facebook_group_link,
+            facebook_access_code: sessionObj.facebook_access_code,
             google_drive_link: sessionObj.google_drive_link,
             callback_url: sessionObj.callback_url,
             cancel_url: sessionObj.cancel_url,
@@ -754,6 +755,7 @@ export default function CheckoutPage() {
           cod_due: linkData.cod_due ?? 0,
           telegram_link: linkData.telegram_link || null,
           facebook_group_link: linkData.facebook_group_link || null,
+          facebook_access_code: linkData.facebook_access_code || null,
           google_drive_link: linkData.google_drive_link || null,
           callback_url: linkData.callback_url || null,
           cancel_url: linkData.cancel_url || null

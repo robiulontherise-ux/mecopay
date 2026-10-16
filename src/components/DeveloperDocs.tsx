@@ -319,6 +319,11 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">১টি, ২টি, ৩টি লিংক পাঠাতে পারেন অথবা কোনো লিংক না পাঠালেও চলবে।</td>
                     </tr>
                     <tr>
+                      <td className="p-3 font-mono text-blue-300">facebook_access_code</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">MecoPay/server থেকে পাওয়া Facebook access value। Facebook group link-এর সঙ্গে পাঠাবেন; Webhook-এ <code>delivery.facebook_access_code</code> হিসেবে client success flow-তে পৌঁছাবে।</td>
+                    </tr>
+                    <tr>
                       <td className="p-3 font-mono text-blue-300">customer_phone</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold">ঐচ্ছিক (সার্ভিস নির্ভর)</span></td>
                       <td className="p-3 text-slate-300">গ্রাহকের মোবাইল নম্বর। আপনার ব্র্যান্ডে যদি <strong>SMS বা WhatsApp নোটিফিকেশন সার্ভিস অন</strong> থাকে, তবে অর্ডার সফল হওয়ার পর ফোনে নিশ্চিতকরণ মেসেজ ও পাসকোড পাঠাতে এই নম্বর পাঠানো <strong>আবশ্যক</strong> (অন্যথায় কোন নম্বরে সাকসেস মেসেজ যাবে?)। সার্ভিস সক্রিয় না থাকলে না পাঠালেও কোনো সমস্যা নেই।</td>
@@ -785,6 +790,21 @@ export default function DeveloperDocs() {
                 <div><p className="font-semibold text-white">Facebook</p><p>Facebook Graph API call কেবল server থেকে হবে। App token, Page/Group permission এবং access token client browser-এ যাবে না। এই repository-তে Facebook Group member-add/approval-এর production Graph API endpoint নেই। Client backend paid invoice যাচাই না করে raw group URL দিয়ে member add/approve করতে পারবে না; server-side access API এবং Meta permission contract আলাদাভাবে তৈরি করতে হবে।</p></div>
                 <div><p className="font-semibold text-white">Google Drive</p><p>Drive link-ও webhook-এর পরে paid order-এর সঙ্গে associate করুন। Public link হলে সরাসরি button দেওয়া যায়; private file হলে client backend বা Drive access service থেকে entitlement অনুযায়ী restricted URL দিতে হবে।</p></div>
               </div>
+              <div className="bg-slate-950/70 rounded-xl p-3 text-slate-300 space-y-2"><span className="font-semibold text-white">Digital delivery JSON contract:</span><pre className="text-[11px] font-mono text-fuchsia-200 overflow-x-auto">{`{
+  "telegram_link": "https://t.me/private-invite",
+  "facebook_group_link": "https://facebook.com/groups/private-group",
+  "facebook_access_code": "SERVER_GENERATED_CODE",
+  "google_drive_link": "https://drive.google.com/drive/folders/..."
+}`}</pre><p><code>facebook_access_code</code> হলো MecoPay server/API থেকে দেওয়া one-time access value। Controller শুধু নিজের trusted order record-এর value API-তে পাঠাবে; client browser-এ code তৈরি বা পরিবর্তন করবে না। Webhook একই field <code>delivery.facebook_access_code</code>-এ পাঠাবে।</p></div>
+              <div className="bg-slate-950/70 rounded-xl p-3 text-slate-300 space-y-2"><span className="font-semibold text-white">Success-page button example:</span><pre className="text-[11px] font-mono text-fuchsia-200 overflow-x-auto">{`const delivery = webhook.data.delivery;
+if (order.payment_status === 'paid') {
+  showButton('Join Telegram', delivery.telegram_link);
+  showButton('Join Facebook Group',
+    delivery.facebook_group_link,
+    { accessCode: delivery.facebook_access_code }
+  );
+  showButton('Open Drive', delivery.google_drive_link);
+}`}</pre><p>Client developer নিজের success page-এর framework অনুযায়ী <code>showButton</code> implement করবেন। Facebook button click করলে group URL এবং server-provided <code>facebook_access_code</code> নিজের protected backend route-এ পাঠাবেন; code frontend-এ hard-code করবেন না।</p></div>
               <div className="bg-slate-950/70 rounded-xl p-3 text-slate-300"><span className="font-semibold text-white">Client implementation flow:</span> webhook-এ invoice ও paid status save → নিজের backend-এ <code>GET/POST /digital-access</code> ধরনের protected route → invoice/customer authorization check → server-side Telegram/Facebook/Drive access service call → frontend-এ button/access URL। <strong className="text-amber-300">Telegram-এর UI hook আছে, কিন্তু তার edge-function source/deployment contract নেই; Facebook Group access endpoint-ও নেই। তাই নির্দিষ্ট production URL বা token ধরে code লিখবেন না। Access API contract তৈরি ও deploy হলে তার exact request/response sample এই guide-এ যোগ করতে হবে।</strong></div>
             </div>
 
@@ -1232,6 +1252,7 @@ class PaymentController extends Controller
             $payload['amount'] = $price;
             $payload['telegram_link'] = $order->telegram_link ?? null;
             $payload['facebook_group_link'] = $order->facebook_group_link ?? null;
+            $payload['facebook_access_code'] = $order->facebook_access_code ?? null;
             $payload['google_drive_link'] = $order->google_drive_link ?? null;
         } elseif ($productType === 'physical_advance') {
             // ফিজিক্যাল অ্যাডভান্স: টোটাল এমাউন্ট, কুরিয়ার চার্জ এবং অ্যাডভান্স ফি
@@ -1354,6 +1375,7 @@ if ($productType === 'digital') {
     $payload['amount'] = $price;
     $payload['telegram_link'] = $order['telegram_link'] ?? null;
     $payload['facebook_group_link'] = $order['facebook_group_link'] ?? null;
+    $payload['facebook_access_code'] = $order['facebook_access_code'] ?? null;
     $payload['google_drive_link'] = $order['google_drive_link'] ?? null;
 } elseif ($productType === 'physical_advance') {
     $advance = max(0, (float) $order['advance_amount']);
@@ -1477,6 +1499,7 @@ app.post('/api/checkout', async (req, res) => {
       payload.amount = Number(price);
       payload.telegram_link = order.telegram_link || null;
       payload.facebook_group_link = order.facebook_group_link || null;
+      payload.facebook_access_code = order.facebook_access_code || null;
       payload.google_drive_link = order.google_drive_link || null;
     } else if (finalProductType === 'physical_advance') {
       if (!price || price <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
@@ -1597,6 +1620,7 @@ def create_checkout_session(request_data):
         payload["amount"] = price
         payload["telegram_link"] = order.get("telegram_link")
         payload["facebook_group_link"] = order.get("facebook_group_link")
+        payload["facebook_access_code"] = order.get("facebook_access_code")
         payload["google_drive_link"] = order.get("google_drive_link")
     elif product_type == 'physical_advance':
         advance = max(0, float(order.get('advance_amount', 0)))
@@ -1670,6 +1694,7 @@ class MecoPayWebhookController extends Controller
                 'delivery_data' => $data['delivery'] ?? null,
                 'telegram_link' => $data['telegram_link'] ?? null,
                 'facebook_group_link' => $data['facebook_group_link'] ?? null,
+                'facebook_access_code' => $data['facebook_access_code'] ?? null,
                 'google_drive_link' => $data['google_drive_link'] ?? null,
             ]);
         } else {
@@ -1711,6 +1736,7 @@ if ($event === 'payment.completed') {
         'delivery' => $data['delivery'] ?? null,
         'telegram_link' => $data['telegram_link'] ?? null,
         'facebook_group_link' => $data['facebook_group_link'] ?? null,
+                'facebook_access_code' => $data['facebook_access_code'] ?? null,
         'google_drive_link' => $data['google_drive_link'] ?? null,
     ]);
 } else {
@@ -1751,6 +1777,7 @@ router.post('/webhooks/mecopay', express.raw({ type: 'application/json' }), asyn
     delivery: data.delivery || null,
     telegram_link: data.telegram_link || null,
     facebook_group_link: data.facebook_group_link || null,
+    facebook_access_code: data.facebook_access_code || null,
     google_drive_link: data.google_drive_link || null
   }); }
   else await orderRepository.markProcessing(order.id, data.courier?.tracking_code || null);
@@ -1799,6 +1826,7 @@ def mecopay_webhook():
             'delivery': data.get('delivery'),
             'telegram_link': data.get('telegram_link'),
             'facebook_group_link': data.get('facebook_group_link'),
+            'facebook_access_code': data.get('facebook_access_code'),
             'google_drive_link': data.get('google_drive_link'),
         })
     else: mark_order_processing(order['id'], (data.get('courier') or {}).get('tracking_code'))
