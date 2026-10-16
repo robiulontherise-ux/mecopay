@@ -84,15 +84,15 @@ const featureCopy: Partial<Record<MarketingLanguage, Record<string, [string, str
     'business-email': ['Send and receive professional email on your own branded domain.', 'Example: sales@acme.com receives inquiries and support@acme.com replies.']
   },
   bn: {
-    'no-code-website': ['কোনো কোডিং ছাড়াই ই-কমার্স, এডটেক, ব্লগ বা নিউজ সাইট তৈরি ও publish করুন।', 'উদাহরণ: seller dashboard থেকে landing page ও product post publish করুন।'],
-    'custom-domain': ['নিজস্ব domain connect করে professional digital identity তৈরি করুন।', 'উদাহরণ: platform subdomain-এর বদলে আপনার store www.acme.com-এ চলবে।'],
-    capi: ['Server-side conversion event পাঠিয়ে campaign measurement নির্ভরযোগ্য করুন।', 'উদাহরণ: purchase event server থেকে ad platform-এ পাঠানো হবে।'],
-    'personal-mfs': ['Supported personal MFS payment verification automation করুন।', 'উদাহরণ: personal MFS payment website order-এর সঙ্গে match হবে।'],
-    'local-gateway': ['Regional customer-এর জন্য local payment method connect করুন।', 'উদাহরণ: local buyer regional gateway দিয়ে checkout করবে।'],
-    'international-gateway': ['বিশ্বব্যাপী customer-এর জন্য international payment method connect করুন।', 'উদাহরণ: overseas buyer global method দিয়ে checkout করবে।'],
-    notifications: ['Customer ও merchant-কে payment এবং order update পাঠান।', 'উদাহরণ: payment success হলে merchant alert ও customer update যাবে।'],
-    courier: ['Confirmed order supported courier workflow-এ automatic পাঠান।', 'উদাহরণ: confirmed COD order courier handoff-এর জন্য প্রস্তুত হবে।'],
-    'business-email': ['নিজস্ব branded domain-এ professional email send ও receive করুন।', 'উদাহরণ: sales@acme.com inquiry receive করবে এবং support@acme.com reply করবে।']
+    'no-code-website': ['কোনো কোডিং ছাড়াই ই-কমার্স, এডটেক, ব্লগ বা নিউজ সাইট তৈরি ও publish করুন।', 'seller dashboard থেকে landing page ও product post publish করুন।'],
+    'custom-domain': ['নিজস্ব domain connect করে professional digital identity তৈরি করুন।', 'platform subdomain-এর বদলে আপনার store www.acme.com-এ চলবে।'],
+    capi: ['Server-side conversion event পাঠিয়ে campaign measurement নির্ভরযোগ্য করুন।', 'purchase event server থেকে ad platform-এ পাঠানো হবে।'],
+    'personal-mfs': ['Supported personal MFS payment verification automation করুন।', 'personal MFS payment website order-এর সঙ্গে match হবে।'],
+    'local-gateway': ['Regional customer-এর জন্য local payment method connect করুন।', 'local buyer regional gateway দিয়ে checkout করবে।'],
+    'international-gateway': ['বিশ্বব্যাপী customer-এর জন্য international payment method connect করুন।', 'overseas buyer global method দিয়ে checkout করবে।'],
+    notifications: ['Customer ও merchant-কে payment এবং order update পাঠান।', 'payment success হলে merchant alert ও customer update যাবে।'],
+    courier: ['Confirmed order supported courier workflow-এ automatic পাঠান।', 'confirmed COD order courier handoff-এর জন্য প্রস্তুত হবে।'],
+    'business-email': ['নিজস্ব branded domain-এ professional email send ও receive করুন।', 'sales@acme.com inquiry receive করবে এবং support@acme.com reply করবে।']
   },
   hi: {
     'no-code-website': ['बिना कोडिंग ई-कॉमर्स, शिक्षा, ब्लॉग या न्यूज़ साइट बनाएं।', 'उदाहरण: seller dashboard से landing page और product post प्रकाशित करें।'],
