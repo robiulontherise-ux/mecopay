@@ -588,7 +588,7 @@ export default function DeveloperDocs() {
                     ব্যাকএন্ড কন্ট্রোলার
                   </div>
                   <p className="text-slate-400 leading-relaxed text-[11px]">
-                    কন্ট্রোলার প্রোডাক্টের ধরণ ও কারেন্সি রিড করে স্বয়ংক্রিয়ভাবে MecoPay API Worker এর <code>/v1/create-checkout</code> এ পে-লোড পাঠিয়ে <code>checkout_url</code> পায়।
+                    কন্ট্রোলার নিজের সার্ভার-side database থেকে প্রোডাক্টের ধরণ ও কারেন্সি রিড করে MecoPay API Worker-এর <code>/v1/create-checkout</code> এ পে-লোড পাঠিয়ে <code>checkout_url</code> পায়।
                   </p>
                 </div>
                 <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
@@ -603,7 +603,7 @@ export default function DeveloperDocs() {
               </div>
             </div>
 
-            {/* 500+ Old Products & Mixed Catalog Auto-Detection Guide */}
+            {/* Product classification and migration guide */}
             <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 sm:p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2.5">
@@ -612,11 +612,11 @@ export default function DeveloperDocs() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                      ৫০+ বা ৫০০+ পুরোনো প্রোডাক্ট ও মিক্সড ক্যাটালগ অটো-ডিটেকশন গাইড
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold">Zero-Edit Solution</span>
+                      পুরোনো প্রোডাক্ট ও মিক্সড ক্যাটালগ classification guide
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-semibold">Server-side required</span>
                     </h4>
                     <p className="text-[11px] text-slate-400">
-                      আপনার সাইটে ১-২ বছর আগে তৈরি করা ৫০০টি পণ্য থাকলে এবং ডাটাবেজে কোনো <code>product_type</code> কলাম না থাকলেও কিভাবে প্লাগিন বা কন্ট্রোলার প্রতিটি পণ্য স্বয়ংক্রিয়ভাবে চিনে নেবে?
+                      WooCommerce plugin product metadata দেখে নিজে type নির্ধারণ করতে পারে। Custom website controller-এর ক্ষেত্রে browser-এর category/type কখনো trust করবেন না—নিজের database field, category rule বা migration দিয়ে server-side type resolve করে তারপর API payload তৈরি করবেন।
                     </p>
                   </div>
                 </div>
@@ -643,15 +643,15 @@ export default function DeveloperDocs() {
                   <div className="font-bold text-blue-400 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center text-[10px]">২</span>
-                      কাস্টম সাইট: ক্যাটাগরি আইডি দিয়ে অটো-ডিটেকশন
+                      কাস্টম সাইট: database category rule
                     </span>
                     <span className="text-[10px] bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded">সুপারিশকৃত</span>
                   </div>
                   <p className="text-slate-300 text-[11px] leading-relaxed">
-                    কন্ট্রোলারে মাত্র ২ লাইনে ক্যাটাগরি আইডি দিয়ে ফিল্টার করুন:
+                    Server-side database থেকে category নিয়ে rule প্রয়োগ করুন; <code>category_id</code> browser request থেকে নেবেন না:
                   </p>
                   <pre className="bg-slate-950 p-2 rounded-lg text-[10px] font-mono text-cyan-300 overflow-x-auto">
-                    {'$isDigital = in_array($product->category_id, [3, 7]); // ৩=কোর্স, ৭=সফটওয়্যার\n$productType = $isDigital ? "digital" : (($adv > 0) ? "physical_advance" : "physical_cod");'}
+                    {'$isDigital = in_array($product->category_id, [3, 7], true); // database value\n$productType = $isDigital ? "digital" : (($advanceAmount > 0) ? "physical_advance" : "physical_cod");'}
                   </pre>
                 </div>
 
@@ -660,15 +660,15 @@ export default function DeveloperDocs() {
                   <div className="font-bold text-amber-400 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[10px]">৩</span>
-                      কাস্টম সাইট: ডাউনলোড লিংক বা ফাইল ফিল্ড দেখে
+                      কাস্টম সাইট: database feature/download field
                     </span>
                     <span className="text-[10px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded">বৈশিষ্ট্যভিত্তিক</span>
                   </div>
                   <p className="text-slate-300 text-[11px] leading-relaxed">
-                    ডিজিটাল পণ্যে কোনো ফাইল বা গুগল ড্রাইভ লিংক থাকে যা ফিজিক্যালে থাকে না:
+                    Trusted database-এর download/file field দেখে type resolve করুন; না থাকলে physical product-এর configured advance rule প্রয়োগ করুন:
                   </p>
                   <pre className="bg-slate-950 p-2 rounded-lg text-[10px] font-mono text-amber-300 overflow-x-auto">
-                    {'$productType = !empty($product->download_link) ? "digital" : "physical_advance";'}
+                    {'$isDigital = !empty($product->download_link); // database value\n$productType = $isDigital ? "digital" : (($advanceAmount > 0) ? "physical_advance" : "physical_cod");'}
                   </pre>
                 </div>
 
@@ -719,6 +719,11 @@ export default function DeveloperDocs() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-100 space-y-1.5">
+              <div className="font-bold text-amber-300">গুরুত্বপূর্ণ backend rule</div>
+              <p>এই controller samples backend/server-এ চালবে। Frontend শুধু <code>product_id</code> বা cart reference পাঠাবে; API key, price, product_type এবং courier/advance calculation আপনার server-side database থেকে নিতে হবে। Browser-এর পাঠানো price বা product_type সরাসরি MecoPay-তে forward করবেন না।</p>
             </div>
 
             {/* Language & Framework Switcher */}
@@ -814,8 +819,8 @@ HEADERS:
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-1.5 text-xs text-slate-300">
                 <h5 className="font-bold text-white">কোডটি কীভাবে কাজ করে?</h5>
                 <ol className="list-decimal pl-5 space-y-1">
-                  <li>কাস্টমার যখন চেকআউট বাটনে চাপ দেয়, কোড রিকোয়েস্টটি ধরে।</li>
-                  <li><code>order_id</code> বা <code>product_name</code> এবং <code>courier_charge</code> সহ পে-লোড বানায়।</li>
+                  <li>Frontend আপনার নিজের backend endpoint-এ order/cart reference পাঠায়; customer controller code দেখে না।</li>
+                  <li>Backend database থেকে product type, trusted price, currency এবং courier charge নিয়ে payload বানায়।</li>
                   <li>MecoPay Worker-এর <code>https://api.mecopay.space/v1/create-checkout</code> এ পাঠায়।</li>
                   <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
                 </ol>
@@ -1120,24 +1125,25 @@ class PaymentController extends Controller
         // =========================================================================
         // গার্ড ৩: ৩ ধরনের প্রোডাক্টের স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
         // =========================================================================
-        // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
+        // product_type অবশ্যই merchant database/service layer থেকে নিন; browser input trust করবেন না:
         // Determine product_type from your own product database before calling this controller.
-        $productType = $request->input('product_type');
+        // Replace this line with your trusted Order/Product model field. Do not trust a browser-supplied type.
+        $orderId = $request->input('order_id');
+        $order = Order::find($orderId); // Load and authorize this order for the current customer.
+        if (!$order) return back()->with('error', 'Order not found.');
+        $productType = $order->product_type;
         if (!in_array($productType, ['digital', 'physical_advance', 'physical_cod'], true)) {
             return back()->with('error', 'A valid product_type is required.');
         }
-        $orderId = $request->input('order_id');
-        $productName = $request->input('product_name');
+        $productName = $order->product_name;
 
         if (empty($orderId) && empty($productName)) {
             return back()->with('error', 'অর্ডার আইডি অথবা প্রোডাক্টের নাম যেকোনো একটি আবশ্যক।');
         }
 
-        $price = (float) $request->input('price', 0);
-        // কুরিয়ার চার্জ ডাইনামিকালি রিকোয়েস্ট বা প্রোডাক্ট থেকে নিন (ফ্রি ডেলিভারি হলে ০ থাকবে):
-        $courierCharge = (float) $request->input('courier_charge', 0);
-        // আপনার ডাটাবেজ বা রিকোয়েস্ট থেকে কারেন্সি নিন (যেমন: BDT, USD, EUR ইত্যাদি):
-        $currency = strtoupper(trim($request->input('currency', 'BDT')));
+        $price = (float) $order->total_amount;
+        $courierCharge = (float) $order->courier_charge;
+        $currency = strtoupper((string) $order->currency);
 
         $payload = [
             'order_id'         => $orderId ?: ('ORD-' . time()),
@@ -1166,7 +1172,7 @@ class PaymentController extends Controller
                 return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য টোটাল মূল্য আবশ্যক।');
             }
             // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি (০ হলে ১০০% ফুল ক্যাশ অন ডেলিভারি):
-            $advanceAmount = (float) $request->input('advance_amount', 0);
+            $advanceAmount = max(0, (float) $order->advance_amount);
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
             $payload['amount']         = min($advanceAmount, $price);
@@ -1207,7 +1213,8 @@ const rawPhpController = `<?php
 
 session_start();
 
-$apiKey = "YOUR_MECOPAY_API_KEY_HERE";
+$apiKey = getenv('MECOPAY_API_KEY') ?: '';
+if ($apiKey === '') die('MECOPAY_API_KEY is not configured.');
 $endpoint = "https://api.mecopay.space/v1/create-checkout";
 
 // =========================================================================
@@ -1245,21 +1252,24 @@ if (!empty($cart)) {
 // =========================================================================
 // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
 // =========================================================================
-// ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
+// product_type অবশ্যই merchant database/service layer থেকে নিন; browser input trust করবেন না:
 // $isDigital = (!empty($product['download_link']) || in_array($product['category_id'] ?? 0, [3, 7]));
 // $detectedType = $isDigital ? 'digital' : (($advance > 0) ? 'physical_advance' : 'physical_cod');
-$productType = $_POST['product_type'] ?? '';
+// Implement this lookup with your own DB layer. Do not use raw POST values for money or type.
+$orderId = $_POST['order_id'] ?? '';
+$order = load_authorized_order_from_database($orderId); // Merchant-specific repository function.
+if (!$order) die('Order not found.');
+$productType = $order['product_type'];
 if (!in_array($productType, ['digital', 'physical_advance', 'physical_cod'], true)) {
     die('A valid product_type is required.');
 }
-$orderId = $_POST['order_id'] ?? ("ORD-" . time());
-$productName = $_POST['product_name'] ?? "E-Commerce Product";
+$orderId = (string) $order['id'];
+$productName = (string) $order['product_name'];
 
 // ডাইনামিক কারেন্সি (BDT, USD, EUR ইত্যাদি):
-$currency = strtoupper(trim($_POST['currency'] ?? 'BDT'));
-// প্রোডাক্টের আসল মূল্য ও কুরিয়ার চার্জ ফর্ম বা ডাটাবেজ থেকে ডাইনামিকালি নিন (ফ্রি ডেলিভারি হলে ০):
-$price = (float) ($_POST['price'] ?? 0);
-$courierCharge = (float) ($_POST['courier_charge'] ?? 0);
+$currency = strtoupper((string) $order['currency']);
+$price = (float) $order['total_amount'];
+$courierCharge = (float) $order['courier_charge'];
 
 $payload = [
     "order_id"         => $orderId,
@@ -1279,7 +1289,7 @@ if ($productType === 'digital') {
     $payload['amount'] = $price;
     $payload['telegram_link'] = "https://t.me/+join_chat";
 } elseif ($productType === 'physical_advance') {
-    $advance = (float) ($_POST['advance_amount'] ?? 0); // ০ হলে ১০০% ফুল COD
+    $advance = max(0, (float) $order['advance_amount']);
     $payload['total_amount']   = $price;
     $payload['courier_charge'] = $courierCharge;
     $payload['amount']         = $advance;
@@ -1326,7 +1336,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const MECOPAY_API_KEY = process.env.MECOPAY_API_KEY || 'your_api_key_here';
+const MECOPAY_API_KEY = process.env.MECOPAY_API_KEY;
+if (!MECOPAY_API_KEY) throw new Error('MECOPAY_API_KEY is not configured.');
 const MECOPAY_ENDPOINT = 'https://api.mecopay.space/v1/create-checkout';
 
 // মেমোরি ক্যাশ (Webhook দিয়ে রিয়েল-টাইমে সিঙ্ক হয়)
@@ -1341,18 +1352,17 @@ app.post('/api/checkout', async (req, res) => {
       return res.status(503).json({ error: 'MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।' });
     }
 
+    const { order_id, customer_name, customer_phone, customer_address } = req.body;
+    const order = await orderRepository.findAuthorized(order_id, req.user.id); // Merchant-specific DB/repository layer.
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
     const {
-      order_id,
       product_name,
       product_type,
-      price = 0,
-      courier_charge = 0, // ফ্রি ডেলিভারি হলে ০
-      advance_amount = 0, // ০ হলে ১০০% ফুল COD
-      cart_items = [],
-      customer_name,
-      customer_phone,
-      customer_address
-    } = req.body;
+      price,
+      courier_charge = 0,
+      advance_amount = 0,
+      cart_items = []
+    } = order;
 
     // =========================================================================
     // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
@@ -1372,14 +1382,15 @@ app.post('/api/checkout', async (req, res) => {
     // =========================================================================
     // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     // =========================================================================
-    // ৫০০+ পুরোনো পণ্যের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
+    // product_type অবশ্যই merchant database/service layer থেকে নিন; browser input trust করবেন না:
     // const isDigital = Boolean(product?.download_link || [3, 7].includes(product?.category_id));
     // const detectedType = isDigital ? 'digital' : (advance_amount > 0 ? 'physical_advance' : 'physical_cod');
-    const finalProductType = product_type || req.body.detected_type;
+    // In production resolve this from your order repository; do not trust req.body.product_type.
+    const finalProductType = product_type;
     if (!['digital', 'physical_advance', 'physical_cod'].includes(finalProductType)) {
       return res.status(400).json({ error: 'product_type must be digital, physical_advance, or physical_cod.' });
     }
-    const finalCurrency = (req.body.currency || 'BDT').toUpperCase();
+    const finalCurrency = (order.currency || 'BDT').toUpperCase();
 
     if (!order_id && !product_name) {
       return res.status(400).json({ error: 'order_id অথবা product_name যেকোনো একটি ফিল্ড আবশ্যক।' });
@@ -1437,12 +1448,12 @@ const jsFetchController = `/**
  * Browser-side helper. The MecoPay API key must stay on your server.
  * POST /api/mecopay/checkout is an endpoint implemented by your backend.
  */
-async function initiateMecoPayCheckout(orderData) {
+async function initiateMecoPayCheckout(orderReference) {
   const response = await fetch('/api/mecopay/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify(orderData)
+    body: JSON.stringify({ order_id: orderReference.order_id, cart_id: orderReference.cart_id })
   });
   const data = await response.json();
   if (!response.ok || !data.success) {
@@ -1457,13 +1468,14 @@ async function initiateMecoPayCheckout(orderData) {
     return data;
   }
   throw new Error('Invalid checkout response');
-}`
+}`;
 
 // 5. Python (Django / Flask / Requests) with 3 Architecture Guards
-const pythonFullController = `import requests
+const pythonFullController = `import os
+import requests
 import time
 
-MECOPAY_API_KEY = "your_brand_api_key_here"
+MECOPAY_API_KEY = os.environ['MECOPAY_API_KEY']
 MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
 
 # লোকাল ক্যাশ ফ্ল্যাগ (Webhook এর মাধ্যমে রিয়েল-টাইমে আপডেট হয়)
@@ -1492,20 +1504,24 @@ def create_checkout_session(request_data):
     # =========================================================================
     # গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     # =========================================================================
-    # ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
+    # product_type অবশ্যই merchant database/service layer থেকে নিন; browser input trust করবেন না:
     # is_digital = bool(product.get("download_link") or product.get("category_id") in [3, 7])
     # detected_type = "digital" if is_digital else ("physical_advance" if advance_amount > 0 else "physical_cod")
-    product_type = request_data.get('product_type') or request_data.get('detected_type')
+    # In production resolve this from your order repository; do not trust request_data directly.
+    order = load_authorized_order(request_data.get('order_id'))  # Merchant-specific DB/repository layer.
+    if not order:
+        return {'error': 'Order not found.'}
+    product_type = order['product_type']
     if product_type not in {'digital', 'physical_advance', 'physical_cod'}:
         return {'error': 'A valid product_type is required.'}
-    price = float(request_data.get('price') or request_data.get('amount') or 0)
-    courier_charge = float(request_data.get('courier_charge') or 0) # ফ্রি ডেলিভারি হলে ০ থাকবে
+    price = float(order['total_amount'])
+    courier_charge = float(order.get('courier_charge', 0))
 
     payload = {
-        "order_id": request_data.get('order_id', f"ORD-{int(time.time())}"),
-        "product_name": request_data.get('product_name', "Digital E-Book"),
+        "order_id": order['id'],
+        "product_name": order['product_name'],
         "product_type": product_type,
-        "currency": (request_data.get('currency') or "BDT").upper(),
+        "currency": str(order.get('currency') or 'BDT').upper(),
         "customer_name": request_data.get('customer_name', "Guest"),
         "customer_phone": request_data.get('customer_phone', ""),
         "customer_address": request_data.get('customer_address', "Dhaka"),
@@ -1520,7 +1536,7 @@ def create_checkout_session(request_data):
         payload["amount"] = price
         payload["telegram_link"] = "https://t.me/+vip_invite"
     elif product_type == 'physical_advance':
-        advance = float(request_data.get('advance_amount') or 0)
+        advance = max(0, float(order.get('advance_amount', 0)))
         payload["total_amount"] = price
         payload["courier_charge"] = courier_charge
         payload["amount"] = advance
