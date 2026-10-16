@@ -1075,7 +1075,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">
-      <LocaleSwitcher className="w-full max-w-md mx-auto px-4 pt-3 justify-end" />
+      <LocaleSwitcher compact className="w-full max-w-none mx-auto px-4 pt-3 justify-end" />
       <div className="max-w-md w-full mx-auto p-4 pt-8 pb-20 relative">
         
         {/* Title / Brand (Only show on Steps 1, 2, 3) */}
