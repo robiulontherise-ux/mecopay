@@ -20,8 +20,8 @@ export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'three-products' | 'laravel' | 'webhook' | 'overview'>('three-products');
   const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
-  const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
-  const [webhookFrameworkTab, setWebhookFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
+  const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'python'>('laravel');
+  const [webhookFrameworkTab, setWebhookFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'python'>('laravel');
 
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -38,8 +38,6 @@ export default function DeveloperDocs() {
         return rawPhpController;
       case 'nodejs':
         return nodeJsFullController;
-      case 'javascript':
-        return jsFetchController;
       case 'python':
         return pythonFullController;
       default:
@@ -55,8 +53,6 @@ export default function DeveloperDocs() {
         return rawPhpWebhookCode;
       case 'nodejs':
         return nodeJsWebhookCode;
-      case 'javascript':
-        return javascriptWebhookNotice;
       case 'python':
         return pythonWebhookCode;
       default:
@@ -69,7 +65,6 @@ export default function DeveloperDocs() {
       case 'laravel': return 'app/Http/Controllers/MecoPayWebhookController.php';
       case 'php': return 'mecopay-webhook.php (Core PHP)';
       case 'nodejs': return 'routes/mecopayWebhook.js (Express)';
-      case 'javascript': return 'Not applicable in browser';
       case 'python': return 'webhooks.py (Django / Flask)';
       default: return 'MecoPayWebhookController.php';
     }
@@ -83,8 +78,6 @@ export default function DeveloperDocs() {
         return 'process_payment.php (Core PHP)';
       case 'nodejs':
         return 'controllers/paymentController.js (Express)';
-      case 'javascript':
-        return 'checkout.js (Fetch API)';
       case 'python':
         return 'views.py / payment.py (Django / Flask)';
       default:
@@ -841,16 +834,6 @@ if (order.payment_status === 'paid') {
                 Node.js (Express / Axios)
               </button>
               <button
-                onClick={() => setFrameworkTab('javascript')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  frameworkTab === 'javascript'
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                JavaScript (Fetch API)
-              </button>
-              <button
                 onClick={() => setFrameworkTab('python')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   frameworkTab === 'python'
@@ -1030,7 +1013,6 @@ HEADERS:
                   ['laravel', 'Laravel'],
                   ['php', 'Raw PHP'],
                   ['nodejs', 'Node.js / Express'],
-                  ['javascript', 'JavaScript (browser নয়)'],
                   ['python', 'Python / Django / Flask']
                 ] as const).map(([key, label]) => (
                   <button
@@ -1534,34 +1516,7 @@ app.post('/api/checkout', async (req, res) => {
   }
 });`;
 
-// 4. JavaScript (Fetch API - Frontend / Vanilla) with 3 Architecture Guards
-const jsFetchController = `/**
- * Browser-side helper. The MecoPay API key must stay on your server.
- * POST /api/mecopay/checkout is an endpoint implemented by your backend.
- */
-async function initiateMecoPayCheckout(orderReference) {
-  const response = await fetch('/api/mecopay/checkout', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify({ order_id: orderReference.order_id, cart_id: orderReference.cart_id })
-  });
-  const data = await response.json();
-  if (!response.ok || !data.success) {
-    throw new Error(data.error || 'Failed to create checkout');
-  }
-  if (data.checkout_url) {
-    window.location.assign(data.checkout_url);
-    return data;
-  }
-  if (data.requires_payment === false) {
-    window.location.assign('/order-success?invoice=' + encodeURIComponent(data.invoice_number || ''));
-    return data;
-  }
-  throw new Error('Invalid checkout response');
-}`;
-
-// 5. Python (Django / Flask / Requests) — direct server-to-server API call
+// 4. Python (Django / Flask / Requests) — direct server-to-server API call
 const pythonFullController = `import os
 import requests
 import time
@@ -1785,12 +1740,6 @@ router.post('/webhooks/mecopay', express.raw({ type: 'application/json' }), asyn
   return res.json({ status: 'success' });
 });
 module.exports = router;`;
-
-const javascriptWebhookNotice = `Browser JavaScript is not a webhook receiver.
-
-Do not put MECOPAY_WEBHOOK_SECRET in frontend code. A webhook must be received by your server, verified against the raw request body, and used to update your database.
-
-Use the Node.js / Express, Laravel, Raw PHP, or Python server sample instead.`;
 
 const pythonWebhookCode = `import os, hmac, hashlib, json
 from flask import request, jsonify  # Django: use request.body and JsonResponse

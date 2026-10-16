@@ -15,23 +15,24 @@ export default function LocaleSwitcher({ className = '', variant = 'light', comp
   const selectClass = isDark
     ? 'rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500'
     : 'rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500';
-  const compactSelectClass = compact ? `${selectClass} min-w-0 flex-1` : selectClass;
-  const layoutClass = compact ? 'flex-nowrap overflow-x-auto' : 'flex-wrap';
+  const compactCountryClass = compact ? `${selectClass} w-[clamp(4.5rem,24vw,18rem)] min-w-0 shrink` : selectClass;
+  const compactLanguageClass = compact ? `${selectClass} w-[clamp(4.5rem,18vw,13rem)] min-w-0 shrink` : selectClass;
+  const layoutClass = compact ? 'flex-nowrap' : 'flex-wrap';
   const countryLabel = isBengali ? 'দেশ' : 'Country';
   const languageLabel = isBengali ? 'ভাষা' : 'Language';
 
   return (
-    <div className={`flex ${layoutClass} items-center gap-2 ${className}`}>
-      <span className={`text-xs font-semibold ${textClass}`}>
+    <div className={`flex ${layoutClass} items-center ${compact ? 'gap-1 sm:gap-2' : 'gap-2'} ${className}`}>
+      <span className={`${compact ? 'max-w-[28vw] shrink-0 truncate text-[11px] sm:max-w-none sm:text-xs' : ''} text-xs font-semibold ${textClass}`}>
         {isDetecting
           ? (isBengali ? 'অবস্থান শনাক্ত হচ্ছে…' : 'Detecting location…')
           : `${countryLabel}: ${countryData?.name || (isBengali ? 'দেশ নির্বাচন' : 'Select country')}`}
       </span>
-      <select aria-label={countryLabel} value={country} onChange={(event) => setCountry(event.target.value)} className={compactSelectClass}>
+      <select aria-label={countryLabel} value={country} onChange={(event) => setCountry(event.target.value)} className={compact ? compactCountryClass : selectClass}>
         <option value="">{isBengali ? 'দেশ নির্বাচন' : 'Select country'}</option>
         {countries.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
       </select>
-      <select aria-label={languageLabel} value={language} onChange={(event) => setLanguage(event.target.value)} className={compactSelectClass}>
+      <select aria-label={languageLabel} value={language} onChange={(event) => setLanguage(event.target.value)} className={compact ? compactLanguageClass : selectClass}>
         {languageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
     </div>
