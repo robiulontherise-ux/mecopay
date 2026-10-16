@@ -1,4 +1,5 @@
 import { extendedCopy } from './marketingExtendedTranslations';
+import { additionalLocaleTranslations } from './additionalLocaleTranslations';
 
 export type Continent = 'asia' | 'africa' | 'europe' | 'north-america' | 'south-america' | 'oceania' | 'unknown';
 export type MarketingLanguage = 'en' | 'bn' | 'hi' | 'ar' | 'fr' | 'es' | 'pt' | 'zh' | 'de' | 'ja' | 'ko' | 'ru' | 'tr' | 'ta' | 'te' | 'ur' | 'it' | 'nl' | 'th' | 'vi' | 'uk' | 'pl' | 'el' | 'he' | 'ne' | 'si' | 'sv' | 'da';
@@ -217,13 +218,14 @@ const canonicalLanguage = (code: string, name?: string): string => {
   return languageAliases[normalizedCode] || (normalizedName ? languageAliases[normalizedName] : undefined) || normalizedCode;
 };
 const getExtendedCopy = (language: MarketingLanguage | string) => (extendedCopy as Record<string, any>)[canonicalLanguage(language)];
-const supportedLanguages = new Set<string>(['en', 'bn', 'hi', 'ar', 'fr', 'es', 'pt', ...Object.keys(extendedCopy)]);
-const isSupportedLanguage = (language: string) => supportedLanguages.has(canonicalLanguage(language));
+// The country dataset is the source of truth for locale selection. Translation
+// coverage may be narrower than the selector, but no native country language
+// should be hidden from the user. Common global languages are added below.
 
 export const getLanguageOptions = (continent: Continent) => languageOptions[continent] || languageOptions.unknown;
 export const getDefaultLanguage = (continent: Continent) => defaultLanguage[continent] || 'en';
 export const getHeroChunks = (language: MarketingLanguage | string) => getExtendedCopy(language)?.hero || hero[canonicalLanguage(language) as MarketingLanguage] || hero.en;
-export const getFeatureCopy = (id: string, language: MarketingLanguage | string): [string, string] => getExtendedCopy(language)?.features?.[id] || featureCopy[canonicalLanguage(language) as MarketingLanguage]?.[id] || featureCopy.en[id] || ['', ''];
+export const getFeatureCopy = (id: string, language: MarketingLanguage | string): [string, string] => getExtendedCopy(language)?.features?.[id] || additionalLocaleTranslations[canonicalLanguage(language) as keyof typeof additionalLocaleTranslations]?.features?.[id] || featureCopy[canonicalLanguage(language) as MarketingLanguage]?.[id] || featureCopy.en[id] || ['', ''];
 export const getSectionCopy = (key: 'scale' | 'personal' | 'physical', language: MarketingLanguage | string) => getExtendedCopy(language)?.sections?.[key] || sectionCopy[canonicalLanguage(language) as MarketingLanguage]?.[key] || sectionCopy.en[key];
 export const getTickerCopy = (language: MarketingLanguage | string) => getExtendedCopy(language)?.ticker || tickerCopy[canonicalLanguage(language) as MarketingLanguage] || tickerCopy.en;
 
@@ -232,18 +234,18 @@ export const getCountryLanguageOptions = (country?: CountryLanguage, continentCo
   const options = new Map<string, { value: string; label: string }>();
   allLanguages.forEach((language) => {
     const value = canonicalLanguage(language.code, language.name);
-    if (isSupportedLanguage(value) && !options.has(value)) options.set(value, { value, label: globalLanguageLabels.get(value) || language.name });
+    if (!options.has(value)) options.set(value, { value, label: globalLanguageLabels.get(value) || language.name });
   });
   globalLanguages.forEach((language) => { if (!options.has(language.value)) options.set(language.value, language); });
   return Array.from(options.values());
 };
 
 export const getDefaultCountryLanguage = (country?: CountryLanguage) => {
-  const supported = (country?.languages || [])
-    .map((language) => canonicalLanguage(language.code, language.name))
-    .filter((language) => isSupportedLanguage(language));
-  // Prefer a translated local language over English when both are available.
-  return supported.find((language) => language !== 'en') || supported[0] || 'en';
+  const countryLanguages = (country?.languages || [])
+    .map((language) => canonicalLanguage(language.code, language.name));
+  // Prefer the selected country's first native language; use English only when
+  // the country dataset has no language entry.
+  return countryLanguages.find((language) => language !== 'en') || countryLanguages[0] || 'en';
 };
 
 export const loadCountriesByContinent = async (continent: Continent): Promise<CountryLanguage[]> => {

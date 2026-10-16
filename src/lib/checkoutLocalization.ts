@@ -1,4 +1,5 @@
 // Checkout-only translations for copy that was originally hardcoded in Bengali.
+import { additionalLocaleTranslations } from './additionalLocaleTranslations';
 // Existing English UI copy remains in CheckoutPage unchanged.
 export type CheckoutCopyKey = "liveInstruction" | "trxInstruction" | "enterNumberInstruction" | "offlineTitle" | "offlineDescription" | "copyPersonal" | "sendMoneyOffline" | "trxOffline" | "cashinNagad" | "cashinOther" | "waitTrx" | "goApp" | "confirmAuto" | "dontClose" | "autoVerify" | "successOffline" | "successOnline";
 
@@ -541,6 +542,8 @@ const interpolate = (value: string, variables: Record<string, string> = {}) =>
   value.replace(/\{(\w+)\}/g, (_, key: string) => variables[key] ?? `{${key}}`);
 
 export function checkoutCopy(language: string, key: CheckoutCopyKey, variables: Record<string, string> = {}) {
-  const locale = checkoutTranslations[language as keyof typeof checkoutTranslations] || checkoutTranslations.en;
+  const locale = checkoutTranslations[language as keyof typeof checkoutTranslations]
+    || additionalLocaleTranslations[language as keyof typeof additionalLocaleTranslations]?.checkout
+    || checkoutTranslations.en;
   return interpolate((locale as Record<string, string>)[key] || checkoutTranslations.en[key], variables);
 }
