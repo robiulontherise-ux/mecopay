@@ -1140,7 +1140,6 @@ namespace App\\Http\\Controllers;
 
 use Illuminate\\Http\\Request;
 use Illuminate\\Support\\Facades\\Http;
-use Illuminate\\Support\\Facades\\Cache;
 use App\\Models\\Order;
 
 class PaymentController extends Controller
@@ -1220,9 +1219,9 @@ class PaymentController extends Controller
                 return back()->with('error', 'ডিজিটাল প্রোডাক্টের জন্য মূল্য (price) আবশ্যক।');
             }
             $payload['amount'] = $price;
-            $payload['telegram_link'] = $request->input('telegram_link', 'https://t.me/+secret_link');
-            $payload['facebook_group_link'] = $request->input('facebook_group_link');
-            $payload['google_drive_link'] = $request->input('google_drive_link');
+            $payload['telegram_link'] = $order->telegram_link ?? null;
+            $payload['facebook_group_link'] = $order->facebook_group_link ?? null;
+            $payload['google_drive_link'] = $order->google_drive_link ?? null;
         } elseif ($productType === 'physical_advance') {
             // ফিজিক্যাল অ্যাডভান্স: টোটাল এমাউন্ট, কুরিয়ার চার্জ এবং অ্যাডভান্স ফি
             if ($price <= 0) {
@@ -1250,6 +1249,10 @@ class PaymentController extends Controller
 
         if ($response->successful()) {
             $data = $response->json();
+            if (!empty($data['invoice_number'])) {
+                // Save MecoPay's invoice number on this order before redirecting.
+                $order->update(['invoice_number' => $data['invoice_number'], 'payment_status' => 'pending']);
+            }
             if (!empty($data['checkout_url'])) {
                 return redirect()->away($data['checkout_url']);
             }
@@ -1338,7 +1341,9 @@ $payload = [
 if ($productType === 'digital') {
     if ($price <= 0) die("ডিজিটাল পণ্যের মূল্য আবশ্যক।");
     $payload['amount'] = $price;
-    $payload['telegram_link'] = "https://t.me/+join_chat";
+    $payload['telegram_link'] = $order['telegram_link'] ?? null;
+    $payload['facebook_group_link'] = $order['facebook_group_link'] ?? null;
+    $payload['google_drive_link'] = $order['google_drive_link'] ?? null;
 } elseif ($productType === 'physical_advance') {
     $advance = max(0, (float) $order['advance_amount']);
     $payload['total_amount']   = $price;
@@ -1367,6 +1372,10 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 $result = json_decode($response, true);
+if ($httpCode === 200 && !empty($result['invoice_number'])) {
+    // Implement this repository function for the merchant's order table.
+    save_checkout_invoice($order['id'], $result['invoice_number']);
+}
 
 if ($httpCode === 200 && !empty($result['checkout_url'])) {
     header("Location: " . $result['checkout_url']);
@@ -1455,7 +1464,9 @@ app.post('/api/checkout', async (req, res) => {
     if (finalProductType === 'digital') {
       if (!price || price <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
       payload.amount = Number(price);
-      payload.telegram_link = 'https://t.me/+join_group';
+      payload.telegram_link = order.telegram_link || null;
+      payload.facebook_group_link = order.facebook_group_link || null;
+      payload.google_drive_link = order.google_drive_link || null;
     } else if (finalProductType === 'physical_advance') {
       if (!price || price <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
       payload.total_amount = Number(price);
@@ -1476,6 +1487,9 @@ app.post('/api/checkout', async (req, res) => {
       }
     });
 
+    if (response.data.invoice_number) {
+      await orderRepository.saveCheckoutInvoice(order.id, response.data.invoice_number);
+    }
     if (response.data.checkout_url) {
       return res.redirect(response.data.checkout_url);
     }
@@ -1570,7 +1584,9 @@ def create_checkout_session(request_data):
         if price <= 0:
             return {"error": "ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।"}
         payload["amount"] = price
-        payload["telegram_link"] = "https://t.me/+vip_invite"
+        payload["telegram_link"] = order.get("telegram_link")
+        payload["facebook_group_link"] = order.get("facebook_group_link")
+        payload["google_drive_link"] = order.get("google_drive_link")
     elif product_type == 'physical_advance':
         advance = max(0, float(order.get('advance_amount', 0)))
         payload["total_amount"] = price
@@ -1597,6 +1613,8 @@ def create_checkout_session(request_data):
         return {'error': 'MecoPay returned an invalid JSON response.'}
 
     if response.status_code == 200:
+        if result.get("invoice_number"):
+            save_checkout_invoice(order["id"], result["invoice_number"])  # Merchant repository function.
         if result.get("checkout_url"):
             return {"redirect": result["checkout_url"]}
         return {"success": True, "invoice_number": result.get("invoice_number")}
@@ -1639,6 +1657,9 @@ class MecoPayWebhookController extends Controller
                 'product_type' => $data['product_type'] ?? null,
                 'amount_paid' => $data['amount'] ?? null,
                 'delivery_data' => $data['delivery'] ?? null,
+                'telegram_link' => $data['telegram_link'] ?? null,
+                'facebook_group_link' => $data['facebook_group_link'] ?? null,
+                'google_drive_link' => $data['google_drive_link'] ?? null,
             ]);
         } else {
             $courier = is_array($data['courier'] ?? null) ? $data['courier'] : [];
@@ -1677,6 +1698,9 @@ if ($event === 'payment.completed') {
         'courier_charge' => $data['courier_charge'] ?? null,
         'cod_due' => $data['cod_due'] ?? null,
         'delivery' => $data['delivery'] ?? null,
+        'telegram_link' => $data['telegram_link'] ?? null,
+        'facebook_group_link' => $data['facebook_group_link'] ?? null,
+        'google_drive_link' => $data['google_drive_link'] ?? null,
     ]);
 } else {
     $courier = is_array($data['courier'] ?? null) ? $data['courier'] : [];
@@ -1713,7 +1737,10 @@ router.post('/webhooks/mecopay', express.raw({ type: 'application/json' }), asyn
     total_amount: data.total_amount || null,
     courier_charge: data.courier_charge || null,
     cod_due: data.cod_due || null,
-    delivery: data.delivery || null
+    delivery: data.delivery || null,
+    telegram_link: data.telegram_link || null,
+    facebook_group_link: data.facebook_group_link || null,
+    google_drive_link: data.google_drive_link || null
   }); }
   else await orderRepository.markProcessing(order.id, data.courier?.tracking_code || null);
   if (eventId) await orderRepository.saveWebhookEventId(order.id, eventId);
@@ -1759,6 +1786,9 @@ def mecopay_webhook():
             'courier_charge': data.get('courier_charge'),
             'cod_due': data.get('cod_due'),
             'delivery': data.get('delivery'),
+            'telegram_link': data.get('telegram_link'),
+            'facebook_group_link': data.get('facebook_group_link'),
+            'google_drive_link': data.get('google_drive_link'),
         })
     else: mark_order_processing(order['id'], (data.get('courier') or {}).get('tracking_code'))
     if event_id: save_webhook_event_id(order['id'], event_id)
