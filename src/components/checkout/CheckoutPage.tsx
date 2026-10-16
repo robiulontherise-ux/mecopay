@@ -457,6 +457,7 @@ export default function CheckoutPage() {
             id: sessionObj.order_id || 'api_session',
             brand_id: sessionObj.brand_id,
             user_id: brand?.user_id || sessionObj.user_id,
+            product_id: sessionObj.product_id || null,
             title: sessionObj.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Checkout Item'),
             price: sessionObj.payable_amount ?? sessionObj.amount ?? 0,
             total_amount: sessionObj.total_amount,
@@ -739,7 +740,24 @@ export default function CheckoutPage() {
         customer_phone: primaryPhone,
         customer_email: primaryEmail,
         product_name: linkData.product_name,
-        redirect_link: linkData.redirect_link
+        invoice_number: linkData.invoice_number || undefined,
+        redirect_link: linkData.redirect_link,
+        metadata: {
+          order_id: linkData.id || null,
+          product_name: linkData.product_name || null,
+          product_id: linkData.product_id || null,
+          product_type: linkData.product_type || null,
+          currency: linkData.currency || null,
+          total_amount: linkData.total_amount ?? checkoutAmounts.total,
+          amount: linkData.price ?? checkoutAmounts.total,
+          courier_charge: linkData.courier_charge ?? 0,
+          cod_due: linkData.cod_due ?? 0,
+          telegram_link: linkData.telegram_link || null,
+          facebook_group_link: linkData.facebook_group_link || null,
+          google_drive_link: linkData.google_drive_link || null,
+          callback_url: linkData.callback_url || null,
+          cancel_url: linkData.cancel_url || null
+        }
       };
 
       payload.customer_data = formData;

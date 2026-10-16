@@ -289,9 +289,9 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-blue-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-blue-300">order_id, product_id বা product_name</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">যেকোনো একটি অবশ্যই পাঠাতে হবে (দুটোই পাঠালে ট্র্যাকিংয়ের জন্য সর্বোত্তম)।</td>
+                      <td className="p-3 text-slate-300">order_id বা product_id সহ product_name পাঠানো উচিত; অন্তত order_id অথবা product_name অবশ্যই পাঠাতে হবে (দুটোই পাঠালে ট্র্যাকিংয়ের জন্য সর্বোত্তম)।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-blue-300">product_type</td>
@@ -387,7 +387,7 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-amber-300">order_id, product_id বা product_name</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">অর্ডার আইডেন্টিফায়ারের জন্য যেকোনো একটি পাঠানো আবশ্যক।</td>
                     </tr>
@@ -500,7 +500,7 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-emerald-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-emerald-300">order_id, product_id বা product_name</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">যেকোনো একটি বা দুটিই পাঠানো আবশ্যক।</td>
                     </tr>
@@ -868,7 +868,7 @@ HEADERS:
                 <Webhook className="w-5 h-5 text-emerald-400" /> Webhook Handling & Automatic Order Update
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                পেমেন্ট সফল হলে বা কুরিয়ার পার্সেল ডেলিভারি কনফার্ম করলে MecoPay স্বয়ংক্রিয়ভাবে আপনার ব্যাকএন্ডে একটি সিকিউর POST Webhook পাঠাবে। Signature JSON-এর ভিতরে নয়; <code>X-MecoPay-Signature</code> header-এ থাকে এবং raw request body দিয়ে HMAC-SHA256 যাচাই করতে হবে।
+                পেমেন্ট সফল হলে বা কুরিয়ার পার্সেল ডেলিভারি কনফার্ম করলে MecoPay স্বয়ংক্রিয়ভাবে আপনার ব্যাকএন্ডে একটি সিকিউর POST Webhook পাঠাবে। Signature JSON-এর ভিতরে নয়; <code>X-MecoPay-Signature</code> header-এ থাকে এবং raw request body দিয়ে HMAC-SHA256 যাচাই করতে হবে। Client order correlation-এর primary key হলো unique <code>invoice_number</code>; <code>order_id</code> ও <code>product_name</code> descriptive matching-এর জন্য পাঠানো হয়। Transaction ID client-এর জন্য required নয়।
               </p>
             </div>
 
@@ -887,11 +887,11 @@ HEADERS:
   "event": "payment.completed",
   "order_id": "ORD-9812",
   "invoice_number": "INV-2026-9812",
+  "product_id": "COURSE-AI-001",
   "product_name": "Fullstack AI Mastery Course",
   "product_type": "digital",
   "amount": 1500,
   "total_amount": 1500,
-  "transaction_id": "9H72KA89P1",
   "customer_phone": "01712345678",
   "status": "paid",
   "fb_passcode": "MC-8921",
@@ -910,13 +910,13 @@ HEADERS:
   "event": "payment.completed",
   "order_id": "ORD-7734",
   "invoice_number": "INV-2026-7734",
+  "product_id": "HEADPHONE-001",
   "product_name": "Wireless Noise Cancelling Headphones",
   "product_type": "physical_advance",
   "amount": 150,
   "total_amount": 1250,
   "courier_charge": 120,
   "cod_due": 1220,
-  "transaction_id": "8M41XA99L2",
   "customer_phone": "01812345678",
   "status": "paid",
   "courier_tracking_code": "STDF-981245",
@@ -935,13 +935,13 @@ HEADERS:
   "event": "order.courier_booked",
   "order_id": "ORD-5519",
   "invoice_number": "INV-2026-5519",
+  "product_id": "WALLET-001",
   "product_name": "Leather Executive Wallet",
   "product_type": "physical_cod",
   "amount": 0,
   "total_amount": 1200,
   "courier_charge": 120,
   "cod_due": 1320,
-  "transaction_id": "COD-ORDER",
   "customer_name": "Mohammad Ali",
   "customer_phone": "01912345678",
   "customer_address": "Chawkbazar, Chittagong",
@@ -1066,6 +1066,7 @@ Authorization: Bearer <YOUR_BRAND_API_KEY>`}
 
 const digitalJsonPayload = `{
   "order_id": "ORD-9812",
+  "product_id": "COURSE-AI-001",
   "product_name": "Fullstack AI Mastery Course",
   "product_type": "digital",
   "currency": "USD",
@@ -1082,6 +1083,7 @@ const digitalJsonPayload = `{
 
 const advanceJsonPayload = `{
   "order_id": "ORD-7734",
+  "product_id": "HEADPHONE-001",
   "product_name": "Wireless Noise Cancelling Headphones",
   "product_type": "physical_advance",
   "currency": "USD",
@@ -1100,6 +1102,7 @@ const advanceJsonPayload = `{
 
 const codJsonPayload = `{
   "order_id": "ORD-5519",
+  "product_id": "WALLET-001",
   "product_name": "Leather Executive Wallet",
   "product_type": "physical_cod",
   "currency": "USD",
@@ -1182,6 +1185,7 @@ class PaymentController extends Controller
             return back()->with('error', 'A valid product_type is required.');
         }
         $productName = $order->product_name;
+        $productId = $order->product_id;
 
         if (empty($orderId) && empty($productName)) {
             return back()->with('error', 'অর্ডার আইডি অথবা প্রোডাক্টের নাম যেকোনো একটি আবশ্যক।');
@@ -1194,6 +1198,7 @@ class PaymentController extends Controller
         $payload = [
             'order_id'         => $orderId ?: ('ORD-' . time()),
             'product_name'     => $productName ?: 'General Item',
+            'product_id'       => $productId,
             'product_type'     => $productType,
             'currency'         => $currency,
             'customer_name'    => $request->input('customer_name', 'Guest Customer'),
@@ -1311,6 +1316,7 @@ if (!in_array($productType, ['digital', 'physical_advance', 'physical_cod'], tru
 }
 $orderId = (string) $order['id'];
 $productName = (string) $order['product_name'];
+$productId = (string) ($order['product_id'] ?? '');
 
 // ডাইনামিক কারেন্সি (BDT, USD, EUR ইত্যাদি):
 $currency = strtoupper((string) $order['currency']);
@@ -1320,6 +1326,7 @@ $courierCharge = (float) $order['courier_charge'];
 $payload = [
     "order_id"         => $orderId,
     "product_name"     => $productName,
+    "product_id"       => $productId,
     "product_type"     => $productType,
     "currency"         => $currency,
     "customer_name"    => $_POST['customer_name'] ?? "Customer Name",
@@ -1402,6 +1409,7 @@ app.post('/api/checkout', async (req, res) => {
     const order = await orderRepository.findAuthorized(order_id, req.user.id); // Merchant-specific DB/repository layer.
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     const {
+      product_id,
       product_name,
       product_type,
       price,
@@ -1444,6 +1452,7 @@ app.post('/api/checkout', async (req, res) => {
 
     const payload = {
       order_id: order_id || ('ORD-' + Date.now()),
+      product_id: product_id || null,
       product_name: product_name || 'Item',
       product_type: finalProductType,
       currency: finalCurrency,
@@ -1565,6 +1574,7 @@ def create_checkout_session(request_data):
 
     payload = {
         "order_id": order['id'],
+        "product_id": product_id,
         "product_name": order['product_name'],
         "product_type": product_type,
         "currency": str(order.get('currency') or 'BDT').upper(),
@@ -1643,12 +1653,18 @@ class MecoPayWebhookController extends Controller
         if (!in_array($event, ['payment.completed', 'order.courier_booked'], true)) return response()->json(['status' => 'ignored']);
         $order = Order::where('id', $data['order_id'] ?? null)->orWhere('invoice_number', $data['invoice_number'] ?? null)->first();
         if (!$order) return response()->json(['error' => 'Order not found'], 404);
-        $eventId = (string) ($data['transaction_id'] ?? $data['trx_id'] ?? $data['invoice_id'] ?? $data['invoice_number'] ?? '');
+        $eventId = (string) ($data['invoice_number'] ?? $data['invoice_id'] ?? '');
         if ($eventId !== '' && $order->webhook_event_id === $eventId) return response()->json(['status' => 'already_processed']);
         if ($event === 'payment.completed') {
             $status = strtolower((string) ($data['status'] ?? ''));
             if (!in_array($status, ['paid', 'completed', 'success', 'succeeded'], true)) return response()->json(['error' => 'Payment is not successful'], 422);
-            $order->update(['payment_status' => 'paid', 'transaction_id' => $data['transaction_id'] ?? $data['trx_id'] ?? null]);
+            $order->update([
+                'payment_status' => 'paid',
+                'invoice_number' => $data['invoice_number'] ?? null,
+                'product_type' => $data['product_type'] ?? null,
+                'amount_paid' => $data['amount'] ?? null,
+                'delivery_data' => $data['delivery'] ?? null,
+            ]);
         } else {
             $courier = is_array($data['courier'] ?? null) ? $data['courier'] : [];
             $order->update(['status' => 'processing', 'courier_tracking' => $courier['tracking_code'] ?? null]);
@@ -1672,11 +1688,22 @@ if ($event === 'brand.settings_updated') { update_gateway_cache((bool)($data['pa
 if (!in_array($event, ['payment.completed', 'order.courier_booked'], true)) { http_response_code(200); exit('Ignored'); }
 $order = load_authorized_order($data['order_id'] ?? null, $data['invoice_number'] ?? null);
 if (!$order) { http_response_code(404); exit('Order not found'); }
-$eventId = (string)($data['transaction_id'] ?? $data['trx_id'] ?? $data['invoice_id'] ?? $data['invoice_number'] ?? '');
+$eventId = (string)($data['invoice_number'] ?? $data['invoice_id'] ?? '');
 if ($eventId !== '' && $order['webhook_event_id'] === $eventId) { http_response_code(200); exit('Already processed'); }
 if ($event === 'payment.completed') {
     if (!in_array(strtolower((string)($data['status'] ?? '')), ['paid', 'completed', 'success', 'succeeded'], true)) { http_response_code(422); exit('Payment is not successful'); }
-    mark_order_paid($order['id'], $data['transaction_id'] ?? $data['trx_id'] ?? null);
+    mark_order_paid($order['id'], [
+        'invoice_number' => $data['invoice_number'] ?? null,
+        'product_id' => $data['product_id'] ?? null,
+        'product_name' => $data['product_name'] ?? null,
+        'product_type' => $data['product_type'] ?? null,
+        'currency' => $data['currency'] ?? null,
+        'amount' => $data['amount'] ?? null,
+        'total_amount' => $data['total_amount'] ?? null,
+        'courier_charge' => $data['courier_charge'] ?? null,
+        'cod_due' => $data['cod_due'] ?? null,
+        'delivery' => $data['delivery'] ?? null,
+    ]);
 } else {
     $courier = is_array($data['courier'] ?? null) ? $data['courier'] : [];
     mark_order_processing($order['id'], $courier['tracking_code'] ?? null);
@@ -1701,9 +1728,20 @@ router.post('/webhooks/mecopay', express.raw({ type: 'application/json' }), asyn
   if (!['payment.completed', 'order.courier_booked'].includes(payload.event)) return res.json({ status: 'ignored' });
   const order = await orderRepository.findByIdOrInvoice(data.order_id, data.invoice_number);
   if (!order) return res.status(404).json({ error: 'Order not found' });
-  const eventId = String(data.transaction_id || data.trx_id || data.invoice_id || data.invoice_number || '');
+  const eventId = String(data.invoice_number || data.invoice_id || '');
   if (eventId && order.webhook_event_id === eventId) return res.json({ status: 'already_processed' });
-  if (payload.event === 'payment.completed') { if (!['paid', 'completed', 'success', 'succeeded'].includes(String(data.status || '').toLowerCase())) return res.status(422).json({ error: 'Payment is not successful' }); await orderRepository.markPaid(order.id, data.transaction_id || data.trx_id); }
+  if (payload.event === 'payment.completed') { if (!['paid', 'completed', 'success', 'succeeded'].includes(String(data.status || '').toLowerCase())) return res.status(422).json({ error: 'Payment is not successful' }); await orderRepository.markPaid(order.id, {
+    invoice_number: data.invoice_number || null,
+    product_id: data.product_id || null,
+    product_name: data.product_name || null,
+    product_type: data.product_type || null,
+    currency: data.currency || null,
+    amount: data.amount || null,
+    total_amount: data.total_amount || null,
+    courier_charge: data.courier_charge || null,
+    cod_due: data.cod_due || null,
+    delivery: data.delivery || null
+  }); }
   else await orderRepository.markProcessing(order.id, data.courier?.tracking_code || null);
   if (eventId) await orderRepository.saveWebhookEventId(order.id, eventId);
   return res.json({ status: 'success' });
@@ -1734,11 +1772,22 @@ def mecopay_webhook():
     if event not in {'payment.completed', 'order.courier_booked'}: return jsonify(status='ignored')
     order = load_authorized_order(data.get('order_id'), data.get('invoice_number'))
     if not order: return jsonify(error='Order not found'), 404
-    event_id = str(data.get('transaction_id') or data.get('trx_id') or data.get('invoice_id') or data.get('invoice_number') or '')
+    event_id = str(data.get('invoice_number') or data.get('invoice_id') or '')
     if event_id and order['webhook_event_id'] == event_id: return jsonify(status='already_processed')
     if event == 'payment.completed':
         if str(data.get('status', '')).lower() not in {'paid', 'completed', 'success', 'succeeded'}: return jsonify(error='Payment is not successful'), 422
-        mark_order_paid(order['id'], data.get('transaction_id') or data.get('trx_id'))
+        mark_order_paid(order['id'], {
+            'invoice_number': data.get('invoice_number'),
+            'product_id': data.get('product_id'),
+            'product_name': data.get('product_name'),
+            'product_type': data.get('product_type'),
+            'currency': data.get('currency'),
+            'amount': data.get('amount'),
+            'total_amount': data.get('total_amount'),
+            'courier_charge': data.get('courier_charge'),
+            'cod_due': data.get('cod_due'),
+            'delivery': data.get('delivery'),
+        })
     else: mark_order_processing(order['id'], (data.get('courier') or {}).get('tracking_code'))
     if event_id: save_webhook_event_id(order['id'], event_id)
     return jsonify(status='success'), 200`;
