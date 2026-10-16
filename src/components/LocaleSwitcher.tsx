@@ -15,9 +15,9 @@ export default function LocaleSwitcher({ className = '', variant = 'light', comp
   const selectClass = isDark
     ? 'rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500'
     : 'rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500';
-  const compactCountryClass = compact ? `${selectClass} w-[clamp(4.5rem,24vw,18rem)] min-w-0 shrink` : selectClass;
-  const compactLanguageClass = compact ? `${selectClass} w-[clamp(4.5rem,18vw,13rem)] min-w-0 shrink` : selectClass;
-  const layoutClass = compact ? 'flex-nowrap' : 'flex-wrap';
+  const compactCountryClass = compact ? `${selectClass} w-0 min-w-0 flex-1 sm:w-64 sm:flex-none` : selectClass;
+  const compactLanguageClass = compact ? `${selectClass} w-0 min-w-0 flex-1 sm:w-48 sm:flex-none` : selectClass;
+  const layoutClass = compact ? 'flex-nowrap justify-center' : 'flex-wrap';
   const countryLabel = isBengali ? 'দেশ' : 'Country';
   const languageLabel = isBengali ? 'ভাষা' : 'Language';
 
