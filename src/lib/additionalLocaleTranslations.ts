@@ -270,7 +270,7 @@ export const additionalLocaleTranslations = {
         "Example: purchase event e a send mai server ao n te ad platform."
       ],
       "personal-mfs": [
-        "Automate supported Personal MFS payment verification.",
+        "Karaoa bwa e na otometik kamatoaan te kabwamakoro ibukin te Personal MFS ae boutokaaki.",
         "Example: Personal MFS payment e match ae website order."
       ],
       "local-gateway": [
@@ -290,8 +290,8 @@ export const additionalLocaleTranslations = {
         "Example: confirmed COD order e prepare for courier handoff."
       ],
       "business-email": [
-        "Send ao receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "N te kanganga ao bon riki ni mauri e aomaia ake: kamwara ni karokoa ao karakiu i buoka n te domain bwa mauri n tainano.",
+        "sales@acme.com karokoa inquiries ao support@acme.com karakiu reply."
       ]
     }
   },
@@ -624,7 +624,7 @@ export const additionalLocaleTranslations = {
         "Ombira: purchase event e send ku server na ad platform."
       ],
       "personal-mfs": [
-        "Automate supported Personal MFS payment verification.",
+        "Tjita kutja okuzikamisa omafutiro wa Personal MFS nge yandjerwa ku yende otjini.",
         "Ombira: personal MFS payment e match ku website order."
       ],
       "local-gateway": [
@@ -644,8 +644,8 @@ export const additionalLocaleTranslations = {
         "Ombira: confirmed COD order e prepare for courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Ombira: sales@acme.com receives inquiries and support@acme.com replies."
+        "Tuma no kugamena email yokuvezelela mo domain yenyu oya tjihererewonwa.",
+        "sales@acme.com oiporopo yoombazo oya gamenwa, nonando support@acme.com ota penduka."
       ]
     }
   },
@@ -679,32 +679,32 @@ export const additionalLocaleTranslations = {
         "Example: your store run on www.acme.com insteaḏ of platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "!nâǀâsa server-side conversion event tse ǁnâ-khare tse ǀʼāren ge ǀgôanib kampain-measurement.",
+        "khara purchase event tse server-n ge ad platform-n ǀgâb."
       ],
       "personal-mfs": [
-        "Automate supported Personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Mā-amhe Personal MFS mâibasens ǃnôaǃgâsa otomatiki dī.",
+        "Personal MFS payment tse website ǃnāb order-n ǁnāb ǃgâab."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "ǀAoni-ǁkhâi customer-nes ra local payment ǃnāb ǁnāb konekt.",
+        "ǀAoni ǂkhāib buyer tse regional gateway ǃnāb checkout ǀgâb."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "tse ǁama-ǁkhâi customer-nes ra international payment ǃnāb ǁnāb konekt.",
+        "overseas buyer tse global method ǃnāb checkout ǀgâb."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "payment ǃnāb order update tse customer ǁnāb merchant ǃās ge ǂōǀnāb.",
+        "payment success kâ merchant alert ǁnāb customer update ǃāb."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Confirmed order tsî supported courier ǃnāb workflow ǁnāb automātis ge ǁnāb ǃās.",
+        "confirmed COD order tse courier handoff ǀgâb ǃgâab."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "ǂGâi-branded domain ǁnāb professional email ǃnāb ǂā ǁnāb ǃās ǁnāb ǃgâab.",
+        "sales@acme.com ǁnāb inquiry ǀgâb ǁnāb support@acme.com ǁnāb reply ǀgâb."
       ]
     }
   },
@@ -1155,7 +1155,7 @@ export const additionalLocaleTranslations = {
         "Example: a purchase event get send from di server to di ad platform."
       ],
       "personal-mfs": [
-        "Automate supported Personal MFS payment verification.",
+        "Aatameet di verifikieshan fi supuotid Personal MFS piement.",
         "Example: a Personal MFS payment get match to di website order."
       ],
       "local-gateway": [
@@ -1171,7 +1171,7 @@ export const additionalLocaleTranslations = {
         "Example: payment success mek a merchant alert an customer update."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
+        "Putt confirmed orders inna one supported courier workflow automatically.",
         "Example: a confirmed COD order get prepare fi courier handoff."
       ],
       "business-email": [
@@ -1497,40 +1497,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Sewi e-komenas, edükasion, blog, atau nius sihot woŋ i tiyelú walú me gumuŋú koding.",
+        "Publish eŋang an landing page me product post ghalú me seller dashboard."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Faŋiighiyoeghu domain omo ghadi me ghiyal affaes repaach me professional digital identity.",
+        "Store-amu eŋaŋ aŋ moŋoŋ www.acme.com nge naŋni ghal subdomain-n liyoŋ a platform."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Sowei conversion events server-side me chul kkan me maperti e campaign measurement.",
+        "A purchase event eŋaŋ sowei me server ya me ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Automaatighiyoeghu verification me payment ni supportakle me Personal MFS me MFS.",
+        "Personal MFS payment e match woŋ i website order."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Faŋiighiyoeghu local payment methods me customer ni ghal region.",
+        "A local buyer e fini checkout ghadi me regional gateway."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Faŋiighiyoeghu international payment methods me customer ni ghal worlú.",
+        "A overseas buyer e fini checkout me global method."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Sowei update me payment me order me customers me merchants.",
+        "Mwalú me payment success e ghal alert me merchant me update me customer."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Sowei confirmed orders me ghal supported courier workflow otomaatik.",
+        "A confirmed COD order e maas re waal para courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Sowei me fani email professional ghal domain omo ni branded-omu.",
+        "sales@acme.com e fani inquiries me support@acme.com e reply."
       ]
     }
   },
@@ -2206,7 +2206,7 @@ export const additionalLocaleTranslations = {
     "features": {
       "no-code-website": [
         "እንደ ኢ-ኮሜርስ፣ ትምህርት፣ ብሎግ ወይም ዜና ገፆች ያስፈጽሙና ያትሙ ያልነበረ ኮድ ያስፈልጋል ያለውን ሳይኮድ በመጠቀም።",
-        "custom-domain = placeholder"
+        "course seller dashboard ላይ landing page እና product post ያትሙ።"
       ],
       "custom-domain": [
         "ራስዎን የድር ስም (domain) ያገናኙ እና ከፍተኛ ፈጣን መላኪያ ጋር የሙያ ዲጂታል መለያ ይገነቡ።",
@@ -2689,7 +2689,7 @@ export const additionalLocaleTranslations = {
         "Example: a purchase event send from di server to di ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
+        "Automate di supported Personal MFS payment verification.",
         "Example: a personal MFS payment match to di website order."
       ],
       "local-gateway": [
@@ -2705,7 +2705,7 @@ export const additionalLocaleTranslations = {
         "Example: payment success trigger a merchant alert an customer update."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
+        "Send confirmed order ina wa supported courier workflow automatically.",
         "Example: a confirmed COD order get prepared fi courier handoff."
       ],
       "business-email": [
@@ -3149,40 +3149,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Tonge nokumoneka oma-site go e-commerce, education, blog noma news nonkora code.",
+        "publish a landing page na product post mo seller dashboard."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Yanganisa domain lyoye nokutunga professional digital identity mo okukara ohandi.",
+        "store lyoye li longuka po www.acme.com pokulipaga ke platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Tuma conversion events server-side po kuteya po oupimo woma-campaign aadilika.",
+        "oshinima shoku-tenga sha tumwa po kushilyo ku ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Tjikerere verification yomalipo aMFS aPersonal MFS ayene tayi pombwelenge.",
+        "personal MFS payment oyapamene yaalandithwa nonkalo yoye mo website order."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Yanganisa omayendelepo gomalipo gohambo la simo po va-ndona vo muholike.",
+        "omutengi wa muni okamuholike okutiya checkout nokuyenda ko regional gateway."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Yanganisa omayendelepo gomalipo gohambo la shilongo shendi po vandona vo shilongo shomunikifo.",
+        "omutengi wa pevi lyoshilongo okutiya checkout neshilongo shokuyenda shokoshiwa shomunikifo."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Tuma omaupdate gomalipo nomayele go-order po va-ndona nava-merchants.",
+        "payment success otayi lombola ombozipo ya merchant nokuupdate ya customer."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Tume omayele go-order gaguhanithwe mo courier workflow ya pombwelenge otjiikekerwe.",
+        "confirmed COD order otayi lungwavakanithwa po courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Tuma nonkalamena professional email mo domain lyoye olyo lya brand.",
+        "sales@acme.com otayi mono oulondolola noku support@acme.com otayi visikapula."
       ]
     }
   },
@@ -3503,40 +3503,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Limbisa no kutunga mipekiso ya e-commerce, makola ya vundzukanyo vya ku dyondza, mabuku ya blog tobu makuzi ya ku lomba ku webusaiti me kutala, utelela na ku siamisa kulinga no code.",
+        "telela landing page na product post ku seller dashboard ya mkulisa wa makosi."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Hlanganisa domain yanu yo bwalo u bangele chizwi cha digital chikulubwisa na ku katisa routing yeshili shilumbwa.",
+        "store yanu ichali ku www.acme.com peya ku vyepo vya platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Tumisa conversion events server-side kuti muwone campaign measurement yeshile yachikilekile.",
+        "purchase event itumisiwa ku server yo kuenda ku ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Lungamisa automation ya verification ya personal MFS yo tsekelwa.",
+        "personal MFS payment ichi fanana na order ya website."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Hlanganisa local payment methods kuti mupe muvekeli wa region shimo.",
+        "mukupi wa local achi kamaliza checkout kubudikila ku gateway ya region."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Hlanganisa international payment methods kuvekeli vosi vya pasi pose.",
+        "mukupi wa ku calo co deso achi kamaliza checkout na method ya global."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Tumisa mapepo ya payment na updates ya order kuvekeli na ba merchant.",
+        "payment success ichi vumbula alert ku merchant na update ku customer."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Tumisa maorder ayo ya confirmed mu workflow ya courier yo tsekelwa sondela automatic.",
+        "order ya confirmed COD icha lungisisiwa kukhandisa courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Tumisa kandi punda professional email pa domain yanu ya branded.",
+        "sales@acme.com ichi landa masabo na support@acme.com ichi tivule malandelo."
       ]
     }
   },
@@ -3562,40 +3562,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "E-commerce, education, blog, me news site irû eitsiwo, ngaga coding iauren ea tuŋ.",
+        "Publish a landing page me product post eo dogin seller dashboard."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Connect domain eget ijo am, o eitsiwo professional digital identity odiya, me routing eamiũ tsimine.",
+        "Store am eiyit www.acme.com bwain platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Send conversion events server-side bwe campaign measurement edorer rarũ.",
+        "Purchase event eo eitsiwo eiyuwo server ngaga ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Kamao automatic kae obwobwi Personal MFS orrer.",
+        "Personal MFS payment eo eiyuwo ngaga website order bwe ematch."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Connect local payment methods bwe deitab edogoriyin region.",
+        "Local buyer eo eitsiwo eiyuwo checkout ngaga regional gateway."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Connect international payment methods bwe customer eiyuwo tsimine anan.",
+        "Overseas buyer eo eitsiwo eiyuwo checkout ngaga global method."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Send payment me order updates ngaga customer me merchant.",
+        "Payment success eo eitsiwo eirũ merchant alert me customer update."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Send confirmed orders ngaga supported courier workflow automatically.",
+        "Confirmed COD order eo eitsiwo eiyuwo bwe courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Send me receive professional email dogin domain egen branded am.",
+        "sales@acme.com eirũ inquiries me support@acme.com eirũ replies."
       ]
     }
   },
@@ -3798,40 +3798,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Tala po ondunge ombali yokutunga naokuputulula e-commerce, eduteka, mbongo yomafita, ke oruhaluka rwonduwa okwaashiwa po okuwina kodihika.",
+        "putulula landing page na product post okuva mu seller dashboard ya muntu wa course."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Twala domain yako shili omolungo oshi okuzaaluwa nokutangela professional digital identity nokuenda ombinga yotumba odhihemo.",
+        "store yo i li po www.acme.com pewa kutya oku li pa platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Tuma server-side conversion events po oku meela measurement ya campaign e ndaali.",
+        "purchase event itumwako ku server kaye yaenda ku ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Oshikwatelwa oku automate verification yoomali Personal MFS omolwa.",
+        "Personal MFS payment i longa ke i match ne website order."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Twala local payment methods komi naantu dihinima omukalo gwa region.",
+        "omuntu olinga oku siya oku tunga i checkout pashi ya regional gateway."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Twala international payment methods komi naantu kuvatelapo omukalo gu li worldwide.",
+        "omuntu ova kwilonga oku siya oku tunga i checkout uko shili na global method."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Tuma payment na order updates ku customers na merchants.",
+        "payment success e tuma merchant alert kaye customer update."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Tuma confirmed orders mu supported courier workflow okwa automatic.",
+        "confirmed COD order i lungwa po courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Tuma na koluta professional email po domain yako ya branded.",
+        "sales@acme.com i landa inquiries kaye support@acme.com i twalule replies."
       ]
     }
   },
@@ -3916,40 +3916,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Hana mo e fakahono e ngaahi feitu‘u e-commerce, ako, blog, po ke tau talahe, aunoa mo e kodingi.",
+        "publish e landing page mo e product post mai he seller dashboard."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Fakamau atu e koe a e monūmonū hako haau (domain) ke fakatupu ai e professional digital identity mo e totolo agaia he hala fakafou.",
+        "tuku atu e tau fakatino he fale kaufefe haau ke oma he www.acme.com, nai he mena ke he subdomain he platform."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Fakafano e tau event he fakatokatoka he server-side ke malolo e fuafua he tau kampaini.",
+        "fakafano e purchase event mai he server ke he ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Fakaautomatika e verification he totogi he Personal MFS ka fakaaoga e talahau MFS.",
+        "ko e totogi Personal MFS ka fakafetui ke he website order."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Fakamau e tau auala totogi fakatokaloto ma e tau tagata fakatau he motu po e vaha tokoluga.",
+        "ko e tagata fakatau fakatokaloto ka fakakatoatoa e checkout he gateway fakatokoloto."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Fakamau e tau auala totogi fakalotu fakamui ma e tau tagata fakatau he lalolagi katoatoa.",
+        "ko e tagata fakatau overseas ka fakakatoatoa e checkout he tau global method."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Fakafano e tau fakamaamaaga totogi mo e tau fakauka order ke he tau customer mo e tau merchant.",
+        "tiaki e payment success ke fanogonogo e merchant mo e fakamaamaaga ke he customer."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Fakafano atu oti e tau order kua fakameleta ki loto he galuega courier ka lagomatai, he hala fakaautomatika.",
+        "ko e confirmed COD order kua fakatoka ke tuku atu ki he courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Fakafano mo e mau mai e professional email he monūmonū hako haau kua fakailoa e brand (domain).",
+        "sales@acme.com ke mau mai e tau uiui, ti tali mai a support@acme.com."
       ]
     }
   },
@@ -5155,40 +5155,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create an publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Moruul e mopublish a site er a siobai, osisechakl, blog, me a lechub e ng chais el diak mousbech a koding.",
+        "Publish a rengreng el landing page me a product post er a seller dashboard."
       ],
       "custom-domain": [
-        "Connect bo own domain el build professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Mokebit a kloklem el domain e mketmokl a ungil el digital identity er kau el oba a bekerurau el routing.",
+        "A store er kau mokiik er a www.acme.com ng di mokiik er a subdomain er a platform."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Kesiich a conversion events er a server-side el mo diak a klekedall er a measurement er a campaign.",
+        "A purchase event ngalek er a server el mo er a ad platform."
       ],
       "personal-mfs": [
-        "Automate supported Personal MFS payment verification.",
-        "Example: a Personal MFS payment is matched to the website order."
+        "Moruul el mo automatic a oterekellel a cheral a Personal MFS el kengei er ngii.",
+        "a cheral a Personal MFS a mo kldmokl er a order er a website."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Kokosiich a local payment methods er ngaklei a kliente er a chesemiich el beluu.",
+        "A local buyer mechas a checkout er a regional gateway."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Kokosiich a international payment methods er a kliente er a chelid er a beluu el kiei el kbo momdasu.",
+        "A overseas buyer mechas a checkout er a global method."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Dilisich me mngilisa a chelsel a klebuked er a payment me a order er ngaklei a customer me a merchant.",
+        "Ng di mo successful a payment, mechas a alert er a merchant me a update er a customer."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Dilisich a confirmed orders el mo er a supported courier workflow er tia el diak a diak le ngmo er kau.",
+        "A confirmed COD order mekedam er a courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Dilisich me delal a professional email er kau el branded domain.",
+        "sales@acme.com mechas a inquiries, me support@acme.com mosiik a reply."
       ]
     }
   },
@@ -5222,11 +5222,11 @@ export const additionalLocaleTranslations = {
         "Example: yu store run on www.acme.com insted a platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
+        "Sen server-side conversion event foh di server bloa tekem gud trak blong kampen.",
         "Example: wan purchase event go sent from la server to la ad platform."
       ],
       "personal-mfs": [
-        "Automate supported Personal MFS payment verification.",
+        "Mekem daa saported Personal MFS peyment verifikeshan ortermatic.",
         "Example: wan Personal MFS payment match wit la website order."
       ],
       "local-gateway": [
@@ -5242,7 +5242,7 @@ export const additionalLocaleTranslations = {
         "Example: payment success trigger a merchant alert an customer update."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
+        "Sen confirmed orders go insaed wan supported courier workflow otomatikli.",
         "Example: wan confirmed COD order prepare for courier handoff."
       ],
       "business-email": [
@@ -5745,40 +5745,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Vhala na u sumbedza ma-site a e-commerce, u guda, blog kana mutsiko wa vhukuma zwi songo shuma khodi.",
+        "sumbedza landing page na product post u bva kha seller dashboard ya muvhengi wa course."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Konektisa domain yau na u lwa na tshileme tsha digital tsha professional nga u kona u fhindula nga vhukuma.",
+        "store yau i khou tshimbidza kha www.acme.com khwine ho tou dovha hafhu ho vha na platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Tumisela conversion events server-side u ita uri u engetelela u vhidziwa ha campaign zwi tou lavhelekela.",
+        "purchase event i tumelwa u bva kha server iya kha ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Shandulula u vhona zwikonelelo zwa Personal MFS payment zwine zwa tsireledzwa.",
+        "Personal MFS payment i thedela na website order."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Konektisa zwimelo zwa payment zwa ndeme kha vhatevheli vha khondo ya inwi.",
+        "muthengesi wa nga vhone a dovha a ita checkout nga regional gateway."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Konektisa zwimelo zwa payment zwa shango hone hafhu kha vhatevheli vha shango linyalo.",
+        "muthengesi wa khandanelaho u ita checkout nga method ya tshitshavha tsha shango."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Tumisela zwikhouḓo zwa payment na update dza order kha vhatevheli na vahandisi.",
+        "payment success i khumba alert ya merchant na update ya muthengesi."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Tumisela order dza fhethu dzi khou vhambedza kha courier workflow ine ya tsireledzwa nga u fhindula nga vha tshifhinga.",
+        "confirmed COD order i khou bviswa ro vha ro lugiswa u ya courier."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Tumisela na u wana imeili dza professional kha domain yau ya branded.",
+        "sales@acme.com i khou wana inquiries naho support@acme.com i tshi vhala mibvele."
       ]
     }
   },
@@ -7043,40 +7043,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Sakani no kusindikila masaiti ya e-commerce, chisambilo, blog, panandi saiti sha nsala, nangu takwaba kukoda.",
+        "publish a landing page and product post kufuma ku seller dashboard."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Yanganishani domain yenu no kuumina professional digital identity ni njira ya kushaukila yachimbu.",
+        "sitolo yenu ikashitabishe pa www.acme.com, pantu pali platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Tumizhani conversion event pa server-side kuti campaign measurement ishindikile bwino.",
+        "purchase event itumizwa kufuma ku server kuya ku ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Sangulululani verification ya malipilo ya Personal MFS aishimikilwa mu automatic. MFS yikulumbulula ukushimikilila.",
+        "personal MFS payment ilingananishwa no website order."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Yanganishani njira shalikupela malipilo yakuma kumushi pa bakasitomala bakumalilano.",
+        "umwini wa kumushi apwishishe checkout na regional gateway."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Yanganishani njira shalikupela malipilo sha kunse kwensha pa bakasitomala bonse panshi.",
+        "umwini wa kunse apwishishe checkout na global method."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Tumizhani vipola vya payment na order ku bakasitomala no ku ba merchant.",
+        "payment ikashindikila, merchant alipokwa alert na customer apokwa update."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Tumizhani ma order ayashimikilwa mu courier workflow ishiishimikilwa mwachisangululuko.",
+        "confirmed COD order yakonkelwa pa courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Tumeni no kupoka professional email pa branded domain yenu.",
+        "sales@acme.com ipoka ma inquiry, support@acme.com isuminisha mivumbo."
       ]
     }
   },
@@ -7102,40 +7102,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Fai mo fakaha e ngaahi saiti e-commerce, ako, blog, pe ongoongo ‘ikai fie tohi koka.",
+        "publish ha landing page mo ha product post mei he seller dashboard."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Fesili‘i ki ho‘o domain ‘o langa ha fakamatala‘o fakafaiako ‘oku poto mo e fe‘unga mo e ala vave ‘o e fehu‘i‘anga hala.",
+        "‘e lele ho store ‘i he www.acme.com ‘o ‘ikai ha subdomain ‘a e platform."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Fakafepaki e ngaahi konivesini ‘i he server-side ke fuoloa mo falala‘anga e fuofua ‘o e campaign.",
+        "‘oku ‘ave ha purchase event mei he server ki he ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Fakatekiteki ‘a e sivi‘ia ‘o e totongi ‘a e Personal MFS ‘oku ne tokoni ki ai.",
+        "‘oku faka‘ataa ha Personal MFS payment ke fakatautaha mo e website order."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Fesili‘i e ngaahi founga totongi fakalokaloka ki he kau fakatau fakavahevahe.",
+        "‘oku fakakakato ‘e ha fakatau faka‘api ha checkout ‘o ‘oatu ‘aki ha gateway fakavahevahe."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Fesili‘i e ngaahi founga totongi fakava‘olunga ki he kau kasitoma ‘o mamani kotoa.",
+        "‘oku fakakakato ‘e ha fakatau mei tu‘apule‘anga ha checkout ‘aki ha founga fakalalahi."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "‘Ave e ngaahi fakamatala fakalotofale ‘o e totongi mo e order ki he kau kasitoma mo e kau fa‘iteliha.",
+        "kapau ‘e lava lelei e totongi, ‘e tukuhifo ha fanautaki ki he fa‘iteliha pea toe fakalelei‘i ‘a e kasitoma."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "‘Ave ‘a e ngaahi order kuo fakapapau‘i ki he courier workflow ‘oku tokoni ki ai ‘o aunoa mo ha ngaue fakaetangata.",
+        "‘oku teuteu ha order COD kuo fakapapau‘i ki he courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "‘Ave mo tali e professional email ‘i ho‘o domain kuo fili ‘aki ho ho‘o hingoa fakapa‘anga.",
+        "‘oku tali ‘e he sales@acme.com ‘a e ngaahi kole pea tali ki ai ‘e he support@acme.com."
       ]
     }
   },
@@ -7397,40 +7397,40 @@ export const additionalLocaleTranslations = {
     },
     "features": {
       "no-code-website": [
-        "Create and publish e-commerce, education, blog, or news sites without coding.",
-        "Example: publish a landing page and product post from the course seller dashboard."
+        "Fai kae publish ne ngaahi saiti e-commerce, ako, blog, mo niu e aunoa mo te kape kodesi.",
+        "publish se landing page mo se product post mai te seller dashboard o te faiga ako."
       ],
       "custom-domain": [
-        "Connect your own domain and build a professional digital identity with faster routing.",
-        "Example: your store runs on www.acme.com instead of a platform subdomain."
+        "Konekia kāu domain mō te fatuina o se professional digital identity mo te vave o te alagaala o fesokotaki.",
+        "kā tau store e fakagaue i www.acme.com i luma i se platform subdomain."
       ],
       "capi": [
-        "Send conversion events server-side for reliable campaign measurement.",
-        "Example: a purchase event is sent from the server to the ad platform."
+        "Lafo atu a conversion events i te server-side mō se kampane measurement fakatuatuagia.",
+        "se purchase event e lafo mai te server ki te ad platform."
       ],
       "personal-mfs": [
-        "Automate supported personal MFS payment verification.",
-        "Example: a personal MFS payment is matched to the website order."
+        "Fakamalosi a te otometi o te verification o te totogi MFS a te Personal MFS e lagolagoina.",
+        "se totogi Personal MFS e fetaui mo te website order."
       ],
       "local-gateway": [
-        "Connect local payment methods for regional customers.",
-        "Example: a local buyer completes checkout through a regional gateway."
+        "Konekia auala totogi fakalotofenua mō kāiga faifaiga i te itū fenua.",
+        "se tagata faipologa fakalotofenua e fakamāeʻa te checkout mā te gateway fakalotofenua."
       ],
       "international-gateway": [
-        "Connect international payment methods for customers worldwide.",
-        "Example: an overseas buyer completes checkout with a global method."
+        "Konekia auala totogi fakafetai ki tua-fenua mō kāiga faifaiga i te lalolagi kātoa.",
+        "se tagata faipoloa mai tua-fenua e fakamāeʻa te checkout mā se auala global."
       ],
       "notifications": [
-        "Send payment and order updates to customers and merchants.",
-        "Example: payment success triggers a merchant alert and customer update."
+        "Lafo atu fakailoaga o totogi mo otā order ki tagata faipoloa mo tagata faipisinisi.",
+        "ka manuia te totogi, e fakamalosi se fakailoaga ki te tagata faipisinisi mo se fakamaeʻa ki te tagata faipoloa."
       ],
       "courier": [
-        "Send confirmed orders into a supported courier workflow automatically.",
-        "Example: a confirmed COD order is prepared for courier handoff."
+        "Lafo otometi atu a order kua fakamaoniga ki loto i se courier workflow e lagolagoina.",
+        "se order COD kua fakamaoniga e sauni mō te courier handoff."
       ],
       "business-email": [
-        "Send and receive professional email on your own branded domain.",
-        "Example: sales@acme.com receives inquiries and support@acme.com replies."
+        "Lafo mo maua a professional email i tou lava branded domain.",
+        "sales@acme.com e maua mai a fepulai fesili, kae support@acme.com e tali mai."
       ]
     }
   }

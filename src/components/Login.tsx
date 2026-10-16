@@ -6,6 +6,8 @@ import { CheckCircle2, ShieldCheck, Zap, Rocket, Globe, ArrowRight, Menu, Wallet
 import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
 import { useLocale } from '../lib/LocaleContext';
 
+const pricingUnavailableTextLanguages = new Set(['khi', 'nzs', 'zib']);
+
 const textChunks = [
   [
     "MecoPay একটি পূর্ণাঙ্গ ই-কমার্স সলিউশন—",
@@ -41,12 +43,14 @@ export default function Login() {
   const [currentChunk, setCurrentChunk] = useState(0);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
   const { continent, country: selectedCountry, language, countries, isDetecting: isDetectingContinent, countryData: selectedCountryData, languageOptions: countryLanguageOptions, setCountry: setSelectedCountry, setLanguage } = useLocale();
+  const pricingLanguage = pricingUnavailableTextLanguages.has(language) ? 'en' : language;
+  const pricingLanguageOptions = countryLanguageOptions.filter((option) => !pricingUnavailableTextLanguages.has(option.value));
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
   useEffect(() => {
     // Calculate total time needed for the current chunk to finish its animation
     // Duration is 2.0s, delay is 0.5 + lineIndex * 2.0
     // We add 1.0s extra reading time after the last line finishes
-    const numLines = getHeroChunks(language)[currentChunk].length;
+    const numLines = getHeroChunks(pricingLanguage)[currentChunk].length;
     const animationTimeMs = (0.5 + (numLines - 1) * 2.0 + 2.0 + 1.0) * 1000;
     
     const timeout = setTimeout(() => {
@@ -54,7 +58,7 @@ export default function Login() {
     }, animationTimeMs);
     
     return () => clearTimeout(timeout);
-  }, [currentChunk, language]);
+  }, [currentChunk, pricingLanguage]);
 
   const handleGoogleLogin = async () => {
     if (window.self !== window.top) {
@@ -176,7 +180,7 @@ export default function Login() {
       <div className="flex flex-wrap justify-center items-center gap-2 border-b border-neutral-900 bg-neutral-950 px-4 py-3">
         <span className="text-xs font-semibold text-neutral-500">{isDetectingContinent ? 'Detecting location…' : `Country: ${selectedCountryData?.name || continent}`}</span>
         <select aria-label="Country" value={selectedCountry} onChange={(event) => setSelectedCountry(event.target.value)} className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-200">{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select>
-        <select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+        <select aria-label="Language" value={pricingLanguage} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-200">{pricingLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
       </div>
 
       {/* Hero Section */}
@@ -193,7 +197,7 @@ export default function Login() {
               transition={{ duration: 0.25 }}
               className="absolute inset-0 flex flex-col items-center justify-start sm:justify-center pt-8 sm:pt-0 space-y-2 md:space-y-4 w-full text-center"
             >
-              {getHeroChunks(language)[currentChunk] && getHeroChunks(language)[currentChunk].map((line, lineIndex) => {
+              {getHeroChunks(pricingLanguage)[currentChunk] && getHeroChunks(pricingLanguage)[currentChunk].map((line, lineIndex) => {
                 const isLongText = currentChunk === 1 && lineIndex >= 2;
                 return (
                 <div key={lineIndex} className="relative inline-block py-1 md:py-2 px-1 md:px-2">
@@ -258,7 +262,7 @@ export default function Login() {
           <h2 className="text-3xl md:text-5xl font-black text-white mt-5 mb-4 tracking-tight">Build Your Own Plan</h2>
           <p className="text-neutral-400 text-base md:text-lg">Choose only the services your business needs. Each feature explains what it does and where it fits in your workflow.</p>
           <div className="flex flex-wrap justify-center gap-2 mt-7 mb-3"><button onClick={() => setPricingMode('nocode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'nocode' ? 'bg-blue-600 text-white' : 'bg-neutral-900 text-neutral-400'}`}>No-Code Website</button><button onClick={() => setPricingMode('custom')} className={`px-4 py-2 rounded-lg text-sm font-bold ${pricingMode === 'custom' ? 'bg-amber-500 text-white' : 'bg-neutral-900 text-neutral-400'}`}>Custom Website</button></div>
-          <div className="flex flex-wrap justify-center items-center gap-2 mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your country…' : `Showing pricing for ${selectedCountryData?.name || continentLabel}`}</span><select aria-label="Country" value={selectedCountry} onChange={(event) => { setSelectedCountry(event.target.value); }} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200"><option value="">Select country</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200">{countryLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+          <div className="flex flex-wrap justify-center items-center gap-2 mb-4"><span className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-300">{isDetectingContinent ? 'Detecting your country…' : `Showing pricing for ${selectedCountryData?.name || continentLabel}`}</span><select aria-label="Country" value={selectedCountry} onChange={(event) => { setSelectedCountry(event.target.value); }} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200"><option value="">Select country</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select><select aria-label="Language" value={pricingLanguage} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-semibold text-neutral-200">{pricingLanguageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
           <div className="inline-flex items-center p-1 mt-7 bg-neutral-900 border border-neutral-800 rounded-lg relative">
             <button onClick={() => setIsYearly(false)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${!isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Monthly</button>
             <button onClick={() => setIsYearly(true)} className={`relative z-10 px-6 py-2 rounded-md text-sm font-medium ${isYearly ? 'text-white' : 'text-neutral-400 hover:text-white'}`}>Yearly</button>
@@ -272,8 +276,8 @@ export default function Login() {
               const selected = feature.available && selectedFeatureIds.includes(feature.id);
               return <button key={feature.id} disabled={!feature.available} onClick={() => feature.available && setSelectedFeatureIds((current) => selected ? current.filter((id) => id !== feature.id) : [...current, feature.id])} className={`text-left rounded-2xl border p-5 transition-all ${selected ? 'border-blue-500/70 bg-blue-500/10 shadow-lg shadow-blue-950/30' : 'border-neutral-800 bg-neutral-900/70 hover:border-neutral-600'}`}>
                 <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center">{(feature as any).icon || '⚡'}</span><span className="font-bold text-white">{feature.name}</span></div><span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selected ? 'bg-blue-600 border-blue-500 text-white' : 'border-neutral-600 text-transparent'}`}>✓</span></div>
-                <p className="text-sm text-neutral-300 mt-4 leading-relaxed">{getFeatureCopy(feature.id, language)[0]}</p>
-                <p className="text-xs text-neutral-500 mt-3 leading-relaxed"><strong className="text-neutral-400">Example:</strong> {getFeatureCopy(feature.id, language)[1].replace('Example: ', '')}</p>
+                <p className="text-sm text-neutral-300 mt-4 leading-relaxed">{getFeatureCopy(feature.id, pricingLanguage)[0]}</p>
+                <p className="text-xs text-neutral-500 mt-3 leading-relaxed"><strong className="text-neutral-400">Example:</strong> {getFeatureCopy(feature.id, pricingLanguage)[1].replace('Example: ', '')}</p>
                 <p className="text-sm text-blue-300 font-bold mt-4">{feature.available ? (feature.price === 0 ? 'FREE' : `$${feature.price}/mo`) : 'N/A'}</p>
               </button>;
             })}

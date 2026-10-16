@@ -218,6 +218,8 @@ const canonicalLanguage = (code: string, name?: string): string => {
   return languageAliases[normalizedCode] || (normalizedName ? languageAliases[normalizedName] : undefined) || normalizedCode;
 };
 const getExtendedCopy = (language: MarketingLanguage | string) => (extendedCopy as Record<string, any>)[canonicalLanguage(language)];
+const stripLocalizedExampleLabel = (example: string) =>
+  example.replace(/^\s*[^:：։፡៖؛՝]{1,40}[:：։፡】【：؛՝]\s*/u, '');
 // The country dataset is the source of truth for locale selection. Translation
 // coverage may be narrower than the selector, but no native country language
 // should be hidden from the user. Common global languages are added below.
@@ -225,7 +227,16 @@ const getExtendedCopy = (language: MarketingLanguage | string) => (extendedCopy 
 export const getLanguageOptions = (continent: Continent) => languageOptions[continent] || languageOptions.unknown;
 export const getDefaultLanguage = (continent: Continent) => defaultLanguage[continent] || 'en';
 export const getHeroChunks = (language: MarketingLanguage | string) => getExtendedCopy(language)?.hero || hero[canonicalLanguage(language) as MarketingLanguage] || hero.en;
-export const getFeatureCopy = (id: string, language: MarketingLanguage | string): [string, string] => getExtendedCopy(language)?.features?.[id] || featureCopy[canonicalLanguage(language) as MarketingLanguage]?.[id] || featureCopy.en[id] || ['', ''];
+export const getFeatureCopy = (id: string, language: MarketingLanguage | string): [string, string] => {
+  const locale = canonicalLanguage(language);
+  const additionalFeatureCopy = (additionalLocaleTranslations as unknown as Record<string, { features?: Record<string, [string, string]> }>)[locale]?.features?.[id];
+  const copy = getExtendedCopy(language)?.features?.[id]
+    || featureCopy[locale as MarketingLanguage]?.[id]
+    || additionalFeatureCopy
+    || featureCopy.en[id]
+    || ['', ''];
+  return [copy[0], stripLocalizedExampleLabel(copy[1])];
+};
 export const getSectionCopy = (key: 'scale' | 'personal' | 'physical', language: MarketingLanguage | string) => getExtendedCopy(language)?.sections?.[key] || sectionCopy[canonicalLanguage(language) as MarketingLanguage]?.[key] || sectionCopy.en[key];
 export const getTickerCopy = (language: MarketingLanguage | string) => getExtendedCopy(language)?.ticker || tickerCopy[canonicalLanguage(language) as MarketingLanguage] || tickerCopy.en;
 
