@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { ShieldCheck, X, Loader2, Lock, Copy, Clock, RefreshCw, AlertCircle, CheckCircle2, Flag, QrCode, ShoppingCart, AlertTriangle } from 'lucide-react';
 import LocaleSwitcher from '../LocaleSwitcher';
 import { useLocale } from '../../lib/LocaleContext';
+import { checkoutCopy } from '../../lib/checkoutLocalization';
 
 // Brand Logos
 const LOGOS = {
@@ -1318,9 +1319,9 @@ export default function CheckoutPage() {
                           <span className="font-bold text-slate-800 text-xl tracking-tight">Live Auto-Verification</span>
                         </div>
                         <p className="text-sm text-slate-600 leading-relaxed mt-3">
-                          {language !== 'bn'
+                          {language === 'en'
                              ? 'Select this method, enter your sender number on the next page and confirm. A 10-min live session will start, send money within this time to auto-verify.' 
-                             : 'লাইভ মেথড সিলেক্ট করলে, পরের পেইজে আপনি যে একাউন্ট নম্বর থেকে টাকা পাঠাবেন সেটি দিয়ে নিশ্চিত করলে ১০ মিনিটের লাইভ সেশন চালু হবে। এর মধ্যে সেন্ড মানি করলেই পেমেন্ট অটো-ভেরিফাই হবে।'}
+                             : checkoutCopy(language, 'liveInstruction')}
                         </p>
                       </button>
                     )}
@@ -1341,9 +1342,9 @@ export default function CheckoutPage() {
                           <span className="font-bold text-slate-800 text-xl tracking-tight">TrxID Auto-Verification</span>
                         </div>
                         <p className="text-sm text-slate-600 leading-relaxed mt-3">
-                          {language !== 'bn'
+                          {language === 'en'
                              ? 'Cash In from a shop or ask someone else to Send Money. Then auto-verify using the Transaction ID (TrxID).' 
-                             : 'দোকান থেকে ক্যাশ-ইন করুন বা দূরের কাউকে দিয়ে সেন্ড মানি করান। এরপর ট্রানজেকশন আইডি (TrxID) দিয়ে অটো-ভেরিফাই করুন।'}
+                             : checkoutCopy(language, 'trxInstruction')}
                         </p>
                       </button>
                     )}
@@ -1376,9 +1377,9 @@ export default function CheckoutPage() {
                         placeholder="e.g 01XXXXXXXXX"
                       />
                       <p className="text-sm font-medium opacity-90 mb-8 px-2 leading-relaxed">
-                        {language !== 'bn'
+                        {language === 'en'
                           ? `Enter your number and click '${providerKey === 'nagad' ? 'Proceed' : 'Confirm'}'.`
-                          : `আপনার নম্বর দিয়ে '${providerKey === 'nagad' ? 'Proceed' : 'Confirm'}' বাটনে ক্লিক করুন।`}
+                          : checkoutCopy(language, 'enterNumberInstruction', { action: providerKey === 'nagad' ? 'Proceed' : 'Confirm' })}
                       </p>
                     </div>
                   ) : (
@@ -1388,10 +1389,10 @@ export default function CheckoutPage() {
                          <div className="bg-black/20 border border-white/20 rounded-xl p-4 mb-6 text-center animate-in fade-in">
                            <div className="inline-flex items-center justify-center gap-2 text-yellow-300 font-bold mb-1">
                              <AlertTriangle className="w-5 h-5" /> 
-                             {language !== 'bn' ? 'Merchant Device Offline' : 'মার্চেন্ট ডিভাইস অফলাইন'}
+                             {language === 'en' ? 'Merchant Device Offline' : checkoutCopy(language, 'offlineTitle')}
                            </div>
                            <p className="text-white/90 text-sm font-medium">
-                             {language !== 'bn' ? 'Auto-verification is temporarily unavailable.' : 'অটো-ভেরিফিকেশন সাময়িকভাবে বন্ধ আছে।'}
+                             {language === 'en' ? 'Auto-verification is temporarily unavailable.' : checkoutCopy(language, 'offlineDescription')}
                            </p>
                          </div>
                       )}
@@ -1423,7 +1424,7 @@ export default function CheckoutPage() {
 
                       <div className="space-y-3 text-sm mb-8 font-medium">
                         {verifyMethod === 'offline' ? (
-                          language !== 'bn' ? (
+                          language === 'en' ? (
                             <>
                               <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">1</span> Copy the Personal Account number above.</p>
                               <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">2</span> Please Send Money, Cash In, or ask someone else to send money to this number.</p>
@@ -1431,13 +1432,13 @@ export default function CheckoutPage() {
                             </>
                           ) : (
                             <>
-                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">১</span> উপরের পার্সোনাল একাউন্ট নম্বরটি কপি করুন।</p>
-                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">২</span> উপরের নাম্বারে সেন্ড মানি করুন, ক্যাশ ইন করুন, অথবা দূরের কাউকে দিয়ে টাকা পাঠান।</p>
-                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">৩</span> Transaction ID (TrxID) সংগ্রহ করে নিচে দিন। মার্চেন্ট অনলাইনে এলে আপনাকে ইমেইলের মাধ্যমে জানানো হবে, অথবা আপনি সরাসরি মার্চেন্টের সাথে যোগাযোগ করতে পারেন।</p>
+                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">1</span> {checkoutCopy(language, 'copyPersonal')}</p>
+                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">2</span> {checkoutCopy(language, 'sendMoneyOffline')}</p>
+                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">3</span> {checkoutCopy(language, 'trxOffline')}</p>
                             </>
                           )
                         ) : (
-                          language !== 'bn' ? (
+                          language === 'en' ? (
                             <>
                               <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">1</span> Copy the Personal Account number above.</p>
                               <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">2</span> {providerKey === 'nagad' ? 'Cash In is not allowed in Nagad, so please Send Money from another account.' : 'Before Cash In, ask the shopkeeper if they will provide the TrxID. Otherwise, ask someone to Send Money.'}</p>
@@ -1445,9 +1446,9 @@ export default function CheckoutPage() {
                             </>
                           ) : (
                             <>
-                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">১</span> উপরের পার্সোনাল একাউন্ট নম্বরটি কপি করুন।</p>
-                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">২</span> {providerKey === 'nagad' ? 'নগদ-এ ক্যাশ-ইন অ্যালাউড নয়, তাই অন্য কারো নগদ থেকে সেন্ড মানি করুন।' : 'ক্যাশ-ইন করার আগে দোকানদারকে জিজ্ঞেস করুন TrxID দিবে কি না, না দিলে করবেন না। অথবা দূরের কাউকে দিয়ে সেন্ড মানি করান।'}</p>
-                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">৩</span> পেমেন্ট করার পর ১০-১৫ সেকেন্ড অপেক্ষা করে নিচের বক্সে TrxID দিন। আপনি চাইলে পেজ কেটে দিয়ে ২৪ ঘণ্টার মধ্যে যেকোনো সময় এই পেমেন্ট পেজে নতুনভাবে এসে TrxID দিয়ে অটো ভেরিফাই করতে পারবেন।</p>
+                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">1</span> {checkoutCopy(language, 'copyPersonal')}</p>
+                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">2</span> {checkoutCopy(language, providerKey === 'nagad' ? 'cashinNagad' : 'cashinOther')}</p>
+                              <p className="flex gap-2"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 border border-white/50 shadow-sm">3</span> {checkoutCopy(language, 'waitTrx')}</p>
                             </>
                           )
                         )}
@@ -1506,7 +1507,7 @@ export default function CheckoutPage() {
                   )}
 
                   <div className="space-y-3 text-sm mb-8 font-medium">
-                     {language !== 'bn' ? (
+                     {language === 'en' ? (
     <>
       <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">1</span> <span>Copy the Personal Account number above.</span></p>
       <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">2</span> <span>Go to {selectedGateway.provider} app or dial {providerKey === 'bkash' ? '*247#' : providerKey === 'nagad' ? '*167#' : providerKey === 'rocket' ? '*322#' : '*268#'} and select 'Send Money'.</span></p>
@@ -1514,9 +1515,9 @@ export default function CheckoutPage() {
     </>
   ) : (
     <>
-      <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">১</span> <span>উপরের পার্সোনাল একাউন্ট নম্বরটি কপি করুন।</span></p>
-      <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">২</span> <span>{selectedGateway.provider} অ্যাপ এ যান অথবা {providerKey === 'bkash' ? '*247#' : providerKey === 'nagad' ? '*167#' : providerKey === 'rocket' ? '*322#' : '*268#'} ডায়েল করে 'সেন্ড মানি' করুন।</span></p>
-      <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">৩</span> <span>কপি করা নম্বরটি দিন, এমাউন্ট দিন এবং পিন দিয়ে কনফার্ম করলেই স্বয়ংক্রিয়ভাবে ভেরিফাই হয়ে যাবে।</span></p>
+      <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">1</span> <span>{checkoutCopy(language, 'copyPersonal')}</span></p>
+      <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">2</span> <span>{checkoutCopy(language, 'goApp', { provider: selectedGateway.provider, dialCode: providerKey === 'bkash' ? '*247#' : providerKey === 'nagad' ? '*167#' : providerKey === 'rocket' ? '*322#' : '*268#' })}</span></p>
+      <p className="flex gap-2 items-start"><span className="bg-white/20 text-white font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0 mt-0.5 border border-white/50 shadow-sm">3</span> <span>{checkoutCopy(language, 'confirmAuto')}</span></p>
     </>
   )}
                      <div className="mx-6 my-4 border-2 border-white/20 rounded-xl overflow-hidden bg-white flex justify-center items-center py-4 relative shadow-inner">
@@ -1548,8 +1549,8 @@ export default function CheckoutPage() {
                          <AlertCircle className="w-4 h-4 text-white" />
                       </div>
                       <div className="text-xs text-white leading-tight">
-                        <span className="block font-extrabold text-[13px] mb-0.5">দয়া করে এই পেজটি কাটবেন না</span>
-                        <span className="opacity-90">আপনার পেমেন্টটি স্বয়ংক্রিয়ভাবে ভেরিফাই হচ্ছে</span>
+                        <span className="block font-extrabold text-[13px] mb-0.5">{checkoutCopy(language, 'dontClose')}</span>
+                        <span className="opacity-90">{checkoutCopy(language, 'autoVerify')}</span>
                       </div>
                     </div>
                     
@@ -1610,7 +1611,7 @@ export default function CheckoutPage() {
                 >
                   <div className="text-sm font-bold text-red-700 flex items-center gap-2 group-hover:scale-105 transition-transform">
                     <AlertTriangle className="w-4 h-4 text-red-700" /> 
-                    {language !== 'bn' ? "Cut Invoice" : "Cut Invoice"}
+                    {language === 'en' ? "Cut Invoice" : "Cut Invoice"}
                   </div>
                 </button>
               </div>
@@ -1640,15 +1641,15 @@ export default function CheckoutPage() {
               <h2 className="text-2xl font-bold text-slate-800 mb-2">Verification Submitted!</h2>
               {verifyMethod === 'offline' ? (
                 <p className="text-slate-500 mb-10 text-lg">
-                  {language !== 'bn'
+                  {language === 'en'
                     ? <><span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>, your transaction has been recorded. The merchant is currently offline. You will be notified via email once they come back online and verify your payment.</>
-                    : <>ধন্যবাদ <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>। আপনার ট্রানজেকশনটি রেকর্ড করা হয়েছে। মার্চেন্ট বর্তমানে অফলাইনে আছেন। তিনি অনলাইনে এসে আপনার পেমেন্ট ভেরিফাই করলে আপনাকে ইমেইলে জানানো হবে।</>}
+                    : <span>{checkoutCopy(language, 'successOffline', { name: formData.Name || formData.name || 'Customer' })}</span>}
                 </p>
               ) : (
                 <p className="text-slate-500 mb-10 text-lg">
-                  {language !== 'bn'
+                  {language === 'en'
                     ? <>Thank you, <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>. Your payment of {formatCurrency(linkData.price)} via {selectedGateway?.provider} has been received and is being verified.</>
-                    : <>ধন্যবাদ <span className="font-medium text-slate-800">{formData.Name || formData.name || 'Customer'}</span>। {selectedGateway?.provider}-এর মাধ্যমে আপনার {formatCurrency(linkData.price)} পেমেন্টটি গ্রহণ করা হয়েছে এবং ভেরিফাই করা হচ্ছে।</>}
+                    : <span>{checkoutCopy(language, 'successOnline', { name: formData.Name || formData.name || 'Customer', amount: formatCurrency(linkData.price), provider: selectedGateway?.provider || '' })}</span>}
                 </p>
               )}
               
