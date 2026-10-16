@@ -158,7 +158,7 @@ serve(async (req) => {
       .from('invoices')
       .update({
         status: 'Completed',
-        trx_id: verifiedTrxId,
+        transaction_id: verifiedTrxId,
         paid_at: new Date().toISOString()
       })
       .eq('id', invoice.id)
@@ -219,10 +219,10 @@ serve(async (req) => {
             invoice_id: invoice.id,
             invoice_number: invoice.invoice_number,
             order_id: invoice.metadata?.order_id || null,
-            order_type: invoice.product_type || 'digital',
+            product_type: invoice.product_type || 'digital',
             amount: invoice.amount,
             status: 'paid',
-            trx_id: verifiedTrxId,
+            transaction_id: verifiedTrxId,
             gateway_used: invoice.gateway_used || gateway_type,
             customer: {
               name: invoice.customer_name,
@@ -267,7 +267,7 @@ serve(async (req) => {
       invoice_number: invoice.invoice_number,
       order_id: invoice.metadata?.order_id || null,
       order_type: invoice.product_type,
-      trx_id: verifiedTrxId,
+      transaction_id: verifiedTrxId,
       amount: invoice.amount,
       digital_access: digitalAccess,
       webhook: webhookResult,

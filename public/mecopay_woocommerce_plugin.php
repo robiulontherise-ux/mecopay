@@ -2,319 +2,292 @@
 /**
  * Plugin Name: MecoPay Smart Dual-Gateway for WooCommerce
  * Plugin URI: https://mecopay.space
- * Description: High-Performance bKash, Nagad, Rocket, Upay & Card payment gateway with Zero-Waste Full COD courier automation.
- * Version: 2.6.0
+ * Description: Secure MecoPay gateway with automatic WooCommerce product-type detection, advance/COD support, and signed webhook synchronization.
+ * Version: 3.0.0
  * Author: MecoPay
  * Author URI: https://mecopay.space
  * Text Domain: mecopay-gateway
  * Domain Path: /languages
  * Requires at least: 5.4
  * Requires PHP: 7.4
+ * Requires Plugins: woocommerce
+ * License: GPL-2.0+
  */
 
 if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly
+    exit;
 }
 
-add_action('plugins_loaded', 'mecopay_init_smart_gateway_class', 0);
+add_action('plugins_loaded', 'mecopay_init_gateway', 0);
 
-function mecopay_init_smart_gateway_class() {
+function mecopay_init_gateway() {
     if (!class_exists('WC_Payment_Gateway')) {
         return;
     }
 
     class WC_Gateway_MecoPay extends WC_Payment_Gateway {
+        const API_URL = 'https://api.mecopay.space/v1/create-checkout';
 
         public function __construct() {
             $this->id                 = 'mecopay';
-            $this->icon               = 'https://raw.githubusercontent.com/mecopay/assets/main/logo.png';
+            $this->icon               = '';
             $this->has_fields         = false;
-            $this->method_title       = 'MecoPay Dual-Gateway';
-            $this->method_description = 'Accept Personal MFS (TrxID) & Merchant Gateways (OTP/PIN) with Smart Cart Detection and Zero-Waste COD.';
-
-            $this->supports = array(
-                'products',
-                'refunds'
-            );
+            $this->method_title       = __('MecoPay Dual-Gateway', 'mecopay-gateway');
+            $this->method_description = __('Secure MecoPay payments for digital, physical advance, and full COD WooCommerce orders.', 'mecopay-gateway');
+            $this->supports           = array('products');
 
             $this->init_form_fields();
             $this->init_settings();
 
-            $this->title       = $this->get_option('title', 'bKash / Nagad / Rocket / Cards (MecoPay)');
-            $this->description = $this->get_option('description', 'Pay securely via bKash, Nagad, Rocket, Upay, or Cards.');
-            $this->enabled     = $this->get_option('enabled', 'yes');
-            $this->api_key     = trim($this->get_option('api_key', ''));
+            $this->title          = $this->get_option('title', 'bKash / Nagad / Rocket / Cards (MecoPay)');
+            $this->description    = $this->get_option('description', 'Pay securely via MecoPay.');
+            $this->enabled        = $this->get_option('enabled', 'yes');
+            $this->api_key        = trim((string) $this->get_option('api_key', ''));
+            $this->webhook_secret = trim((string) $this->get_option('webhook_secret', ''));
+            $this->advance_amount = max(0, (float) $this->get_option('advance_amount', 150));
 
-            // Actions & Webhooks
             add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
             add_action('woocommerce_api_mecopay_webhook', array($this, 'handle_webhook'));
-
-            // Single Digital Course & Mixed Cart Protection Filters
             add_action('woocommerce_check_cart_items', array($this, 'validate_cart_integrity'));
         }
 
-        /**
-         * Gateway Admin Configuration Form Fields
-         */
         public function init_form_fields() {
+            $webhook_url = add_query_arg('wc-api', 'mecopay_webhook', home_url('/'));
             $this->form_fields = array(
                 'enabled' => array(
-                    'title'   => __('Enable/Disable', 'mecopay-gateway'),
-                    'type'    => 'checkbox',
-                    'label'   => __('Enable MecoPay Gateway', 'mecopay-gateway'),
-                    'default' => 'yes'
+                    'title' => __('Enable/Disable', 'mecopay-gateway'), 'type' => 'checkbox',
+                    'label' => __('Enable MecoPay Gateway', 'mecopay-gateway'), 'default' => 'yes'
                 ),
                 'title' => array(
-                    'title'       => __('Method Title', 'mecopay-gateway'),
-                    'type'        => 'text',
-                    'description' => __('Payment method title visible to customers on Checkout.', 'mecopay-gateway'),
-                    'default'     => __('bKash / Nagad / Cards (MecoPay)', 'mecopay-gateway'),
-                    'desc_tip'    => true,
+                    'title' => __('Method Title', 'mecopay-gateway'), 'type' => 'text',
+                    'description' => __('Title shown to customers at checkout.', 'mecopay-gateway'),
+                    'default' => __('bKash / Nagad / Rocket / Cards (MecoPay)', 'mecopay-gateway')
                 ),
                 'description' => array(
-                    'title'       => __('Description', 'mecopay-gateway'),
-                    'type'        => 'textarea',
-                    'description' => __('Payment instructions visible to customers.', 'mecopay-gateway'),
-                    'default'     => __('Pay instantly using Personal MFS or Automatic Merchant Gateway.', 'mecopay-gateway'),
+                    'title' => __('Description', 'mecopay-gateway'), 'type' => 'textarea',
+                    'description' => __('Payment instructions shown to customers.', 'mecopay-gateway'),
+                    'default' => __('Pay securely via MecoPay.', 'mecopay-gateway')
                 ),
                 'api_key' => array(
-                    'title'       => __('MecoPay Live API Key', 'mecopay-gateway'),
-                    'type'        => 'password',
-                    'description' => __('Find your unique API Key in MecoPay Dashboard > Brand Settings.', 'mecopay-gateway'),
-                    'default'     => '',
-                    'placeholder' => 'mp_live_...',
-                    'desc_tip'    => true,
+                    'title' => __('MecoPay Live API Key', 'mecopay-gateway'), 'type' => 'password',
+                    'description' => __('Use the Brand API Key from MecoPay Dashboard.', 'mecopay-gateway'),
+                    'default' => '', 'placeholder' => 'mp_live_...'
+                ),
+                'webhook_secret' => array(
+                    'title' => __('Webhook Secret', 'mecopay-gateway'), 'type' => 'password',
+                    'description' => __('Must match the webhook secret configured in MecoPay Dashboard. Required for signed payment confirmation.', 'mecopay-gateway'),
+                    'default' => '', 'placeholder' => 'Shared webhook secret'
                 ),
                 'advance_amount' => array(
-                    'title'       => __('Physical Advance Amount', 'mecopay-gateway'),
-                    'type'        => 'number',
-                    'description' => __('Enter advance fee to charge online for physical products. Set 0 for 100% Cash On Delivery (Just Form).', 'mecopay-gateway'),
-                    'default'     => '150',
-                    'desc_tip'    => true,
+                    'title' => __('Physical Advance Amount', 'mecopay-gateway'), 'type' => 'number',
+                    'description' => __('Advance amount for physical products. Set 0 for full COD.', 'mecopay-gateway'),
+                    'default' => '150', 'custom_attributes' => array('min' => '0', 'step' => '0.01')
+                ),
+                'webhook_url_display' => array(
+                    'title' => __('Webhook URL', 'mecopay-gateway'), 'type' => 'title',
+                    'description' => '<code>' . esc_url($webhook_url) . '</code><br><small>' . esc_html__('Add this URL in MecoPay Dashboard > Webhook Settings.', 'mecopay-gateway') . '</small>'
                 )
             );
         }
 
-        /**
-         * Cart Validation Rules:
-         * 1. Max 1 Digital Product per order.
-         * 2. Prohibit Mixed Cart (Physical + Digital in same order).
-         */
         public function validate_cart_integrity() {
             if (is_admin() || !WC()->cart) return;
-
             $digital_count = 0;
             $physical_count = 0;
-
-            foreach (WC()->cart->get_cart() as $cart_item) {
-                $product = $cart_item['data'];
-                if ($product->is_virtual() || $product->is_downloadable()) {
-                    $digital_count += $cart_item['quantity'];
-                } else {
-                    $physical_count += $cart_item['quantity'];
-                }
+            foreach (WC()->cart->get_cart() as $item) {
+                $product = isset($item['data']) ? $item['data'] : null;
+                if (!$product) continue;
+                $quantity = max(1, (int) ($item['quantity'] ?? 1));
+                if ($this->is_digital_product($product)) $digital_count += $quantity;
+                else $physical_count += $quantity;
             }
-
             if ($digital_count > 1) {
-                wc_add_notice(__('ডিজিটাল ফাইল ও পাসকোড সুরক্ষার স্বার্থে একবারে ১টির বেশি ডিজিটাল প্রোডাক্ট অর্ডার করা যাবে না।', 'mecopay-gateway'), 'error');
+                wc_add_notice(__('Only one digital product may be purchased per order.', 'mecopay-gateway'), 'error');
             }
-
             if ($digital_count > 0 && $physical_count > 0) {
-                wc_add_notice(__('মিক্সড কার্ট নিষিদ্ধ: ডিজিটাল ও ফিজিক্যাল প্রোডাক্ট একসাথে অর্ডার করা যাবে না। অনুগ্রহ করে আলাদা অর্ডার সম্পন্ন করুন।', 'mecopay-gateway'), 'error');
+                wc_add_notice(__('Digital and physical products cannot be mixed in one order.', 'mecopay-gateway'), 'error');
             }
         }
 
-        /**
-         * Process Order Payment
-         */
+        private function is_digital_product($product) {
+            return $product && ($product->is_virtual() || $product->is_downloadable()) && !$product->needs_shipping();
+        }
+
+        private function normalize_amount($value) {
+            return max(0, (float) $value);
+        }
+
         public function process_payment($order_id) {
             $order = wc_get_order($order_id);
             if (!$order) {
-                return array('result' => 'fail', 'redirect' => '');
+                wc_add_notice(__('Order not found.', 'mecopay-gateway'), 'error');
+                return array('result' => 'failure');
+            }
+            if ($this->api_key === '') {
+                wc_add_notice(__('MecoPay API Key is not configured.', 'mecopay-gateway'), 'error');
+                return array('result' => 'failure');
             }
 
-            if (empty($this->api_key)) {
-                wc_add_notice(__('MecoPay API Key কনফিগার করা নেই। অনুগ্রহ করে অ্যাডমিন প্যানেল চেক করুন।', 'mecopay-gateway'), 'error');
-                return array('result' => 'fail', 'redirect' => '');
-            }
-
-            $total_amount = (float) $order->get_total();
-
-            // ১. স্মার্ট কার্ট স্ক্যান: বুলেটপ্রুফ ডিজিটাল বনাম ফিজিক্যাল ডিটেকশন
-            $is_digital = true;
+            $digital_count = 0;
+            $physical_count = 0;
+            $items = array();
             foreach ($order->get_items() as $item) {
                 $product = $item->get_product();
-                if ($product) {
-                    // যদি পণ্যটির শিপিং প্রয়োজন হয় অথবা ভার্চুয়াল/ডাউনলোডযোগ্য না হয় = ফিজিক্যাল
-                    if ($product->needs_shipping() || (!$product->is_virtual() && !$product->is_downloadable())) {
-                        $is_digital = false;
-                        break;
-                    }
-                }
+                if (!$product) continue;
+                $quantity = max(1, (int) $item->get_quantity());
+                $is_digital = $this->is_digital_product($product);
+                if ($is_digital) $digital_count += $quantity;
+                else $physical_count += $quantity;
+                $items[] = array(
+                    'name' => $item->get_name(),
+                    'quantity' => $quantity,
+                    'type' => $is_digital ? 'digital' : 'physical',
+                    'line_total' => (float) $item->get_total()
+                );
+            }
+            if (($digital_count > 0 && $physical_count > 0) || $digital_count > 1) {
+                wc_add_notice(__('This order violates the MecoPay cart rules.', 'mecopay-gateway'), 'error');
+                return array('result' => 'failure');
             }
 
-            // ২. পে-লোড প্রস্তুতি (মাল্টি-কারেন্সি, ফ্রি ডেলিভারি ও অ্যাডভান্স/সিওডি চেকার)
-            $first_item = reset($order->get_items());
-            $first_product_name = $first_item ? $first_item->get_name() : ('Order #' . $order_id);
-            $shipping_fee = (float) $order->get_shipping_total(); // ফ্রি ডেলিভারি হলে ০ থাকবে, ভুল করে ওভাররাইড হবে না
-            $order_currency = $order->get_currency(); // WooCommerce স্টোর কারেন্সি (BDT, USD, EUR ইত্যাদি)
-            $advance_config = (float) $this->get_option('advance_amount', 150);
-
+            $shipping_fee = $this->normalize_amount($order->get_shipping_total() + $order->get_shipping_tax());
+            $total_amount = $this->normalize_amount($order->get_total());
+            $merchandise_total = max(0, $total_amount - $shipping_fee);
             $payload = array(
-                'order_id'         => (string) $order_id,
-                'product_name'     => $first_product_name,
-                'currency'         => $order_currency,
-                'customer_name'    => trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()),
-                'customer_phone'   => $order->get_billing_phone(),
+                'order_id' => (string) $order_id,
+                'product_name' => !empty($items[0]['name']) ? $items[0]['name'] : ('Order #' . $order_id),
+                'product_type' => 'digital',
+                'currency' => (string) $order->get_currency(),
+                'customer_name' => trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()),
+                'customer_phone' => (string) $order->get_billing_phone(),
+                'customer_email' => (string) $order->get_billing_email(),
                 'customer_address' => trim($order->get_billing_address_1() . ', ' . $order->get_billing_city()),
-                'callback_url'     => $this->get_return_url($order),
-                'cancel_url'       => wc_get_checkout_url(),
+                'callback_url' => $this->get_return_url($order),
+                'cancel_url' => wc_get_checkout_url(),
+                'metadata' => array('woocommerce_order_id' => (string) $order_id, 'items' => $items)
             );
 
-            if ($is_digital) {
-                // ডিজিটাল প্রোডাক্ট: ১০০% ফুল পেমেন্ট
+            if ($digital_count > 0) {
                 $payload['product_type'] = 'digital';
-                $payload['amount']       = $total_amount;
+                $payload['amount'] = $total_amount;
             } else {
-                // ফিজিক্যাল প্রোডাক্ট চেকার: ১০০% সিওডি নাকি অ্যাডভান্স
-                $payload['total_amount']   = $total_amount;
+                $payload['total_amount'] = $merchandise_total;
                 $payload['courier_charge'] = $shipping_fee;
-
-                if ($advance_config <= 0) {
-                    // ১০০% ক্যাশ অন ডেলিভারি (Just Form): গেটওয়ে চার্জ ০
-                    $payload['product_type'] = 'physical_cod';
-                    $payload['amount']       = 0;
-                    $payload['cod_due']      = $total_amount;
-                } else {
-                    // অ্যাডভান্স ডেলিভারি ফি চার্জ + বাকি টাকা COD
-                    $advance_charge = min($advance_config, $total_amount);
+                if ($this->advance_amount > 0 && $merchandise_total > 0) {
+                    $advance = min($this->advance_amount, $merchandise_total);
                     $payload['product_type'] = 'physical_advance';
-                    $payload['amount']       = $advance_charge;
-                    $payload['cod_due']      = max(0, $total_amount - $advance_charge);
+                    $payload['amount'] = $advance;
+                    $payload['cod_due'] = max(0, $merchandise_total + $shipping_fee - $advance);
+                } else {
+                    $payload['product_type'] = 'physical_cod';
+                    $payload['amount'] = 0;
+                    $payload['cod_due'] = $merchandise_total + $shipping_fee;
                 }
             }
 
-            // ৩. MecoPay Cloudflare Worker API-তে রিকোয়েস্ট পাঠানো
-            $api_url = 'https://api.mecopay.space/v1/create-checkout';
-            
-            $response = wp_remote_post($api_url, array(
-                'headers'     => array(
-                    'Content-Type'  => 'application/json',
-                    'Authorization' => 'Bearer ' . $this->api_key,
-                ),
-                'body'        => wp_json_encode($payload),
-                'timeout'     => 45,
+            $response = wp_remote_post(self::API_URL, array(
+                'timeout' => 45,
+                'redirection' => 3,
+                'headers' => array('Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $this->api_key),
+                'body' => wp_json_encode($payload),
                 'data_format' => 'body'
             ));
-
             if (is_wp_error($response)) {
-                wc_add_notice(__('MecoPay কানেকশন ত্রুটি: ', 'mecopay-gateway') . $response->get_error_message(), 'error');
-                return array('result' => 'fail', 'redirect' => '');
+                wc_add_notice(__('Could not connect to MecoPay: ', 'mecopay-gateway') . $response->get_error_message(), 'error');
+                return array('result' => 'failure');
             }
-
+            $status = (int) wp_remote_retrieve_response_code($response);
             $body = json_decode(wp_remote_retrieve_body($response), true);
-
-            // সফল হলে কাস্টমারকে MecoPay স্মার্ট চেকআউট পেজে রিডাইরেক্ট করা
-            if (!empty($body['checkout_url'])) {
-                return array(
-                    'result'   => 'success',
-                    'redirect' => $body['checkout_url']
-                );
+            if ($status < 200 || $status >= 300 || !is_array($body) || empty($body['success'])) {
+                wc_add_notice(is_array($body) && !empty($body['error']) ? sanitize_text_field($body['error']) : __('MecoPay could not create the checkout session.', 'mecopay-gateway'), 'error');
+                return array('result' => 'failure');
             }
+            if (!empty($body['invoice_id'])) $order->update_meta_data('_mecopay_invoice_id', sanitize_text_field($body['invoice_id']));
+            if (!empty($body['invoice_number'])) $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($body['invoice_number']));
+            $order->update_meta_data('_mecopay_product_type', sanitize_text_field($payload['product_type']));
+            $order->save();
 
-            // সরাসরি পেমেন্ট ছাড়া সম্পন্ন হলে (যেমন নো-পেমেন্ট বা ফুল সিঙ্ক)
             if (isset($body['requires_payment']) && $body['requires_payment'] === false) {
-                $order->payment_complete();
+                $order->update_status('processing', __('MecoPay full COD order confirmed.', 'mecopay-gateway'));
                 WC()->cart->empty_cart();
-                return array(
-                    'result'   => 'success',
-                    'redirect' => $this->get_return_url($order)
-                );
+                return array('result' => 'success', 'redirect' => $this->get_return_url($order));
             }
-
-            $error_message = $body['error'] ?? __('চেকআউট সেশন তৈরি করা সম্ভব হয়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।', 'mecopay-gateway');
-            wc_add_notice($error_message, 'error');
-            return array('result' => 'fail', 'redirect' => '');
+            if (!empty($body['checkout_url'])) {
+                $order->update_status('pending', __('Awaiting MecoPay payment.', 'mecopay-gateway'));
+                return array('result' => 'success', 'redirect' => esc_url_raw($body['checkout_url']));
+            }
+            wc_add_notice(__('MecoPay returned an invalid checkout response.', 'mecopay-gateway'), 'error');
+            return array('result' => 'failure');
         }
 
-        /**
-         * Webhook Handler: Real-time sync with MecoPay Dashboard
-         * Listens to: https://your-site.com/?wc-api=mecopay_webhook
-         */
+        private function get_webhook_data($decoded) {
+            if (!is_array($decoded)) return array();
+            $data = isset($decoded['data']) && is_array($decoded['data']) ? $decoded['data'] : array();
+            return array_merge($decoded, $data);
+        }
+
         public function handle_webhook() {
-            $input = file_get_contents('php://input');
-            $event_data = json_decode($input, true);
-
-            if (empty($event_data) || empty($event_data['event'])) {
-                wp_send_json(array('status' => 'ignored', 'message' => 'No event specified'), 400);
-                exit;
+            $raw = file_get_contents('php://input');
+            $signature = isset($_SERVER['HTTP_X_MECOPAY_SIGNATURE']) ? trim((string) $_SERVER['HTTP_X_MECOPAY_SIGNATURE']) : '';
+            if ($this->webhook_secret === '' || $signature === '') {
+                status_header(401); wp_send_json(array('success' => false, 'error' => 'Webhook signature is required.'), 401);
             }
-
-            $event = $event_data['event'];
-
-            // =================================================================
-            // ইভেন্ট ১: ব্র্যান্ড সেটিংস ও গেটওয়ে স্ট্যাটাস রিয়েল-টাইম সিঙ্ক
-            // =================================================================
+            $expected = hash_hmac('sha256', $raw, $this->webhook_secret);
+            if (!hash_equals($expected, $signature)) {
+                status_header(401); wp_send_json(array('success' => false, 'error' => 'Invalid webhook signature.'), 401);
+            }
+            $decoded = json_decode($raw, true);
+            $data = $this->get_webhook_data($decoded);
+            $event = isset($decoded['event']) ? sanitize_key($decoded['event']) : '';
             if ($event === 'brand.settings_updated') {
-                $auto_courier = !empty($event_data['auto_courier_on_full_cod']);
-                $personal_on  = isset($event_data['personal_api_active']) ? (bool)$event_data['personal_api_active'] : true;
-                $merchant_on  = isset($event_data['merchant_api_active']) ? (bool)$event_data['merchant_api_active'] : false;
-
-                set_transient('mecopay_auto_courier_status', $auto_courier, 0);
-                set_transient('mecopay_gateways_active', ($personal_on || $merchant_on), 0);
-
-                wp_send_json(array('status' => 'success', 'message' => 'Settings synced locally'), 200);
-                exit;
+                set_transient('mecopay_gateways_active', !empty($data['payment_gateways_active']), DAY_IN_SECONDS);
+                wp_send_json(array('success' => true, 'status' => 'settings_synced'), 200);
+            }
+            if ($event !== 'payment.completed' && $event !== 'order.courier_booked') {
+                wp_send_json(array('success' => true, 'status' => 'ignored'), 200);
             }
 
-            // =================================================================
-            // ইভেন্ট ২: পেমেন্ট সফল সম্পন্ন
-            // =================================================================
+            $order_id = isset($data['order_id']) ? absint($data['order_id']) : 0;
+            $invoice_number = isset($data['invoice_number']) ? sanitize_text_field($data['invoice_number']) : '';
+            $order = $order_id ? wc_get_order($order_id) : false;
+            if (!$order && $invoice_number) {
+                $orders = wc_get_orders(array('limit' => 1, 'meta_key' => '_mecopay_invoice_number', 'meta_value' => $invoice_number));
+                $order = !empty($orders) ? $orders[0] : false;
+            }
+            if (!$order) wp_send_json(array('success' => false, 'error' => 'Order not found.'), 404);
+
+            $event_id = sanitize_text_field((string) ($data['transaction_id'] ?? $data['trx_id'] ?? $data['invoice_id'] ?? $invoice_number));
+            if ($event_id !== '' && $order->get_meta('_mecopay_last_webhook_event') === $event_id) {
+                wp_send_json(array('success' => true, 'status' => 'already_processed'), 200);
+            }
             if ($event === 'payment.completed') {
-                $order_id = $event_data['order_id'] ?? null;
-                $trx_id   = $event_data['transaction_id'] ?? 'N/A';
-                $order    = wc_get_order($order_id);
-
-                if ($order) {
-                    $order->payment_complete($trx_id);
-                    $order->add_order_note(sprintf(__('MecoPay পেমেন্ট সফলভাবে সম্পন্ন হয়েছে। TrxID: %s, চ্যানেল: %s', 'mecopay-gateway'), $trx_id, $event_data['payment_channel'] ?? 'MFS'));
-                    
-                    if (!empty($event_data['fb_passcode'])) {
-                        $order->add_order_note('FB Passcode: ' . $event_data['fb_passcode']);
-                    }
+                $status = strtolower((string) ($data['status'] ?? ''));
+                if (!in_array($status, array('paid', 'completed', 'success', 'succeeded'), true)) {
+                    wp_send_json(array('success' => false, 'error' => 'Payment is not successful.'), 422);
                 }
-
-                wp_send_json(array('status' => 'success'), 200);
-                exit;
-            }
-
-            // =================================================================
-            // ইভেন্ট ৩: কুরিয়ারে অটো পার্সেল বুকিং সম্পন্ন
-            // =================================================================
-            if ($event === 'order.courier_booked') {
-                $order_id = $event_data['order_id'] ?? null;
-                $courier  = $event_data['courier'] ?? array();
-                $order    = wc_get_order($order_id);
-
-                if ($order) {
-                    $tracking_code = $courier['tracking_code'] ?? 'N/A';
-                    $provider      = strtoupper($courier['provider'] ?? 'STEADFAST');
-                    $order->add_order_note(sprintf(__('স্বয়ংক্রিয়ভাবে %s কুরিয়ারে পার্সেল বুক করা হয়েছে। ট্র্যাকিং কোড: %s', 'mecopay-gateway'), $provider, $tracking_code));
+                $expected_amount = (float) $order->get_total();
+                $received_amount = isset($data['amount']) ? (float) $data['amount'] : 0;
+                $product_type = (string) $order->get_meta('_mecopay_product_type');
+                $valid_amount = $product_type === 'physical_advance' ? ($received_amount > 0 && $received_amount <= $expected_amount) : ($received_amount > 0 && abs($received_amount - $expected_amount) < 0.01);
+                if (!$valid_amount && $product_type !== 'physical_cod') {
+                    wp_send_json(array('success' => false, 'error' => 'Payment amount does not match the order.'), 422);
                 }
-
-                wp_send_json(array('status' => 'success'), 200);
-                exit;
+                $order->payment_complete($event_id);
+                $order->add_order_note(sprintf(__('MecoPay payment confirmed. Gateway: %s', 'mecopay-gateway'), sanitize_text_field((string) ($data['gateway_used'] ?? 'MecoPay'))));
+            } else {
+                $courier = isset($data['courier']) && is_array($data['courier']) ? $data['courier'] : array();
+                $order->update_status('processing', __('MecoPay courier booking confirmed.', 'mecopay-gateway'));
+                if (!empty($courier['tracking_code'])) $order->update_meta_data('_mecopay_tracking_code', sanitize_text_field($courier['tracking_code']));
+                if (!empty($courier['tracking_url'])) $order->update_meta_data('_mecopay_tracking_url', esc_url_raw($courier['tracking_url']));
             }
-
-            wp_send_json(array('status' => 'unhandled_event'), 200);
-            exit;
+            if ($event_id !== '') $order->update_meta_data('_mecopay_last_webhook_event', $event_id);
+            $order->save();
+            wp_send_json(array('success' => true, 'status' => 'processed', 'order_id' => $order->get_id()), 200);
         }
     }
-}
 
-// Register Gateway in WooCommerce
-add_filter('woocommerce_payment_gateways', 'mecopay_add_smart_gateway_class');
-function mecopay_add_smart_gateway_class($gateways) {
-    $gateways[] = 'WC_Gateway_MecoPay';
-    return $gateways;
+    add_filter('woocommerce_payment_gateways', function ($methods) {
+        $methods[] = 'WC_Gateway_MecoPay';
+        return $methods;
+    });
 }
