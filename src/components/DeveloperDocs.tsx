@@ -21,6 +21,7 @@ export default function DeveloperDocs() {
   const [activeTab, setActiveTab] = useState<'three-products' | 'laravel' | 'webhook' | 'overview'>('three-products');
   const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
   const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
+  const [webhookFrameworkTab, setWebhookFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
 
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -43,6 +44,34 @@ export default function DeveloperDocs() {
         return pythonFullController;
       default:
         return laravelFullController;
+    }
+  };
+
+  const getWebhookCode = () => {
+    switch (webhookFrameworkTab) {
+      case 'laravel':
+        return laravelWebhookCode;
+      case 'php':
+        return rawPhpWebhookCode;
+      case 'nodejs':
+        return nodeJsWebhookCode;
+      case 'javascript':
+        return javascriptWebhookNotice;
+      case 'python':
+        return pythonWebhookCode;
+      default:
+        return laravelWebhookCode;
+    }
+  };
+
+  const getWebhookFileName = () => {
+    switch (webhookFrameworkTab) {
+      case 'laravel': return 'app/Http/Controllers/MecoPayWebhookController.php';
+      case 'php': return 'mecopay-webhook.php (Core PHP)';
+      case 'nodejs': return 'routes/mecopayWebhook.js (Express)';
+      case 'javascript': return 'Not applicable in browser';
+      case 'python': return 'webhooks.py (Django / Flask)';
+      default: return 'MecoPayWebhookController.php';
     }
   };
 
@@ -839,7 +868,7 @@ HEADERS:
                 <Webhook className="w-5 h-5 text-emerald-400" /> Webhook Handling & Automatic Order Update
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                পেমেন্ট সফল হলে বা কুরিয়ার পার্সেল ডেলিভারি কনফার্ম করলে MecoPay স্বয়ংক্রিয়ভাবে আপনার ব্যাকএন্ডে একটি সিকিউর POST Webhook পাঠাবে।
+                পেমেন্ট সফল হলে বা কুরিয়ার পার্সেল ডেলিভারি কনফার্ম করলে MecoPay স্বয়ংক্রিয়ভাবে আপনার ব্যাকএন্ডে একটি সিকিউর POST Webhook পাঠাবে। Signature JSON-এর ভিতরে নয়; <code>X-MecoPay-Signature</code> header-এ থাকে এবং raw request body দিয়ে HMAC-SHA256 যাচাই করতে হবে।
               </p>
             </div>
 
@@ -860,13 +889,12 @@ HEADERS:
   "invoice_number": "INV-2026-9812",
   "product_name": "Fullstack AI Mastery Course",
   "product_type": "digital",
-  "amount_paid": 1500,
+  "amount": 1500,
   "total_amount": 1500,
   "transaction_id": "9H72KA89P1",
   "customer_phone": "01712345678",
-  "status": "Completed",
+  "status": "paid",
   "fb_passcode": "MC-8921",
-  "signature": "sha256_hash_security_token"
 }`}
                 </pre>
               </div>
@@ -884,15 +912,14 @@ HEADERS:
   "invoice_number": "INV-2026-7734",
   "product_name": "Wireless Noise Cancelling Headphones",
   "product_type": "physical_advance",
-  "amount_paid": 150,
+  "amount": 150,
   "total_amount": 1250,
   "courier_charge": 120,
   "cod_due": 1220,
   "transaction_id": "8M41XA99L2",
   "customer_phone": "01812345678",
-  "status": "Completed",
+  "status": "paid",
   "courier_tracking_code": "STDF-981245",
-  "signature": "sha256_hash_security_token"
 }`}
                 </pre>
               </div>
@@ -910,7 +937,7 @@ HEADERS:
   "invoice_number": "INV-2026-5519",
   "product_name": "Leather Executive Wallet",
   "product_type": "physical_cod",
-  "amount_paid": 0,
+  "amount": 0,
   "total_amount": 1200,
   "courier_charge": 120,
   "cod_due": 1320,
@@ -924,7 +951,6 @@ HEADERS:
     "tracking_code": "STDF-883109",
     "tracking_url": "https://steadfast.com.bd/tracking/STDF-883109"
   },
-  "signature": "sha256_hash_security_token"
 }`}
                 </pre>
               </div>
@@ -943,25 +969,45 @@ HEADERS:
   "courier_provider": "steadfast",
   "status": "active",
   "timestamp": 1774239876,
-  "signature": "sha256_hash_security_token"
 }`}
                 </pre>
               </div>
             </div>
 
-            {/* Laravel Webhook Code */}
-            <div className="space-y-2 pt-2">
+            {/* Webhook receiver language tabs */}
+            <div className="space-y-3 pt-2">
+              <div>
+                <span className="text-xs font-bold text-slate-300">Webhook confirmation receiver — backend language নির্বাচন করুন:</span>
+                <p className="text-[11px] text-slate-500 mt-1">Controller checkout শুরু করে; এই আলাদা endpoint MecoPay-এর signed confirmation গ্রহণ করে। Browser JavaScript webhook receiver নয়।</p>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {([
+                  ['laravel', 'Laravel'],
+                  ['php', 'Raw PHP'],
+                  ['nodejs', 'Node.js / Express'],
+                  ['javascript', 'JavaScript (browser নয়)'],
+                  ['python', 'Python / Django / Flask']
+                ] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setWebhookFrameworkTab(key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${webhookFrameworkTab === key ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-300">Laravel Webhook Controller Implementation:</span>
+                <span className="text-xs text-slate-400"><code>{getWebhookFileName()}</code></span>
                 <button
-                  onClick={() => handleCopy(laravelWebhookCode, 5)}
+                  onClick={() => handleCopy(getWebhookCode(), 5)}
                   className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
                 >
                   {copiedIndex === 5 ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy Webhook Code
                 </button>
               </div>
               <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed">
-{laravelWebhookCode}
+{getWebhookCode()}
               </pre>
             </div>
           </div>
@@ -1571,7 +1617,6 @@ def create_checkout_session(request_data):
 const laravelWebhookCode = `<?php
 
 namespace App\Http\Controllers;
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Order;
@@ -1582,50 +1627,118 @@ class MecoPayWebhookController extends Controller
     {
         $rawBody = $request->getContent();
         $received = (string) $request->header('X-MecoPay-Signature', '');
-        $expected = hash_hmac('sha256', $rawBody, (string) config('services.mecopay.webhook_secret'));
-        if ($received === '' || !hash_equals($expected, $received)) {
+        $secret = (string) config('services.mecopay.webhook_secret');
+        $expected = hash_hmac('sha256', $rawBody, $secret);
+        if ($secret === '' || $received === '' || !hash_equals($expected, $received)) {
             return response()->json(['error' => 'Invalid webhook signature'], 401);
         }
-
         $payload = json_decode($rawBody, true);
+        if (!is_array($payload)) return response()->json(['error' => 'Invalid JSON'], 400);
         $data = is_array($payload['data'] ?? null) ? array_merge($payload, $payload['data']) : $payload;
-        $event = $payload['event'] ?? '';
-
+        $event = (string) ($payload['event'] ?? '');
         if ($event === 'brand.settings_updated') {
-            Cache::forever('mecopay_gateways_active', (bool) ($data['payment_gateways_active'] ?? true));
+            Cache::forever('mecopay_gateways_active', (bool) ($data['payment_gateways_active'] ?? false));
             return response()->json(['status' => 'settings_synced']);
         }
-        if (!in_array($event, ['payment.completed', 'order.courier_booked'], true)) {
-            return response()->json(['status' => 'ignored']);
-        }
-
-        $order = Order::where('id', $data['order_id'] ?? null)
-            ->orWhere('invoice_number', $data['invoice_number'] ?? null)
-            ->first();
+        if (!in_array($event, ['payment.completed', 'order.courier_booked'], true)) return response()->json(['status' => 'ignored']);
+        $order = Order::where('id', $data['order_id'] ?? null)->orWhere('invoice_number', $data['invoice_number'] ?? null)->first();
         if (!$order) return response()->json(['error' => 'Order not found'], 404);
-
-        $eventId = (string) ($data['trx_id'] ?? $data['transaction_id'] ?? $data['invoice_id'] ?? $data['invoice_number'] ?? '');
-        if ($eventId !== '' && $order->webhook_event_id === $eventId) {
-            return response()->json(['status' => 'already_processed']);
-        }
-
+        $eventId = (string) ($data['transaction_id'] ?? $data['trx_id'] ?? $data['invoice_id'] ?? $data['invoice_number'] ?? '');
+        if ($eventId !== '' && $order->webhook_event_id === $eventId) return response()->json(['status' => 'already_processed']);
         if ($event === 'payment.completed') {
             $status = strtolower((string) ($data['status'] ?? ''));
-            if (!in_array($status, ['paid', 'completed', 'success', 'succeeded'], true)) {
-                return response()->json(['error' => 'Payment is not successful'], 422);
-            }
-            $order->update([
-                'payment_status' => 'paid',
-                'transaction_id' => $data['trx_id'] ?? $data['transaction_id'] ?? null,
-            ]);
+            if (!in_array($status, ['paid', 'completed', 'success', 'succeeded'], true)) return response()->json(['error' => 'Payment is not successful'], 422);
+            $order->update(['payment_status' => 'paid', 'transaction_id' => $data['transaction_id'] ?? $data['trx_id'] ?? null]);
         } else {
             $courier = is_array($data['courier'] ?? null) ? $data['courier'] : [];
-            $order->update([
-                'status' => 'processing',
-                'courier_tracking' => $courier['tracking_code'] ?? null,
-            ]);
+            $order->update(['status' => 'processing', 'courier_tracking' => $courier['tracking_code'] ?? null]);
         }
         if ($eventId !== '') $order->update(['webhook_event_id' => $eventId]);
         return response()->json(['status' => 'success']);
     }
 }`;
+
+const rawPhpWebhookCode = `<?php
+$rawBody = file_get_contents('php://input');
+$secret = getenv('MECOPAY_WEBHOOK_SECRET') ?: '';
+$received = $_SERVER['HTTP_X_MECOPAY_SIGNATURE'] ?? '';
+$expected = hash_hmac('sha256', $rawBody, $secret);
+if ($secret === '' || $received === '' || !hash_equals($expected, $received)) { http_response_code(401); exit('Invalid webhook signature'); }
+$payload = json_decode($rawBody, true);
+if (!is_array($payload)) { http_response_code(400); exit('Invalid JSON'); }
+$data = is_array($payload['data'] ?? null) ? array_merge($payload, $payload['data']) : $payload;
+$event = $payload['event'] ?? '';
+if ($event === 'brand.settings_updated') { update_gateway_cache((bool)($data['payment_gateways_active'] ?? false)); http_response_code(200); exit('OK'); }
+if (!in_array($event, ['payment.completed', 'order.courier_booked'], true)) { http_response_code(200); exit('Ignored'); }
+$order = load_authorized_order($data['order_id'] ?? null, $data['invoice_number'] ?? null);
+if (!$order) { http_response_code(404); exit('Order not found'); }
+$eventId = (string)($data['transaction_id'] ?? $data['trx_id'] ?? $data['invoice_id'] ?? $data['invoice_number'] ?? '');
+if ($eventId !== '' && $order['webhook_event_id'] === $eventId) { http_response_code(200); exit('Already processed'); }
+if ($event === 'payment.completed') {
+    if (!in_array(strtolower((string)($data['status'] ?? '')), ['paid', 'completed', 'success', 'succeeded'], true)) { http_response_code(422); exit('Payment is not successful'); }
+    mark_order_paid($order['id'], $data['transaction_id'] ?? $data['trx_id'] ?? null);
+} else {
+    $courier = is_array($data['courier'] ?? null) ? $data['courier'] : [];
+    mark_order_processing($order['id'], $courier['tracking_code'] ?? null);
+}
+if ($eventId !== '') save_webhook_event_id($order['id'], $eventId);
+http_response_code(200); echo 'OK';`;
+
+const nodeJsWebhookCode = `const express = require('express');
+const crypto = require('crypto');
+const router = express.Router();
+
+// Register this route before express.json() or use express.raw() for this path.
+router.post('/webhooks/mecopay', express.raw({ type: 'application/json' }), async (req, res) => {
+  const rawBody = req.body; // Buffer: exact bytes received
+  const secret = process.env.MECOPAY_WEBHOOK_SECRET || '';
+  const received = String(req.get('X-MecoPay-Signature') || '');
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  if (!secret || !received || received.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(received))) return res.status(401).json({ error: 'Invalid webhook signature' });
+  let payload; try { payload = JSON.parse(rawBody.toString('utf8')); } catch { return res.status(400).json({ error: 'Invalid JSON' }); }
+  const data = payload.data && typeof payload.data === 'object' ? { ...payload, ...payload.data } : payload;
+  if (payload.event === 'brand.settings_updated') { await updateGatewayCache(Boolean(data.payment_gateways_active)); return res.json({ status: 'settings_synced' }); }
+  if (!['payment.completed', 'order.courier_booked'].includes(payload.event)) return res.json({ status: 'ignored' });
+  const order = await orderRepository.findByIdOrInvoice(data.order_id, data.invoice_number);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  const eventId = String(data.transaction_id || data.trx_id || data.invoice_id || data.invoice_number || '');
+  if (eventId && order.webhook_event_id === eventId) return res.json({ status: 'already_processed' });
+  if (payload.event === 'payment.completed') { if (!['paid', 'completed', 'success', 'succeeded'].includes(String(data.status || '').toLowerCase())) return res.status(422).json({ error: 'Payment is not successful' }); await orderRepository.markPaid(order.id, data.transaction_id || data.trx_id); }
+  else await orderRepository.markProcessing(order.id, data.courier?.tracking_code || null);
+  if (eventId) await orderRepository.saveWebhookEventId(order.id, eventId);
+  return res.json({ status: 'success' });
+});
+module.exports = router;`;
+
+const javascriptWebhookNotice = `Browser JavaScript is not a webhook receiver.
+
+Do not put MECOPAY_WEBHOOK_SECRET in frontend code. A webhook must be received by your server, verified against the raw request body, and used to update your database.
+
+Use the Node.js / Express, Laravel, Raw PHP, or Python server sample instead.`;
+
+const pythonWebhookCode = `import os, hmac, hashlib, json
+from flask import request, jsonify  # Django: use request.body and JsonResponse
+
+
+def mecopay_webhook():
+    raw_body = request.get_data(cache=True)
+    secret = os.environ.get('MECOPAY_WEBHOOK_SECRET', '').encode()
+    received = request.headers.get('X-MecoPay-Signature', '')
+    expected = hmac.new(secret, raw_body, hashlib.sha256).hexdigest()
+    if not secret or not received or not hmac.compare_digest(expected, received): return jsonify(error='Invalid webhook signature'), 401
+    try: payload = json.loads(raw_body)
+    except ValueError: return jsonify(error='Invalid JSON'), 400
+    data = {**payload, **(payload.get('data') or {})}
+    event = payload.get('event', '')
+    if event == 'brand.settings_updated': update_gateway_cache(bool(data.get('payment_gateways_active'))); return jsonify(status='settings_synced')
+    if event not in {'payment.completed', 'order.courier_booked'}: return jsonify(status='ignored')
+    order = load_authorized_order(data.get('order_id'), data.get('invoice_number'))
+    if not order: return jsonify(error='Order not found'), 404
+    event_id = str(data.get('transaction_id') or data.get('trx_id') or data.get('invoice_id') or data.get('invoice_number') or '')
+    if event_id and order['webhook_event_id'] == event_id: return jsonify(status='already_processed')
+    if event == 'payment.completed':
+        if str(data.get('status', '')).lower() not in {'paid', 'completed', 'success', 'succeeded'}: return jsonify(error='Payment is not successful'), 422
+        mark_order_paid(order['id'], data.get('transaction_id') or data.get('trx_id'))
+    else: mark_order_processing(order['id'], (data.get('courier') or {}).get('tracking_code'))
+    if event_id: save_webhook_event_id(order['id'], event_id)
+    return jsonify(status='success'), 200`;
