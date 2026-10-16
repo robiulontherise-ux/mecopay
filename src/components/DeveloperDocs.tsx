@@ -777,6 +777,17 @@ export default function DeveloperDocs() {
               </div>
             </div>
 
+            <div className="bg-fuchsia-500/10 border border-fuchsia-500/30 rounded-2xl p-4 sm:p-5 space-y-3 text-xs text-fuchsia-50">
+              <div className="font-bold text-fuchsia-300">Digital access button: Telegram / Facebook / Drive</div>
+              <p className="text-slate-300">Controller-এ পাঠানো <code>telegram_link</code>, <code>facebook_group_link</code> এবং <code>google_drive_link</code> হলো delivery metadata। এগুলো নিজে থেকে Telegram bot approval বা Facebook Group membership তৈরি করে না। Payment success-এর পরে client backend নিজের order-এর paid entitlement দেখে button দেখাবে।</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-slate-300">
+                <div><p className="font-semibold text-white">Telegram</p><p>বর্তমান <code>/access/:invoiceId</code> AccessPage Telegram link শনাক্ত করে <code>telegram-tally-delivery</code> edge function invoke করার চেষ্টা করে; সফল হলে one-time invite URL নেয়, ব্যর্থ হলে raw link fallback করে। এই function-এর source/secure deployment contract এই repository-তে নেই—তাই production-এ bot approval চালু আছে ধরে নেবেন না। Bot token কখনো browser বা client page-এ রাখবেন না।</p></div>
+                <div><p className="font-semibold text-white">Facebook</p><p>Facebook Graph API call কেবল server থেকে হবে। App token, Page/Group permission এবং access token client browser-এ যাবে না। এই repository-তে Facebook Group member-add/approval-এর production Graph API endpoint নেই। Client backend paid invoice যাচাই না করে raw group URL দিয়ে member add/approve করতে পারবে না; server-side access API এবং Meta permission contract আলাদাভাবে তৈরি করতে হবে।</p></div>
+                <div><p className="font-semibold text-white">Google Drive</p><p>Drive link-ও webhook-এর পরে paid order-এর সঙ্গে associate করুন। Public link হলে সরাসরি button দেওয়া যায়; private file হলে client backend বা Drive access service থেকে entitlement অনুযায়ী restricted URL দিতে হবে।</p></div>
+              </div>
+              <div className="bg-slate-950/70 rounded-xl p-3 text-slate-300"><span className="font-semibold text-white">Client implementation flow:</span> webhook-এ invoice ও paid status save → নিজের backend-এ <code>GET/POST /digital-access</code> ধরনের protected route → invoice/customer authorization check → server-side Telegram/Facebook/Drive access service call → frontend-এ button/access URL। <strong className="text-amber-300">Telegram-এর UI hook আছে, কিন্তু তার edge-function source/deployment contract নেই; Facebook Group access endpoint-ও নেই। তাই নির্দিষ্ট production URL বা token ধরে code লিখবেন না। Access API contract তৈরি ও deploy হলে তার exact request/response sample এই guide-এ যোগ করতে হবে।</strong></div>
+            </div>
+
             {/* Language & Framework Switcher */}
             <div className="flex gap-2 overflow-x-auto pb-1">
               <button
@@ -900,7 +911,7 @@ HEADERS:
                 <div><p className="font-semibold text-white">নিজস্ব backend-এ public HTTPS route বানান</p><p>Laravel: <code>routes/api.php</code>-এ <code>POST /webhooks/mecopay</code> এবং controller method। Raw PHP: <code>mecopay-webhook.php</code>। Node: Express router। Python: Django URL/view বা Flask route। এটি frontend route নয়।</p></div>
                 <div><p className="font-semibold text-white">Secret configure করুন</p><p>Server environment-এ <code>MECOPAY_WEBHOOK_SECRET</code> রাখুন। Raw request body দিয়ে <code>X-MecoPay-Signature</code> HMAC-SHA256 verify করুন। Secret source code, browser বা public repository-তে রাখবেন না।</p></div>
                 <div><p className="font-semibold text-white">দুই endpoint-এর connection</p><p>Controller API call করে <code>invoice_number</code> পাবে এবং নিজের order row-তে save করবে। Payment বা COD event এলে webhook একই <code>invoice_number</code> দিয়ে সেই order খুঁজে status update করবে। তাই Controller ও Webhook-এর shared connection হলো নিজের database-এর order row।</p></div>
-                <div><p className="font-semibold text-white">Receiver mapping</p><p><code>payment.completed</code>-এ paid order, আর <code>order.courier_booked</code>-এ physical COD processing update করুন। <code>product_id, product_name, product_type, amount, fees, delivery</code> নিজের order/delivery fields-এ save করুন এবং invoice number দিয়ে duplicate event আটকান।</p></div>
+                <div><p className="font-semibold text-white">Receiver mapping</p><p><code>payment.completed</code>-এ paid order, আর <code>order.courier_booked</code>-এ physical COD processing update করুন। <code>product_id, product_name, product_type, amount, fees, delivery</code> নিজের order/delivery fields-এ save করুন এবং invoice number দিয়ে duplicate event আটকান। Digital access provision আলাদা server-side job/route-এ করুন; webhook request-এর ভিতর থেকে bot token বা Facebook token browser-এ পাঠাবেন না।</p></div>
               </div>
             </div>
 
