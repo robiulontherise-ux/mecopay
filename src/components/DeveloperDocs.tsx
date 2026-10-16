@@ -626,7 +626,7 @@ export default function DeveloperDocs() {
                     MecoPay চেকআউট
                   </div>
                   <p className="text-slate-400 leading-relaxed text-[11px]">
-                    পে-লোডে BDT থাকলে চেকআউটে <strong>৳</strong> ও বিকাশ/নগদ/কার্ড আসে; USD থাকলে <strong>$</strong> ও ইন্টারন্যাশনাল কার্ড আসে; আর কারেন্সি না দিলে গেটওয়ে সেটিং থেকে অটো শো হয়!
+                    পে-লোডে BDT থাকলে চেকআউটে <strong>৳</strong> ও বিকাশ/নগদ/কার্ড আসে; USD থাকলে <strong>$</strong> ও ইন্টারন্যাশনাল কার্ড আসে; আর কারেন্সি না দিলে MecoPay API-এর নির্ধারিত currency অনুযায়ী দেখায়!
                   </p>
                 </div>
               </div>
@@ -735,7 +735,7 @@ export default function DeveloperDocs() {
                     <Check className="w-3.5 h-3.5 shrink-0" /> ডাইনামিক কারেন্সি (Multi-Currency)
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    স্টোরের যেকোনো কারেন্সি (<code>BDT</code>, <code>USD</code>, <code>EUR</code>) পাঠাতে পারবেন। না পাঠালে গেটওয়ে থেকে অটো শো হবে।
+                    স্টোরের যেকোনো কারেন্সি (<code>BDT</code>, <code>USD</code>, <code>EUR</code>) পাঠাতে পারবেন। না পাঠালে API-এর নির্ধারিত currency ব্যবহার হবে।
                   </p>
                 </div>
 
@@ -753,6 +753,28 @@ export default function DeveloperDocs() {
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-100 space-y-1.5">
               <div className="font-bold text-amber-300">গুরুত্বপূর্ণ backend rule</div>
               <p>এই controller samples backend/server-এ চালবে। Frontend শুধু <code>product_id</code> বা cart reference পাঠাবে; API key, price, product_type এবং courier/advance calculation আপনার server-side database থেকে নিতে হবে। Browser-এর পাঠানো price বা product_type সরাসরি MecoPay-তে forward করবেন না।</p>
+            </div>
+
+            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-2xl p-4 sm:p-5 space-y-3 text-xs text-cyan-50">
+              <div className="font-bold text-cyan-300">Controller কোথায় বসাবেন এবং নিজের database data কীভাবে map করবেন</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
+                <div>
+                  <p className="font-semibold text-white">Backend file / route</p>
+                  <p>Laravel: <code>app/Http/Controllers/PaymentController.php</code> এবং <code>POST /api/mecopay/checkout</code> route। Raw PHP: একটি server-only <code>process-payment.php</code> endpoint। Node: controller route যেমন <code>POST /api/checkout</code>। Python: Django view/URL বা Flask server route।</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-white">প্রথমে নিজের order load করুন</p>
+                  <p>Frontend শুধু <code>product_id</code> বা order reference পাঠাবে। Controller নিজের database থেকে <code>product_id, product_name, product_type, price, currency, courier_charge, advance_amount</code> এবং customer/order record নেবে। Browser-এর price, type বা fee trust করবেন না।</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-white">Product mapping</p>
+                  <p><code>digital</code> হলে <code>amount</code> ও delivery links দিন। <code>physical_advance</code> হলে <code>total_amount, amount, courier_charge, cod_due</code> দিন। <code>physical_cod</code> হলে <code>amount: 0</code> এবং <code>cod_due: total_amount + courier_charge</code> দিন।</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-white">সরাসরি API call</p>
+                  <p>Backend environment-এ <code>MECOPAY_API_KEY</code> রাখুন এবং server থেকে <code>https://api.mecopay.space/v1/create-checkout</code>-এ Bearer request পাঠান। Customer কখনো API key দেখবে না। Response-এর <code>invoice_number</code> নিজের order record-এ save করে <code>checkout_url</code>-এ redirect করুন।</p>
+                </div>
+              </div>
             </div>
 
             {/* Language & Framework Switcher */}
@@ -849,9 +871,9 @@ HEADERS:
                 <h5 className="font-bold text-white">কোডটি কীভাবে কাজ করে?</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>Frontend আপনার নিজের backend endpoint-এ order/cart reference পাঠায়; customer controller code দেখে না।</li>
-                  <li>Backend database থেকে product type, trusted price, currency এবং courier charge নিয়ে payload বানায়।</li>
+                  <li>Backend database থেকে product_id, product_name, product_type, trusted price, currency এবং courier charge নিয়ে payload বানায়।</li>
                   <li>MecoPay Worker-এর <code>https://api.mecopay.space/v1/create-checkout</code> এ পাঠায়।</li>
-                  <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
+                  <li>Controller সরাসরি API call করে; আলাদা KBCash বা gateway-availability check করার code লাগবে না—MecoPay API নিজেই service availability handle করে। MecoPay একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
                 </ol>
               </div>
             </div>
@@ -870,6 +892,16 @@ HEADERS:
               <p className="text-xs text-slate-400 mt-1">
                 পেমেন্ট সফল হলে বা কুরিয়ার পার্সেল ডেলিভারি কনফার্ম করলে MecoPay স্বয়ংক্রিয়ভাবে আপনার ব্যাকএন্ডে একটি সিকিউর POST Webhook পাঠাবে। Signature JSON-এর ভিতরে নয়; <code>X-MecoPay-Signature</code> header-এ থাকে এবং raw request body দিয়ে HMAC-SHA256 যাচাই করতে হবে। Client order correlation-এর primary key হলো unique <code>invoice_number</code>; <code>order_id</code> ও <code>product_name</code> descriptive matching-এর জন্য পাঠানো হয়। Transaction ID client-এর জন্য required নয়।
               </p>
+            </div>
+
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 space-y-3 text-xs text-emerald-50">
+              <div className="font-bold text-emerald-300">Webhook কোথায় বসাবেন এবং Controller-এর সঙ্গে কীভাবে connect হবে</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
+                <div><p className="font-semibold text-white">নিজস্ব backend-এ public HTTPS route বানান</p><p>Laravel: <code>routes/api.php</code>-এ <code>POST /webhooks/mecopay</code> এবং controller method। Raw PHP: <code>mecopay-webhook.php</code>। Node: Express router। Python: Django URL/view বা Flask route। এটি frontend route নয়।</p></div>
+                <div><p className="font-semibold text-white">Secret configure করুন</p><p>Server environment-এ <code>MECOPAY_WEBHOOK_SECRET</code> রাখুন। Raw request body দিয়ে <code>X-MecoPay-Signature</code> HMAC-SHA256 verify করুন। Secret source code, browser বা public repository-তে রাখবেন না।</p></div>
+                <div><p className="font-semibold text-white">দুই endpoint-এর connection</p><p>Controller API call করে <code>invoice_number</code> পাবে এবং নিজের order row-তে save করবে। Payment বা COD event এলে webhook একই <code>invoice_number</code> দিয়ে সেই order খুঁজে status update করবে। তাই Controller ও Webhook-এর shared connection হলো নিজের database-এর order row।</p></div>
+                <div><p className="font-semibold text-white">Receiver mapping</p><p><code>payment.completed</code>-এ paid order, আর <code>order.courier_booked</code>-এ physical COD processing update করুন। <code>product_id, product_name, product_type, amount, fees, delivery</code> নিজের order/delivery fields-এ save করুন এবং invoice number দিয়ে duplicate event আটকান।</p></div>
+              </div>
             </div>
 
             {/* Webhook JSON Payload */}
@@ -955,25 +987,7 @@ HEADERS:
                 </pre>
               </div>
 
-              {/* Event 4: Brand Settings Real-time Sync Webhook */}
-              <div className="bg-slate-950 p-4 rounded-2xl border border-purple-500/30 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-purple-400">৪. ব্র্যান্ড সেটিংস ও সার্ভিস অন/অফ রিয়েল-টাইম সিঙ্ক Webhook:</span>
-                  <span className="text-[10px] bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded font-mono">event: brand.settings_updated</span>
-                </div>
-                <pre className="text-xs font-mono text-purple-200 overflow-x-auto">
-{`{
-  "event": "brand.settings_updated",
-  "payment_gateways_active": true,
-  "auto_courier_on_full_cod": false,
-  "courier_provider": "steadfast",
-  "status": "active",
-  "timestamp": 1774239876,
-}`}
-                </pre>
-              </div>
             </div>
-
             {/* Webhook receiver language tabs */}
             <div className="space-y-3 pt-2">
               <div>
@@ -1119,7 +1133,7 @@ const codJsonPayload = `{
   "customer_address": "Chawkbazar, Chittagong"
 }`;
 
-// 1. Laravel Controller (PHP) with 3 Architecture Guards
+// 1. Laravel Controller (PHP) — direct server-to-server API call
 const laravelFullController = `<?php
 
 namespace App\\Http\\Controllers;
@@ -1132,20 +1146,12 @@ use App\\Models\\Order;
 class PaymentController extends Controller
 {
     /**
-     * MecoPay চেকআউট ইনিশিয়ালাইজ করুন (3-Level Guard Architecture সহ)
+     * MecoPay চেকআউট ইনিশিয়ালাইজ করুন
      */
     public function initiatePayment(Request $request)
     {
         // =========================================================================
-        // গার্ড ১: MecoPay গেটওয়ে সার্ভিস স্ট্যাটাস ক্যাশ চেক (Network Call রোধে)
-        // =========================================================================
-        $isGatewayActive = Cache::get('mecopay_gateways_active', true);
-        if (!$isGatewayActive) {
-            return back()->with('error', 'MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে স্থগিত আছে।');
-        }
-
-        // =========================================================================
-        // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
+        // গার্ড ১: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
         // =========================================================================
         $cartItems = $request->input('cart_items', []); // e.g. [['id' => 1, 'type' => 'digital'], ...]
         if (!empty($cartItems)) {
@@ -1172,7 +1178,7 @@ class PaymentController extends Controller
         }
 
         // =========================================================================
-        // গার্ড ৩: ৩ ধরনের প্রোডাক্টের স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+        // গার্ড ২: ৩ ধরনের প্রোডাক্টের স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
         // =========================================================================
         // product_type অবশ্যই merchant database/service layer থেকে নিন; browser input trust করবেন না:
         // Determine product_type from your own product database before calling this controller.
@@ -1256,10 +1262,10 @@ class PaymentController extends Controller
     }
 }`;
 
-// 2. Raw PHP (Core PHP) with 3 Architecture Guards
+// 2. Raw PHP (Core PHP) — direct server-to-server API call
 const rawPhpController = `<?php
 /**
- * Raw PHP Integration for MecoPay (With 3 Guards: Gateway Status, Cart Rules & 3-Product Validation)
+ * Raw PHP Integration for MecoPay (Cart Rules & 3-Product Validation)
  */
 
 session_start();
@@ -1269,15 +1275,7 @@ if ($apiKey === '') die('MECOPAY_API_KEY is not configured.');
 $endpoint = "https://api.mecopay.space/v1/create-checkout";
 
 // =========================================================================
-// গার্ড ১: গেটওয়ে সার্ভিস স্ট্যাটাস চেক (ক্যাশ বা সেশন থেকে)
-// =========================================================================
-$isGatewayActive = $_SESSION['mecopay_gateways_active'] ?? true;
-if (!$isGatewayActive) {
-    die("MecoPay পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।");
-}
-
-// =========================================================================
-// গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
+// গার্ড ১: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
 // =========================================================================
 $cart = $_SESSION['cart'] ?? [];
 if (!empty($cart)) {
@@ -1301,7 +1299,7 @@ if (!empty($cart)) {
 }
 
 // =========================================================================
-// গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+// গার্ড ২: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
 // =========================================================================
 // product_type অবশ্যই merchant database/service layer থেকে নিন; browser input trust করবেন না:
 // $isDigital = (!empty($product['download_link']) || in_array($product['category_id'] ?? 0, [3, 7]));
@@ -1381,7 +1379,7 @@ if ($httpCode === 200 && !empty($result['checkout_url'])) {
 }
 ?>`;
 
-// 3. Node.js (Express / Axios) with 3 Architecture Guards
+// 3. Node.js (Express / Axios) — direct server-to-server API call
 const nodeJsFullController = `const express = require('express');
 const axios = require('axios');
 const app = express();
@@ -1393,18 +1391,8 @@ const MECOPAY_API_KEY = process.env.MECOPAY_API_KEY;
 if (!MECOPAY_API_KEY) throw new Error('MECOPAY_API_KEY is not configured.');
 const MECOPAY_ENDPOINT = 'https://api.mecopay.space/v1/create-checkout';
 
-// মেমোরি ক্যাশ (Webhook দিয়ে রিয়েল-টাইমে সিঙ্ক হয়)
-let isMecoPayActive = true;
-
 app.post('/api/checkout', async (req, res) => {
   try {
-    // =========================================================================
-    // গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
-    // =========================================================================
-    if (!isMecoPayActive) {
-      return res.status(503).json({ error: 'MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।' });
-    }
-
     const { order_id, customer_name, customer_phone, customer_address } = req.body;
     const order = await orderRepository.findAuthorized(order_id, req.user.id); // Merchant-specific DB/repository layer.
     if (!order) return res.status(404).json({ error: 'Order not found.' });
@@ -1419,7 +1407,7 @@ app.post('/api/checkout', async (req, res) => {
     } = order;
 
     // =========================================================================
-    // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
+    // গার্ড ১: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
     // =========================================================================
     if (cart_items.length > 0) {
       const digitalCount = cart_items.filter(i => i.type === 'digital').length;
@@ -1434,7 +1422,7 @@ app.post('/api/checkout', async (req, res) => {
     }
 
     // =========================================================================
-    // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+    // গার্ড ২: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     // =========================================================================
     // product_type অবশ্যই merchant database/service layer থেকে নিন; browser input trust করবেন না:
     // const isDigital = Boolean(product?.download_link || [3, 7].includes(product?.category_id));
@@ -1525,7 +1513,7 @@ async function initiateMecoPayCheckout(orderReference) {
   throw new Error('Invalid checkout response');
 }`;
 
-// 5. Python (Django / Flask / Requests) with 3 Architecture Guards
+// 5. Python (Django / Flask / Requests) — direct server-to-server API call
 const pythonFullController = `import os
 import requests
 import time
@@ -1533,16 +1521,7 @@ import time
 MECOPAY_API_KEY = os.environ['MECOPAY_API_KEY']
 MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
 
-# লোকাল ক্যাশ ফ্ল্যাগ (Webhook এর মাধ্যমে রিয়েল-টাইমে আপডেট হয়)
-is_mecopay_active = True
-
 def create_checkout_session(request_data):
-    # =========================================================================
-    # গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
-    # =========================================================================
-    if not is_mecopay_active:
-        return {"error": "MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।"}
-
     # =========================================================================
     # গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
     # =========================================================================
@@ -1566,6 +1545,7 @@ def create_checkout_session(request_data):
     order = load_authorized_order(request_data.get('order_id'))  # Merchant-specific DB/repository layer.
     if not order:
         return {'error': 'Order not found.'}
+    product_id = order.get('product_id')
     product_type = order['product_type']
     if product_type not in {'digital', 'physical_advance', 'physical_cod'}:
         return {'error': 'A valid product_type is required.'}
@@ -1628,7 +1608,6 @@ const laravelWebhookCode = `<?php
 
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use App\Models\Order;
 
 class MecoPayWebhookController extends Controller
@@ -1646,10 +1625,6 @@ class MecoPayWebhookController extends Controller
         if (!is_array($payload)) return response()->json(['error' => 'Invalid JSON'], 400);
         $data = is_array($payload['data'] ?? null) ? array_merge($payload, $payload['data']) : $payload;
         $event = (string) ($payload['event'] ?? '');
-        if ($event === 'brand.settings_updated') {
-            Cache::forever('mecopay_gateways_active', (bool) ($data['payment_gateways_active'] ?? false));
-            return response()->json(['status' => 'settings_synced']);
-        }
         if (!in_array($event, ['payment.completed', 'order.courier_booked'], true)) return response()->json(['status' => 'ignored']);
         $order = Order::where('id', $data['order_id'] ?? null)->orWhere('invoice_number', $data['invoice_number'] ?? null)->first();
         if (!$order) return response()->json(['error' => 'Order not found'], 404);
@@ -1684,7 +1659,6 @@ $payload = json_decode($rawBody, true);
 if (!is_array($payload)) { http_response_code(400); exit('Invalid JSON'); }
 $data = is_array($payload['data'] ?? null) ? array_merge($payload, $payload['data']) : $payload;
 $event = $payload['event'] ?? '';
-if ($event === 'brand.settings_updated') { update_gateway_cache((bool)($data['payment_gateways_active'] ?? false)); http_response_code(200); exit('OK'); }
 if (!in_array($event, ['payment.completed', 'order.courier_booked'], true)) { http_response_code(200); exit('Ignored'); }
 $order = load_authorized_order($data['order_id'] ?? null, $data['invoice_number'] ?? null);
 if (!$order) { http_response_code(404); exit('Order not found'); }
@@ -1724,7 +1698,6 @@ router.post('/webhooks/mecopay', express.raw({ type: 'application/json' }), asyn
   if (!secret || !received || received.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(received))) return res.status(401).json({ error: 'Invalid webhook signature' });
   let payload; try { payload = JSON.parse(rawBody.toString('utf8')); } catch { return res.status(400).json({ error: 'Invalid JSON' }); }
   const data = payload.data && typeof payload.data === 'object' ? { ...payload, ...payload.data } : payload;
-  if (payload.event === 'brand.settings_updated') { await updateGatewayCache(Boolean(data.payment_gateways_active)); return res.json({ status: 'settings_synced' }); }
   if (!['payment.completed', 'order.courier_booked'].includes(payload.event)) return res.json({ status: 'ignored' });
   const order = await orderRepository.findByIdOrInvoice(data.order_id, data.invoice_number);
   if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -1768,7 +1741,6 @@ def mecopay_webhook():
     except ValueError: return jsonify(error='Invalid JSON'), 400
     data = {**payload, **(payload.get('data') or {})}
     event = payload.get('event', '')
-    if event == 'brand.settings_updated': update_gateway_cache(bool(data.get('payment_gateways_active'))); return jsonify(status='settings_synced')
     if event not in {'payment.completed', 'order.courier_booked'}: return jsonify(status='ignored')
     order = load_authorized_order(data.get('order_id'), data.get('invoice_number'))
     if not order: return jsonify(error='Order not found'), 404
