@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import DashboardShell from './DashboardShell';
+import DashboardLocalizationBoundary from './DashboardLocalizationBoundary';
 import MfaVerification from './MfaVerification';
 
 export default function DashboardRoute() {
@@ -64,5 +65,5 @@ export default function DashboardRoute() {
     return <MfaVerification onVerified={() => setNeedsMfa(false)} />;
   }
 
-  return <DashboardShell />;
+  return <DashboardLocalizationBoundary><DashboardShell /></DashboardLocalizationBoundary>;
 }

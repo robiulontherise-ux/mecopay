@@ -4750,8 +4750,8 @@ export default function DashboardShell() {
                 <Camera className="w-5 h-5 text-emerald-400" />
                 <h3 className="text-white font-bold text-sm">
                   {cameraTarget === 'birth' && 'জন্মনিবন্ধন লাইভ ক্যামেরা ক্যাপচার'}
-                  {cameraTarget === 'nid_front' && 'NID {profileCopy.front} লাইভ ক্যাপচার'}
-                  {cameraTarget === 'nid_back' && 'NID {profileCopy.back} লাইভ ক্যাপচার'}
+                  {cameraTarget === 'nid_front' && `NID ${profileCopy.front} লাইভ ক্যাপচার`}
+                  {cameraTarget === 'nid_back' && `NID ${profileCopy.back} লাইভ ক্যাপচার`}
                   {cameraTarget === 'face' && 'লাইভ ফেস সেলফি ক্যাপচার'}
                 </h3>
               </div>
