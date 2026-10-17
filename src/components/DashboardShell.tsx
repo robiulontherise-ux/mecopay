@@ -79,7 +79,11 @@ export default function DashboardShell() {
   const { continent, country: selectedCountry, language, countries, isDetecting: isDetectingContinent, countryData: selectedCountryData, languageOptions: countryLanguageOptions, setCountry: setSelectedCountry, setLanguage } = useLocale();
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
   const profileCopy = getProfileCopy(language);
-  const profileUiText = (bengali: string, english: string) => language === 'bn' ? bengali : english;
+  // Keep English copy in English, but pass Bengali source copy through the
+  // dashboard localization boundary for every selected non-English locale.
+  // This makes Profile validation/toast messages follow the same catalog path
+  // as pricing and checkout instead of silently falling back to English.
+  const profileUiText = (bengali: string, english: string) => language === 'en' ? english : bengali;
 
   useEffect(() => {
     setSelectedFeatureIds(pricingMode === 'nocode' ? ['no-code-website'] : ['custom-domain']);
