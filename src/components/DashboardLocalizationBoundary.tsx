@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { useLayoutEffect, useRef, useState, useEffect, type ReactNode } from 'react';
 import { useLocale } from '../lib/LocaleContext';
+import { dashboardAdditionalTranslations } from '../lib/dashboardAdditionalTranslations';
 
 type LocaleCatalog = Record<string, string>;
 const localeCatalogLoaders = import.meta.glob('../locales/dashboard/*.json', { import: 'default' }) as Record<string, () => Promise<LocaleCatalog>>;
@@ -11,6 +12,8 @@ const sourceAttributes = new WeakMap<Element, Map<string, { source: string; rend
 const localizableAttributes = ['placeholder', 'title', 'aria-label'] as const;
 const phraseCache = new WeakMap<LocaleCatalog, [string, string][]>();
 const placeholderCache = new WeakMap<LocaleCatalog, { pattern: RegExp; tokens: string[]; translated: string }[]>();
+
+const canonicalLocale = (value: string) => value.trim().toLowerCase().split(/[-_]/)[0];
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -109,12 +112,15 @@ export default function DashboardLocalizationBoundary({ children }: { children: 
       return;
     }
     let cancelled = false;
-    const load = localeCatalogLoaders[`../locales/dashboard/${language}.json`];
-    if (!load) {
+    const locale = canonicalLocale(language);
+    const load = localeCatalogLoaders[`../locales/dashboard/${locale}.json`];
+    const generatedCatalog = dashboardAdditionalTranslations[locale];
+    if (!load && !generatedCatalog) {
       setLoadedCatalog(null);
       return;
     }
-    load().then((entries) => {
+    const catalogPromise = load ? load() : Promise.resolve(generatedCatalog);
+    catalogPromise.then((entries) => {
       if (!cancelled) setLoadedCatalog({ language, entries });
     }).catch((error) => {
       console.error(`Dashboard translations unavailable for ${language}:`, error);
