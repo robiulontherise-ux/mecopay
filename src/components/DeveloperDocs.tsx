@@ -1819,7 +1819,43 @@ class MecoPayWebhookController extends Controller
                 ]);
             }
 
-            return response()->json(['status' => 'success', 'message' => 'Payment processed successfully.'], 200);
+            if ($productType === 'digital') {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Digital payment processed and access links granted.',
+                    'order_id' => $orderId,
+                    'invoice_number' => $invoiceNumber,
+                    'product_type' => 'digital',
+                    'passcode' => $digitalPasscode,
+                    'telegram_link' => $telegramLink,
+                    'facebook_group_link' => $fbGroupLink,
+                    'google_drive_link' => $driveLink,
+                    'digital_access' => [
+                        'passcode' => $digitalPasscode,
+                        'telegram_link' => $telegramLink,
+                        'facebook_group_link' => $fbGroupLink,
+                        'google_drive_link' => $driveLink,
+                    ]
+                ], 200);
+            } else {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Advance payment recorded and courier tracking initialized.',
+                    'order_id' => $orderId,
+                    'invoice_number' => $invoiceNumber,
+                    'product_type' => 'physical_advance',
+                    'advance_amount' => $paidAmount,
+                    'courier_due' => $data['cod_due'] ?? $order->cod_due,
+                    'courier_provider' => $provider,
+                    'tracking_code' => $trackingCode,
+                    'tracking_url' => $trackingUrl,
+                    'courier' => [
+                        'provider' => $provider,
+                        'tracking_code' => $trackingCode,
+                        'tracking_url' => $trackingUrl,
+                    ]
+                ], 200);
+            }
         }
 
         // -------------------------------------------------------------------------
@@ -1827,15 +1863,32 @@ class MecoPayWebhookController extends Controller
         // -------------------------------------------------------------------------
         if ($event === 'order.courier_booked') {
             $courier = $data['courier'] ?? [];
+            $trackingCode = $courier['tracking_code'] ?? ($data['courier_tracking_code'] ?? null);
+            $provider = $courier['provider'] ?? 'steadfast';
+            $trackingUrl = $courier['tracking_url'] ?? null;
+
             $order->update([
                 'order_status'     => 'shipped',
                 'invoice_number'   => $invoiceNumber,
-                'courier_provider' => $courier['provider'] ?? 'steadfast',
-                'courier_tracking' => $courier['tracking_code'] ?? ($data['courier_tracking_code'] ?? null),
-                'tracking_url'     => $courier['tracking_url'] ?? null,
+                'courier_provider' => $provider,
+                'courier_tracking' => $trackingCode,
+                'tracking_url'     => $trackingUrl,
             ]);
 
-            return response()->json(['status' => 'success', 'message' => 'Courier booking recorded.'], 200);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Courier booking recorded with parcel tracking URL.',
+                'order_id' => $orderId,
+                'invoice_number' => $invoiceNumber,
+                'courier_provider' => $provider,
+                'tracking_code' => $trackingCode,
+                'tracking_url' => $trackingUrl,
+                'courier' => [
+                    'provider' => $provider,
+                    'tracking_code' => $trackingCode,
+                    'tracking_url' => $trackingUrl,
+                ]
+            ], 200);
         }
 
         return response()->json(['status' => 'ignored', 'message' => 'Event not handled.'], 200);
@@ -1917,14 +1970,49 @@ if ($event === 'payment.completed') {
         // ডিজিটাল: ১০০% ফুল পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক কনফার্ম
         // $stmt = $pdo->prepare("UPDATE orders SET payment_status = 'paid', status = 'completed', trx_id = ?, invoice_number = ?, passcode = ?, telegram_link = ?, fb_group = ?, drive_link = ? WHERE id = ?");
         // $stmt->execute([$trxId, $invoiceNumber, $passcode, $telegramLink, $fbGroupLink, $driveLink, $orderId]);
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Digital payment processed and access links granted.',
+            'order_id' => $orderId,
+            'invoice_number' => $invoiceNumber,
+            'product_type' => 'digital',
+            'passcode' => $passcode,
+            'telegram_link' => $telegramLink,
+            'facebook_group_link' => $fbGroupLink,
+            'google_drive_link' => $driveLink,
+            'digital_access' => [
+                'passcode' => $passcode,
+                'telegram_link' => $telegramLink,
+                'facebook_group_link' => $fbGroupLink,
+                'google_drive_link' => $driveLink,
+            ]
+        ]);
+        exit;
     } else {
         // ফিজিক্যাল অ্যাডভান্স: অগ্রিম পেমেন্ট কনফার্ম, পার্সেল শিপমেন্ট ও ট্র্যাকিং প্রস্তুত
         // $stmt = $pdo->prepare("UPDATE orders SET payment_status = 'advance_paid', status = 'ready_to_ship', trx_id = ?, invoice_number = ?, advance_amount = ?, courier_due = ?, courier_tracking = ?, tracking_url = ? WHERE id = ?");
         // $stmt->execute([$trxId, $invoiceNumber, $paidAmount, $codDue, $trackingCode, $trackingUrl, $orderId]);
-    }
 
-    echo json_encode(['status' => 'success', 'message' => 'Payment recorded successfully.']);
-    exit;
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Advance payment recorded and courier tracking initialized.',
+            'order_id' => $orderId,
+            'invoice_number' => $invoiceNumber,
+            'product_type' => 'physical_advance',
+            'advance_amount' => $paidAmount,
+            'cod_due' => $codDue,
+            'courier_provider' => $provider,
+            'tracking_code' => $trackingCode,
+            'tracking_url' => $trackingUrl,
+            'courier' => [
+                'provider' => $provider,
+                'tracking_code' => $trackingCode,
+                'tracking_url' => $trackingUrl,
+            ]
+        ]);
+        exit;
+    }
 }
 
 // -------------------------------------------------------------------------
@@ -1938,7 +2026,20 @@ if ($event === 'order.courier_booked') {
     // $stmt = $pdo->prepare("UPDATE orders SET status = 'shipped', courier_provider = ?, tracking_code = ?, tracking_url = ?, invoice_number = ? WHERE id = ?");
     // $stmt->execute([$provider, $trackingCode, $trackingUrl, $invoiceNumber, $orderId]);
 
-    echo json_encode(['status' => 'success', 'message' => 'Courier tracking updated successfully.']);
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'Courier tracking updated successfully with parcel tracking URL.',
+        'order_id' => $orderId,
+        'invoice_number' => $invoiceNumber,
+        'courier_provider' => $provider,
+        'tracking_code' => $trackingCode,
+        'tracking_url' => $trackingUrl,
+        'courier' => [
+            'provider' => $provider,
+            'tracking_code' => $trackingCode,
+            'tracking_url' => $trackingUrl,
+        ]
+    ]);
     exit;
 }
 
@@ -2004,6 +2105,24 @@ app.post('/api/mecopay/webhook', async (req, res) => {
         const fbGroupLink = eventData.digital_access?.facebook_group_link || eventData.facebook_group_link;
         const driveLink = eventData.digital_access?.google_drive_link || eventData.google_drive_link;
         // await db.order.update({ where: { id: orderId }, data: { paymentStatus: 'paid', status: 'completed', trxId, invoiceNumber, passcode, telegramLink, fbGroupLink, driveLink } });
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'Digital payment processed and access links granted.',
+          order_id: orderId,
+          invoice_number: invoiceNumber,
+          product_type: 'digital',
+          passcode,
+          telegram_link: telegramLink,
+          facebook_group_link: fbGroupLink,
+          google_drive_link: driveLink,
+          digital_access: {
+            passcode,
+            telegram_link: telegramLink,
+            facebook_group_link: fbGroupLink,
+            google_drive_link: driveLink
+          }
+        });
       } else {
         // ফিজিক্যাল অ্যাডভান্স: অগ্রিম পেমেন্ট কনফার্ম, বাকি টাকা ও কুরিয়ার ট্র্যাকিং
         const codDue = eventData.cod_due;
@@ -2011,9 +2130,25 @@ app.post('/api/mecopay/webhook', async (req, res) => {
         const trackingUrl = eventData.courier?.tracking_url || eventData.tracking_url;
         const provider = eventData.courier?.provider || eventData.courier_provider || 'steadfast';
         // await db.order.update({ where: { id: orderId }, data: { paymentStatus: 'advance_paid', status: 'ready_to_ship', trxId, invoiceNumber, advanceAmount: paidAmount, courierDue: codDue, courierTracking: trackingCode, trackingUrl } });
-      }
 
-      return res.status(200).json({ status: 'success', message: 'Order payment processed.' });
+        return res.status(200).json({
+          status: 'success',
+          message: 'Advance payment recorded and courier tracking initialized.',
+          order_id: orderId,
+          invoice_number: invoiceNumber,
+          product_type: 'physical_advance',
+          advance_amount: paidAmount,
+          cod_due: codDue,
+          courier_provider: provider,
+          tracking_code: trackingCode,
+          tracking_url: trackingUrl,
+          courier: {
+            provider,
+            tracking_code: trackingCode,
+            tracking_url: trackingUrl
+          }
+        });
+      }
     }
 
     // -------------------------------------------------------------------------
@@ -2026,7 +2161,20 @@ app.post('/api/mecopay/webhook', async (req, res) => {
 
       // await db.order.update({ where: { id: orderId }, data: { status: 'shipped', courierProvider: provider, trackingCode, trackingUrl, invoiceNumber } });
 
-      return res.status(200).json({ status: 'success', message: 'Courier booking saved.' });
+      return res.status(200).json({
+        status: 'success',
+        message: 'Courier booking saved with parcel tracking URL.',
+        order_id: orderId,
+        invoice_number: invoiceNumber,
+        courier_provider: provider,
+        tracking_code: trackingCode,
+        tracking_url: trackingUrl,
+        courier: {
+          provider,
+          tracking_code: trackingCode,
+          tracking_url: trackingUrl
+        }
+      });
     }
 
     return res.status(200).json({ status: 'ignored' });
@@ -2104,6 +2252,24 @@ def mecopay_webhook_view(request):
             fb_group_link = digital_access.get("facebook_group_link") or data.get("facebook_group_link")
             drive_link = digital_access.get("google_drive_link") or data.get("google_drive_link")
             # Order.objects.filter(id=order_id).update(payment_status="paid", status="completed", trx_id=trx_id, invoice_number=invoice_number, passcode=passcode, telegram_link=telegram_link, fb_group=fb_group_link, drive_link=drive_link)
+
+            return JsonResponse({
+                "status": "success",
+                "message": "Digital payment processed and access links granted.",
+                "order_id": order_id,
+                "invoice_number": invoice_number,
+                "product_type": "digital",
+                "passcode": passcode,
+                "telegram_link": telegram_link,
+                "facebook_group_link": fb_group_link,
+                "google_drive_link": drive_link,
+                "digital_access": {
+                    "passcode": passcode,
+                    "telegram_link": telegram_link,
+                    "facebook_group_link": fb_group_link,
+                    "google_drive_link": drive_link,
+                }
+            })
         else:
             # ফিজিক্যাল অ্যাডভান্স: অগ্রিম পেমেন্ট নিশ্চিত, বাকি টাকা COD ও কুরিয়ার ট্র্যাকিং
             cod_due = data.get("cod_due")
@@ -2112,9 +2278,24 @@ def mecopay_webhook_view(request):
             tracking_url = courier.get("tracking_url") or data.get("tracking_url")
             provider = courier.get("provider") or data.get("courier_provider") or "steadfast"
             # Order.objects.filter(id=order_id).update(payment_status="advance_paid", status="ready_to_ship", trx_id=trx_id, invoice_number=invoice_number, advance_amount=paid_amount, courier_due=cod_due, courier_tracking=tracking_code, tracking_url=tracking_url)
-            pass
 
-        return JsonResponse({"status": "success", "message": "Payment updated successfully."})
+            return JsonResponse({
+                "status": "success",
+                "message": "Advance payment recorded and courier tracking initialized.",
+                "order_id": order_id,
+                "invoice_number": invoice_number,
+                "product_type": "physical_advance",
+                "advance_amount": paid_amount,
+                "cod_due": cod_due,
+                "courier_provider": provider,
+                "tracking_code": tracking_code,
+                "tracking_url": tracking_url,
+                "courier": {
+                    "provider": provider,
+                    "tracking_code": tracking_code,
+                    "tracking_url": tracking_url,
+                }
+            })
 
     # -------------------------------------------------------------------------
     # ৪. ইভেন্ট ২: ১০০% Full COD অর্ডারে কুরিয়ার বুকিং নিশ্চিত হওয়া
@@ -2126,7 +2307,20 @@ def mecopay_webhook_view(request):
         tracking_url = courier.get("tracking_url") or data.get("tracking_url")
         # Order.objects.filter(id=order_id).update(status="shipped", courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url, invoice_number=invoice_number)
 
-        return JsonResponse({"status": "success", "message": "Courier booked successfully."})
+        return JsonResponse({
+            "status": "success",
+            "message": "Courier booked successfully with parcel tracking URL.",
+            "order_id": order_id,
+            "invoice_number": invoice_number,
+            "courier_provider": provider,
+            "tracking_code": tracking_code,
+            "tracking_url": tracking_url,
+            "courier": {
+                "provider": provider,
+                "tracking_code": tracking_code,
+                "tracking_url": tracking_url,
+            }
+        })
 
     return JsonResponse({"status": "ignored"})
 `;

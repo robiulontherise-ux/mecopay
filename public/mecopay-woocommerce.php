@@ -414,7 +414,33 @@ function mecopay_init_smart_gateway_class() {
                         $order->add_order_note(sprintf(__('ডিজিটাল এক্সেস পাসকোড: %s', 'mecopay-gateway'), $passcode));
                     }
 
-                    wp_send_json(array('status' => 'success', 'order_id' => $order_id), 200);
+                    wp_send_json(array(
+                        'status' => 'success',
+                        'message' => 'Payment processed successfully.',
+                        'order_id' => $order_id,
+                        'invoice_number' => $invoice,
+                        'trx_id' => $trx_id,
+                        'telegram_link' => $telegram_link,
+                        'facebook_group_link' => $fb_group,
+                        'google_drive_link' => $drive_link,
+                        'passcode' => $passcode,
+                        'tracking_code' => $tracking_code,
+                        'tracking_url' => $tracking_url,
+                        'courier_provider' => $courier_provider,
+                        'amount_paid' => $amount_paid,
+                        'cod_due' => $cod_due,
+                        'digital_access' => array(
+                            'passcode' => $passcode,
+                            'telegram_link' => $telegram_link,
+                            'facebook_group_link' => $fb_group,
+                            'google_drive_link' => $drive_link,
+                        ),
+                        'courier' => array(
+                            'provider' => $courier_provider,
+                            'tracking_code' => $tracking_code,
+                            'tracking_url' => $tracking_url,
+                        )
+                    ), 200);
                     exit;
                 }
 
@@ -444,7 +470,19 @@ function mecopay_init_smart_gateway_class() {
 
                     $order->add_order_note(sprintf(__('স্বয়ংক্রিয়ভাবে %s কুরিয়ারে পার্সেল বুক করা হয়েছে। ট্র্যাকিং কোড: %s', 'mecopay-gateway'), $provider, $tracking_code));
 
-                    wp_send_json(array('status' => 'success', 'order_id' => $order_id), 200);
+                    wp_send_json(array(
+                        'status' => 'success',
+                        'message' => 'Courier tracking updated successfully.',
+                        'order_id' => $order_id,
+                        'tracking_code' => $tracking_code,
+                        'tracking_url' => $tracking_url,
+                        'courier_provider' => $provider,
+                        'courier' => array(
+                            'provider' => $provider,
+                            'tracking_code' => $tracking_code,
+                            'tracking_url' => $tracking_url,
+                        )
+                    ), 200);
                     exit;
                 }
 
