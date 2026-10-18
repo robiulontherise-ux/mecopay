@@ -164,16 +164,8 @@ function mecopay_init_smart_gateway_class() {
             // ১. স্মার্ট কার্ট স্ক্যান: ডিজিটাল বনাম ফিজিক্যাল ডিটেকশন
             $is_digital = true;
             $items = $order->get_items();
-            $cart_items_data = array();
-
             foreach ($items as $item) {
                 $product = $item->get_product();
-                $cart_items_data[] = array(
-                    'product_id'   => $item->get_product_id(),
-                    'product_name' => $item->get_name(),
-                    'quantity'     => $item->get_quantity(),
-                    'total'        => (float) $item->get_total(),
-                );
                 if ($product) {
                     if ($product->needs_shipping() || (!$product->is_virtual() && !$product->is_downloadable())) {
                         $is_digital = false;
@@ -190,11 +182,8 @@ function mecopay_init_smart_gateway_class() {
 
             // API Worker expects the canonical create-checkout contract.
             $return_url = $this->get_return_url($order);
-            $first_product_id = $first_item ? $first_item->get_product_id() : null;
-
             $payload = array(
                 'order_id'         => (string) $order_id,
-                'product_id'       => $first_product_id ? (string) $first_product_id : null,
                 'product_name'     => $first_product_name,
                 'currency'         => $order_currency,
                 'customer_name'    => trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()),
@@ -229,7 +218,7 @@ function mecopay_init_smart_gateway_class() {
                     // অ্যাডভান্স ডেলিভারি ফি চার্জ + বাকি টাকা COD
                     $advance_charge = min($advance_config, $total_amount);
                     $payload['product_type'] = 'physical_advance';
-                    $payload['amount']       = $advance_charge;
+                    $payload['advance_amount'] = $advance_charge;
                     $payload['cod_due']      = max(0, $total_amount - $advance_charge);
                 }
             }

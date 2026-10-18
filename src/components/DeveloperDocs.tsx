@@ -296,6 +296,11 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
                     </tr>
                     <tr>
+                      <td className="p-3 font-mono text-blue-300">product_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">শুধু invoice বা checkout-এ display করার জন্য; order matching-এর জন্য ব্যবহার হবে না।</td>
+                    </tr>
+                    <tr>
                       <td className="p-3 font-mono text-blue-300">product_type</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">মান হতে হবে <code>"digital"</code>।</td>
@@ -394,6 +399,11 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
                     </tr>
                     <tr>
+                      <td className="p-3 font-mono text-amber-300">product_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">শুধু invoice বা checkout-এ display করার জন্য; order matching-এর জন্য ব্যবহার হবে না।</td>
+                    </tr>
+                    <tr>
                       <td className="p-3 font-mono text-amber-300">product_type</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">মান হতে হবে <code>"physical_advance"</code>।</td>
@@ -414,14 +424,14 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">ডেলিভারি ফি (যেমন: ১২০ ৳)।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">amount</td>
+                      <td className="p-3 font-mono text-amber-300">advance_amount</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">অনলাইন গেটওয়েতে কাস্টমার থেকে তাৎক্ষণিক চার্জ (যেমন: ১৫০ ৳)।</td>
+                      <td className="p-3 text-slate-300">অনলাইন গেটওয়েতে কাস্টমার থেকে তাৎক্ষণিক advance charge (যেমন: ১৫০ ৳)। Total-এর সমান বা বেশি হলে due COD শূন্য হবে।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-amber-300">cod_due</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">কুরিয়ার ডেলিভারিতে কালেকশন = <code>(total_amount + courier_charge) - amount</code> = ১২২০ ৳।</td>
+                      <td className="p-3 text-slate-300">কুরিয়ার ডেলিভারিতে অবশিষ্ট collection; advance_amount total-এর সমান হলে due COD = ০।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-amber-300">callback_url</td>
@@ -505,6 +515,11 @@ export default function DeveloperDocs() {
                       <td className="p-3 font-mono text-emerald-300">order_id</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-emerald-300">product_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">শুধু invoice বা checkout-এ display করার জন্য; order matching-এর জন্য ব্যবহার হবে না।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-emerald-300">product_type</td>
@@ -610,7 +625,7 @@ export default function DeveloperDocs() {
                     ফ্রন্টএন্ড ফর্ম / Buy Now
                   </div>
                   <p className="text-slate-400 leading-relaxed text-[11px]">
-                    গ্রাহক যখন সাইটে কোনো প্রোডাক্টে "অর্ডার করুন" চাপেন, ফ্রন্টএন্ড থেকে শুধু <code>product_id</code> অথবা কার্ট ডেটা আপনার ব্যাকএন্ড কন্ট্রোলারে যায়।
+                    গ্রাহক যখন সাইটে কোনো প্রোডাক্টে "অর্ডার করুন" চাপেন, ফ্রন্টএন্ড থেকে প্রোডাক্টের প্রয়োজনীয় তথ্য বা কার্ট ডেটা আপনার ব্যাকএন্ড কন্ট্রোলারে যায়; MecoPay payment payload-এ কেবল client-এর <code>order_id</code> পাঠানো বাধ্যতামূলক।
                   </p>
                 </div>
                 <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
@@ -846,7 +861,7 @@ HEADERS:
                 <h5 className="font-bold text-white">কোডটি কীভাবে কাজ করে?</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>কাস্টমার যখন চেকআউট বাটনে চাপ দেয়, কোড রিকোয়েস্টটি ধরে।</li>
-                  <li><code>order_id</code> বা <code>product_name</code> এবং <code>courier_charge</code> সহ পে-লোড বানায়।</li>
+                  <li>বাধ্যতামূলক <code>order_id</code> এবং ঐচ্ছিক display field <code>product_name</code> ও <code>courier_charge</code> সহ পে-লোড বানায়।</li>
                   <li>MecoPay Worker-এর <code>https://api.mecopay.space/v1/create-checkout</code> এ পাঠায়।</li>
                   <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
                 </ol>
@@ -1147,7 +1162,7 @@ const advanceJsonPayload = `{
   "currency": "USD",
   "total_amount": 1250,
   "courier_charge": 120,
-  "amount": 150,
+  "advance_amount": 150,
   "cod_due": 1220,
   "fulfillment_type": "dropship",
   "callback_url": "https://yourwebsite.com/payment/callback",
@@ -1274,12 +1289,12 @@ class PaymentController extends Controller
             if ($price <= 0) {
                 return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য টোটাল মূল্য আবশ্যক।');
             }
-            // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি (০ হলে ১০০% ফুল ক্যাশ অন ডেলিভারি):
+            // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি; total-এর সমান হলে due COD শূন্য হবে:
             $advanceAmount = (float) $request->input('advance_amount', 0);
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
-            $payload['amount']         = min($advanceAmount, $price);
-            $payload['cod_due']        = max(0, ($price + $courierCharge) - $payload['amount']);
+            $payload['advance_amount'] = min($advanceAmount, $price);
+            $payload['cod_due']        = max(0, ($price + $courierCharge) - $payload['advance_amount']);
         } else { // physical_cod
             // ১০০% ক্যাশ অন ডেলিভারি: গেটওয়ে চার্জ ০ এবং বাকি টাকা কুরিয়ার ডিউ
             $payload['total_amount']   = $price;
@@ -1390,11 +1405,11 @@ if ($productType === 'digital') {
     $payload['amount'] = $price;
     $payload['telegram_link'] = "https://t.me/+join_chat";
 } elseif ($productType === 'physical_advance') {
-    $advance = (float) ($_POST['advance_amount'] ?? 0); // ০ হলে ১০০% ফুল COD
+    $advance = (float) ($_POST['advance_amount'] ?? 0); // total-এর সমান হলে physical full payment
     $payload['total_amount']   = $price;
     $payload['courier_charge'] = $courierCharge;
-    $payload['amount']         = $advance;
-    $payload['cod_due']        = ($price + $courierCharge) - $advance;
+    $payload['advance_amount'] = $advance;
+    $payload['cod_due']        = max(0, ($price + $courierCharge) - $advance);
 } else { // physical_cod
     $payload['total_amount']   = $price;
     $payload['courier_charge'] = $courierCharge;
@@ -1510,12 +1525,12 @@ app.post('/api/checkout', async (req, res) => {
       if (!price || price <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
       payload.amount = Number(price);
       payload.telegram_link = 'https://t.me/+join_group';
-    } else if (product_type === 'physical_advance') {
+    } else if (finalProductType === 'physical_advance') {
       if (!price || price <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
       payload.total_amount = Number(price);
       payload.courier_charge = Number(courier_charge);
-      payload.amount = Number(advance_amount);
-      payload.cod_due = (Number(price) + Number(courier_charge)) - Number(advance_amount);
+      payload.advance_amount = Number(advance_amount);
+      payload.cod_due = Math.max(0, (Number(price) + Number(courier_charge)) - Number(advance_amount));
     } else { // physical_cod
       payload.total_amount = Number(price);
       payload.courier_charge = Number(courier_charge);
@@ -1608,11 +1623,11 @@ async function initiateMecoPayCheckout(orderData) {
     payload.amount = price;
     payload.telegram_link = orderData.telegram_link || "https://t.me/+vip_invite";
   } else if (finalProductType === 'physical_advance') {
-    const advance = Number(orderData.advance_amount || 0); // ০ হলে ১০০% ফুল COD
+    const advance = Number(orderData.advance_amount || 0); // total-এর সমান হলে physical full payment
     payload.total_amount = price;
     payload.courier_charge = courierCharge;
-    payload.amount = advance;
-    payload.cod_due = (price + courierCharge) - advance;
+    payload.advance_amount = advance;
+    payload.cod_due = Math.max(0, (price + courierCharge) - advance);
   } else { // physical_cod
     payload.total_amount = price;
     payload.courier_charge = courierCharge;
@@ -1710,8 +1725,8 @@ def create_checkout_session(request_data):
         advance = float(request_data.get('advance_amount') or 0)
         payload["total_amount"] = price
         payload["courier_charge"] = courier_charge
-        payload["amount"] = advance
-        payload["cod_due"] = (price + courier_charge) - advance
+        payload["advance_amount"] = advance
+        payload["cod_due"] = max(0, (price + courier_charge) - advance)
     else: # physical_cod
         payload["total_amount"] = price
         payload["courier_charge"] = courier_charge

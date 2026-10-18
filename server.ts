@@ -1274,7 +1274,6 @@ async function startServer() {
       const {
         order_id,
         product_name,
-        product_id = null,
         product_type = 'digital',
         amount = 0,
         total_amount = 0,
@@ -1323,7 +1322,6 @@ async function startServer() {
               ...metadata,
               order_id: order_id || ('ORD-' + Date.now()),
               product_name: product_name || 'General COD Order',
-              product_id: product_id || null,
               product_type: 'physical_cod',
               currency: currency || null,
               total_amount: total_amount || 0,
@@ -1395,7 +1393,6 @@ async function startServer() {
         brand_logo: brand.logo_url?.startsWith('http') ? brand.logo_url : undefined,
         order_id: order_id || ('ORD-' + Date.now()),
         product_name: product_name || 'Item',
-        product_id: product_id || null,
         product_type,
         currency: currency || null,
         payable_amount: Number(amount) || 0,
@@ -1430,7 +1427,6 @@ async function startServer() {
       return res.json({
         success: true,
         product_type,
-        product_id: product_id || null,
         invoice_number: invoiceNumber,
         payable_amount: Number(amount),
         checkout_url: checkoutUrl,
