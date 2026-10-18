@@ -880,7 +880,23 @@ Authorization: Bearer &lt;MECOPAY_API_KEY&gt;`}</pre>
                   <li>বাধ্যতামূলক <code>order_id</code>; response-এর <code>invoice_no</code> নিজের order row-তে সংরক্ষণ করুন; এবং ঐচ্ছিক display field <code>product_name</code> ও <code>courier_charge</code> সহ পে-লোড বানায়।</li>
                   <li>MecoPay Worker-এর <code>https://api.mecopay.space/v1/create-checkout</code> এ পাঠায়।</li>
                   <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
+                  <li>MecoPay সাথে সাথে <code>invoice_no</code> এবং payment-required হলে <code>checkout_url</code> রিটার্ন করে; controller-কে <code>invoice_no</code> নিজের order table-এ সংরক্ষণ করতে হবে।</li>
                 </ol>
+                <div className="bg-slate-900/80 border border-emerald-500/20 rounded-xl p-3 space-y-2">
+                  <p className="font-semibold text-emerald-300">Payment-create Response Contract</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-emerald-200 overflow-x-auto">{`{
+  "success": true,
+  "invoice_no": "MecoPay-invoice-no",
+  "checkout_url": "https://www.mecopay.space/pay?...",
+  "requires_payment": true,
+  "product_type": "physical_full_payment",
+  "product_price": 1250,
+  "courier_charge": 120,
+  "payable_amount": 1370,
+  "cod_due": 0
+}`}</pre>
+                  <p className="text-slate-400">Payment-create controller এই response থেকে <code>invoice_no</code> save করবে এবং <code>checkout_url</code>-এ customer-কে redirect করবে। Full COD হলে <code>requires_payment: false</code> থাকবে এবং checkout_url নাও থাকতে পারে।</p>
+                </div>
               </div>
             </div>
           </div>
@@ -1045,10 +1061,15 @@ Raw PHP: getenv("MECOPAY_WEBHOOK_SECRET")`}</pre>
     "payable_amount": 1370,
     "cod_due": 0,
     "status": "paid",
-    "courier": null
+    "courier": {
+      "provider": "steadfast",
+      "tracking_code": "STDF-883110",
+      "tracking_url": "https://steadfast.com.bd/tracking/STDF-883110"
+    }
   }
 }`}
                 </pre>
+                <p className="text-[11px] text-slate-400">Physical full payment-এর ক্ষেত্রেও courier object পাঠানো হবে; courier booking সম্পন্ন হলে provider, tracking_code এবং tracking_url-এর বাস্তব value বসবে।</p>
               </div>
             </div>
 
@@ -1329,7 +1350,7 @@ class PaymentController extends Controller
         if ($productType === 'digital') {
             // ডিজিটাল: ১০০% পেমেন্ট ও রিটার্ন URL আবশ্যক
             if ($productPrice <= 0) {
-                return back()->with('error', 'ডিজিটাল প্রোডাক্টের জন্য মূল্য (price) আবশ্যক।');
+                return back()->with('error', 'ডিজিটাল প্রোডাক্টের জন্য product_price আবশ্যক।');
             }
             $payload['product_price'] = $productPrice;
             $payload['telegram_link'] = $request->input('telegram_link', 'https://t.me/+secret_link');
@@ -1338,7 +1359,7 @@ class PaymentController extends Controller
         } elseif ($productType === 'physical_advance') {
             // ফিজিক্যাল অ্যাডভান্স: টোটাল এমাউন্ট, কুরিয়ার চার্জ এবং অ্যাডভান্স ফি
             if ($productPrice <= 0) {
-                return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য টোটাল মূল্য আবশ্যক।');
+                return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য product_price আবশ্যক।');
             }
             // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি; total-এর সমান হলে due COD শূন্য হবে:
             $advanceAmount = (float) $request->input('advance_amount', 0);
