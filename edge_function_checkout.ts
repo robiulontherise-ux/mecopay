@@ -63,6 +63,7 @@ serve(async (req) => {
       amount = 0,
       advance_amount = 0,
       total_amount = 0,
+      courier_charge = 0,
       customer_name = 'Guest Customer',
       customer_phone = '',
       customer_email = '',
@@ -102,7 +103,9 @@ serve(async (req) => {
             ...metadata,
             order_id,
             order_type: 'physical_cod',
-            cod_total: total_amount || amount || 0,
+            courier_charge: Number(courier_charge) || 0,
+            cod_due: Number(total_amount || amount || 0) + Number(courier_charge || 0),
+            cod_total: Number(total_amount || amount || 0) + Number(courier_charge || 0),
             auto_booked: true
           }
         })
@@ -159,7 +162,8 @@ serve(async (req) => {
           order_type,
           full_order_amount: total_amount || amount,
           advance_charged: payableAmount,
-          cod_due: (total_amount || amount) - payableAmount,
+          courier_charge: Number(courier_charge) || 0,
+          cod_due: Math.max(0, (Number(total_amount || amount) + Number(courier_charge || 0)) - Number(payableAmount)),
           brand_name: brand.name,
           gateway_mode: gatewayMode
         }

@@ -51,31 +51,34 @@ serve(async (req) => {
 
     const metadata = invoice.metadata && typeof invoice.metadata === 'object' ? invoice.metadata : {};
     const event = invoice.status === 'cod_confirmed' ? 'order.courier_booked' : 'payment.completed';
-    const webhookPayload = {
-      event,
-      event_time: new Date().toISOString(),
-      data: {
-        order_id: metadata.order_id || invoice.order_id || null,
-        product_name: metadata.product_name || invoice.product_name || null,
-        product_id: metadata.product_id || invoice.product_id || null,
-        product_type: metadata.product_type || invoice.product_type || (event === 'order.courier_booked' ? 'physical_cod' : 'digital'),
-        currency: metadata.currency || invoice.currency || null,
-        amount: invoice.amount ?? metadata.amount ?? 0,
-        total_amount: metadata.total_amount ?? invoice.total_amount ?? invoice.amount ?? 0,
-        courier_charge: metadata.courier_charge ?? invoice.courier_charge ?? 0,
-        cod_due: metadata.cod_due ?? invoice.cod_due ?? 0,
-        status: event === 'order.courier_booked' ? 'cod_confirmed' : 'paid',
-        delivery: {
-          telegram_link: metadata.telegram_link || invoice.telegram_link || null,
-          facebook_group_link: metadata.facebook_group_link || invoice.facebook_group_link || null,
-          facebook_access_code: metadata.facebook_access_code || invoice.facebook_access_code || null,
-          google_drive_link: metadata.google_drive_link || invoice.google_drive_link || null,
-          callback_url: metadata.callback_url || invoice.callback_url || null,
-          digital_access: null
-        },
-        courier: metadata.courier || null
-      }
+    const productType = metadata.product_type || invoice.product_type || (event === 'order.courier_booked' ? 'physical_cod' : 'digital');
+    const isDigital = productType === 'digital';
+    const courier = metadata.courier || {
+      provider: metadata.courier_provider || invoice.courier_provider || null,
+      tracking_code: metadata.courier_tracking_code || invoice.courier_tracking_code || invoice.consignment_id || null,
+      tracking_url: metadata.tracking_url || invoice.tracking_url || null
     };
+    const webhookData = {
+      order_id: metadata.order_id || invoice.order_id || null,
+      product_name: metadata.product_name || invoice.product_name || null,
+      product_id: metadata.product_id || invoice.product_id || null,
+      product_type: productType,
+      currency: metadata.currency || invoice.currency || null,
+      amount: invoice.amount ?? metadata.amount ?? 0,
+      total_amount: metadata.total_amount ?? invoice.total_amount ?? invoice.amount ?? 0,
+      courier_charge: metadata.courier_charge ?? invoice.courier_charge ?? 0,
+      cod_due: metadata.cod_due ?? invoice.cod_due ?? 0,
+      status: event === 'order.courier_booked' ? 'cod_confirmed' : 'paid',
+      ...(isDigital ? { delivery: {
+        telegram_link: metadata.telegram_link || invoice.telegram_link || null,
+        facebook_group_link: metadata.facebook_group_link || invoice.facebook_group_link || null,
+        facebook_access_code: metadata.facebook_access_code || invoice.facebook_access_code || null,
+        google_drive_link: metadata.google_drive_link || invoice.google_drive_link || null,
+        callback_url: metadata.callback_url || invoice.callback_url || null,
+        digital_access: null
+      } } : { courier })
+    };
+    const webhookPayload = { event, event_time: new Date().toISOString(), data: webhookData };
     const payloadString = JSON.stringify(webhookPayload);
     const secret = webhook.webhook_secret || invoice.brands?.webhook_secret || '';
     if (!secret) throw new Error('Webhook secret is not configured.');

@@ -224,7 +224,7 @@ function mecopay_init_smart_gateway_class() {
                     $payload['product_type'] = 'physical_cod';
                     $payload['amount']       = 0;
                     $payload['price']        = 0;
-                    $payload['cod_due']      = $total_amount;
+                    $payload['cod_due']      = $total_amount + $shipping_fee;
                     $payload['advance_amount']= 0;
                 } else {
                     // অ্যাডভান্স ডেলিভারি ফি চার্জ + বাকি টাকা COD
@@ -233,7 +233,7 @@ function mecopay_init_smart_gateway_class() {
                     $payload['amount']       = $advance_charge;
                     $payload['price']        = $advance_charge;
                     $payload['advance_amount']= $advance_charge;
-                    $payload['cod_due']      = max(0, $total_amount - $advance_charge);
+                    $payload['cod_due']      = max(0, ($total_amount + $shipping_fee) - $advance_charge);
                 }
             }
 
@@ -356,6 +356,8 @@ function mecopay_init_smart_gateway_class() {
                 $tracking_url = $payload['tracking_url'] ?? ($payload['courier']['tracking_url'] ?? '');
                 $courier_provider = $payload['courier']['provider'] ?? ($payload['courier_provider'] ?? '');
 
+                $product_type = $payload['product_type'] ?? ($event_data['product_type'] ?? 'digital');
+                $is_digital = ($product_type === 'digital');
                 $order = $order_id ? wc_get_order($order_id) : null;
 
                 if ($order) {
@@ -371,16 +373,16 @@ function mecopay_init_smart_gateway_class() {
                     if (!empty($channel)) {
                         $order->update_meta_data('_mecopay_channel', sanitize_text_field($channel));
                     }
-                    if (!empty($passcode)) {
+                    if ($is_digital && !empty($passcode)) {
                         $order->update_meta_data('_mecopay_passcode', sanitize_text_field($passcode));
                     }
-                    if (!empty($fb_group)) {
+                    if ($is_digital && !empty($fb_group)) {
                         $order->update_meta_data('_mecopay_fb_group', esc_url_raw($fb_group));
                     }
-                    if (!empty($drive_link)) {
+                    if ($is_digital && !empty($drive_link)) {
                         $order->update_meta_data('_mecopay_drive_link', esc_url_raw($drive_link));
                     }
-                    if (!empty($telegram_link)) {
+                    if ($is_digital && !empty($telegram_link)) {
                         $order->update_meta_data('_mecopay_telegram_link', esc_url_raw($telegram_link));
                     }
                     if ($amount_paid > 0) {
@@ -414,32 +416,40 @@ function mecopay_init_smart_gateway_class() {
                         $order->add_order_note(sprintf(__('ডিজিটাল এক্সেস পাসকোড: %s', 'mecopay-gateway'), $passcode));
                     }
 
-                    wp_send_json(array(
-                        'status' => 'success',
-                        'message' => 'Payment processed successfully.',
-                        'order_id' => $order_id,
-                        'invoice_number' => $invoice,
-                        'trx_id' => $trx_id,
-                        'telegram_link' => $telegram_link,
-                        'facebook_group_link' => $fb_group,
-                        'google_drive_link' => $drive_link,
-                        'passcode' => $passcode,
-                        'tracking_code' => $tracking_code,
-                        'tracking_url' => $tracking_url,
-                        'courier_provider' => $courier_provider,
-                        'amount_paid' => $amount_paid,
-                        'cod_due' => $cod_due,
-                        'digital_access' => array(
-                            'passcode' => $passcode,
-                            'telegram_link' => $telegram_link,
-                            'facebook_group_link' => $fb_group,
-                            'google_drive_link' => $drive_link,
+                    wp_send_json(array_merge(
+                        array(
+                            'status' => 'success',
+                            'message' => 'Payment processed successfully.',
+                            'order_id' => $order_id,
+                            'invoice_number' => $invoice,
+                            'trx_id' => $trx_id,
+                            'product_type' => $product_type,
+                            'amount_paid' => $amount_paid,
+                            'cod_due' => $cod_due,
                         ),
-                        'courier' => array(
-                            'provider' => $courier_provider,
-                            'tracking_code' => $tracking_code,
-                            'tracking_url' => $tracking_url,
-                        )
+                        $is_digital
+                            ? array(
+                                'telegram_link' => $telegram_link,
+                                'facebook_group_link' => $fb_group,
+                                'google_drive_link' => $drive_link,
+                                'passcode' => $passcode,
+                                'digital_access' => array(
+                                    'passcode' => $passcode,
+                                    'telegram_link' => $telegram_link,
+                                    'facebook_group_link' => $fb_group,
+                                    'google_drive_link' => $drive_link,
+                                ),
+                            )
+                            : array(
+                                'tracking_code' => $tracking_code,
+                                'tracking_url' => $tracking_url,
+                                'courier_provider' => $courier_provider,
+                                'courier' => array(
+                                    'provider' => $courier_provider,
+                                    'tracking_code' => $tracking_code,
+                                    'tracking_url' => $tracking_url,
+                                ),
+                            )
                     ), 200);
                     exit;
                 }

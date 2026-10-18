@@ -938,13 +938,11 @@ HEADERS:
     "courier_charge": 120,
     "cod_due": 1220,
     "status": "paid",
-    "delivery": {
-      "telegram_link": null,
-      "facebook_group_link": null,
-      "facebook_access_code": null,
-      "google_drive_link": null
-    },
-    "courier": null
+    "courier": {
+      "provider": "steadfast",
+      "tracking_code": "STDF-883108",
+      "tracking_url": "https://steadfast.com.bd/tracking/STDF-883108"
+    }
   }
 }`}
                 </pre>
@@ -970,12 +968,6 @@ HEADERS:
     "courier_charge": 120,
     "cod_due": 1320,
     "status": "cod_confirmed",
-    "delivery": {
-      "telegram_link": null,
-      "facebook_group_link": null,
-      "facebook_access_code": null,
-      "google_drive_link": null
-    },
     "courier": {
       "provider": "steadfast",
       "tracking_code": "STDF-883109",
