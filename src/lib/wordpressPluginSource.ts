@@ -257,10 +257,10 @@ function mecopay_init_smart_gateway_class() {
             $status_code = wp_remote_retrieve_response_code($response);
             $body = json_decode(wp_remote_retrieve_body($response), true);
 
-            // Canonical invoice number is the invoices table row ID returned as invoice_no.
-            $invoice_no = $body['invoice_no'] ?? ($body['invoice_number'] ?? '');
+            // Canonical invoice_no is the invoices table row ID.
+            $invoice_no = $body['invoice_no'] ?? '';
             if (!empty($invoice_no)) {
-                $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($invoice_no));
+                $order->update_meta_data('_mecopay_invoice_no', sanitize_text_field($invoice_no));
                 $order->save();
             }
 
@@ -340,7 +340,7 @@ function mecopay_init_smart_gateway_class() {
                 // order_id গ্রহণ (payload এর রুট বা ডাটার ভেতর থেকে)
                 $order_id = $payload['order_id'] ?? ($event_data['order_id'] ?? null);
                 $trx_id   = $payload['trx_id'] ?? ($payload['transaction_id'] ?? 'N/A');
-                $invoice  = $payload['invoice_no'] ?? ($payload['invoice_number'] ?? ($payload['invoice_id'] ?? ''));
+                $invoice  = $payload['invoice_no'] ?? '';
                 $channel  = $payload['gateway_used'] ?? ($payload['payment_channel'] ?? ($payload['gateway'] ?? 'MFS'));
 
                 // ডিজিটাল এক্সেস ও সোশ্যাল লিংকস (FB Group / Google Drive / Telegram)
@@ -365,7 +365,7 @@ function mecopay_init_smart_gateway_class() {
                     $order->payment_complete($trx_id !== 'N/A' ? $trx_id : '');
 
                     if (!empty($invoice)) {
-                        $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($invoice));
+                        $order->update_meta_data('_mecopay_invoice_no', sanitize_text_field($invoice));
                     }
                     if ($trx_id !== 'N/A') {
                         $order->update_meta_data('_mecopay_trx_id', sanitize_text_field($trx_id));
@@ -421,7 +421,7 @@ function mecopay_init_smart_gateway_class() {
                             'status' => 'success',
                             'message' => 'Payment processed successfully.',
                             'order_id' => $order_id,
-                            'invoice_number' => $invoice,
+                            'invoice_no' => $invoice,
                             'trx_id' => $trx_id,
                             'product_type' => $product_type,
                             'amount_paid' => $amount_paid,
@@ -530,7 +530,7 @@ function mecopay_init_smart_gateway_class() {
             $order = wc_get_order($order_id);
             if (!$order) return;
 
-            $invoice       = $order->get_meta('_mecopay_invoice_number');
+            $invoice       = $order->get_meta('_mecopay_invoice_no');
             $trx_id        = $order->get_meta('_mecopay_trx_id');
             $channel       = $order->get_meta('_mecopay_channel');
             $passcode      = $order->get_meta('_mecopay_passcode');

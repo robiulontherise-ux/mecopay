@@ -1855,7 +1855,7 @@ class MecoPayWebhookController extends Controller
         $data = $payload['data'] ?? $payload;
 
         // -------------------------------------------------------------------------
-        // ২. ক্লায়েন্টের order_id দিয়ে অর্ডার অনুসন্ধান
+        // ২. ক্লায়েন্টের order_id + invoice_no দিয়ে অর্ডার অনুসন্ধান
         // -------------------------------------------------------------------------
         $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
         $invoiceNo = $data['invoice_no'] ?? $payload['invoice_no'] ?? null;
@@ -2022,7 +2022,7 @@ $event = $payload['event'] ?? '';
 $data = $payload['data'] ?? $payload;
 
 // -------------------------------------------------------------------------
-// ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
+// ২. ক্লায়েন্ট order_id ও invoice_no
 // -------------------------------------------------------------------------
 $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
 $invoiceNo = $data['invoice_no'] ?? $payload['invoice_no'] ?? null;
@@ -2163,7 +2163,7 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     const eventData = data || req.body;
 
     // -------------------------------------------------------------------------
-    // ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
+    // ২. ক্লায়েন্ট order_id ও invoice_no
     // -------------------------------------------------------------------------
     const orderId = eventData.order_id || req.body.order_id;
     const invoiceNo = eventData.invoice_no || req.body.invoice_no;
@@ -2305,7 +2305,7 @@ def mecopay_webhook_view(request):
     data = payload.get("data") or payload
 
     # -------------------------------------------------------------------------
-    # ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
+    # ২. ক্লায়েন্ট order_id ও invoice_no
     # -------------------------------------------------------------------------
     order_id = data.get("order_id") or payload.get("order_id")
     invoice_no = data.get("invoice_no") or payload.get("invoice_no")

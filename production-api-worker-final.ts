@@ -243,7 +243,6 @@ export default {
           id: invoiceNo,
           user_id: targetUserId,
           brand_id: targetBrandId,
-          invoice_number: invoiceNo,
           customer_name,
           customer_phone,
           customer_email: customer_email || null,
@@ -297,7 +296,6 @@ export default {
           status: 'cod_confirmed',
           invoice_id: createdInvoice.id,
           invoice_no: createdInvoice.id,
-          invoice_number: createdInvoice.id,
           product_price: productPrice,
           courier_charge: courierCharge,
           total_price: derivedTotalPrice,
@@ -364,7 +362,6 @@ export default {
         id: invoiceNo,
         user_id: targetUserId,
         brand_id: targetBrandId,
-        invoice_number: invoiceNo,
         customer_name,
         customer_phone,
         customer_email: customer_email || null,
@@ -413,7 +410,7 @@ export default {
 
       // ক্রিপ্টোগ্রাফিক HMAC-SHA256 সাইন করা
       const timestamp = Math.floor(Date.now() / 1000);
-      const signatureData = `${invoice.id}|${invoice.invoice_number}|${payableAmount}|${targetBrandId}|${timestamp}`;
+      const signatureData = `${invoice.id}|${invoice.id}|${payableAmount}|${targetBrandId}|${timestamp}`;
       const signature = await generateHmacSha256(hmacSecret, signatureData);
 
       const checkoutUrl = `${checkoutBaseUrl}/pay?inv=${encodeURIComponent(invoice.id)}&sig=${signature}&ts=${timestamp}`;
@@ -424,7 +421,6 @@ export default {
         requires_payment: true,
         invoice_id: invoice.id,
         invoice_no: invoice.id,
-        invoice_number: invoice.id,
         product_price: productPrice,
         courier_charge: courierCharge,
         total_price: derivedTotalPrice,
