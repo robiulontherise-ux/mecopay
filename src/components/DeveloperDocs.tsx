@@ -884,7 +884,7 @@ HEADERS:
                 <h5 className="font-bold text-white">কোডটি কীভাবে কাজ করে?</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>কাস্টমার যখন চেকআউট বাটনে চাপ দেয়, কোড রিকোয়েস্টটি ধরে।</li>
-                  <li>বাধ্যতামূলক <code>order_id</code> এবং ঐচ্ছিক display field <code>product_name</code> ও <code>courier_charge</code> সহ পে-লোড বানায়।</li>
+                  <li>বাধ্যতামূলক <code>order_id</code>; response-এর <code>invoice_no</code> (invoices table row ID) নিজের order row-তে সংরক্ষণ করুন; এবং ঐচ্ছিক display field <code>product_name</code> ও <code>courier_charge</code> সহ পে-লোড বানায়।</li>
                   <li>MecoPay Worker-এর <code>https://api.mecopay.space/v1/create-checkout</code> এ পাঠায়।</li>
                   <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
                 </ol>
@@ -922,6 +922,7 @@ HEADERS:
   "event": "payment.completed",
   "event_time": "2026-10-18T10:00:00.000Z",
   "data": {
+    "invoice_no": "8f2b1c9a-0000-4000-8000-9812000000",
     "order_id": "ORD-9812",
     "product_name": "Fullstack AI Mastery Course",
     "product_type": "digital",
@@ -954,6 +955,7 @@ HEADERS:
   "event": "payment.completed",
   "event_time": "2026-10-18T10:00:00.000Z",
   "data": {
+    "invoice_no": "8f2b1c9a-0000-4000-8000-7734000000",
     "order_id": "ORD-7734",
     "product_name": "Wireless Noise Cancelling Headphones",
     "product_type": product_type,
@@ -985,6 +987,7 @@ HEADERS:
   "event": "order.courier_booked",
   "event_time": "2026-10-18T10:00:00.000Z",
   "data": {
+    "invoice_no": "8f2b1c9a-0000-4000-8000-5519000000",
     "order_id": "ORD-5519",
     "product_name": "Leather Executive Wallet",
     "product_type": "physical_cod",
@@ -1016,6 +1019,7 @@ HEADERS:
   "event": "payment.completed",
   "event_time": "2026-10-18T10:00:00.000Z",
   "data": {
+    "invoice_no": "8f2b1c9a-0000-4000-8000-8840000000",
     "order_id": "ORD-8840",
     "product_name": "Premium Physical Product",
     "product_type": "physical_full_payment",
@@ -1125,7 +1129,7 @@ HEADERS:
                 <h5 className="font-bold text-white">Webhook কন্ট্রোলার যেভাবে কাজ করে:</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li><strong>HMAC-SHA256 সিগনেচার ভেরিফিকেশন:</strong> <code>X-MecoPay-Signature</code> হেডারের মাধ্যমে প্রেরিত ডাটার নিরাপত্তা ও বৈধতা নিশ্চিত করে।</li>
-                  <li><strong>অর্ডার ম্যাপিং:</strong> webhook-এর <code>data.order_id</code> দিয়ে আপনার লোকাল ডাটাবেজে অর্ডার খুঁজে বের করুন। Invoice বা transaction identifier দিয়ে matching করার প্রয়োজন নেই।</li>
+                  <li><strong>অর্ডার ম্যাপিং:</strong> webhook-এর <code>data.order_id</code> এবং <code>invoice_no</code> দুটো মিলিয়ে আপনার লোকাল ডাটাবেজে অর্ডার খুঁজে বের করুন। <code>invoice_no</code> হলো MecoPay invoices table-এর row ID; দুটির যেকোনো একটি না মিললে success/fulfilment করবেন না।</li>
                   <li><strong>ইভেন্ট হ্যান্ডলিং:</strong> <code>payment.completed</code> হলে ডিজিটাল (পাসকোড প্রদান) বা ফিজিক্যাল (অ্যাডভান্স কনফার্ম ও শিপমেন্ট প্রস্তুত) আপডেট করে। <code>order.courier_booked</code> হলে কুরিয়ার ট্র্যাকিং কোড সংরক্ষণ করে।</li>
                 </ol>
               </div>
@@ -1365,6 +1369,11 @@ class PaymentController extends Controller
 
         if ($response->successful()) {
             $data = $response->json();
+            $invoiceNo = $data['invoice_no'] ?? null;
+            if ($invoiceNo) {
+                // নিজের order row-তে invoice_no সংরক্ষণ করুন; পরের webhook-এ order_id + invoice_no মিলবে।
+                Order::where('id', $orderId)->orWhere('order_id', $orderId)->update(['mecopay_invoice_no' => $invoiceNo]);
+            }
             if (!empty($data['checkout_url'])) {
                 return redirect()->away($data['checkout_url']);
             }
@@ -1486,6 +1495,8 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 $result = json_decode($response, true);
+$invoiceNo = $result['invoice_no'] ?? null;
+// নিজের order row-তে $invoiceNo সংরক্ষণ করুন; webhook-এ order_id + invoice_no মিলিয়ে নিন।
 
 if ($httpCode === 200 && !empty($result['checkout_url'])) {
     header("Location: " . $result['checkout_url']);
@@ -1599,6 +1610,9 @@ app.post('/api/checkout', async (req, res) => {
       }
     });
 
+    const invoiceNo = response.data.invoice_no || null;
+    // নিজের order row-তে invoiceNo সংরক্ষণ করুন; webhook-এ order_id + invoice_no মিলবে।
+
     if (response.data.checkout_url) {
       return res.redirect(response.data.checkout_url);
     }
@@ -1700,6 +1714,8 @@ async function initiateMecoPayCheckout(orderData) {
     });
 
     const data = await response.json();
+    const invoiceNo = data.invoice_no || null;
+    // নিজের trusted order record-এ invoiceNo সংরক্ষণ করুন; webhook-এ দুটো ID মিলবে।
 
     if (data.success && data.checkout_url) {
       // MecoPay চেকআউট পেজে রিডাইরেক্ট
@@ -1794,6 +1810,8 @@ def create_checkout_session(request_data):
 
     response = requests.post(MECOPAY_ENDPOINT, json=payload, headers=headers)
     result = response.json()
+    invoice_no = result.get('invoice_no')
+    # নিজের trusted order row-তে invoice_no সংরক্ষণ করুন; webhook-এ order_id + invoice_no মিলবে।
 
     if response.status_code == 200:
         if result.get("checkout_url"):
@@ -1840,13 +1858,16 @@ class MecoPayWebhookController extends Controller
         // ২. ক্লায়েন্টের order_id দিয়ে অর্ডার অনুসন্ধান
         // -------------------------------------------------------------------------
         $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
+        $invoiceNo = $data['invoice_no'] ?? $payload['invoice_no'] ?? null;
 
-        if (!$orderId) {
-            return response()->json(['error' => 'Missing order_id in webhook.'], 400);
+        if (!$orderId || !$invoiceNo) {
+            return response()->json(['error' => 'Missing order_id or invoice_no in webhook.'], 400);
         }
 
-        // ক্লায়েন্টের নিজস্ব ডাটাবেজে শুধু order_id দিয়ে অর্ডার কুয়েরি
-        $order = Order::where('id', $orderId)->orWhere('order_id', $orderId)->first();
+        // নিজের database-এ আগে সংরক্ষিত order_id ও invoice_no দুটোই মিলতে হবে।
+        $order = Order::where(function ($query) use ($orderId) {
+            $query->where('id', $orderId)->orWhere('order_id', $orderId);
+        })->where('mecopay_invoice_no', $invoiceNo)->first();
 
         if (!$order) {
             return response()->json(['error' => 'Order not found in merchant database.'], 404);
@@ -2004,8 +2025,11 @@ $data = $payload['data'] ?? $payload;
 // ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
 // -------------------------------------------------------------------------
 $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
+$invoiceNo = $data['invoice_no'] ?? $payload['invoice_no'] ?? null;
 
+if (!$orderId || !$invoiceNo) {
     http_response_code(400);
+    echo json_encode(['error' => 'Missing order_id or invoice_no in webhook.']);
     exit;
 }
 
@@ -2142,8 +2166,12 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     // ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
     // -------------------------------------------------------------------------
     const orderId = eventData.order_id || req.body.order_id;
+    const invoiceNo = eventData.invoice_no || req.body.invoice_no;
 
+    if (!orderId || !invoiceNo) {
+      return res.status(400).json({ error: 'Missing order_id or invoice_no in webhook.' });
     }
+    // নিজের database query-তে orderId এবং invoiceNo দুটোই WHERE শর্তে ব্যবহার করুন।
 
     // -------------------------------------------------------------------------
     // ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
@@ -2280,7 +2308,11 @@ def mecopay_webhook_view(request):
     # ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
     # -------------------------------------------------------------------------
     order_id = data.get("order_id") or payload.get("order_id")
+    invoice_no = data.get("invoice_no") or payload.get("invoice_no")
 
+    if not order_id or not invoice_no:
+        return JsonResponse({"error": "Missing order_id or invoice_no in webhook."}, status=400)
+    # নিজের database query-তে order_id এবং invoice_no দুটোই মিলিয়ে নিন।
 
     # -------------------------------------------------------------------------
     # ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া

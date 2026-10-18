@@ -205,7 +205,8 @@ export default {
       const courierCharge = Number(courier_charge ?? 0);
       const derivedTotalPrice = productPrice + courierCharge;
       const successUrl = String(success_url || '').trim();
-      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+      // The database row ID is the only canonical invoice number.
+      const invoiceNo = crypto.randomUUID();
       const supabaseUrl = env.SUPABASE_URL;
       const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
       const hmacSecret = env.HMAC_SECRET || 'mecopay_sec_default_key_2026';
@@ -239,9 +240,10 @@ export default {
         }
 
         const codInvoicePayload = {
+          id: invoiceNo,
           user_id: targetUserId,
           brand_id: targetBrandId,
-          invoice_number: invoiceNumber,
+          invoice_number: invoiceNo,
           customer_name,
           customer_phone,
           customer_email: customer_email || null,
@@ -294,7 +296,8 @@ export default {
           requires_payment: false,
           status: 'cod_confirmed',
           invoice_id: createdInvoice.id,
-          invoice_number: createdInvoice.invoice_number,
+          invoice_no: createdInvoice.id,
+          invoice_number: createdInvoice.id,
           product_price: productPrice,
           courier_charge: courierCharge,
           total_price: derivedTotalPrice,
@@ -358,9 +361,10 @@ export default {
       else if (hasInternationalGateway && !hasPersonalGateway && !hasMerchantGateway) gatewayMode = 'international_api';
 
       const invoicePayload = {
+        id: invoiceNo,
         user_id: targetUserId,
         brand_id: targetBrandId,
-        invoice_number: invoiceNumber,
+        invoice_number: invoiceNo,
         customer_name,
         customer_phone,
         customer_email: customer_email || null,
@@ -419,7 +423,8 @@ export default {
         order_type: isDigital ? 'digital' : (isFullPayment ? 'physical_full_payment' : 'physical_advance'),
         requires_payment: true,
         invoice_id: invoice.id,
-        invoice_number: invoice.invoice_number,
+        invoice_no: invoice.id,
+        invoice_number: invoice.id,
         product_price: productPrice,
         courier_charge: courierCharge,
         total_price: derivedTotalPrice,

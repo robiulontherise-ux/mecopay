@@ -257,9 +257,10 @@ function mecopay_init_smart_gateway_class() {
             $status_code = wp_remote_retrieve_response_code($response);
             $body = json_decode(wp_remote_retrieve_body($response), true);
 
-            // ইনভয়েস নম্বর বা সেশন ট্র্যাকিং লোকাল মেটাডাটাতে সংরক্ষণ
-            if (!empty($body['invoice_number'])) {
-                $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($body['invoice_number']));
+            // Canonical invoice number is the invoices table row ID returned as invoice_no.
+            $invoice_no = $body['invoice_no'] ?? ($body['invoice_number'] ?? '');
+            if (!empty($invoice_no)) {
+                $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($invoice_no));
                 $order->save();
             }
 
@@ -339,7 +340,7 @@ function mecopay_init_smart_gateway_class() {
                 // order_id গ্রহণ (payload এর রুট বা ডাটার ভেতর থেকে)
                 $order_id = $payload['order_id'] ?? ($event_data['order_id'] ?? null);
                 $trx_id   = $payload['trx_id'] ?? ($payload['transaction_id'] ?? 'N/A');
-                $invoice  = $payload['invoice_number'] ?? ($payload['invoice_no'] ?? ($payload['invoice_id'] ?? ''));
+                $invoice  = $payload['invoice_no'] ?? ($payload['invoice_number'] ?? ($payload['invoice_id'] ?? ''));
                 $channel  = $payload['gateway_used'] ?? ($payload['payment_channel'] ?? ($payload['gateway'] ?? 'MFS'));
 
                 // ডিজিটাল এক্সেস ও সোশ্যাল লিংকস (FB Group / Google Drive / Telegram)
