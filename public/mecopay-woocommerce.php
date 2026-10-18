@@ -98,9 +98,9 @@ function mecopay_init_smart_gateway_class() {
                     'desc_tip'    => true,
                 ),
                 'webhook_secret' => array(
-                    'title'       => __('Webhook Signing Secret (Optional)', 'mecopay-gateway'),
+                    'title'       => __('Webhook Signing Secret (Required)', 'mecopay-gateway'),
                     'type'        => 'password',
-                    'description' => __('Used to verify incoming HMAC SHA256 Webhooks from MecoPay Edge Functions.', 'mecopay-gateway'),
+                    'description' => __('Required. Store the same backend HMAC-SHA256 secret used by MecoPay to sign X-MecoPay-Signature.', 'mecopay-gateway'),
                     'default'     => '',
                     'desc_tip'    => true,
                 ),
@@ -300,16 +300,16 @@ function mecopay_init_smart_gateway_class() {
                 exit;
             }
 
-            // ঐচ্ছিক HMAC সিগনেচার যাচাই (যদি Webhook Secret কনফিগার করা থাকে)
-            if (!empty($this->webhook_secret)) {
-                $signature = $_SERVER['HTTP_X_MECOPAY_SIGNATURE'] ?? $_SERVER['HTTP_X_SIGNATURE'] ?? '';
-                if (!empty($signature)) {
-                    $expected_signature = hash_hmac('sha256', $input, $this->webhook_secret);
-                    if (!hash_equals($expected_signature, $signature)) {
-                        wp_send_json(array('status' => 'error', 'message' => 'Invalid webhook signature'), 401);
-                        exit;
-                    }
-                }
+            // বাধ্যতামূলক HMAC-SHA256 signature যাচাই—সফল না হলে payment update হবে না।
+            $signature = $_SERVER['HTTP_X_MECOPAY_SIGNATURE'] ?? $_SERVER['HTTP_X_SIGNATURE'] ?? '';
+            if (empty($this->webhook_secret) || empty($signature)) {
+                wp_send_json(array('status' => 'error', 'message' => 'Webhook secret or signature is missing'), 401);
+                exit;
+            }
+            $expected_signature = hash_hmac('sha256', $input, $this->webhook_secret);
+            if (!hash_equals($expected_signature, $signature)) {
+                wp_send_json(array('status' => 'error', 'message' => 'Invalid webhook signature'), 401);
+                exit;
             }
 
             // ইভেন্ট নাম নির্ধারণ (সরাসরি 'event' বা 'data.event' বা 'type')
@@ -341,11 +341,12 @@ function mecopay_init_smart_gateway_class() {
                     }
                 }
 
-                // ডিজিটাল এক্সেস ও সোশ্যাল লিংকস (FB Group / Google Drive / Telegram)
-                $passcode = $payload['fb_passcode'] ?? ($payload['passcode'] ?? '');
-                $fb_group = $payload['facebook_group_link'] ?? ($payload['fb_group'] ?? '');
-                $drive_link = $payload['google_drive_link'] ?? ($payload['drive_link'] ?? '');
-                $telegram_link = $payload['telegram_link'] ?? '';
+                // ডিজিটাল এক্সেস ও সোশ্যাল লিংকস (nested delivery বা root fallback)
+                $delivery = !empty($payload['delivery']) && is_array($payload['delivery']) ? $payload['delivery'] : array();
+                $passcode = $payload['fb_passcode'] ?? ($payload['passcode'] ?? ($delivery['facebook_access_code'] ?? ($delivery['passcode'] ?? '')));
+                $fb_group = $payload['facebook_group_link'] ?? ($payload['fb_group'] ?? ($delivery['facebook_group_link'] ?? ''));
+                $drive_link = $payload['google_drive_link'] ?? ($payload['drive_link'] ?? ($delivery['google_drive_link'] ?? ''));
+                $telegram_link = $payload['telegram_link'] ?? ($delivery['telegram_link'] ?? '');
 
                 // ফিজিক্যাল অ্যাডভান্স ও কুরিয়ার ট্র্যাকিং
                 $amount_paid = $payload['payable_amount'] ?? ($payload['amount_paid'] ?? ($payload['amount'] ?? 0));
@@ -459,8 +460,19 @@ function mecopay_init_smart_gateway_class() {
             // -------------------------------------------------------------------------
             if ($event === 'order.courier_booked') {
                 $order_id = $payload['order_id'] ?? ($event_data['order_id'] ?? null);
+                $invoice  = $payload['invoice_no'] ?? '';
                 $courier  = $payload['courier'] ?? array();
                 $order    = $order_id ? wc_get_order($order_id) : null;
+                if (!$order && !empty($invoice)) {
+                    $invoice_orders = wc_get_orders(array(
+                        'limit'      => 1,
+                        'type'       => 'shop_order',
+                        'meta_key'   => '_mecopay_invoice_no',
+                        'meta_value' => sanitize_text_field($invoice),
+                    ));
+                    $order = !empty($invoice_orders) ? $invoice_orders[0] : null;
+                    if ($order) $order_id = $order->get_id();
+                }
 
                 if ($order) {
                     $tracking_code = $courier['tracking_code'] ?? ($payload['courier_tracking_code'] ?? ($payload['tracking_code'] ?? 'N/A'));

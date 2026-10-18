@@ -893,6 +893,18 @@ HEADERS:
               </p>
             </div>
 
+            <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 space-y-2 text-xs">
+              <h4 className="font-bold text-amber-300">Webhook Secret ও Signature সেটআপ</h4>
+              <p className="text-slate-300">Secret কখনো frontend, JSON payload বা GitHub-এ রাখবেন না। এটি merchant backend-এর environment secret হিসেবে রাখুন এবং একই secret দিয়ে raw request body-এর HMAC-SHA256 hash যাচাই করুন।</p>
+              <pre className="bg-slate-950 p-3 rounded-xl text-amber-200 overflow-x-auto">{`MECOPAY_WEBHOOK_SECRET=আপনার-দীর্ঘ-র‌্যান্ডম-secret
+Header: X-MecoPay-Signature: <hex HMAC-SHA256(raw request body)>
+Laravel: .env + config cache
+Node.js: process.env.MECOPAY_WEBHOOK_SECRET
+Python: os.environ["MECOPAY_WEBHOOK_SECRET"]
+Raw PHP: getenv("MECOPAY_WEBHOOK_SECRET")`}</pre>
+              <p className="text-slate-400">Signature যাচাই সফল না হওয়া পর্যন্ত order status, payment status বা digital link update করবেন না।</p>
+            </div>
+
             {/* Webhook JSON Payload */}
             <div className="space-y-4">
               <span className="text-xs font-bold text-slate-300">Webhook POST Payload Samples (ক্যাটাগরি অনুযায়ী আলাদা পে-লোড):</span>
@@ -1350,7 +1362,7 @@ class PaymentController extends Controller
             }
         }
 
-        return back()->with('error', 'Checkout error: ' . ($response['error'] ?? 'MecoPay সার্ভারের সাথে সংযোগে ব্যর্থ হয়েছে।'));
+        return back()->with('error', 'Checkout error: ' . ($response->json('error') ?? 'MecoPay সার্ভারের সাথে সংযোগে ব্যর্থ হয়েছে।'));
     }
 }`;
 
@@ -1464,7 +1476,17 @@ curl_close($ch);
 
 $result = json_decode($response, true);
 $invoiceNo = $result['invoice_no'] ?? null;
-// নিজের order row-তে $invoiceNo সংরক্ষণ করুন; webhook-এ order_id + invoice_no মিলিয়ে নিন।
+if ($httpCode === 200 && $invoiceNo) {
+    // $pdo হলো আপনার বিদ্যমান merchant database PDO connection।
+    $saveInvoice = $pdo->prepare(
+        'UPDATE orders SET mecopay_invoice_no = :invoice_no WHERE id = :order_id OR order_id = :order_id'
+    );
+    $saveInvoice->execute([
+        ':invoice_no' => $invoiceNo,
+        ':order_id' => $orderId,
+    ]);
+}
+// একই invoice_no পরের webhook-এ order_id অথবা invoice_no দিয়ে verify হবে।
 
 if ($httpCode === 200 && !empty($result['checkout_url'])) {
     header("Location: " . $result['checkout_url']);
@@ -1579,7 +1601,14 @@ app.post('/api/checkout', async (req, res) => {
     });
 
     const invoiceNo = response.data.invoice_no || null;
-    // নিজের order row-তে invoiceNo সংরক্ষণ করুন; webhook-এ order_id + invoice_no মিলবে।
+    if (invoiceNo) {
+      // db হলো আপনার বিদ্যমান PostgreSQL/MySQL client বা query adapter।
+      await db.query(
+        'UPDATE orders SET mecopay_invoice_no = $1 WHERE id = $2 OR order_id = $2',
+        [invoiceNo, order_id]
+      );
+    }
+    // একই invoice_no পরের webhook-এ order_id অথবা invoice_no দিয়ে verify হবে。
 
     if (response.data.checkout_url) {
       return res.redirect(response.data.checkout_url);
@@ -1671,7 +1700,10 @@ def create_checkout_session(request_data):
     response = requests.post(MECOPAY_ENDPOINT, json=payload, headers=headers)
     result = response.json()
     invoice_no = result.get('invoice_no')
-    # নিজের trusted order row-তে invoice_no সংরক্ষণ করুন; webhook-এ order_id + invoice_no মিলবে।
+    if response.status_code == 200 and invoice_no:
+        # আপনার Django Order model/ORM বা বিদ্যমান DB adapter ব্যবহার করুন।
+        Order.objects.filter(order_id=request_data['order_id']).update(mecopay_invoice_no=invoice_no)
+    # একই invoice_no পরের webhook-এ order_id অথবা invoice_no দিয়ে verify হবে।
 
     if response.status_code == 200:
         if result.get("checkout_url"):
@@ -1703,11 +1735,12 @@ class MecoPayWebhookController extends Controller
         // -------------------------------------------------------------------------
         // ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
         // -------------------------------------------------------------------------
-        if (!empty($webhookSecret) && $webhookSecret !== 'your_webhook_secret_here') {
-            $expectedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
-            if (!hash_equals($expectedSignature, (string)$receivedSignature)) {
-                return response()->json(['error' => 'Invalid webhook signature.'], 401);
-            }
+        if (empty($webhookSecret) || $webhookSecret === 'your_webhook_secret_here' || empty($receivedSignature)) {
+            return response()->json(['error' => 'Webhook signature configuration or header is missing.'], 401);
+        }
+        $expectedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
+        if (!hash_equals($expectedSignature, (string)$receivedSignature)) {
+            return response()->json(['error' => 'Invalid webhook signature.'], 401);
         }
 
         $payload = $request->all();
@@ -1867,13 +1900,16 @@ $receivedSignature = $_SERVER['HTTP_X_MECOPAY_SIGNATURE'] ?? '';
 // -------------------------------------------------------------------------
 // ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
 // -------------------------------------------------------------------------
-if (!empty($webhookSecret) && $webhookSecret !== 'your_webhook_secret_here') {
-    $expectedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
-    if (!hash_equals($expectedSignature, (string)$receivedSignature)) {
-        http_response_code(401);
-        echo json_encode(['error' => 'Invalid webhook signature.']);
-        exit;
-    }
+if (empty($webhookSecret) || $webhookSecret === 'your_webhook_secret_here' || empty($receivedSignature)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Webhook signature configuration or header is missing.']);
+    exit;
+}
+$expectedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
+if (!hash_equals($expectedSignature, (string)$receivedSignature)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid webhook signature.']);
+    exit;
 }
 
 $payload = json_decode($rawPayload, true);
@@ -1898,13 +1934,24 @@ if (!$orderId && !$invoiceNo) {
     exit;
 }
 
-// আপনার ডাটাবেজ কানেকশন (MySQL / MariaDB via PDO)
-/*
-$pdo = new PDO("mysql:host=localhost;dbname=your_store_db;charset=utf8mb4", "db_user", "db_password", [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-]);
-*/
+// $pdo আপনার existing merchant bootstrap/database connection থেকে নিন।
+// উদাহরণ: require __DIR__ . '/bootstrap.php'; যেখানে $pdo তৈরি হয়েছে。
+if (!isset($pdo) || !($pdo instanceof PDO)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Merchant PDO connection is not configured.']);
+    exit;
+}
+$lookup = $pdo->prepare(
+    'SELECT * FROM orders WHERE id = :order_id OR order_id = :order_id OR mecopay_invoice_no = :invoice_no LIMIT 1'
+);
+$lookup->execute([':order_id' => $orderId ?: '', ':invoice_no' => $invoiceNo ?: '']);
+$order = $lookup->fetch();
+if (!$order) {
+    http_response_code(404);
+    echo json_encode(['error' => 'Order not found in merchant database.']);
+    exit;
+}
+$merchantOrderId = $order['id'];
 
 // -------------------------------------------------------------------------
 // ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
@@ -1924,6 +1971,8 @@ if ($event === 'payment.completed') {
 
     if ($productType === 'digital') {
         // ডিজিটাল: ১০০% ফুল পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক কনফার্ম
+        $save = $pdo->prepare("UPDATE orders SET payment_status = 'paid', order_status = 'completed', amount_paid = :amount, mecopay_passcode = :passcode, telegram_link = :telegram, facebook_group = :facebook, google_drive = :drive WHERE id = :id");
+        $save->execute([':amount' => $paidAmount, ':passcode' => $passcode, ':telegram' => $telegramLink, ':facebook' => $fbGroupLink, ':drive' => $driveLink, ':id' => $merchantOrderId]);
 
         echo json_encode([
             'status' => 'success',
@@ -1944,6 +1993,8 @@ if ($event === 'payment.completed') {
         exit;
     } else {
         // ফিজিক্যাল অ্যাডভান্স: অগ্রিম পেমেন্ট কনফার্ম, পার্সেল শিপমেন্ট ও ট্র্যাকিং প্রস্তুত
+        $save = $pdo->prepare("UPDATE orders SET payment_status = 'advance_paid', order_status = 'ready_for_dispatch', advance_amount = :amount, courier_due = :cod_due, courier_provider = :provider, courier_tracking = :tracking, tracking_url = :tracking_url WHERE id = :id");
+        $save->execute([':amount' => $paidAmount, ':cod_due' => $codDue, ':provider' => $provider, ':tracking' => $trackingCode, ':tracking_url' => $trackingUrl, ':id' => $merchantOrderId]);
 
         echo json_encode([
             'status' => 'success',
@@ -1969,6 +2020,8 @@ if ($event === 'payment.completed') {
 // ৪. ইভেন্ট ২: ১০০% Full COD অর্ডারে কুরিয়ার বুকিং নিশ্চিত হওয়া
 // -------------------------------------------------------------------------
 if ($event === 'order.courier_booked') {
+    $save = $pdo->prepare("UPDATE orders SET order_status = 'shipped', courier_provider = :provider, courier_tracking = :tracking, tracking_url = :tracking_url WHERE id = :id");
+    $save->execute([':provider' => $data['courier']['provider'] ?? 'steadfast', ':tracking' => $data['courier']['tracking_code'] ?? ($data['courier_tracking_code'] ?? ''), ':tracking_url' => $data['courier']['tracking_url'] ?? ($data['tracking_url'] ?? ''), ':id' => $merchantOrderId]);
     $trackingCode = $data['courier']['tracking_code'] ?? $data['courier_tracking_code'] ?? '';
     $provider = $data['courier']['provider'] ?? 'steadfast';
     $trackingUrl = $data['courier']['tracking_url'] ?? '';
@@ -1995,6 +2048,7 @@ echo json_encode(['status' => 'ignored']);
 
 const nodeJsWebhookCode = `const express = require('express');
 const crypto = require('crypto');
+const db = require('../db'); // আপনার existing PostgreSQL query client
 const app = express();
 
 // গুরুত্বপূর্ণ: সিগনেচার ভেরিফিকেশনের জন্য হুবহু raw body প্রয়োজন
@@ -2013,15 +2067,16 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     // -------------------------------------------------------------------------
     // ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
     // -------------------------------------------------------------------------
-    if (WEBHOOK_SECRET && WEBHOOK_SECRET !== 'your_webhook_secret_here') {
-      const expectedSignature = crypto
-        .createHmac('sha256', WEBHOOK_SECRET)
-        .update(req.rawBody || JSON.stringify(req.body))
-        .digest('hex');
+    if (!WEBHOOK_SECRET || WEBHOOK_SECRET === 'your_webhook_secret_here' || !receivedSignature) {
+      return res.status(401).json({ error: 'Webhook signature configuration or header is missing.' });
+    }
+    const expectedSignature = crypto
+      .createHmac('sha256', WEBHOOK_SECRET)
+      .update(req.rawBody || JSON.stringify(req.body))
+      .digest('hex');
 
-      if (receivedSignature !== expectedSignature) {
-        return res.status(401).json({ error: 'Invalid webhook signature.' });
-      }
+    if (receivedSignature !== expectedSignature) {
+      return res.status(401).json({ error: 'Invalid webhook signature.' });
     }
 
     const { event, data } = req.body;
@@ -2036,7 +2091,12 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     if (!orderId && !invoiceNo) {
       return res.status(400).json({ error: 'Missing order_id or invoice_no in webhook.' });
     }
-    // নিজের database query-তে orderId এবং invoiceNo দুটোই WHERE শর্তে ব্যবহার করুন।
+    const orderResult = await db.query(
+      'SELECT * FROM orders WHERE id::text = $1 OR order_id = $1 OR mecopay_invoice_no = $2 LIMIT 1',
+      [orderId || '', invoiceNo || '']
+    );
+    const order = orderResult.rows[0];
+    if (!order) return res.status(404).json({ error: 'Order not found in merchant database.' });
 
     // -------------------------------------------------------------------------
     // ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
@@ -2052,6 +2112,7 @@ app.post('/api/mecopay/webhook', async (req, res) => {
         const telegramLink = delivery.telegram_link || '';
         const fbGroupLink = delivery.facebook_group_link || '';
         const driveLink = delivery.google_drive_link || '';
+        await db.query('UPDATE orders SET payment_status = $1, order_status = $2, amount_paid = $3, mecopay_passcode = $4, telegram_link = $5, facebook_group = $6, google_drive = $7 WHERE id = $8', ['paid', 'completed', paidAmount, passcode, telegramLink, fbGroupLink, driveLink, order.id]);
 
         return res.status(200).json({
           status: 'success',
@@ -2075,6 +2136,7 @@ app.post('/api/mecopay/webhook', async (req, res) => {
         const trackingCode = eventData.courier?.tracking_code || eventData.courier_tracking_code;
         const trackingUrl = eventData.courier?.tracking_url || eventData.tracking_url;
         const provider = eventData.courier?.provider || eventData.courier_provider || 'steadfast';
+        await db.query('UPDATE orders SET payment_status = $1, order_status = $2, advance_amount = $3, courier_due = $4, courier_provider = $5, courier_tracking = $6, tracking_url = $7 WHERE id = $8', ['advance_paid', 'ready_for_dispatch', paidAmount, codDue, provider, trackingCode, trackingUrl, order.id]);
 
         return res.status(200).json({
           status: 'success',
@@ -2102,7 +2164,7 @@ app.post('/api/mecopay/webhook', async (req, res) => {
       const trackingCode = eventData.courier?.tracking_code || eventData.courier_tracking_code;
       const provider = eventData.courier?.provider || eventData.courier_provider || 'steadfast';
       const trackingUrl = eventData.courier?.tracking_url || eventData.tracking_url;
-
+      await db.query('UPDATE orders SET order_status = $1, courier_provider = $2, courier_tracking = $3, tracking_url = $4 WHERE id = $5', ['shipped', provider, trackingCode, trackingUrl, order.id]);
 
       return res.status(200).json({
         status: 'success',
@@ -2133,6 +2195,8 @@ import json
 import os
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
+from orders.models import Order  # আপনার existing Order model
 
 WEBHOOK_SECRET = os.getenv("MECOPAY_WEBHOOK_SECRET", "your_webhook_secret_here")
 
@@ -2151,15 +2215,16 @@ def mecopay_webhook_view(request):
     # -------------------------------------------------------------------------
     # ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
     # -------------------------------------------------------------------------
-    if WEBHOOK_SECRET and WEBHOOK_SECRET != "your_webhook_secret_here":
-        expected_signature = hmac.new(
-            WEBHOOK_SECRET.encode('utf-8'),
-            raw_body.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
+    if not WEBHOOK_SECRET or WEBHOOK_SECRET == "your_webhook_secret_here" or not received_signature:
+        return JsonResponse({"error": "Webhook signature configuration or header is missing."}, status=401)
+    expected_signature = hmac.new(
+        WEBHOOK_SECRET.encode('utf-8'),
+        raw_body.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
 
-        if not hmac.compare_digest(expected_signature, received_signature):
-            return JsonResponse({"error": "Invalid webhook signature."}, status=401)
+    if not hmac.compare_digest(expected_signature, received_signature):
+        return JsonResponse({"error": "Invalid webhook signature."}, status=401)
 
     try:
         payload = json.loads(raw_body)
@@ -2177,7 +2242,11 @@ def mecopay_webhook_view(request):
 
     if not order_id and not invoice_no:
         return JsonResponse({"error": "Missing order_id or invoice_no in webhook."}, status=400)
-    # নিজের database query-তে order_id এবং invoice_no দুটোই মিলিয়ে নিন।
+    order = Order.objects.filter(
+        Q(id=order_id) | Q(order_id=order_id) | Q(mecopay_invoice_no=invoice_no)
+    ).first()
+    if not order:
+        return JsonResponse({"error": "Order not found in merchant database."}, status=404)
 
     # -------------------------------------------------------------------------
     # ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
@@ -2193,6 +2262,7 @@ def mecopay_webhook_view(request):
             telegram_link = delivery.get("telegram_link")
             fb_group_link = delivery.get("facebook_group_link")
             drive_link = delivery.get("google_drive_link")
+            Order.objects.filter(pk=order.pk).update(payment_status="paid", order_status="completed", amount_paid=paid_amount, mecopay_passcode=passcode, telegram_link=telegram_link, facebook_group=fb_group_link, google_drive=drive_link)
 
             return JsonResponse({
                 "status": "success",
@@ -2217,6 +2287,7 @@ def mecopay_webhook_view(request):
             tracking_code = courier.get("tracking_code") or data.get("courier_tracking_code")
             tracking_url = courier.get("tracking_url") or data.get("tracking_url")
             provider = courier.get("provider") or data.get("courier_provider") or "steadfast"
+            Order.objects.filter(pk=order.pk).update(payment_status="advance_paid", order_status="ready_for_dispatch", advance_amount=paid_amount, cod_due=cod_due, courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url)
 
             return JsonResponse({
                 "status": "success",
@@ -2243,6 +2314,7 @@ def mecopay_webhook_view(request):
         tracking_code = courier.get("tracking_code") or data.get("courier_tracking_code")
         provider = courier.get("provider", "steadfast")
         tracking_url = courier.get("tracking_url") or data.get("tracking_url")
+        Order.objects.filter(pk=order.pk).update(order_status="shipped", courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url)
 
         return JsonResponse({
             "status": "success",

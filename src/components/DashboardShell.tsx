@@ -2758,7 +2758,7 @@ export default function DashboardShell() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                      WooCommerce v2.5.1
+                      WooCommerce v2.7.0 • Invoice/Webhook Ready
                     </span>
                     <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                       Mixed-Cart Blocker Included
@@ -2768,7 +2768,7 @@ export default function DashboardShell() {
                     <Plug className="w-5 h-5 text-blue-400" /> MecoPay WooCommerce Plugin
                   </h3>
                   <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    আপনার ওয়ার্ডপ্রেস সাইটে পেমেন্ট গেটওয়ে যুক্ত করতে এই প্লাগইনটি ডাউনলোড করুন। প্লাগইনের ভেতরে কার্ট গার্ড ও ভ্যালিডেশন কোড ইনবিল্ট রয়েছে।
+                    আপনার ওয়ার্ডপ্রেস সাইটে পেমেন্ট গেটওয়ে যুক্ত করতে final plugin ZIP ডাউনলোড করুন। এতে invoice_no mapping, চার product webhook handling, digital delivery link এবং বাধ্যতামূলক HMAC signature verification রয়েছে। WooCommerce Payment Settings-এ API Key ও Webhook Signing Secret সেট করুন।
                   </p>
                 </div>
                 <button 
