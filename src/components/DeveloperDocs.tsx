@@ -1677,7 +1677,7 @@ class MecoPayWebhookController extends Controller
     {
         $rawPayload = $request->getContent();
         $receivedSignature = $request->header('X-MecoPay-Signature');
-        $webhookSecret = env('MECOPAY_WEBHOOK_SECRET', 'your_webhook_secret_here');
+        $webhookSecret = env('MECOPAY_WEBHOOK_SECRET');
 
         // -------------------------------------------------------------------------
         // ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
@@ -1842,7 +1842,7 @@ const rawPhpWebhookCode = `<?php
 
 header('Content-Type: application/json');
 
-$webhookSecret = getenv('MECOPAY_WEBHOOK_SECRET') ?: 'your_webhook_secret_here';
+$webhookSecret = getenv('MECOPAY_WEBHOOK_SECRET');
 $rawPayload = file_get_contents('php://input');
 $receivedSignature = $_SERVER['HTTP_X_MECOPAY_SIGNATURE'] ?? '';
 
@@ -2015,7 +2015,7 @@ app.use(express.json({
   }
 }));
 
-const WEBHOOK_SECRET = process.env.MECOPAY_WEBHOOK_SECRET || 'your_webhook_secret_here';
+const WEBHOOK_SECRET = process.env.MECOPAY_WEBHOOK_SECRET;
 
 app.post('/api/mecopay/webhook', async (req, res) => {
   try {
@@ -2052,14 +2052,15 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     const lookupParams = [];
     if (orderId) {
       lookupParams.push(orderId);
-      lookupConditions.push(`(id::text = $${lookupParams.length} OR order_id = $${lookupParams.length})`);
+      lookupConditions.push('(id::text = $' + lookupParams.length + ' OR order_id = $' + lookupParams.length + ')');
     }
     if (invoiceNo) {
       lookupParams.push(invoiceNo);
-      lookupConditions.push(`mecopay_invoice_no = $${lookupParams.length}`);
+      lookupConditions.push('mecopay_invoice_no = $' + lookupParams.length);
     }
+    const lookupSql = 'SELECT * FROM orders WHERE ' + lookupConditions.join(' AND ') + ' LIMIT 1';
     const orderResult = await db.query(
-      `SELECT * FROM orders WHERE ${lookupConditions.join(' AND ')} LIMIT 1`,
+      lookupSql,
       lookupParams
     );
     const order = orderResult.rows[0];
@@ -2165,7 +2166,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from orders.models import Order  # আপনার existing Order model
 
-WEBHOOK_SECRET = os.getenv("MECOPAY_WEBHOOK_SECRET", "your_webhook_secret_here")
+WEBHOOK_SECRET = os.getenv("MECOPAY_WEBHOOK_SECRET")
 
 @csrf_exempt
 def mecopay_webhook_view(request):
