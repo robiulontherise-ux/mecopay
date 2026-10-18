@@ -20,7 +20,7 @@ export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'three-products' | 'laravel' | 'webhook' | 'overview'>('three-products');
   const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_full_payment' | 'physical_cod'>('digital');
-  const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
+  const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'python'>('laravel');
   const [webhookFrameworkTab, setWebhookFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'python'>('laravel');
 
   const handleCopy = (text: string, index: number) => {
@@ -68,8 +68,6 @@ export default function DeveloperDocs() {
         return rawPhpController;
       case 'nodejs':
         return nodeJsFullController;
-      case 'javascript':
-        return jsFetchController;
       case 'python':
         return pythonFullController;
       default:
@@ -85,8 +83,6 @@ export default function DeveloperDocs() {
         return 'process_payment.php (Core PHP)';
       case 'nodejs':
         return 'controllers/paymentController.js (Express)';
-      case 'javascript':
-        return 'checkout.js (Fetch API)';
       case 'python':
         return 'views.py / payment.py (Django / Flask)';
       default:
@@ -106,7 +102,7 @@ export default function DeveloperDocs() {
             MecoPay Multi-Product & Developer Docs
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-            Laravel, Raw PHP, Node.js, JavaScript, Python এবং কাস্টম ওয়েবসাইটের জন্য Digital, Physical Advance ও 100% Full COD ইন্টিগ্রেশন স্পেসিফিকেশন।
+            Laravel, Raw PHP, Node.js, Python এবং কাস্টম ওয়েবসাইটের জন্য Digital, Physical Advance ও 100% Full COD ইন্টিগ্রেশন স্পেসিফিকেশন।
           </p>
         </div>
       </div>
@@ -622,7 +618,7 @@ export default function DeveloperDocs() {
                 <FileCode2 className="w-5 h-5 text-emerald-400" /> যেকোনো কাস্টম ওয়েবসাইট ও ব্যাকএন্ড ইন্টিগ্রেশন কোড
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                আপনার পছন্দের প্রোগ্রামিং ল্যাঙ্গুয়েজ বা ফ্রেমওয়ার্ক নির্বাচন করুন (Laravel, Raw PHP, Node.js, JavaScript, Python):
+                আপনার পছন্দের প্রোগ্রামিং ল্যাঙ্গুয়েজ বা ফ্রেমওয়ার্ক নির্বাচন করুন (Laravel, Raw PHP, Node.js, Python):
               </p>
             </div>
 
@@ -821,16 +817,6 @@ export default function DeveloperDocs() {
                 }`}
               >
                 Node.js (Express / Axios)
-              </button>
-              <button
-                onClick={() => setFrameworkTab('javascript')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  frameworkTab === 'javascript'
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                JavaScript (Fetch API)
               </button>
               <button
                 onClick={() => setFrameworkTab('python')}
@@ -1032,24 +1018,6 @@ HEADERS:
     "status": "paid",
     "courier": null
   }
-}`}
-                </pre>
-              </div>
-              {/* Event 5: Brand Settings Real-time Sync Webhook */}
-              <div className="bg-slate-950 p-4 rounded-2xl border border-purple-500/30 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-purple-400">৪. ব্র্যান্ড সেটিংস ও সার্ভিস অন/অফ রিয়েল-টাইম সিঙ্ক Webhook:</span>
-                  <span className="text-[10px] bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded font-mono">event: brand.settings_updated</span>
-                </div>
-                <pre className="text-xs font-mono text-purple-200 overflow-x-auto">
-{`{
-  "event": "brand.settings_updated",
-  "payment_gateways_active": true,
-  "auto_courier_on_full_cod": false,
-  "courier_provider": "steadfast",
-  "status": "active",
-  "timestamp": 1774239876,
-  "signature": "sha256_hash_security_token"
 }`}
                 </pre>
               </div>
@@ -1623,115 +1591,7 @@ app.post('/api/checkout', async (req, res) => {
   }
 });`;
 
-// 4. JavaScript (Fetch API - Frontend / Vanilla) with 3 Architecture Guards
-const jsFetchController = `/**
- * JavaScript (Fetch API) Implementation for MecoPay
- * With 3 Guards: Gateway Status, Cart Rules & 3-Product Validation
- */
-async function initiateMecoPayCheckout(orderData) {
-  const apiKey = "YOUR_MECOPAY_API_KEY_HERE";
-  const endpoint = "https://api.mecopay.space/v1/create-checkout";
-
-  // -------------------------------------------------------------------------
-  // গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
-  // -------------------------------------------------------------------------
-  const isGatewayActive = localStorage.getItem('mecopay_gateways_active') !== 'false';
-  if (!isGatewayActive) {
-    alert("MecoPay পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।");
-    return;
-  }
-
-  // -------------------------------------------------------------------------
-  // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
-  // -------------------------------------------------------------------------
-  const cartItems = orderData.cart_items || [];
-  if (cartItems.length > 0) {
-    const digitalCount = cartItems.filter(i => i.type === 'digital').length;
-    const physicalCount = cartItems.filter(i => i.type !== 'digital').length;
-
-    if (digitalCount > 0 && physicalCount > 0) {
-      alert("কার্ট এরর: একই সাথে ডিজিটাল এবং ফিজিক্যাল প্রোডাক্ট কেনা নিষিদ্ধ। আলাদা অর্ডার করুন।");
-      return;
-    }
-    if (digitalCount > 1) {
-      alert("কার্ট এরর: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।");
-      return;
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // গার্ড ৩: ৪ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
-  // -------------------------------------------------------------------------
-  // ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন ফলব্যাক:
-  // const isDigital = Boolean(item.download_link || [3, 7].includes(item.category_id));
-  // const detectedType = isDigital ? 'digital' : (Number(item.advance_amount) > 0 ? 'physical_advance' : 'physical_cod');
-  const finalProductType = orderData.product_type || (typeof detectedType !== 'undefined' ? detectedType : 'digital');
-  const price = Number(orderData.price || 0);
-  const courierCharge = Number(orderData.courier_charge || 0); // ফ্রি ডেলিভারি হলে ০ থাকবে
-
-  if (!orderData.order_id) {
-    alert("order_id ফিল্ড আবশ্যক।");
-    return;
-  }
-
-  const payload = {
-    order_id: orderData.order_id,
-    product_name: orderData.product_name || "Order Item",
-    product_type: finalProductType,
-    currency: (orderData.currency || "BDT").toUpperCase(),
-    customer_name: orderData.customer_name || "Customer Name",
-    customer_phone: orderData.customer_phone || "",
-    customer_address: orderData.customer_address || "",
-    // ব্রাউজারের ডাইনামিক অরিজিন URL:
-    success_url: window.location.origin + "/order-success",
-    cancel_url: window.location.origin + "/cart"
-  };
-
-  if (finalProductType === 'digital') {
-    payload.product_price = price;
-    payload.telegram_link = orderData.telegram_link || "https://t.me/+vip_invite";
-  } else if (finalProductType === 'physical_advance') {
-    const advance = Number(orderData.advance_amount || 0); // total-এর সমান হলে physical full payment
-    payload.product_price = price;
-    payload.courier_charge = courierCharge;
-    payload.advance_amount = advance;
-  } else if (finalProductType === 'physical_full_payment') {
-    payload.product_price = price;
-    payload.courier_charge = courierCharge;
-  } else { // physical_cod
-    payload.product_price = price;
-    payload.courier_charge = courierCharge;
-  }
-
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-    const invoiceNo = data.invoice_no || null;
-    // নিজের trusted order record-এ invoiceNo সংরক্ষণ করুন; webhook-এ দুটো ID মিলবে।
-
-    if (data.success && data.checkout_url) {
-      // MecoPay চেকআউট পেজে রিডাইরেক্ট
-      window.location.href = data.checkout_url;
-    } else if (data.success && !data.requires_payment) {
-      // ১০০% ক্যাশ অন ডেলিভারি (লোকাল সাকসেস)
-      window.location.href = "/order-success?order_id=" + encodeURIComponent(orderData.order_id);
-    } else {
-      alert("Error: " + (data.error || "Failed to create checkout"));
-    }
-  } catch (error) {
-    console.error("MecoPay Request Failed:", error);
-  }
-}`;
-
-// 5. Python (Django / Flask / Requests) with 3 Architecture Guards
+// 4. Python (Django / Flask / Requests) with 3 Architecture Guards
 const pythonFullController = `import requests
 import time
 

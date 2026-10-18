@@ -317,21 +317,6 @@ function mecopay_init_smart_gateway_class() {
             $payload = !empty($event_data['data']) && is_array($event_data['data']) ? $event_data['data'] : $event_data;
 
             // -------------------------------------------------------------------------
-            // ইভেন্ট ১: ব্র্যান্ড সেটিংস ও গেটওয়ে স্ট্যাটাস রিয়েল-টাইম সিঙ্ক
-            // -------------------------------------------------------------------------
-            if ($event === 'brand.settings_updated') {
-                $auto_courier = !empty($payload['auto_courier_on_full_cod']);
-                $personal_on  = isset($payload['personal_api_active']) ? (bool)$payload['personal_api_active'] : true;
-                $merchant_on  = isset($payload['merchant_api_active']) ? (bool)$payload['merchant_api_active'] : false;
-
-                set_transient('mecopay_auto_courier_status', $auto_courier, 0);
-                set_transient('mecopay_gateways_active', ($personal_on || $merchant_on), 0);
-
-                wp_send_json(array('status' => 'success', 'message' => 'Settings synced locally'), 200);
-                exit;
-            }
-
-            // -------------------------------------------------------------------------
             // ইভেন্ট ২: পেমেন্ট সফল সম্পন্ন (payment.completed)
             // -------------------------------------------------------------------------
             if ($event === 'payment.completed') {
