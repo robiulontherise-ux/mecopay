@@ -68,7 +68,7 @@ serve(async (req) => {
       customer_phone = '',
       customer_email = '',
       customer_address = '',
-      redirect_url = '',
+      success_url = '',
       cancel_url = '',
       metadata = {}
     } = payload;
@@ -122,7 +122,7 @@ serve(async (req) => {
         invoice_number: codInvoice.invoice_number,
         message: 'Order placed successfully under 100% Cash on Delivery.',
         requires_payment: false,
-        redirect_url: redirect_url || null
+        success_url: success_url || null
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
@@ -155,7 +155,7 @@ serve(async (req) => {
         status: 'Pending',
         product_type: order_type,
         gateway_used: gatewayMode,
-        redirect_url: redirect_url || '',
+        success_url: success_url || '',
         metadata: {
           ...metadata,
           order_id,

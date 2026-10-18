@@ -255,7 +255,7 @@ export default function CheckoutPage() {
              });
              if (res.ok) {
                 const data = await res.json();
-                if (data.success) { window.location.href = data.redirect_url || data.delivery?.url || data.redirect_link || '/access/' + invoiceId; }
+                if (data.success) { window.location.href = data.success_url || data.delivery?.url || data.redirect_link || '/access/' + invoiceId; }
              }
            } catch (err) {
              console.error("Verification error:", err);
@@ -465,12 +465,12 @@ export default function CheckoutPage() {
             cod_due: sessionObj.cod_due,
             product_type: sessionObj.product_type,
             product_name: sessionObj.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Order Payment'),
-            redirect_link: sessionObj.callback_url || (sessionObj.product_type === 'digital' ? (sessionObj.telegram_link || sessionObj.facebook_group_link || sessionObj.google_drive_link) : null),
+            redirect_link: sessionObj.success_url || (sessionObj.product_type === 'digital' ? (sessionObj.telegram_link || sessionObj.facebook_group_link || sessionObj.google_drive_link) : null),
             telegram_link: sessionObj.product_type === 'digital' ? sessionObj.telegram_link : null,
             facebook_group_link: sessionObj.product_type === 'digital' ? sessionObj.facebook_group_link : null,
             facebook_access_code: sessionObj.product_type === 'digital' ? sessionObj.facebook_access_code : null,
             google_drive_link: sessionObj.product_type === 'digital' ? sessionObj.google_drive_link : null,
-            callback_url: sessionObj.callback_url,
+            success_url: sessionObj.success_url,
             cancel_url: sessionObj.cancel_url,
             is_dynamic_session: true,
             invoice_number: sessionObj.invoice_number,
@@ -534,7 +534,7 @@ export default function CheckoutPage() {
               title: inv.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Checkout Item'),
               price: inv.amount || 0,
               product_name: inv.product_name || (brand?.name ? `Payment to ${brand.name}` : 'Order Payment'),
-              redirect_link: inv.redirect_url || '',
+              redirect_link: inv.success_url || '',
               invoice_number: inv.invoice_number,
               is_dynamic_session: true,
               currency: invoiceCurrency ? String(invoiceCurrency).trim() : null
@@ -756,7 +756,7 @@ export default function CheckoutPage() {
           facebook_group_link: linkData.product_type === 'digital' ? (linkData.facebook_group_link || null) : null,
           facebook_access_code: linkData.product_type === 'digital' ? (linkData.facebook_access_code || null) : null,
           google_drive_link: linkData.product_type === 'digital' ? (linkData.google_drive_link || null) : null,
-          callback_url: linkData.callback_url || null,
+          success_url: linkData.success_url || null,
           cancel_url: linkData.cancel_url || null
         }
       };
@@ -980,7 +980,7 @@ export default function CheckoutPage() {
       const data = await res.json();
       
       if (res.ok && data.success) {
-         window.location.href = data.redirect_url || data.delivery?.url || data.redirect_link || '/access/' + invoiceId;
+         window.location.href = data.success_url || data.delivery?.url || data.redirect_link || '/access/' + invoiceId;
       } else {
          setVerifyError(data.message || "Invalid TrxID or amount mismatch. Please try again.");
       }
@@ -1673,9 +1673,9 @@ export default function CheckoutPage() {
               )}
               
               <div className="flex flex-col sm:flex-row gap-3 w-full">
-                {linkData?.redirect_url ? (
+                {linkData?.success_url ? (
                   <a 
-                    href={linkData.redirect_url}
+                    href={linkData.success_url}
                     className="bg-[#00FF00] hover:bg-[#00E600] text-black font-bold py-3.5 px-6 rounded-xl transition-all shadow-md text-center flex-1"
                   >
                     {language === 'en' ? 'Return to Store →' : 'স্টোরে ফিরে যান →'}

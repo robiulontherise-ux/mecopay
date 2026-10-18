@@ -1279,7 +1279,7 @@ async function startServer() {
         total_amount = 0,
         courier_charge = 0,
         currency = '',
-        callback_url,
+        success_url,
         cancel_url,
         customer_name = 'Guest Customer',
         customer_phone = '',
@@ -1303,7 +1303,7 @@ async function startServer() {
       const invoiceNumber = 'INV-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
 
       // CASE 1: 100% Full COD (Direct order booking without payment)
-      if (product_type === 'physical_cod' || amount === 0) {
+      if (product_type === 'physical_cod' || product_type === 'full_cod' || product_type === 'cod' || product_type === 'just_form') {
         const { data: codInvoice, error: codErr } = await supabaseAdmin
           .from('invoices')
           .insert({
@@ -1331,7 +1331,7 @@ async function startServer() {
               facebook_group_link: facebook_group_link || null,
               facebook_access_code: facebook_access_code || null,
               google_drive_link: google_drive_link || null,
-              callback_url: callback_url || null,
+              success_url: success_url || null,
               cancel_url: cancel_url || null,
               cod_total: (total_amount || 0) + (courier_charge || 120)
             }
@@ -1362,10 +1362,10 @@ async function startServer() {
             error: "Validation Error: 'amount' (100% price) is mandatory for digital products."
           });
         }
-        if (!callback_url) {
+        if (!success_url) {
           return res.status(400).json({
             success: false,
-            error: "Validation Error: 'callback_url' is mandatory for digital products."
+            error: "Validation Error: 'success_url' is mandatory for digital products."
           });
         }
       } else if (product_type === 'physical_advance') {
@@ -1383,12 +1383,30 @@ async function startServer() {
             error: "Validation Error: 'amount' (advance fee) is mandatory for physical_advance."
           });
         }
+      } else if (product_type === 'physical_full_payment') {
+        const numTotal = Number(total_amount);
+        const fullPayable = numTotal + Number(courier_charge || 0);
+        if (!numTotal || !Number.isFinite(fullPayable) || fullPayable <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: "Validation Error: 'total_amount' is mandatory for physical_full_payment."
+          });
+        }
+      } else if (product_type !== 'digital') {
+        return res.status(400).json({
+          success: false,
+          error: "Validation Error: product_type must be digital, physical_advance, physical_full_payment, or physical_cod."
+        });
       }
+
+      const payableAmount = product_type === 'physical_full_payment'
+        ? Number(total_amount) + Number(courier_charge || 0)
+        : Number(amount) || 0;
 
       // cod_due is a server-calculated value. Clients only send total_amount,
       // courier_charge and the advance payable amount; never trust client cod_due.
       const calculatedCodDue = product_type === 'physical_advance'
-        ? Math.max(0, (Number(total_amount) + Number(courier_charge || 0)) - Number(amount))
+        ? Math.max(0, (Number(total_amount) + Number(courier_charge || 0)) - payableAmount)
         : 0;
 
       // 3. Generate Stateless Secure Session
@@ -1400,11 +1418,11 @@ async function startServer() {
         product_name: product_name || 'Item',
         product_type,
         currency: currency || null,
-        payable_amount: Number(amount) || 0,
+        payable_amount: payableAmount,
         total_amount: Number(total_amount) || Number(amount) || 0,
         courier_charge: Number(courier_charge) || 0,
         cod_due: calculatedCodDue,
-        callback_url: callback_url || null,
+        success_url: success_url || null,
         cancel_url: cancel_url || null,
         customer_name,
         customer_phone,

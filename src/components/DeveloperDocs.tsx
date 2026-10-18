@@ -19,7 +19,7 @@ import { showToast } from '../lib/toast';
 export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'three-products' | 'laravel' | 'webhook' | 'overview'>('three-products');
-  const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
+  const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_full_payment' | 'physical_cod'>('digital');
   const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
   const [webhookFrameworkTab, setWebhookFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'python'>('laravel');
 
@@ -204,7 +204,7 @@ export default function DeveloperDocs() {
       {activeTab === 'three-products' && (
         <div className="space-y-6">
           {/* Sub Tab Switcher */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <button
               onClick={() => setProductSubTab('digital')}
               className={`p-4 rounded-2xl border text-left transition-all ${
@@ -238,6 +238,22 @@ export default function DeveloperDocs() {
             </button>
 
             <button
+              onClick={() => setProductSubTab('physical_full_payment')}
+              className={`p-4 rounded-2xl border text-left transition-all ${
+                productSubTab === 'physical_full_payment'
+                  ? 'bg-cyan-950/40 border-cyan-500 text-white shadow-lg shadow-cyan-500/10'
+                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-2 font-bold text-xs text-cyan-400 mb-1">
+                <Package className="w-4 h-4" /> ৩. Physical Full Payment
+              </div>
+              <div className="text-[11px] text-slate-300 leading-snug">
+                পণ্য ও কুরিয়ার চার্জের সম্পূর্ণ টাকা অনলাইনে; courier due COD = ০৳।
+              </div>
+            </button>
+
+            <button
               onClick={() => setProductSubTab('physical_cod')}
               className={`p-4 rounded-2xl border text-left transition-all ${
                 productSubTab === 'physical_cod'
@@ -246,7 +262,7 @@ export default function DeveloperDocs() {
               }`}
             >
               <div className="flex items-center gap-2 font-bold text-xs text-emerald-400 mb-1">
-                <Package className="w-4 h-4" /> ৩. Physical (100% COD + Courier Fee)
+                <Package className="w-4 h-4" /> ৪. Physical (100% COD + Courier Fee)
               </div>
               <div className="text-[11px] text-slate-300 leading-snug">
                 গেটওয়েতে ০৳ চার্জ। পণ্যমূল্য + কুরিয়ার ফি সহ মোট টাকা ডেলিভারিতে আদায় ও কুরিয়ার বুকিং।
@@ -264,7 +280,7 @@ export default function DeveloperDocs() {
                   </div>
                   <h3 className="text-lg font-bold text-white">Digital Product JSON Payload Specification</h3>
                   <p className="text-xs text-slate-400">
-                    ফুল পেমেন্ট সফল হওয়ার সাথে সাথে গ্রাহককে <code>callback_url</code>-এ ফিরিয়ে আনা হয় এবং স্ক্রিনে পাসকোড দেওয়া হয়।
+                    ফুল পেমেন্ট সফল হওয়ার সাথে সাথে গ্রাহককে <code>success_url</code>-এ ফিরিয়ে আনা হয় এবং স্ক্রিনে পাসকোড দেওয়া হয়।
                   </p>
                 </div>
                 <button
@@ -316,7 +332,7 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">ডিজিটাল পণ্যের ১০০% সম্পূর্ণ মূল্য।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-blue-300">callback_url</td>
+                      <td className="p-3 font-mono text-blue-300">success_url</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">পেমেন্ট সফল হলে আপনার ওয়েবসাইটের যে পেজে কাস্টমারকে রিডাইরেক্ট করা হবে।</td>
                     </tr>
@@ -351,7 +367,7 @@ export default function DeveloperDocs() {
                   <span>সার্ভিস ইন্টিগ্রেশন নোট (Digital Products):</span>
                 </div>
                 <p className="text-slate-400 leading-relaxed text-[11px]">
-                  ডিজিটাল পণ্যের ক্ষেত্রে ক্লায়েন্টের ওয়েবসাইটে গ্রাহক ইতিমধ্যে লগইন বা রেজিস্টার্ড অবস্থায় থাকতে পারেন। MecoPay কোর গেটওয়েতে নাম, ফোন বা ইমেইল পাঠানো বাধ্যতামূলক নয়। তবে আপনার ব্র্যান্ডে যদি <strong>SMS / WhatsApp / Email সার্ভিস</strong> সক্রিয় করা থাকে, তবে সেই সার্ভিসগুলোর মাধ্যমে সফল ডেলিভারি নিশ্চিত করতে সংশ্লিষ্ট ফিল্ডগুলো পাঠাতে হবে। কোনো সার্ভিস সক্রিয় না থাকলে এগুলো ছাড়া শুধু <code>order_id</code>, <code>amount</code> ও <code>callback_url</code> পাঠালেই চলবে।
+                  ডিজিটাল পণ্যের ক্ষেত্রে ক্লায়েন্টের ওয়েবসাইটে গ্রাহক ইতিমধ্যে লগইন বা রেজিস্টার্ড অবস্থায় থাকতে পারেন। MecoPay কোর গেটওয়েতে নাম, ফোন বা ইমেইল পাঠানো বাধ্যতামূলক নয়। তবে আপনার ব্র্যান্ডে যদি <strong>SMS / WhatsApp / Email সার্ভিস</strong> সক্রিয় করা থাকে, তবে সেই সার্ভিসগুলোর মাধ্যমে সফল ডেলিভারি নিশ্চিত করতে সংশ্লিষ্ট ফিল্ডগুলো পাঠাতে হবে। কোনো সার্ভিস সক্রিয় না থাকলে এগুলো ছাড়া শুধু <code>order_id</code>, <code>amount</code> ও <code>success_url</code> পাঠালেই চলবে।
                 </p>
               </div>
             </div>
@@ -429,7 +445,7 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">অনলাইন গেটওয়েতে কাস্টমার থেকে তাৎক্ষণিক advance charge (যেমন: ১৫০ ৳)। Total-এর সমান বা বেশি হলে due COD শূন্য হবে।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">callback_url</td>
+                      <td className="p-3 font-mono text-amber-300">success_url</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
                       <td className="p-3 text-slate-300">পেমেন্ট সফল হলে আপনার ওয়েবসাইটের অর্ডার সাকসেস পেজে রিডাইরেক্ট করার URL।</td>
                     </tr>
@@ -470,7 +486,24 @@ export default function DeveloperDocs() {
             </div>
           )}
 
-          {/* Sub Tab Content 3: Physical COD */}
+          {/* Sub Tab Content 3: Physical Full Payment */}
+          {productSubTab === 'physical_full_payment' && (
+            <div className="bg-slate-900/60 border border-cyan-500/30 rounded-3xl p-6 sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-semibold border border-cyan-500/20 mb-2">
+                    <Package className="w-3.5 h-3.5" /> Physical Full Payment
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Physical Product (Full Payment) JSON Payload</h3>
+                  <p className="text-xs text-slate-400">পণ্যের মূল্য ও courier charge সম্পূর্ণ online payment হবে; API Worker-এর হিসাব অনুযায়ী <code>cod_due = 0</code>।</p>
+                </div>
+                <button onClick={() => handleCopy(fullPaymentJsonPayload, 4)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs border border-slate-700">{copiedIndex === 4 ? 'Copied' : 'Copy JSON'}</button>
+              </div>
+              <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-cyan-300 overflow-x-auto leading-relaxed">{fullPaymentJsonPayload}</pre>
+            </div>
+          )}
+
+          {/* Sub Tab Content 4: Physical COD */}
           {productSubTab === 'physical_cod' && (
             <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -606,7 +639,7 @@ export default function DeveloperDocs() {
                     স্টোরের ডাটাবেজ
                   </div>
                   <p className="text-slate-400 leading-relaxed text-[11px]">
-                    মার্চেন্টের সাইটে প্রোডাক্ট টেবিলে <code>product_type</code> (digital, physical_advance, physical_cod) এবং <code>currency</code> (BDT, USD, EUR) সেট থাকে।
+                    মার্চেন্টের সাইটে প্রোডাক্ট টেবিলে <code>product_type</code> (digital, physical_advance, physical_full_payment, physical_cod) এবং <code>currency</code> (BDT, USD, EUR) সেট থাকে।
                   </p>
                 </div>
                 <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
@@ -1127,7 +1160,7 @@ const digitalJsonPayload = `{
   "product_type": "digital",
   "currency": "USD",
   "amount": 1500,
-  "callback_url": "https://yourwebsite.com/payment/callback",
+  "success_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
   "customer_name": "Rahim Ahmed",
   "customer_phone": "01712345678",
@@ -1146,12 +1179,28 @@ const advanceJsonPayload = `{
   "courier_charge": 120,
   "advance_amount": 150,
   "fulfillment_type": "dropship",
-  "callback_url": "https://yourwebsite.com/payment/callback",
+  "success_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
   "customer_name": "Tanvir Hasan",
   "customer_phone": "01812345678",
   "customer_email": "tanvir@example.com",
   "customer_address": "House 12, Road 4, Sector 7, Uttara, Dhaka"
+}`;
+
+const fullPaymentJsonPayload = `{
+  "order_id": "ORD-8840",
+  "product_name": "Premium Physical Product",
+  "product_type": "physical_full_payment",
+  "currency": "USD",
+  "total_amount": 1250,
+  "courier_charge": 120,
+  "amount": 1370,
+  "advance_amount": 1370,
+  "success_url": "https://yourwebsite.com/order/success",
+  "cancel_url": "https://yourwebsite.com/checkout",
+  "customer_name": "Karim Hasan",
+  "customer_phone": "01700000000",
+  "customer_address": "Dhaka, Bangladesh"
 }`;
 
 const codJsonPayload = `{
@@ -1163,7 +1212,7 @@ const codJsonPayload = `{
   "courier_charge": 120,
   "amount": 0,
   "fulfillment_type": "own_inventory",
-  "callback_url": "https://yourwebsite.com/order/success",
+  "success_url": "https://yourwebsite.com/order/success",
   "cancel_url": "https://yourwebsite.com/checkout",
   "customer_name": "Mohammad Ali",
   "customer_phone": "01912345678",
@@ -1251,7 +1300,7 @@ class PaymentController extends Controller
             'customer_name'    => $request->input('customer_name', 'Guest Customer'),
             'customer_phone'   => $request->input('customer_phone', ''),
             'customer_address' => $request->input('customer_address', ''),
-            'callback_url'     => route('payment.callback'),
+            'success_url'     => route('payment.success'),
             'cancel_url'       => route('payment.cancel'),
         ];
 
@@ -1273,7 +1322,12 @@ class PaymentController extends Controller
             $advanceAmount = (float) $request->input('advance_amount', 0);
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
-            $payload['advance_amount'] = min($advanceAmount, $price);
+            $payload['advance_amount'] = $advanceAmount;
+        } elseif ($productType === 'physical_full_payment') {
+            $payload['total_amount'] = $price;
+            $payload['courier_charge'] = $courierCharge;
+            $payload['amount'] = $price + $courierCharge;
+            $payload['advance_amount'] = $price + $courierCharge;
         } else { // physical_cod
             // ১০০% ক্যাশ অন ডেলিভারি: গেটওয়ে চার্জ ০ এবং বাকি টাকা কুরিয়ার ডিউ
             $payload['total_amount']   = $price;
@@ -1374,7 +1428,7 @@ $payload = [
     "customer_phone"   => $_POST['customer_phone'] ?? "",
     "customer_address" => $_POST['customer_address'] ?? "",
     // সাইটের নিজস্ব ডোমেন ও ডাইনামিক রিটার্ন পাথ:
-    "callback_url"     => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/payment_success.php",
+    "success_url"     => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/payment_success.php",
     "cancel_url"       => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/cart.php"
 ];
 
@@ -1387,6 +1441,11 @@ if ($productType === 'digital') {
     $payload['total_amount']   = $price;
     $payload['courier_charge'] = $courierCharge;
     $payload['advance_amount'] = $advance;
+} elseif ($productType === 'physical_full_payment') {
+    $payload['total_amount'] = $price;
+    $payload['courier_charge'] = $courierCharge;
+    $payload['amount'] = $price + $courierCharge;
+    $payload['advance_amount'] = $price + $courierCharge;
 } else { // physical_cod
     $payload['total_amount']   = $price;
     $payload['courier_charge'] = $courierCharge;
@@ -1493,7 +1552,7 @@ app.post('/api/checkout', async (req, res) => {
       customer_phone: customer_phone || '',
       customer_address: customer_address || '',
       // ডাইনামিক সাইট ডোমেন ও পাথ:
-      callback_url: (req.protocol + '://' + req.get('host') + '/payment/success'),
+      success_url: (req.protocol + '://' + req.get('host') + '/payment/success'),
       cancel_url: (req.protocol + '://' + req.get('host') + '/cart')
     };
 
@@ -1506,6 +1565,11 @@ app.post('/api/checkout', async (req, res) => {
       payload.total_amount = Number(price);
       payload.courier_charge = Number(courier_charge);
       payload.advance_amount = Number(advance_amount);
+    } else if (finalProductType === 'physical_full_payment') {
+      payload.total_amount = Number(price);
+      payload.courier_charge = Number(courier_charge);
+      payload.amount = Number(price) + Number(courier_charge);
+      payload.advance_amount = payload.amount;
     } else { // physical_cod
       payload.total_amount = Number(price);
       payload.courier_charge = Number(courier_charge);
@@ -1589,7 +1653,7 @@ async function initiateMecoPayCheckout(orderData) {
     customer_phone: orderData.customer_phone || "",
     customer_address: orderData.customer_address || "",
     // ব্রাউজারের ডাইনামিক অরিজিন URL:
-    callback_url: window.location.origin + "/order-success",
+    success_url: window.location.origin + "/order-success",
     cancel_url: window.location.origin + "/cart"
   };
 
@@ -1601,6 +1665,11 @@ async function initiateMecoPayCheckout(orderData) {
     payload.total_amount = price;
     payload.courier_charge = courierCharge;
     payload.advance_amount = advance;
+  } else if (finalProductType === 'physical_full_payment') {
+    payload.total_amount = price;
+    payload.courier_charge = courierCharge;
+    payload.amount = price + courierCharge;
+    payload.advance_amount = payload.amount;
   } else { // physical_cod
     payload.total_amount = price;
     payload.courier_charge = courierCharge;
@@ -1684,7 +1753,7 @@ def create_checkout_session(request_data):
         "customer_phone": request_data.get('customer_phone', ""),
         "customer_address": request_data.get('customer_address', "Dhaka"),
         # সাইটের ডাইনামিক ডোমেন বা রিকোয়েস্ট URL:
-        "callback_url": request_data.get('callback_url') or "/payment/callback",
+        "success_url": request_data.get('success_url') or "/payment/callback",
         "cancel_url": request_data.get('cancel_url') or "/cart"
     }
 
@@ -1698,6 +1767,11 @@ def create_checkout_session(request_data):
         payload["total_amount"] = price
         payload["courier_charge"] = courier_charge
         payload["advance_amount"] = advance
+    elif product_type == 'physical_full_payment':
+        payload["total_amount"] = price
+        payload["courier_charge"] = courier_charge
+        payload["amount"] = price + courier_charge
+        payload["advance_amount"] = payload["amount"]
     else: # physical_cod
         payload["total_amount"] = price
         payload["courier_charge"] = courier_charge

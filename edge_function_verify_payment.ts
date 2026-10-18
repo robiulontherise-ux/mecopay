@@ -231,13 +231,14 @@ serve(async (req) => {
           total_amount: metadata.total_amount ?? invoice.total_amount ?? invoice.amount ?? 0,
           courier_charge: metadata.courier_charge ?? invoice.courier_charge ?? 0,
           cod_due: metadata.cod_due ?? invoice.cod_due ?? 0,
+          success_url: metadata.success_url || invoice.success_url || invoice.redirect_link || null,
           status: 'paid',
           ...(isDigital ? { delivery: {
             telegram_link: metadata.telegram_link || invoice.telegram_link || null,
             facebook_group_link: metadata.facebook_group_link || invoice.facebook_group_link || null,
             facebook_access_code: metadata.facebook_access_code || invoice.facebook_access_code || null,
             google_drive_link: metadata.google_drive_link || invoice.google_drive_link || null,
-            callback_url: metadata.callback_url || invoice.callback_url || null,
+            success_url: metadata.success_url || invoice.success_url || null,
             digital_access: digitalAccess || null
           } } : { courier })
         };
@@ -279,7 +280,7 @@ serve(async (req) => {
       amount: invoice.amount,
       digital_access: digitalAccess,
       webhook: webhookResult,
-      redirect_url: invoice.redirect_url || null,
+      success_url: invoice.success_url || null,
       message: 'Payment verified and confirmed successfully.'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

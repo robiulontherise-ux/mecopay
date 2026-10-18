@@ -190,7 +190,7 @@ function mecopay_init_smart_gateway_class() {
                 'customer_phone'   => $order->get_billing_phone(),
                 'customer_email'   => $order->get_billing_email(),
                 'customer_address' => trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2() . ', ' . $order->get_billing_city()),
-                'callback_url'     => $return_url,
+                'success_url'     => $return_url,
                 'cancel_url'       => wc_get_checkout_url(),
                 'metadata'         => array(
                     'store_platform' => 'woocommerce',
@@ -213,9 +213,15 @@ function mecopay_init_smart_gateway_class() {
                     // ১০০% ক্যাশ অন ডেলিভারি (Just Form): গেটওয়ে চার্জ ০
                     $payload['product_type'] = 'physical_cod';
                     $payload['amount']       = 0;
+                } elseif ($advance_config >= ($total_amount + $shipping_fee)) {
+                    // ফিজিক্যাল ফুল পেমেন্ট: পণ্য + কুরিয়ার চার্জ সম্পূর্ণ অনলাইনে
+                    $full_payment = $total_amount + $shipping_fee;
+                    $payload['product_type'] = 'physical_full_payment';
+                    $payload['amount'] = $full_payment;
+                    $payload['advance_amount'] = $full_payment;
                 } else {
-                    // অ্যাডভান্স ডেলিভারি ফি চার্জ + বাকি টাকা COD
-                    $advance_charge = min($advance_config, $total_amount);
+                    // ফিজিক্যাল অ্যাডভান্স: আংশিক পেমেন্ট, বাকি টাকা COD
+                    $advance_charge = $advance_config;
                     $payload['product_type'] = 'physical_advance';
                     $payload['advance_amount'] = $advance_charge;
                 }
