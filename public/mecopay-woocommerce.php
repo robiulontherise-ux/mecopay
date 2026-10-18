@@ -255,7 +255,7 @@ function mecopay_init_smart_gateway_class() {
             $status_code = wp_remote_retrieve_response_code($response);
             $body = json_decode(wp_remote_retrieve_body($response), true);
 
-            // Canonical invoice_no is the invoices table row ID.
+            // invoice_no is the canonical invoice number.
             $invoice_no = $body['invoice_no'] ?? '';
             if (!empty($invoice_no)) {
                 $order->update_meta_data('_mecopay_invoice_no', sanitize_text_field($invoice_no));

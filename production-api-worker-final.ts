@@ -205,7 +205,7 @@ export default {
       const courierCharge = Number(courier_charge ?? 0);
       const derivedTotalPrice = productPrice + courierCharge;
       const successUrl = String(success_url || '').trim();
-      // The database row ID is the only canonical invoice number.
+      // invoice_no is the only canonical invoice number.
       const invoiceNo = crypto.randomUUID();
       const supabaseUrl = env.SUPABASE_URL;
       const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;

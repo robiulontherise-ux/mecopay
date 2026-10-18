@@ -877,7 +877,7 @@ Authorization: Bearer &lt;MECOPAY_API_KEY&gt;`}</pre>
                 <h5 className="font-bold text-white">কোডটি কীভাবে কাজ করে?</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>কাস্টমার যখন চেকআউট বাটনে চাপ দেয়, কোড রিকোয়েস্টটি ধরে।</li>
-                  <li>বাধ্যতামূলক <code>order_id</code>; response-এর <code>invoice_no</code> (invoices table row ID) নিজের order row-তে সংরক্ষণ করুন; এবং ঐচ্ছিক display field <code>product_name</code> ও <code>courier_charge</code> সহ পে-লোড বানায়।</li>
+                  <li>বাধ্যতামূলক <code>order_id</code>; response-এর <code>invoice_no</code> নিজের order row-তে সংরক্ষণ করুন; এবং ঐচ্ছিক display field <code>product_name</code> ও <code>courier_charge</code> সহ পে-লোড বানায়।</li>
                   <li>MecoPay Worker-এর <code>https://api.mecopay.space/v1/create-checkout</code> এ পাঠায়।</li>
                   <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
                 </ol>
@@ -1126,7 +1126,7 @@ Raw PHP: getenv("MECOPAY_WEBHOOK_SECRET")`}</pre>
                 <h5 className="font-bold text-white">Webhook কন্ট্রোলার যেভাবে কাজ করে:</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li><strong>HMAC-SHA256 সিগনেচার ভেরিফিকেশন:</strong> <code>X-MecoPay-Signature</code> হেডারের মাধ্যমে প্রেরিত ডাটার নিরাপত্তা ও বৈধতা নিশ্চিত করে।</li>
-                  <li><strong>অর্ডার ম্যাপিং:</strong> webhook-এর <code>invoice_no</code> দিয়ে আপনার লোকাল ডাটাবেজে অর্ডার খুঁজে বের করুন। <code>invoice_no</code> হলো MecoPay invoices table-এর canonical row ID; <code>order_id</code> থাকলে অতিরিক্ত মিল হিসেবে ব্যবহার করুন, কিন্তু order_id না থাকলেও invoice_no দিয়ে verification সম্পন্ন হবে।</li>
+                  <li><strong>অর্ডার ম্যাপিং:</strong> webhook-এর <code>invoice_no</code> দিয়ে আপনার লোকাল ডাটাবেজে অর্ডার খুঁজে বের করুন। <code>invoice_no</code> হলো MecoPay-এর canonical invoice number; <code>order_id</code> থাকলে অতিরিক্ত মিল হিসেবে ব্যবহার করুন, কিন্তু order_id না থাকলেও invoice_no দিয়ে verification সম্পন্ন হবে।</li>
                   <li><strong>ইভেন্ট হ্যান্ডলিং:</strong> <code>payment.completed</code> হলে ডিজিটাল (পাসকোড প্রদান) বা ফিজিক্যাল (অ্যাডভান্স কনফার্ম ও শিপমেন্ট প্রস্তুত) আপডেট করে। <code>order.courier_booked</code> হলে কুরিয়ার ট্র্যাকিং কোড সংরক্ষণ করে।</li>
                 </ol>
               </div>
