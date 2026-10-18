@@ -845,6 +845,13 @@ HEADERS:
               <p className="text-[11px] text-slate-400">
                 * কোনো Brand ID আলাদা পাস করার দরকার নেই—API Key থেকেই MecoPay Server Engine সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে।
               </p>
+              <div className="bg-blue-950/30 border border-blue-500/30 rounded-2xl p-4 space-y-2 text-xs text-slate-300">
+                <h4 className="font-bold text-blue-300">Payment-create Controller Credential Setup</h4>
+                <p>Dashboard-এর <strong>Brand Settings → API Key</strong> থেকে API Key নিন। এটি শুধু আপনার server-side payment-create controller-এ রাখবেন:</p>
+                <pre className="bg-slate-950 p-3 rounded-xl text-blue-200 overflow-x-auto">{`MECOPAY_API_KEY=আপনার-brand-api-key
+Authorization: Bearer &lt;MECOPAY_API_KEY&gt;`}</pre>
+                <p className="text-slate-400">API Key কখনো browser/frontend, public JSON বা GitHub-এ রাখবেন না। Payment-create request-এ আলাদা webhook secret পাঠানোর দরকার নেই।</p>
+              </div>
             </div>
 
             {/* STEP 2: Code Implementation */}
@@ -903,6 +910,16 @@ Node.js: process.env.MECOPAY_WEBHOOK_SECRET
 Python: os.environ["MECOPAY_WEBHOOK_SECRET"]
 Raw PHP: getenv("MECOPAY_WEBHOOK_SECRET")`}</pre>
               <p className="text-slate-400">Signature যাচাই সফল না হওয়া পর্যন্ত order status, payment status বা digital link update করবেন না।</p>
+              <div className="bg-slate-950/70 border border-amber-500/20 rounded-xl p-3 space-y-1.5">
+                <p className="font-semibold text-amber-200">Success/Webhook Controller Setup:</p>
+                <ol className="list-decimal pl-5 space-y-1 text-slate-300">
+                  <li>Dashboard → <strong>Webhooks</strong> → আপনার brand নির্বাচন করে client backend-এর webhook URL দিন।</li>
+                  <li>Dashboard যে generated webhook secret দেখাবে, সেটি copy করুন; নতুন secret নিজে বানানোর প্রয়োজন নেই।</li>
+                  <li>Client backend-এ শুধু environment secret হিসেবে বসান: <code>MECOPAY_WEBHOOK_SECRET=...</code>।</li>
+                  <li>Laravel/Raw PHP/Node/Python controller raw request body দিয়ে <code>X-MecoPay-Signature</code> যাচাই করবে।</li>
+                </ol>
+                <p className="text-slate-400">Payment-create controller-এ <code>MECOPAY_API_KEY</code> লাগে; success controller-এ <code>MECOPAY_WEBHOOK_SECRET</code> লাগে—দুটি আলাদা credential।</p>
+              </div>
             </div>
 
             {/* Webhook JSON Payload */}
@@ -1279,7 +1296,11 @@ class PaymentController extends Controller
         // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
         // $isDigital = (!empty($product->download_link) || in_array($product->category_id, [1, 5]));
         // $detectedType = $isDigital ? 'digital' : (($advanceAmount > 0) ? 'physical_advance' : 'physical_cod');
-        $productType = $request->input('product_type') ?: ($detectedType ?? 'digital'); // 'digital' | 'physical_advance' | 'physical_cod'
+        $productType = strtolower(trim((string) $request->input('product_type', 'digital')));
+        $allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
+        if (!in_array($productType, $allowedTypes, true)) {
+            return back()->with('error', 'Unsupported product_type.');
+        }
         $orderId = $request->input('order_id');
         $productName = $request->input('product_name');
 
@@ -1287,7 +1308,7 @@ class PaymentController extends Controller
             return back()->with('error', 'order_id আবশ্যক।');
         }
 
-        $price = (float) $request->input('price', 0);
+        $price = (float) $request->input('product_price', $request->input('price', 0));
         // কুরিয়ার চার্জ ডাইনামিকালি রিকোয়েস্ট বা প্রোডাক্ট থেকে নিন (ফ্রি ডেলিভারি হলে ০ থাকবে):
         $courierCharge = (float) $request->input('courier_charge', 0);
         // আপনার ডাটাবেজ বা রিকোয়েস্ট থেকে কারেন্সি নিন (যেমন: BDT, USD, EUR ইত্যাদি):
@@ -1397,7 +1418,11 @@ if (!empty($cart)) {
 // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
 // $isDigital = (!empty($product['download_link']) || in_array($product['category_id'] ?? 0, [3, 7]));
 // $detectedType = $isDigital ? 'digital' : (($advance > 0) ? 'physical_advance' : 'physical_cod');
-$productType = $_POST['product_type'] ?? ($detectedType ?? 'digital');
+$productType = strtolower(trim((string) ($_POST['product_type'] ?? 'digital')));
+$allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
+if (!in_array($productType, $allowedTypes, true)) {
+    die('Unsupported product_type.');
+}
 $orderId = $_POST['order_id'] ?? null;
 $productName = $_POST['product_name'] ?? "E-Commerce Product";
 
@@ -1406,10 +1431,10 @@ if (empty($orderId)) {
 }
 
 // ডাইনামিক কারেন্সি (BDT, USD, EUR ইত্যাদি):
-$currency = strtoupper(trim($_POST['currency'] ?? $order['currency'] ?? 'BDT'));
+$currency = strtoupper(trim($_POST['currency'] ?? 'BDT'));
 
 // প্রোডাক্টের আসল মূল্য ও কুরিয়ার চার্জ ফর্ম বা ডাটাবেজ থেকে ডাইনামিকালি নিন (ফ্রি ডেলিভারি হলে ০):
-$price = (float) ($_POST['price'] ?? 0);
+$price = (float) ($_POST['product_price'] ?? ($_POST['price'] ?? 0));
 $courierCharge = (float) ($_POST['courier_charge'] ?? 0);
 
 $payload = [
@@ -1473,8 +1498,8 @@ if ($httpCode === 200 && $invoiceNo) {
 if ($httpCode === 200 && !empty($result['checkout_url'])) {
     header("Location: " . $result['checkout_url']);
     exit;
-} elseif ($httpCode === 200 && empty($result['requires_payment'])) {
-    header("Location: " . $result['checkout_url']);
+} elseif ($httpCode === 200 && (($result['requires_payment'] ?? true) === false)) {
+    header('Location: ' . $payload['success_url']);
     exit;
 } else {
     echo "MecoPay Error: " . ($result['error'] ?? 'Connection Failed');
@@ -1494,6 +1519,32 @@ const MECOPAY_ENDPOINT = 'https://api.mecopay.space/v1/create-checkout';
 
 app.post('/api/checkout', async (req, res) => {
   try {
+    const {
+      cart_items = [],
+      product_type = 'digital',
+      order_id,
+      product_name = 'Item',
+      product_price = null,
+      price = null,
+      amount = null,
+      courier_charge = 0,
+      advance_amount = 0,
+      currency = 'BDT',
+      customer_name = 'Guest Customer',
+      customer_phone = '',
+      customer_address = '',
+      success_url,
+      cancel_url
+    } = req.body;
+    const allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
+    const finalProductType = String(product_type).toLowerCase().trim();
+    if (!allowedTypes.includes(finalProductType)) {
+      return res.status(400).json({ error: 'Unsupported product_type.' });
+    }
+    const priceValue = Number(product_price ?? price ?? amount ?? 0);
+    const courierChargeValue = Number(courier_charge || 0);
+    const advanceAmountValue = Number(advance_amount || 0);
+
     // -------------------------------------------------------------------------
     // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
     // -------------------------------------------------------------------------
@@ -1515,8 +1566,7 @@ app.post('/api/checkout', async (req, res) => {
     // ৫০০+ পুরোনো পণ্যের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
     // const isDigital = Boolean(product?.download_link || [3, 7].includes(product?.category_id));
     // const detectedType = isDigital ? 'digital' : (advance_amount > 0 ? 'physical_advance' : 'physical_cod');
-    const finalProductType = product_type || (typeof detectedType !== 'undefined' ? detectedType : 'digital');
-    const finalCurrency = (req.body.currency || 'BDT').toUpperCase();
+    const finalCurrency = String(currency || 'BDT').toUpperCase();
 
     if (!order_id) {
       return res.status(400).json({ error: 'order_id ফিল্ড আবশ্যক।' });
@@ -1524,32 +1574,31 @@ app.post('/api/checkout', async (req, res) => {
 
     const payload = {
       order_id,
-      product_name: product_name || 'Item',
+      product_name,
       product_type: finalProductType,
       currency: finalCurrency,
-      customer_name: customer_name || 'Guest Customer',
-      customer_phone: customer_phone || '',
-      customer_address: customer_address || '',
-      // ডাইনামিক সাইট ডোমেন ও পাথ:
-      success_url: (req.protocol + '://' + req.get('host') + '/payment/success'),
-      cancel_url: (req.protocol + '://' + req.get('host') + '/cart')
+      customer_name,
+      customer_phone,
+      customer_address,
+      success_url: success_url || (req.protocol + '://' + req.get('host') + '/payment/success'),
+      cancel_url: cancel_url || (req.protocol + '://' + req.get('host') + '/cart')
     };
 
     if (finalProductType === 'digital') {
-      if (!price || price <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
-      payload.product_price = Number(price);
+      if (priceValue <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
+      payload.product_price = priceValue;
       payload.telegram_link = 'https://t.me/+join_group';
     } else if (finalProductType === 'physical_advance') {
-      if (!price || price <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
-      payload.product_price = Number(price);
-      payload.courier_charge = Number(courier_charge);
-      payload.advance_amount = Number(advance_amount);
+      if (priceValue <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
+      payload.product_price = priceValue;
+      payload.courier_charge = courierChargeValue;
+      payload.advance_amount = advanceAmountValue;
     } else if (finalProductType === 'physical_full_payment') {
-      payload.product_price = Number(price);
-      payload.courier_charge = Number(courier_charge);
+      payload.product_price = priceValue;
+      payload.courier_charge = courierChargeValue;
     } else { // physical_cod
-      payload.product_price = Number(price);
-      payload.courier_charge = Number(courier_charge);
+      payload.product_price = priceValue;
+      payload.courier_charge = courierChargeValue;
     }
 
     const response = await axios.post(MECOPAY_ENDPOINT, payload, {
@@ -1581,6 +1630,9 @@ app.post('/api/checkout', async (req, res) => {
 
 // 4. Python (Django / Flask / Requests) with 3 Architecture Guards
 const pythonFullController = `import requests
+from django.db.models import Q
+from orders.models import Order
+
 MECOPAY_API_KEY = "your_brand_api_key_here"
 MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
 
@@ -1603,10 +1655,13 @@ MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
     # ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
     # is_digital = bool(product.get("download_link") or product.get("category_id") in [3, 7])
     # detected_type = "digital" if is_digital else ("physical_advance" if advance_amount > 0 else "physical_cod")
-    product_type = request_data.get('product_type') or locals().get('detected_type', 'digital')
+    product_type = str(request_data.get('product_type') or 'digital').lower().strip()
+    allowed_types = {'digital', 'physical_advance', 'physical_full_payment', 'physical_cod'}
+    if product_type not in allowed_types:
+        return {"error": "Unsupported product_type."}
     if not request_data.get('order_id'):
         return {"error": "order_id আবশ্যক।"}
-    price = float(request_data.get('price') or request_data.get('amount') or 0)
+    price = float(request_data.get('product_price') or request_data.get('price') or request_data.get('amount') or 0)
     courier_charge = float(request_data.get('courier_charge') or 0) # ফ্রি ডেলিভারি হলে ০ থাকবে
 
     payload = {
@@ -1649,7 +1704,7 @@ MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
     invoice_no = result.get('invoice_no')
     if response.status_code == 200 and invoice_no:
         # আপনার Django Order model/ORM বা বিদ্যমান DB adapter ব্যবহার করুন।
-        Order.objects.filter(order_id=request_data['order_id']).update(mecopay_invoice_no=invoice_no)
+        Order.objects.filter(Q(pk=request_data['order_id']) | Q(order_id=request_data['order_id'])).update(mecopay_invoice_no=invoice_no)
     # invoice_no-ই পরের webhook verification-এর canonical identifier; order_id থাকলে অতিরিক্ত মিল হবে।
 
     if response.status_code == 200:
