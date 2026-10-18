@@ -882,26 +882,23 @@ HEADERS:
                 <pre className="text-xs font-mono text-blue-200 overflow-x-auto">
 {`{
   "event": "payment.completed",
-  "order_id": "ORD-9812",
-  "invoice_number": "INV-2026-9812",
-  "product_name": "Fullstack AI Mastery Course",
-  "product_type": "digital",
-  "amount_paid": 1500,
-  "total_amount": 1500,
-  "transaction_id": "9H72KA89P1",
-  "customer_phone": "01712345678",
-  "status": "Completed",
-  "digital_access": {
-    "telegram_link": "https://t.me/+join_onetime_secret",
-    "facebook_group_link": "https://facebook.com/groups/aimasteryvip",
-    "fb_passcode": "MCP-8921",
-    "google_drive_link": "https://drive.google.com/drive/folders/sample_materials"
-  },
-  "telegram_link": "https://t.me/+join_onetime_secret",
-  "facebook_group_link": "https://facebook.com/groups/aimasteryvip",
-  "fb_passcode": "MCP-8921",
-  "google_drive_link": "https://drive.google.com/drive/folders/sample_materials",
-  "signature": "sha256_hash_security_token"
+  "event_time": "2026-10-18T10:00:00.000Z",
+  "data": {
+    "order_id": "ORD-9812",
+    "product_name": "Fullstack AI Mastery Course",
+    "product_type": "digital",
+    "currency": "USD",
+    "amount": 1500,
+    "total_amount": 1500,
+    "status": "paid",
+    "delivery": {
+      "telegram_link": "https://t.me/+join_onetime_secret",
+      "facebook_group_link": "https://facebook.com/groups/aimasteryvip",
+      "facebook_access_code": "MCP-8921",
+      "google_drive_link": "https://drive.google.com/drive/folders/sample_materials"
+    },
+    "courier": null
+  }
 }`}
                 </pre>
               </div>
@@ -915,25 +912,25 @@ HEADERS:
                 <pre className="text-xs font-mono text-amber-200 overflow-x-auto">
 {`{
   "event": "payment.completed",
-  "order_id": "ORD-7734",
-  "invoice_number": "INV-2026-7734",
-  "product_name": "Wireless Noise Cancelling Headphones",
-  "product_type": "physical_advance",
-  "amount_paid": 150,
-  "total_amount": 1250,
-  "courier_charge": 120,
-  "cod_due": 1220,
-  "transaction_id": "8M41XA99L2",
-  "customer_phone": "01812345678",
-  "status": "Completed",
-  "courier": {
-    "provider": "steadfast",
-    "tracking_code": "STDF-981245",
-    "tracking_url": "https://steadfast.com.bd/tracking/STDF-981245"
-  },
-  "courier_tracking_code": "STDF-981245",
-  "tracking_url": "https://steadfast.com.bd/tracking/STDF-981245",
-  "signature": "sha256_hash_security_token"
+  "event_time": "2026-10-18T10:00:00.000Z",
+  "data": {
+    "order_id": "ORD-7734",
+    "product_name": "Wireless Noise Cancelling Headphones",
+    "product_type": "physical_advance",
+    "currency": "USD",
+    "amount": 150,
+    "total_amount": 1250,
+    "courier_charge": 120,
+    "cod_due": 1220,
+    "status": "paid",
+    "delivery": {
+      "telegram_link": null,
+      "facebook_group_link": null,
+      "facebook_access_code": null,
+      "google_drive_link": null
+    },
+    "courier": null
+  }
 }`}
                 </pre>
               </div>
@@ -947,25 +944,29 @@ HEADERS:
                 <pre className="text-xs font-mono text-emerald-200 overflow-x-auto">
 {`{
   "event": "order.courier_booked",
-  "order_id": "ORD-5519",
-  "invoice_number": "INV-2026-5519",
-  "product_name": "Leather Executive Wallet",
-  "product_type": "physical_cod",
-  "amount_paid": 0,
-  "total_amount": 1200,
-  "courier_charge": 120,
-  "cod_due": 1320,
-  "transaction_id": "COD-ORDER",
-  "customer_name": "Mohammad Ali",
-  "customer_phone": "01912345678",
-  "customer_address": "Chawkbazar, Chittagong",
-  "status": "cod_confirmed",
-  "courier": {
-    "provider": "steadfast",
-    "tracking_code": "STDF-883109",
-    "tracking_url": "https://steadfast.com.bd/tracking/STDF-883109"
-  },
-  "signature": "sha256_hash_security_token"
+  "event_time": "2026-10-18T10:00:00.000Z",
+  "data": {
+    "order_id": "ORD-5519",
+    "product_name": "Leather Executive Wallet",
+    "product_type": "physical_cod",
+    "currency": "USD",
+    "amount": 0,
+    "total_amount": 1200,
+    "courier_charge": 120,
+    "cod_due": 1320,
+    "status": "cod_confirmed",
+    "delivery": {
+      "telegram_link": null,
+      "facebook_group_link": null,
+      "facebook_access_code": null,
+      "google_drive_link": null
+    },
+    "courier": {
+      "provider": "steadfast",
+      "tracking_code": "STDF-883109",
+      "tracking_url": "https://steadfast.com.bd/tracking/STDF-883109"
+    }
+  }
 }`}
                 </pre>
               </div>
@@ -1064,7 +1065,7 @@ HEADERS:
                 <h5 className="font-bold text-white">Webhook কন্ট্রোলার যেভাবে কাজ করে:</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li><strong>HMAC-SHA256 সিগনেচার ভেরিফিকেশন:</strong> <code>X-MecoPay-Signature</code> হেডারের মাধ্যমে প্রেরিত ডাটার নিরাপত্তা ও বৈধতা নিশ্চিত করে।</li>
-                  <li><strong>অর্ডার ও ইনভয়েস ম্যাপিং:</strong> ক্লায়েন্টের মূল <code>order_id</code> এবং MecoPay-এর <code>invoice_number</code> দিয়ে লোকাল ডাটাবেজে অর্ডার খুঁজে বের করে।</li>
+                  <li><strong>অর্ডার ম্যাপিং:</strong> webhook-এর <code>data.order_id</code> দিয়ে আপনার লোকাল ডাটাবেজে অর্ডার খুঁজে বের করুন। Invoice বা transaction identifier দিয়ে matching করার প্রয়োজন নেই।</li>
                   <li><strong>ইভেন্ট হ্যান্ডলিং:</strong> <code>payment.completed</code> হলে ডিজিটাল (পাসকোড প্রদান) বা ফিজিক্যাল (অ্যাডভান্স কনফার্ম ও শিপমেন্ট প্রস্তুত) আপডেট করে। <code>order.courier_booked</code> হলে কুরিয়ার ট্র্যাকিং কোড সংরক্ষণ করে।</li>
                 </ol>
               </div>
@@ -1237,8 +1238,8 @@ class PaymentController extends Controller
         $orderId = $request->input('order_id');
         $productName = $request->input('product_name');
 
-        if (empty($orderId) && empty($productName)) {
-            return back()->with('error', 'অর্ডার আইডি অথবা প্রোডাক্টের নাম যেকোনো একটি আবশ্যক।');
+        if (empty($orderId)) {
+            return back()->with('error', 'order_id আবশ্যক।');
         }
 
         $price = (float) $request->input('price', 0);
@@ -1248,7 +1249,7 @@ class PaymentController extends Controller
         $currency = strtoupper(trim($request->input('currency', 'BDT')));
 
         $payload = [
-            'order_id'         => $orderId ?: ('ORD-' . time()),
+            'order_id'         => $orderId,
             'product_name'     => $productName ?: 'General Item',
             'product_type'     => $productType,
             'currency'         => $currency,
@@ -1357,8 +1358,12 @@ if (!empty($cart)) {
 // $isDigital = (!empty($product['download_link']) || in_array($product['category_id'] ?? 0, [3, 7]));
 // $detectedType = $isDigital ? 'digital' : (($advance > 0) ? 'physical_advance' : 'physical_cod');
 $productType = $_POST['product_type'] ?? ($detectedType ?? 'digital');
-$orderId = $_POST['order_id'] ?? ("ORD-" . time());
+$orderId = $_POST['order_id'] ?? null;
 $productName = $_POST['product_name'] ?? "E-Commerce Product";
+
+if (empty($orderId)) {
+    die("order_id আবশ্যক।");
+}
 
 // ডাইনামিক কারেন্সি (BDT, USD, EUR ইত্যাদি):
 $currency = strtoupper(trim($_POST['currency'] ?? $order['currency'] ?? 'BDT'));
@@ -1484,12 +1489,12 @@ app.post('/api/checkout', async (req, res) => {
     const finalProductType = product_type || (typeof detectedType !== 'undefined' ? detectedType : 'digital');
     const finalCurrency = (req.body.currency || 'BDT').toUpperCase();
 
-    if (!order_id && !product_name) {
-      return res.status(400).json({ error: 'order_id অথবা product_name যেকোনো একটি ফিল্ড আবশ্যক।' });
+    if (!order_id) {
+      return res.status(400).json({ error: 'order_id ফিল্ড আবশ্যক।' });
     }
 
     const payload = {
-      order_id: order_id || ('ORD-' + Date.now()),
+      order_id,
       product_name: product_name || 'Item',
       product_type: finalProductType,
       currency: finalCurrency,
@@ -1501,7 +1506,7 @@ app.post('/api/checkout', async (req, res) => {
       cancel_url: (req.protocol + '://' + req.get('host') + '/cart')
     };
 
-    if (product_type === 'digital') {
+    if (finalProductType === 'digital') {
       if (!price || price <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
       payload.amount = Number(price);
       payload.telegram_link = 'https://t.me/+join_group';
@@ -1581,8 +1586,13 @@ async function initiateMecoPayCheckout(orderData) {
   const price = Number(orderData.price || 0);
   const courierCharge = Number(orderData.courier_charge || 0); // ফ্রি ডেলিভারি হলে ০ থাকবে
 
+  if (!orderData.order_id) {
+    alert("order_id ফিল্ড আবশ্যক।");
+    return;
+  }
+
   const payload = {
-    order_id: orderData.order_id || ("ORD-" + Date.now()),
+    order_id: orderData.order_id,
     product_name: orderData.product_name || "Order Item",
     product_type: finalProductType,
     currency: (orderData.currency || "BDT").toUpperCase(),
@@ -1627,7 +1637,7 @@ async function initiateMecoPayCheckout(orderData) {
       window.location.href = data.checkout_url;
     } else if (data.success && !data.requires_payment) {
       // ১০০% ক্যাশ অন ডেলিভারি (লোকাল সাকসেস)
-      window.location.href = "/order-success?inv=" + data.invoice_number;
+      window.location.href = "/order-success?order_id=" + encodeURIComponent(orderData.order_id);
     } else {
       alert("Error: " + (data.error || "Failed to create checkout"));
     }
@@ -1673,11 +1683,13 @@ def create_checkout_session(request_data):
     # is_digital = bool(product.get("download_link") or product.get("category_id") in [3, 7])
     # detected_type = "digital" if is_digital else ("physical_advance" if advance_amount > 0 else "physical_cod")
     product_type = request_data.get('product_type') or locals().get('detected_type', 'digital')
+    if not request_data.get('order_id'):
+        return {"error": "order_id আবশ্যক।"}
     price = float(request_data.get('price') or request_data.get('amount') or 0)
     courier_charge = float(request_data.get('courier_charge') or 0) # ফ্রি ডেলিভারি হলে ০ থাকবে
 
     payload = {
-        "order_id": request_data.get('order_id', f"ORD-{int(time.time())}"),
+        "order_id": request_data['order_id'],
         "product_name": request_data.get('product_name', "Digital E-Book"),
         "product_type": product_type,
         "currency": (request_data.get('currency') or "BDT").upper(),
@@ -1717,7 +1729,7 @@ def create_checkout_session(request_data):
     if response.status_code == 200:
         if result.get("checkout_url"):
             return {"redirect": result["checkout_url"]}
-        return {"success": True, "invoice_number": result.get("invoice_number")}
+        return {"success": True, "order_id": request_data['order_id'], "requires_payment": result.get("requires_payment", True)}
     else:
         return {"error": result.get("error", "API request failed")}
 `;
@@ -1756,19 +1768,16 @@ class MecoPayWebhookController extends Controller
         $data = $payload['data'] ?? $payload;
 
         // -------------------------------------------------------------------------
-        // ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার অনুসন্ধান
+        // ২. ক্লায়েন্টের order_id দিয়ে অর্ডার অনুসন্ধান
         // -------------------------------------------------------------------------
         $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
-        $invoiceNumber = $data['invoice_number'] ?? $payload['invoice_number'] ?? null;
 
-        if (!$orderId && !$invoiceNumber) {
-            return response()->json(['error' => 'Missing order_id or invoice_number in webhook.'], 400);
+        if (!$orderId) {
+            return response()->json(['error' => 'Missing order_id in webhook.'], 400);
         }
 
-        // ক্লায়েন্টের নিজস্ব ডাটাবেজে অর্ডার কুয়েরি (Order ID অথবা Invoice Number দিয়ে)
-        $order = Order::when($orderId, fn($q) => $q->where('id', $orderId)->orWhere('order_id', $orderId))
-                      ->when($invoiceNumber, fn($q) => $q->orWhere('invoice_number', $invoiceNumber))
-                      ->first();
+        // ক্লায়েন্টের নিজস্ব ডাটাবেজে শুধু order_id দিয়ে অর্ডার কুয়েরি
+        $order = Order::where('id', $orderId)->orWhere('order_id', $orderId)->first();
 
         if (!$order) {
             return response()->json(['error' => 'Order not found in merchant database.'], 404);
@@ -1779,21 +1788,19 @@ class MecoPayWebhookController extends Controller
         // -------------------------------------------------------------------------
         if ($event === 'payment.completed') {
             $productType = $data['order_type'] ?? $data['product_type'] ?? $order->product_type ?? 'digital';
-            $trxId = $data['trx_id'] ?? $data['transaction_id'] ?? null;
             $paidAmount = $data['amount'] ?? $data['amount_paid'] ?? 0;
 
             if ($productType === 'digital') {
                 // ডিজিটাল প্রোডাক্ট: ১০০% পেমেন্ট সফল, অ্যাক্সেস ও ডেলিভারি লিংক সংরক্ষণ
-                $digitalPasscode = $data['digital_access']['passcode'] ?? $data['digital_access']['fb_passcode'] ?? $data['fb_passcode'] ?? null;
-                $telegramLink    = $data['digital_access']['telegram_link'] ?? $data['telegram_link'] ?? null;
-                $fbGroupLink     = $data['digital_access']['facebook_group_link'] ?? $data['facebook_group_link'] ?? null;
-                $driveLink       = $data['digital_access']['google_drive_link'] ?? $data['google_drive_link'] ?? null;
+                $delivery = is_array($data['delivery'] ?? null) ? $data['delivery'] : [];
+                $digitalPasscode = $delivery['facebook_access_code'] ?? $delivery['passcode'] ?? null;
+                $telegramLink    = $delivery['telegram_link'] ?? null;
+                $fbGroupLink     = $delivery['facebook_group_link'] ?? null;
+                $driveLink       = $delivery['google_drive_link'] ?? null;
 
                 $order->update([
                     'payment_status' => 'paid',
                     'order_status'   => 'completed',
-                    'invoice_number' => $invoiceNumber,
-                    'transaction_id' => $trxId,
                     'amount_paid'    => $paidAmount,
                     'access_passcode'=> $digitalPasscode,
                     'telegram_link'  => $telegramLink,
@@ -1809,8 +1816,6 @@ class MecoPayWebhookController extends Controller
                 $order->update([
                     'payment_status'   => 'advance_paid',
                     'order_status'     => 'ready_for_dispatch',
-                    'invoice_number'   => $invoiceNumber,
-                    'transaction_id'   => $trxId,
                     'advance_amount'   => $paidAmount,
                     'courier_due'      => $data['cod_due'] ?? $order->cod_due,
                     'courier_provider' => $provider,
@@ -1824,7 +1829,6 @@ class MecoPayWebhookController extends Controller
                     'status' => 'success',
                     'message' => 'Digital payment processed and access links granted.',
                     'order_id' => $orderId,
-                    'invoice_number' => $invoiceNumber,
                     'product_type' => 'digital',
                     'passcode' => $digitalPasscode,
                     'telegram_link' => $telegramLink,
@@ -1842,7 +1846,6 @@ class MecoPayWebhookController extends Controller
                     'status' => 'success',
                     'message' => 'Advance payment recorded and courier tracking initialized.',
                     'order_id' => $orderId,
-                    'invoice_number' => $invoiceNumber,
                     'product_type' => 'physical_advance',
                     'advance_amount' => $paidAmount,
                     'courier_due' => $data['cod_due'] ?? $order->cod_due,
@@ -1869,7 +1872,6 @@ class MecoPayWebhookController extends Controller
 
             $order->update([
                 'order_status'     => 'shipped',
-                'invoice_number'   => $invoiceNumber,
                 'courier_provider' => $provider,
                 'courier_tracking' => $trackingCode,
                 'tracking_url'     => $trackingUrl,
@@ -1879,7 +1881,6 @@ class MecoPayWebhookController extends Controller
                 'status' => 'success',
                 'message' => 'Courier booking recorded with parcel tracking URL.',
                 'order_id' => $orderId,
-                'invoice_number' => $invoiceNumber,
                 'courier_provider' => $provider,
                 'tracking_code' => $trackingCode,
                 'tracking_url' => $trackingUrl,
@@ -1934,11 +1935,8 @@ $data = $payload['data'] ?? $payload;
 // ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
 // -------------------------------------------------------------------------
 $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
-$invoiceNumber = $data['invoice_number'] ?? $payload['invoice_number'] ?? null;
 
-if (!$orderId && !$invoiceNumber) {
     http_response_code(400);
-    echo json_encode(['error' => 'Missing order_id or invoice_number in webhook.']);
     exit;
 }
 
@@ -1955,12 +1953,12 @@ $pdo = new PDO("mysql:host=localhost;dbname=your_store_db;charset=utf8mb4", "db_
 // -------------------------------------------------------------------------
 if ($event === 'payment.completed') {
     $productType = $data['order_type'] ?? $data['product_type'] ?? 'digital';
-    $trxId = $data['trx_id'] ?? $data['transaction_id'] ?? '';
     $paidAmount = (float)($data['amount'] ?? $data['amount_paid'] ?? 0);
-    $passcode = $data['digital_access']['passcode'] ?? $data['digital_access']['fb_passcode'] ?? $data['fb_passcode'] ?? '';
-    $telegramLink = $data['digital_access']['telegram_link'] ?? $data['telegram_link'] ?? '';
-    $fbGroupLink = $data['digital_access']['facebook_group_link'] ?? $data['facebook_group_link'] ?? '';
-    $driveLink = $data['digital_access']['google_drive_link'] ?? $data['google_drive_link'] ?? '';
+            $delivery = is_array($data['delivery'] ?? null) ? $data['delivery'] : [];
+            $passcode = $delivery['facebook_access_code'] ?? $delivery['passcode'] ?? '';
+            $telegramLink = $delivery['telegram_link'] ?? '';
+            $fbGroupLink = $delivery['facebook_group_link'] ?? '';
+            $driveLink = $delivery['google_drive_link'] ?? '';
     $codDue = $data['cod_due'] ?? null;
     $trackingCode = $data['courier']['tracking_code'] ?? $data['courier_tracking_code'] ?? '';
     $trackingUrl = $data['courier']['tracking_url'] ?? $data['tracking_url'] ?? '';
@@ -1968,14 +1966,11 @@ if ($event === 'payment.completed') {
 
     if ($productType === 'digital') {
         // ডিজিটাল: ১০০% ফুল পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক কনফার্ম
-        // $stmt = $pdo->prepare("UPDATE orders SET payment_status = 'paid', status = 'completed', trx_id = ?, invoice_number = ?, passcode = ?, telegram_link = ?, fb_group = ?, drive_link = ? WHERE id = ?");
-        // $stmt->execute([$trxId, $invoiceNumber, $passcode, $telegramLink, $fbGroupLink, $driveLink, $orderId]);
 
         echo json_encode([
             'status' => 'success',
             'message' => 'Digital payment processed and access links granted.',
             'order_id' => $orderId,
-            'invoice_number' => $invoiceNumber,
             'product_type' => 'digital',
             'passcode' => $passcode,
             'telegram_link' => $telegramLink,
@@ -1991,14 +1986,11 @@ if ($event === 'payment.completed') {
         exit;
     } else {
         // ফিজিক্যাল অ্যাডভান্স: অগ্রিম পেমেন্ট কনফার্ম, পার্সেল শিপমেন্ট ও ট্র্যাকিং প্রস্তুত
-        // $stmt = $pdo->prepare("UPDATE orders SET payment_status = 'advance_paid', status = 'ready_to_ship', trx_id = ?, invoice_number = ?, advance_amount = ?, courier_due = ?, courier_tracking = ?, tracking_url = ? WHERE id = ?");
-        // $stmt->execute([$trxId, $invoiceNumber, $paidAmount, $codDue, $trackingCode, $trackingUrl, $orderId]);
 
         echo json_encode([
             'status' => 'success',
             'message' => 'Advance payment recorded and courier tracking initialized.',
             'order_id' => $orderId,
-            'invoice_number' => $invoiceNumber,
             'product_type' => 'physical_advance',
             'advance_amount' => $paidAmount,
             'cod_due' => $codDue,
@@ -2023,14 +2015,11 @@ if ($event === 'order.courier_booked') {
     $provider = $data['courier']['provider'] ?? 'steadfast';
     $trackingUrl = $data['courier']['tracking_url'] ?? '';
 
-    // $stmt = $pdo->prepare("UPDATE orders SET status = 'shipped', courier_provider = ?, tracking_code = ?, tracking_url = ?, invoice_number = ? WHERE id = ?");
-    // $stmt->execute([$provider, $trackingCode, $trackingUrl, $invoiceNumber, $orderId]);
 
     echo json_encode([
         'status' => 'success',
         'message' => 'Courier tracking updated successfully with parcel tracking URL.',
         'order_id' => $orderId,
-        'invoice_number' => $invoiceNumber,
         'courier_provider' => $provider,
         'tracking_code' => $trackingCode,
         'tracking_url' => $trackingUrl,
@@ -2084,10 +2073,7 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     // ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
     // -------------------------------------------------------------------------
     const orderId = eventData.order_id || req.body.order_id;
-    const invoiceNumber = eventData.invoice_number || req.body.invoice_number;
 
-    if (!orderId && !invoiceNumber) {
-      return res.status(400).json({ error: 'Missing order_id or invoice_number in webhook.' });
     }
 
     // -------------------------------------------------------------------------
@@ -2095,22 +2081,20 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     // -------------------------------------------------------------------------
     if (event === 'payment.completed') {
       const productType = eventData.order_type || eventData.product_type || 'digital';
-      const trxId = eventData.trx_id || eventData.transaction_id;
       const paidAmount = eventData.amount || eventData.amount_paid;
 
       if (productType === 'digital') {
         // ডিজিটাল: ১০০% পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক প্রদান
-        const passcode = eventData.digital_access?.passcode || eventData.digital_access?.fb_passcode || eventData.fb_passcode;
-        const telegramLink = eventData.digital_access?.telegram_link || eventData.telegram_link;
-        const fbGroupLink = eventData.digital_access?.facebook_group_link || eventData.facebook_group_link;
-        const driveLink = eventData.digital_access?.google_drive_link || eventData.google_drive_link;
-        // await db.order.update({ where: { id: orderId }, data: { paymentStatus: 'paid', status: 'completed', trxId, invoiceNumber, passcode, telegramLink, fbGroupLink, driveLink } });
+        const delivery = eventData.delivery || {};
+        const passcode = delivery.facebook_access_code || delivery.passcode || '';
+        const telegramLink = delivery.telegram_link || '';
+        const fbGroupLink = delivery.facebook_group_link || '';
+        const driveLink = delivery.google_drive_link || '';
 
         return res.status(200).json({
           status: 'success',
           message: 'Digital payment processed and access links granted.',
           order_id: orderId,
-          invoice_number: invoiceNumber,
           product_type: 'digital',
           passcode,
           telegram_link: telegramLink,
@@ -2129,13 +2113,11 @@ app.post('/api/mecopay/webhook', async (req, res) => {
         const trackingCode = eventData.courier?.tracking_code || eventData.courier_tracking_code;
         const trackingUrl = eventData.courier?.tracking_url || eventData.tracking_url;
         const provider = eventData.courier?.provider || eventData.courier_provider || 'steadfast';
-        // await db.order.update({ where: { id: orderId }, data: { paymentStatus: 'advance_paid', status: 'ready_to_ship', trxId, invoiceNumber, advanceAmount: paidAmount, courierDue: codDue, courierTracking: trackingCode, trackingUrl } });
 
         return res.status(200).json({
           status: 'success',
           message: 'Advance payment recorded and courier tracking initialized.',
           order_id: orderId,
-          invoice_number: invoiceNumber,
           product_type: 'physical_advance',
           advance_amount: paidAmount,
           cod_due: codDue,
@@ -2159,13 +2141,11 @@ app.post('/api/mecopay/webhook', async (req, res) => {
       const provider = eventData.courier?.provider || eventData.courier_provider || 'steadfast';
       const trackingUrl = eventData.courier?.tracking_url || eventData.tracking_url;
 
-      // await db.order.update({ where: { id: orderId }, data: { status: 'shipped', courierProvider: provider, trackingCode, trackingUrl, invoiceNumber } });
 
       return res.status(200).json({
         status: 'success',
         message: 'Courier booking saved with parcel tracking URL.',
         order_id: orderId,
-        invoice_number: invoiceNumber,
         courier_provider: provider,
         tracking_code: trackingCode,
         tracking_url: trackingUrl,
@@ -2231,33 +2211,27 @@ def mecopay_webhook_view(request):
     # ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
     # -------------------------------------------------------------------------
     order_id = data.get("order_id") or payload.get("order_id")
-    invoice_number = data.get("invoice_number") or payload.get("invoice_number")
 
-    if not order_id and not invoice_number:
-        return JsonResponse({"error": "Missing order_id or invoice_number in webhook."}, status=400)
 
     # -------------------------------------------------------------------------
     # ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
     # -------------------------------------------------------------------------
     if event == "payment.completed":
         product_type = data.get("order_type") or data.get("product_type") or "digital"
-        trx_id = data.get("trx_id") or data.get("transaction_id")
         paid_amount = data.get("amount") or data.get("amount_paid")
 
         if product_type == "digital":
             # ডিজিটাল প্রোডাক্ট: ১০০% পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক ডেলিভারি
-            digital_access = data.get("digital_access") or {}
-            passcode = digital_access.get("passcode") or digital_access.get("fb_passcode") or data.get("fb_passcode")
-            telegram_link = digital_access.get("telegram_link") or data.get("telegram_link")
-            fb_group_link = digital_access.get("facebook_group_link") or data.get("facebook_group_link")
-            drive_link = digital_access.get("google_drive_link") or data.get("google_drive_link")
-            # Order.objects.filter(id=order_id).update(payment_status="paid", status="completed", trx_id=trx_id, invoice_number=invoice_number, passcode=passcode, telegram_link=telegram_link, fb_group=fb_group_link, drive_link=drive_link)
+            delivery = data.get("delivery") or {}
+            passcode = delivery.get("facebook_access_code") or delivery.get("passcode")
+            telegram_link = delivery.get("telegram_link")
+            fb_group_link = delivery.get("facebook_group_link")
+            drive_link = delivery.get("google_drive_link")
 
             return JsonResponse({
                 "status": "success",
                 "message": "Digital payment processed and access links granted.",
                 "order_id": order_id,
-                "invoice_number": invoice_number,
                 "product_type": "digital",
                 "passcode": passcode,
                 "telegram_link": telegram_link,
@@ -2277,13 +2251,11 @@ def mecopay_webhook_view(request):
             tracking_code = courier.get("tracking_code") or data.get("courier_tracking_code")
             tracking_url = courier.get("tracking_url") or data.get("tracking_url")
             provider = courier.get("provider") or data.get("courier_provider") or "steadfast"
-            # Order.objects.filter(id=order_id).update(payment_status="advance_paid", status="ready_to_ship", trx_id=trx_id, invoice_number=invoice_number, advance_amount=paid_amount, courier_due=cod_due, courier_tracking=tracking_code, tracking_url=tracking_url)
 
             return JsonResponse({
                 "status": "success",
                 "message": "Advance payment recorded and courier tracking initialized.",
                 "order_id": order_id,
-                "invoice_number": invoice_number,
                 "product_type": "physical_advance",
                 "advance_amount": paid_amount,
                 "cod_due": cod_due,
@@ -2305,13 +2277,11 @@ def mecopay_webhook_view(request):
         tracking_code = courier.get("tracking_code") or data.get("courier_tracking_code")
         provider = courier.get("provider", "steadfast")
         tracking_url = courier.get("tracking_url") or data.get("tracking_url")
-        # Order.objects.filter(id=order_id).update(status="shipped", courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url, invoice_number=invoice_number)
 
         return JsonResponse({
             "status": "success",
             "message": "Courier booked successfully with parcel tracking URL.",
             "order_id": order_id,
-            "invoice_number": invoice_number,
             "courier_provider": provider,
             "tracking_code": tracking_code,
             "tracking_url": tracking_url,
