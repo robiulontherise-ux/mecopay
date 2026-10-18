@@ -343,6 +343,21 @@ function mecopay_init_smart_gateway_class() {
                 $invoice  = $payload['invoice_no'] ?? '';
                 $channel  = $payload['gateway_used'] ?? ($payload['payment_channel'] ?? ($payload['gateway'] ?? 'MFS'));
 
+                // order_id অথবা invoice_no—যেকোনো একটি থাকলেই WooCommerce order resolve হবে।
+                $order = $order_id ? wc_get_order($order_id) : null;
+                if (!$order && !empty($invoice)) {
+                    $invoice_orders = wc_get_orders(array(
+                        'limit'      => 1,
+                        'type'       => 'shop_order',
+                        'meta_key'   => '_mecopay_invoice_no',
+                        'meta_value' => sanitize_text_field($invoice),
+                    ));
+                    $order = !empty($invoice_orders) ? $invoice_orders[0] : null;
+                    if ($order) {
+                        $order_id = $order->get_id();
+                    }
+                }
+
                 // ডিজিটাল এক্সেস ও সোশ্যাল লিংকস (FB Group / Google Drive / Telegram)
                 $passcode = $payload['fb_passcode'] ?? ($payload['passcode'] ?? '');
                 $fb_group = $payload['facebook_group_link'] ?? ($payload['fb_group'] ?? '');
@@ -358,8 +373,6 @@ function mecopay_init_smart_gateway_class() {
 
                 $product_type = $payload['product_type'] ?? ($event_data['product_type'] ?? 'digital');
                 $is_digital = ($product_type === 'digital');
-                $order = $order_id ? wc_get_order($order_id) : null;
-
                 if ($order) {
                     // অর্ডার স্ট্যাটাস পেইড মার্ক করা
                     $order->payment_complete($trx_id !== 'N/A' ? $trx_id : '');

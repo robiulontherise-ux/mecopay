@@ -958,7 +958,7 @@ HEADERS:
     "invoice_no": "8f2b1c9a-0000-4000-8000-7734000000",
     "order_id": "ORD-7734",
     "product_name": "Wireless Noise Cancelling Headphones",
-    "product_type": product_type,
+    "product_type": "physical_advance",
     "currency": "USD",
     "product_price": 1250,
     "courier_charge": 120,
@@ -1860,14 +1860,19 @@ class MecoPayWebhookController extends Controller
         $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
         $invoiceNo = $data['invoice_no'] ?? $payload['invoice_no'] ?? null;
 
-        if (!$orderId || !$invoiceNo) {
+        if (!$orderId && !$invoiceNo) {
             return response()->json(['error' => 'Missing order_id or invoice_no in webhook.'], 400);
         }
 
         // নিজের database-এ আগে সংরক্ষিত order_id ও invoice_no দুটোই মিলতে হবে।
-        $order = Order::where(function ($query) use ($orderId) {
-            $query->where('id', $orderId)->orWhere('order_id', $orderId);
-        })->where('mecopay_invoice_no', $invoiceNo)->first();
+        $order = Order::where(function ($query) use ($orderId, $invoiceNo) {
+            if ($orderId) {
+                $query->where('id', $orderId)->orWhere('order_id', $orderId);
+            }
+            if ($invoiceNo) {
+                $orderId ? $query->orWhere('mecopay_invoice_no', $invoiceNo) : $query->where('mecopay_invoice_no', $invoiceNo);
+            }
+        })->first();
 
         if (!$order) {
             return response()->json(['error' => 'Order not found in merchant database.'], 404);
@@ -2027,7 +2032,7 @@ $data = $payload['data'] ?? $payload;
 $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
 $invoiceNo = $data['invoice_no'] ?? $payload['invoice_no'] ?? null;
 
-if (!$orderId || !$invoiceNo) {
+if (!$orderId && !$invoiceNo) {
     http_response_code(400);
     echo json_encode(['error' => 'Missing order_id or invoice_no in webhook.']);
     exit;
@@ -2168,7 +2173,7 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     const orderId = eventData.order_id || req.body.order_id;
     const invoiceNo = eventData.invoice_no || req.body.invoice_no;
 
-    if (!orderId || !invoiceNo) {
+    if (!orderId && !invoiceNo) {
       return res.status(400).json({ error: 'Missing order_id or invoice_no in webhook.' });
     }
     // নিজের database query-তে orderId এবং invoiceNo দুটোই WHERE শর্তে ব্যবহার করুন।
@@ -2310,7 +2315,7 @@ def mecopay_webhook_view(request):
     order_id = data.get("order_id") or payload.get("order_id")
     invoice_no = data.get("invoice_no") or payload.get("invoice_no")
 
-    if not order_id or not invoice_no:
+    if not order_id and not invoice_no:
         return JsonResponse({"error": "Missing order_id or invoice_no in webhook."}, status=400)
     # নিজের database query-তে order_id এবং invoice_no দুটোই মিলিয়ে নিন।
 
