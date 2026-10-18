@@ -339,7 +339,7 @@ function mecopay_init_smart_gateway_class() {
                 $trx_id   = $payload['trx_id'] ?? ($payload['transaction_id'] ?? 'N/A');
                 $invoice  = $payload['invoice_number'] ?? ($payload['invoice_no'] ?? ($payload['invoice_id'] ?? ''));
                 $channel  = $payload['gateway_used'] ?? ($payload['payment_channel'] ?? ($payload['gateway'] ?? 'MFS'));
-                
+
                 // ডিজিটাল এক্সেস ও সোশ্যাল লিংকস (FB Group / Google Drive / Telegram)
                 $passcode = $payload['fb_passcode'] ?? ($payload['passcode'] ?? '');
                 $fb_group = $payload['facebook_group_link'] ?? ($payload['fb_group'] ?? '');
@@ -360,7 +360,7 @@ function mecopay_init_smart_gateway_class() {
                 if ($order) {
                     // অর্ডার স্ট্যাটাস পেইড মার্ক করা
                     $order->payment_complete($trx_id !== 'N/A' ? $trx_id : '');
-                    
+
                     if (!empty($invoice)) {
                         $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($invoice));
                     }
@@ -467,7 +467,7 @@ function mecopay_init_smart_gateway_class() {
                     $tracking_code = $courier['tracking_code'] ?? ($payload['courier_tracking_code'] ?? ($payload['tracking_code'] ?? 'N/A'));
                     $provider      = strtoupper($courier['provider'] ?? ($payload['courier_provider'] ?? ($payload['provider'] ?? 'STEADFAST')));
                     $tracking_url  = $courier['tracking_url'] ?? ($payload['tracking_url'] ?? '');
-                    
+
                     $order->update_meta_data('_mecopay_courier_tracking', sanitize_text_field($tracking_code));
                     $order->update_meta_data('_mecopay_courier_provider', sanitize_text_field($provider));
                     if (!empty($tracking_url)) {
@@ -545,7 +545,7 @@ function mecopay_init_smart_gateway_class() {
 
             ?>
             <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #86efac; border-radius: 14px; padding: 22px; margin: 24px 0; box-shadow: 0 4px 16px rgba(22, 101, 52, 0.08); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                
+
                 <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid #bbf7d0; padding-bottom: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #22c55e; color: #fff; border-radius: 50%; font-size: 18px; font-weight: bold;">✓</span>

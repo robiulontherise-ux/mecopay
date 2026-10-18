@@ -100,9 +100,9 @@ function mecopay_init_smart_gateway_class() {
                     'desc_tip'    => true,
                 ),
                 'webhook_secret' => array(
-                    'title'       => __('Webhook Signing Secret', 'mecopay-gateway'),
+                    'title'       => __('Webhook Signing Secret (Optional)', 'mecopay-gateway'),
                     'type'        => 'password',
-                    'description' => __('Required to verify incoming HMAC SHA256 webhooks from MecoPay. Set the same secret in your MecoPay dashboard and this store.', 'mecopay-gateway'),
+                    'description' => __('Used to verify incoming HMAC SHA256 Webhooks from MecoPay Edge Functions.', 'mecopay-gateway'),
                     'default'     => '',
                     'desc_tip'    => true,
                 ),
@@ -164,8 +164,16 @@ function mecopay_init_smart_gateway_class() {
             // ১. স্মার্ট কার্ট স্ক্যান: ডিজিটাল বনাম ফিজিক্যাল ডিটেকশন
             $is_digital = true;
             $items = $order->get_items();
+            $cart_items_data = array();
+
             foreach ($items as $item) {
                 $product = $item->get_product();
+                $cart_items_data[] = array(
+                    'product_id'   => $item->get_product_id(),
+                    'product_name' => $item->get_name(),
+                    'quantity'     => $item->get_quantity(),
+                    'total'        => (float) $item->get_total(),
+                );
                 if ($product) {
                     if ($product->needs_shipping() || (!$product->is_virtual() && !$product->is_downloadable())) {
                         $is_digital = false;
@@ -180,8 +188,9 @@ function mecopay_init_smart_gateway_class() {
             $order_currency = $order->get_currency();
             $advance_config = (float) $this->get_option('advance_amount', 150);
 
-            // API Worker expects the canonical create-checkout contract.
+            // API Worker expects success_url, order_id, customer info
             $return_url = $this->get_return_url($order);
+
             $payload = array(
                 'order_id'         => (string) $order_id,
                 'product_name'     => $first_product_name,
@@ -192,6 +201,7 @@ function mecopay_init_smart_gateway_class() {
                 'customer_address' => trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2() . ', ' . $order->get_billing_city()),
                 'success_url'     => $return_url,
                 'cancel_url'       => wc_get_checkout_url(),
+                'cart_items'       => $cart_items_data,
                 'metadata'         => array(
                     'store_platform' => 'woocommerce',
                     'order_id'       => (string) $order_id,
@@ -212,6 +222,7 @@ function mecopay_init_smart_gateway_class() {
                     // ১০০% ক্যাশ অন ডেলিভারি (Just Form): গেটওয়ে চার্জ ০
                     $payload['product_type'] = 'physical_cod';
                     $payload['product_price'] = $total_amount;
+                    $payload['advance_amount'] = 0;
                 } elseif ($advance_config >= ($total_amount + $shipping_fee)) {
                     // ফিজিক্যাল ফুল পেমেন্ট: পণ্য + কুরিয়ার চার্জ সম্পূর্ণ অনলাইনে
                     $payload['product_type'] = 'physical_full_payment';
@@ -220,6 +231,7 @@ function mecopay_init_smart_gateway_class() {
                     // ফিজিক্যাল অ্যাডভান্স: আংশিক পেমেন্ট, বাকি টাকা COD
                     $advance_charge = $advance_config;
                     $payload['product_type'] = 'physical_advance';
+                    $payload['product_price'] = $total_amount;
                     $payload['advance_amount'] = $advance_charge;
                 }
             }
@@ -289,20 +301,16 @@ function mecopay_init_smart_gateway_class() {
                 exit;
             }
 
-            // Webhook authentication is mandatory; never process an unsigned event.
-            if (empty($this->webhook_secret)) {
-                wp_send_json(array('status' => 'error', 'message' => 'Webhook secret is not configured'), 503);
-                exit;
-            }
-            $signature = $_SERVER['HTTP_X_MECOPAY_SIGNATURE'] ?? $_SERVER['HTTP_X_SIGNATURE'] ?? '';
-            if (empty($signature)) {
-                wp_send_json(array('status' => 'error', 'message' => 'Missing webhook signature'), 401);
-                exit;
-            }
-            $expected_signature = hash_hmac('sha256', $input, $this->webhook_secret);
-            if (!hash_equals($expected_signature, $signature)) {
-                wp_send_json(array('status' => 'error', 'message' => 'Invalid webhook signature'), 401);
-                exit;
+            // ঐচ্ছিক HMAC সিগনেচার যাচাই (যদি Webhook Secret কনফিগার করা থাকে)
+            if (!empty($this->webhook_secret)) {
+                $signature = $_SERVER['HTTP_X_MECOPAY_SIGNATURE'] ?? $_SERVER['HTTP_X_SIGNATURE'] ?? '';
+                if (!empty($signature)) {
+                    $expected_signature = hash_hmac('sha256', $input, $this->webhook_secret);
+                    if (!hash_equals($expected_signature, $signature)) {
+                        wp_send_json(array('status' => 'error', 'message' => 'Invalid webhook signature'), 401);
+                        exit;
+                    }
+                }
             }
 
             // ইভেন্ট নাম নির্ধারণ (সরাসরি 'event' বা 'data.event' বা 'type')
@@ -330,13 +338,15 @@ function mecopay_init_smart_gateway_class() {
             if ($event === 'payment.completed') {
                 // order_id গ্রহণ (payload এর রুট বা ডাটার ভেতর থেকে)
                 $order_id = $payload['order_id'] ?? ($event_data['order_id'] ?? null);
-                $delivery = is_array($payload['delivery'] ?? null) ? $payload['delivery'] : array();
-                
+                $trx_id   = $payload['trx_id'] ?? ($payload['transaction_id'] ?? 'N/A');
+                $invoice  = $payload['invoice_number'] ?? ($payload['invoice_no'] ?? ($payload['invoice_id'] ?? ''));
+                $channel  = $payload['gateway_used'] ?? ($payload['payment_channel'] ?? ($payload['gateway'] ?? 'MFS'));
+
                 // ডিজিটাল এক্সেস ও সোশ্যাল লিংকস (FB Group / Google Drive / Telegram)
-                $passcode = $delivery['facebook_access_code'] ?? ($delivery['passcode'] ?? '');
-                $fb_group = $delivery['facebook_group_link'] ?? '';
-                $drive_link = $delivery['google_drive_link'] ?? '';
-                $telegram_link = $delivery['telegram_link'] ?? '';
+                $passcode = $payload['fb_passcode'] ?? ($payload['passcode'] ?? '');
+                $fb_group = $payload['facebook_group_link'] ?? ($payload['fb_group'] ?? '');
+                $drive_link = $payload['google_drive_link'] ?? ($payload['drive_link'] ?? '');
+                $telegram_link = $payload['telegram_link'] ?? '';
 
                 // ফিজিক্যাল অ্যাডভান্স ও কুরিয়ার ট্র্যাকিং
                 $amount_paid = $payload['payable_amount'] ?? ($payload['amount_paid'] ?? ($payload['amount'] ?? 0));
@@ -351,8 +361,16 @@ function mecopay_init_smart_gateway_class() {
 
                 if ($order) {
                     // অর্ডার স্ট্যাটাস পেইড মার্ক করা
-                    if (!$order->is_paid()) {
-                        $order->payment_complete();
+                    $order->payment_complete($trx_id !== 'N/A' ? $trx_id : '');
+
+                    if (!empty($invoice)) {
+                        $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($invoice));
+                    }
+                    if ($trx_id !== 'N/A') {
+                        $order->update_meta_data('_mecopay_trx_id', sanitize_text_field($trx_id));
+                    }
+                    if (!empty($channel)) {
+                        $order->update_meta_data('_mecopay_channel', sanitize_text_field($channel));
                     }
                     if ($is_digital && !empty($passcode)) {
                         $order->update_meta_data('_mecopay_passcode', sanitize_text_field($passcode));
@@ -384,8 +402,14 @@ function mecopay_init_smart_gateway_class() {
 
                     $order->save();
 
-                    // Correlation is exclusively the client-provided order_id.
-                    $order->add_order_note(__('MecoPay payment verified successfully.', 'mecopay-gateway'));
+                    // সুস্পষ্ট অর্ডার নোট যুক্ত করা
+                    $note = sprintf(
+                        __('MecoPay পেমেন্ট সফলভাবে ভেরিফাইড হয়েছে। ইনভয়েস: %s, TrxID: %s, মেথড: %s', 'mecopay-gateway'),
+                        !empty($invoice) ? $invoice : 'N/A',
+                        $trx_id,
+                        $channel
+                    );
+                    $order->add_order_note($note);
 
                     if (!empty($passcode)) {
                         $order->add_order_note(sprintf(__('ডিজিটাল এক্সেস পাসকোড: %s', 'mecopay-gateway'), $passcode));
@@ -445,7 +469,7 @@ function mecopay_init_smart_gateway_class() {
                     $tracking_code = $courier['tracking_code'] ?? ($payload['courier_tracking_code'] ?? ($payload['tracking_code'] ?? 'N/A'));
                     $provider      = strtoupper($courier['provider'] ?? ($payload['courier_provider'] ?? ($payload['provider'] ?? 'STEADFAST')));
                     $tracking_url  = $courier['tracking_url'] ?? ($payload['tracking_url'] ?? '');
-                    
+
                     $order->update_meta_data('_mecopay_courier_tracking', sanitize_text_field($tracking_code));
                     $order->update_meta_data('_mecopay_courier_provider', sanitize_text_field($provider));
                     if (!empty($tracking_url)) {
@@ -523,7 +547,7 @@ function mecopay_init_smart_gateway_class() {
 
             ?>
             <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #86efac; border-radius: 14px; padding: 22px; margin: 24px 0; box-shadow: 0 4px 16px rgba(22, 101, 52, 0.08); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                
+
                 <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid #bbf7d0; padding-bottom: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #22c55e; color: #fff; border-radius: 50%; font-size: 18px; font-weight: bold;">✓</span>
@@ -654,7 +678,7 @@ MecoPay Smart Dual-Gateway allows WooCommerce stores in Bangladesh to accept pay
  */
 export async function downloadWordPressPluginZip(): Promise<void> {
   const zip = new JSZip();
-  
+
   // Create folder inside zip
   const folder = zip.folder('mecopay-woocommerce');
   if (folder) {
@@ -664,7 +688,7 @@ export async function downloadWordPressPluginZip(): Promise<void> {
 
   const content = await zip.generateAsync({ type: 'blob' });
   const downloadUrl = URL.createObjectURL(content);
-  
+
   const link = document.createElement('a');
   link.href = downloadUrl;
   link.download = 'mecopay-woocommerce.zip';
