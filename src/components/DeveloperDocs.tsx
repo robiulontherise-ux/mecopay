@@ -161,7 +161,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Layers className="w-4 h-4" /> ১. ৩ ধরনের প্রোডাক্ট ও JSON
+          <Layers className="w-4 h-4" /> ১. ৪ ধরনের প্রোডাক্ট ও JSON
         </button>
 
         <button
@@ -430,7 +430,7 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">মুদ্রার কোড (যেমন: <code>"USD"</code>, <code>"BDT"</code>, <code>"EUR"</code>, <code>"GBP"</code>)। <strong>বাধ্যতামূলক:</strong> বিভিন্ন দেশে ও গেটওয়েতে মুদ্রার মানের ভিন্নতার কারণে কারেন্সি উল্লেখ করা বাধ্যতামূলক। পে-লোডে না পেলে ব্র্যান্ড/গেটওয়ে কনফিগ থেকে ফ্রন্টএন্ডে কারেন্সি প্রদর্শিত হবে।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">total_amount</td>
+                      <td className="p-3 font-mono text-amber-300">product_price</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">পণ্যের মূল মূল্য (যেমন: ১২৫০ ৳)।</td>
                     </tr>
@@ -560,7 +560,7 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">মুদ্রার কোড (যেমন: <code>"USD"</code>, <code>"BDT"</code>, <code>"INR"</code>)। <strong>বাধ্যতামূলক:</strong> অর্ডার ভ্যালু ও কুরিয়ার অ্যামাউন্ট সঠিক রাখতে কারেন্সি পাঠানো আবশ্যক। পে-লোডে না পেলে ব্র্যান্ড/গেটওয়ে কনফিগ থেকে ফ্রন্টএন্ডে প্রদর্শিত হবে।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-emerald-300">total_amount</td>
+                      <td className="p-3 font-mono text-emerald-300">product_price</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">পণ্যের মোট মূল্য (যেমন: ১২০০ ৳)।</td>
                     </tr>
@@ -926,8 +926,10 @@ HEADERS:
     "product_name": "Fullstack AI Mastery Course",
     "product_type": "digital",
     "currency": "USD",
-    "amount": 1500,
-    "total_amount": 1500,
+    "product_price": 1500,
+    "total_price": 1500,
+    "payable_amount": 1500,
+    "cod_due": 0,
     "status": "paid",
     "delivery": {
       "telegram_link": "https://t.me/+join_onetime_secret",
@@ -954,11 +956,12 @@ HEADERS:
   "data": {
     "order_id": "ORD-7734",
     "product_name": "Wireless Noise Cancelling Headphones",
-    "product_type": "physical_advance",
+    "product_type": product_type,
     "currency": "USD",
-    "amount": 150,
-    "total_amount": 1250,
+    "product_price": 1250,
     "courier_charge": 120,
+    "total_price": 1370,
+    "payable_amount": 150,
     "cod_due": 1220,
     "status": "paid",
     "courier": {
@@ -986,9 +989,10 @@ HEADERS:
     "product_name": "Leather Executive Wallet",
     "product_type": "physical_cod",
     "currency": "USD",
-    "amount": 0,
-    "total_amount": 1200,
+    "product_price": 1200,
     "courier_charge": 120,
+    "total_price": 1320,
+    "payable_amount": 0,
     "cod_due": 1320,
     "status": "cod_confirmed",
     "courier": {
@@ -1159,7 +1163,7 @@ const digitalJsonPayload = `{
   "product_name": "Fullstack AI Mastery Course",
   "product_type": "digital",
   "currency": "USD",
-  "amount": 1500,
+  "product_price": 1500,
   "success_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
   "customer_name": "Rahim Ahmed",
@@ -1173,9 +1177,9 @@ const digitalJsonPayload = `{
 const advanceJsonPayload = `{
   "order_id": "ORD-7734",
   "product_name": "Wireless Noise Cancelling Headphones",
-  "product_type": "physical_advance",
+  "product_type": product_type,
   "currency": "USD",
-  "total_amount": 1250,
+  "product_price": 1250,
   "courier_charge": 120,
   "advance_amount": 150,
   "fulfillment_type": "dropship",
@@ -1192,10 +1196,8 @@ const fullPaymentJsonPayload = `{
   "product_name": "Premium Physical Product",
   "product_type": "physical_full_payment",
   "currency": "USD",
-  "total_amount": 1250,
+  "product_price": 1250,
   "courier_charge": 120,
-  "amount": 1370,
-  "advance_amount": 1370,
   "success_url": "https://yourwebsite.com/order/success",
   "cancel_url": "https://yourwebsite.com/checkout",
   "customer_name": "Karim Hasan",
@@ -1208,9 +1210,8 @@ const codJsonPayload = `{
   "product_name": "Leather Executive Wallet",
   "product_type": "physical_cod",
   "currency": "USD",
-  "total_amount": 1200,
+  "product_price": 1200,
   "courier_charge": 120,
-  "amount": 0,
   "fulfillment_type": "own_inventory",
   "success_url": "https://yourwebsite.com/order/success",
   "cancel_url": "https://yourwebsite.com/checkout",
@@ -1273,7 +1274,7 @@ class PaymentController extends Controller
         }
 
         // -------------------------------------------------------------------------
-        // গার্ড ৩: ৩ ধরনের প্রোডাক্টের স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+        // গার্ড ৩: ৪ ধরনের প্রোডাক্টের স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
         // -------------------------------------------------------------------------
         // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
         // $isDigital = (!empty($product->download_link) || in_array($product->category_id, [1, 5]));
@@ -1309,7 +1310,7 @@ class PaymentController extends Controller
             if ($price <= 0) {
                 return back()->with('error', 'ডিজিটাল প্রোডাক্টের জন্য মূল্য (price) আবশ্যক।');
             }
-            $payload['amount'] = $price;
+            $payload['product_price'] = $price;
             $payload['telegram_link'] = $request->input('telegram_link', 'https://t.me/+secret_link');
             $payload['facebook_group_link'] = $request->input('facebook_group_link');
             $payload['google_drive_link'] = $request->input('google_drive_link');
@@ -1320,19 +1321,19 @@ class PaymentController extends Controller
             }
             // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি; total-এর সমান হলে due COD শূন্য হবে:
             $advanceAmount = (float) $request->input('advance_amount', 0);
-            $payload['total_amount']   = $price;
+            $payload['product_price'] = $price;
             $payload['courier_charge'] = $courierCharge;
             $payload['advance_amount'] = $advanceAmount;
         } elseif ($productType === 'physical_full_payment') {
-            $payload['total_amount'] = $price;
+            $payload['product_price'] = $price;
             $payload['courier_charge'] = $courierCharge;
-            $payload['amount'] = $price + $courierCharge;
+            $payload['product_price'] = $price;
             $payload['advance_amount'] = $price + $courierCharge;
         } else { // physical_cod
             // ১০০% ক্যাশ অন ডেলিভারি: গেটওয়ে চার্জ ০ এবং বাকি টাকা কুরিয়ার ডিউ
-            $payload['total_amount']   = $price;
+            $payload['product_price'] = $price;
             $payload['courier_charge'] = $courierCharge;
-            $payload['amount']         = 0;
+            $payload['product_price'] = $price;
         }
 
         // MecoPay Worker Endpoint এ একক সেন্ট্রাল POST Call
@@ -1399,7 +1400,7 @@ if (!empty($cart)) {
 }
 
 // -------------------------------------------------------------------------
-// গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+// গার্ড ৩: ৪ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
 // -------------------------------------------------------------------------
 // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
 // $isDigital = (!empty($product['download_link']) || in_array($product['category_id'] ?? 0, [3, 7]));
@@ -1434,22 +1435,21 @@ $payload = [
 
 if ($productType === 'digital') {
     if ($price <= 0) die("ডিজিটাল পণ্যের মূল্য আবশ্যক।");
-    $payload['amount'] = $price;
+    $payload['product_price'] = $price;
     $payload['telegram_link'] = "https://t.me/+join_chat";
 } elseif ($productType === 'physical_advance') {
     $advance = (float) ($_POST['advance_amount'] ?? 0); // total-এর সমান হলে physical full payment
-    $payload['total_amount']   = $price;
+    $payload['product_price'] = $price;
     $payload['courier_charge'] = $courierCharge;
     $payload['advance_amount'] = $advance;
 } elseif ($productType === 'physical_full_payment') {
-    $payload['total_amount'] = $price;
+    $payload['product_price'] = $price;
     $payload['courier_charge'] = $courierCharge;
-    $payload['amount'] = $price + $courierCharge;
-    $payload['advance_amount'] = $price + $courierCharge;
+    $payload['product_price'] = $price;
 } else { // physical_cod
-    $payload['total_amount']   = $price;
+    $payload['product_price'] = $price;
     $payload['courier_charge'] = $courierCharge;
-    $payload['amount']         = 0;
+    $payload['product_price'] = $price;
 }
 
 // cURL রিকোয়েস্ট একক এন্ডপয়েন্টে
@@ -1531,7 +1531,7 @@ app.post('/api/checkout', async (req, res) => {
     }
 
     // -------------------------------------------------------------------------
-    // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+    // গার্ড ৩: ৪ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     // -------------------------------------------------------------------------
     // ৫০০+ পুরোনো পণ্যের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
     // const isDigital = Boolean(product?.download_link || [3, 7].includes(product?.category_id));
@@ -1558,22 +1558,21 @@ app.post('/api/checkout', async (req, res) => {
 
     if (finalProductType === 'digital') {
       if (!price || price <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
-      payload.amount = Number(price);
+      payload.product_price = Number(price);
       payload.telegram_link = 'https://t.me/+join_group';
     } else if (finalProductType === 'physical_advance') {
       if (!price || price <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
-      payload.total_amount = Number(price);
+      payload.product_price = Number(price);
       payload.courier_charge = Number(courier_charge);
       payload.advance_amount = Number(advance_amount);
     } else if (finalProductType === 'physical_full_payment') {
-      payload.total_amount = Number(price);
+      payload.product_price = Number(price);
       payload.courier_charge = Number(courier_charge);
-      payload.amount = Number(price) + Number(courier_charge);
-      payload.advance_amount = payload.amount;
+      payload.product_price = Number(price);
     } else { // physical_cod
-      payload.total_amount = Number(price);
+      payload.product_price = Number(price);
       payload.courier_charge = Number(courier_charge);
-      payload.amount = 0;
+      payload.product_price = price;
     }
 
     const response = await axios.post(MECOPAY_ENDPOINT, payload, {
@@ -1630,7 +1629,7 @@ async function initiateMecoPayCheckout(orderData) {
   }
 
   // -------------------------------------------------------------------------
-  // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+  // গার্ড ৩: ৪ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
   // -------------------------------------------------------------------------
   // ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন ফলব্যাক:
   // const isDigital = Boolean(item.download_link || [3, 7].includes(item.category_id));
@@ -1658,22 +1657,21 @@ async function initiateMecoPayCheckout(orderData) {
   };
 
   if (finalProductType === 'digital') {
-    payload.amount = price;
+    payload.product_price = price;
     payload.telegram_link = orderData.telegram_link || "https://t.me/+vip_invite";
   } else if (finalProductType === 'physical_advance') {
     const advance = Number(orderData.advance_amount || 0); // total-এর সমান হলে physical full payment
-    payload.total_amount = price;
+    payload.product_price = price;
     payload.courier_charge = courierCharge;
     payload.advance_amount = advance;
   } else if (finalProductType === 'physical_full_payment') {
-    payload.total_amount = price;
+    payload.product_price = price;
     payload.courier_charge = courierCharge;
-    payload.amount = price + courierCharge;
-    payload.advance_amount = payload.amount;
+    payload.product_price = price;
   } else { // physical_cod
-    payload.total_amount = price;
+    payload.product_price = price;
     payload.courier_charge = courierCharge;
-    payload.amount = 0;
+    payload.product_price = price;
   }
 
   try {
@@ -1733,7 +1731,7 @@ def create_checkout_session(request_data):
             return {"error": "কার্ট পলিসি এরর: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।"}
 
     # -------------------------------------------------------------------------
-    # গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+    # গার্ড ৩: ৪ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     # -------------------------------------------------------------------------
     # ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
     # is_digital = bool(product.get("download_link") or product.get("category_id") in [3, 7])
@@ -1760,22 +1758,21 @@ def create_checkout_session(request_data):
     if product_type == 'digital':
         if price <= 0:
             return {"error": "ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।"}
-        payload["amount"] = price
+        payload["product_price"] = price
         payload["telegram_link"] = "https://t.me/+vip_invite"
     elif product_type == 'physical_advance':
         advance = float(request_data.get('advance_amount') or 0)
-        payload["total_amount"] = price
+        payload["product_price"] = price
         payload["courier_charge"] = courier_charge
         payload["advance_amount"] = advance
     elif product_type == 'physical_full_payment':
-        payload["total_amount"] = price
+        payload["product_price"] = price
         payload["courier_charge"] = courier_charge
-        payload["amount"] = price + courier_charge
-        payload["advance_amount"] = payload["amount"]
+        payload["product_price"] = price + courier_charge
     else: # physical_cod
-        payload["total_amount"] = price
+        payload["product_price"] = price
         payload["courier_charge"] = courier_charge
-        payload["amount"] = 0
+        payload["product_price"] = price
 
     headers = {
         "Authorization": f"Bearer {MECOPAY_API_KEY}",
@@ -1847,7 +1844,7 @@ class MecoPayWebhookController extends Controller
         // -------------------------------------------------------------------------
         if ($event === 'payment.completed') {
             $productType = $data['order_type'] ?? $data['product_type'] ?? $order->product_type ?? 'digital';
-            $paidAmount = $data['amount'] ?? $data['amount_paid'] ?? 0;
+            $paidAmount = $data['payable_amount'] ?? $data['amount_paid'] ?? $data['amount'] ?? 0;
 
             if ($productType === 'digital') {
                 // ডিজিটাল প্রোডাক্ট: ১০০% পেমেন্ট সফল, অ্যাক্সেস ও ডেলিভারি লিংক সংরক্ষণ
@@ -1903,9 +1900,9 @@ class MecoPayWebhookController extends Controller
             } else {
                 return response()->json([
                     'status' => 'success',
-                    'message' => 'Advance payment recorded and courier tracking initialized.',
+                    'message' => 'Physical payment recorded and courier tracking initialized.',
                     'order_id' => $orderId,
-                    'product_type' => 'physical_advance',
+                    'product_type' => $productType,
                     'advance_amount' => $paidAmount,
                     'courier_due' => $data['cod_due'] ?? $order->cod_due,
                     'courier_provider' => $provider,
@@ -2012,7 +2009,7 @@ $pdo = new PDO("mysql:host=localhost;dbname=your_store_db;charset=utf8mb4", "db_
 // -------------------------------------------------------------------------
 if ($event === 'payment.completed') {
     $productType = $data['order_type'] ?? $data['product_type'] ?? 'digital';
-    $paidAmount = (float)($data['amount'] ?? $data['amount_paid'] ?? 0);
+    $paidAmount = (float)($data['payable_amount'] ?? $data['amount_paid'] ?? $data['amount'] ?? 0);
             $delivery = is_array($data['delivery'] ?? null) ? $data['delivery'] : [];
             $passcode = $delivery['facebook_access_code'] ?? $delivery['passcode'] ?? '';
             $telegramLink = $delivery['telegram_link'] ?? '';
@@ -2048,9 +2045,9 @@ if ($event === 'payment.completed') {
 
         echo json_encode([
             'status' => 'success',
-            'message' => 'Advance payment recorded and courier tracking initialized.',
+            'message' => 'Physical payment recorded and courier tracking initialized.',
             'order_id' => $orderId,
-            'product_type' => 'physical_advance',
+            'product_type' => $productType,
             'advance_amount' => $paidAmount,
             'cod_due' => $codDue,
             'courier_provider' => $provider,
@@ -2140,7 +2137,7 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     // -------------------------------------------------------------------------
     if (event === 'payment.completed') {
       const productType = eventData.order_type || eventData.product_type || 'digital';
-      const paidAmount = eventData.amount || eventData.amount_paid;
+      const paidAmount = eventData.payable_amount ?? eventData.amount_paid ?? eventData.amount;
 
       if (productType === 'digital') {
         // ডিজিটাল: ১০০% পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক প্রদান
@@ -2175,9 +2172,9 @@ app.post('/api/mecopay/webhook', async (req, res) => {
 
         return res.status(200).json({
           status: 'success',
-          message: 'Advance payment recorded and courier tracking initialized.',
+          message: 'Physical payment recorded and courier tracking initialized.',
           order_id: orderId,
-          product_type: 'physical_advance',
+          product_type: productType,
           advance_amount: paidAmount,
           cod_due: codDue,
           courier_provider: provider,
@@ -2277,7 +2274,7 @@ def mecopay_webhook_view(request):
     # -------------------------------------------------------------------------
     if event == "payment.completed":
         product_type = data.get("order_type") or data.get("product_type") or "digital"
-        paid_amount = data.get("amount") or data.get("amount_paid")
+        paid_amount = data.get("payable_amount") or data.get("amount_paid") or data.get("amount")
 
         if product_type == "digital":
             # ডিজিটাল প্রোডাক্ট: ১০০% পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক ডেলিভারি
@@ -2313,9 +2310,9 @@ def mecopay_webhook_view(request):
 
             return JsonResponse({
                 "status": "success",
-                "message": "Advance payment recorded and courier tracking initialized.",
+                "message": "Physical payment recorded and courier tracking initialized.",
                 "order_id": order_id,
-                "product_type": "physical_advance",
+                "product_type": product_type,
                 "advance_amount": paid_amount,
                 "cod_due": cod_due,
                 "courier_provider": provider,

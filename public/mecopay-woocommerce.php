@@ -210,33 +210,27 @@ function mecopay_init_smart_gateway_class() {
             if ($is_digital) {
                 // ডিজিটাল প্রোডাক্ট: ১০০% ফুল পেমেন্ট
                 $payload['product_type'] = 'digital';
-                $payload['amount']       = $total_amount;
-                $payload['price']        = $total_amount;
-                $payload['total_amount'] = $total_amount;
+                $payload['product_price'] = $total_amount;
             } else {
                 // ফিজিক্যাল প্রোডাক্ট চেকার: ১০০% সিওডি নাকি অ্যাডভান্স
-                $payload['total_amount']   = $total_amount;
+                $payload['product_price'] = $total_amount;
                 $payload['courier_charge'] = $shipping_fee;
 
                 if ($advance_config <= 0) {
                     // ১০০% ক্যাশ অন ডেলিভারি (Just Form): গেটওয়ে চার্জ ০
                     $payload['product_type'] = 'physical_cod';
-                    $payload['amount']       = 0;
-                    $payload['price']        = 0;
-                    $payload['advance_amount']= 0;
+                    $payload['product_price'] = $total_amount;
+                    $payload['advance_amount'] = 0;
                 } elseif ($advance_config >= ($total_amount + $shipping_fee)) {
                     // ফিজিক্যাল ফুল পেমেন্ট: পণ্য + কুরিয়ার চার্জ সম্পূর্ণ অনলাইনে
                     $full_payment = $total_amount + $shipping_fee;
                     $payload['product_type'] = 'physical_full_payment';
-                    $payload['amount']       = $full_payment;
-                    $payload['price']        = $full_payment;
-                    $payload['advance_amount'] = $full_payment;
+                    $payload['product_price'] = $total_amount;
                 } else {
                     // ফিজিক্যাল অ্যাডভান্স: আংশিক পেমেন্ট, বাকি টাকা COD
                     $advance_charge = $advance_config;
                     $payload['product_type'] = 'physical_advance';
-                    $payload['amount']       = $advance_charge;
-                    $payload['price']        = $advance_charge;
+                    $payload['product_price'] = $total_amount;
                     $payload['advance_amount'] = $advance_charge;
                 }
             }
@@ -354,7 +348,7 @@ function mecopay_init_smart_gateway_class() {
                 $telegram_link = $payload['telegram_link'] ?? '';
 
                 // ফিজিক্যাল অ্যাডভান্স ও কুরিয়ার ট্র্যাকিং
-                $amount_paid = $payload['amount_paid'] ?? ($payload['amount'] ?? 0);
+                $amount_paid = $payload['payable_amount'] ?? ($payload['amount_paid'] ?? ($payload['amount'] ?? 0));
                 $cod_due = $payload['cod_due'] ?? null;
                 $tracking_code = $payload['courier_tracking_code'] ?? ($payload['courier']['tracking_code'] ?? '');
                 $tracking_url = $payload['tracking_url'] ?? ($payload['courier']['tracking_url'] ?? '');

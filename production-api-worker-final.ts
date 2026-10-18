@@ -147,11 +147,16 @@ export default {
         product_name = 'Custom Product',
         product_type = 'digital',
         currency = null,
-        price = 0,
-        amount = 0,
-        total_amount = 0,
-        advance_amount = 0,
+        product_price = null,
         courier_charge = 0,
+        advance_amount = 0,
+        total_price = null,
+        payable_amount = null,
+        cod_due = null,
+        // Legacy aliases are accepted for existing clients but never returned as public fields.
+        price = null,
+        amount = null,
+        total_amount = null,
         customer_name = 'Customer',
         customer_phone = '',
         customer_email = '',
@@ -196,9 +201,10 @@ export default {
         });
       }
 
-      const totalOrderAmount = Number(total_amount || price || amount || 0);
+      const productPrice = Number(product_price ?? total_amount ?? price ?? amount ?? 0);
+      const courierCharge = Number(courier_charge ?? 0);
+      const derivedTotalPrice = productPrice + courierCharge;
       const successUrl = String(success_url || '').trim();
-      const courierCharge = Number(courier_charge || 0);
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
       const supabaseUrl = env.SUPABASE_URL;
       const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -243,9 +249,6 @@ export default {
           product_name,
           product_type: 'physical_cod',
           amount: 0,
-          total_amount: totalOrderAmount,
-          advance_amount: 0,
-          cod_due: totalOrderAmount + courierCharge,
           status: 'cod_confirmed',
           courier_status: brand.auto_courier_on_full_cod ? 'queued_for_booking' : 'pending_confirmation',
           metadata: {
@@ -255,6 +258,11 @@ export default {
             cancel_url: cancel_url || null,
             order_id: order_id || null,
             cart_items,
+            product_price: productPrice,
+            courier_charge: courierCharge,
+            total_price: derivedTotalPrice,
+            payable_amount: 0,
+            cod_due: derivedTotalPrice,
             auto_courier: Boolean(brand.auto_courier_on_full_cod),
             placed_via: 'api_worker_full_cod',
             timestamp: new Date().toISOString()
@@ -287,9 +295,11 @@ export default {
           status: 'cod_confirmed',
           invoice_id: createdInvoice.id,
           invoice_number: createdInvoice.invoice_number,
-          total_amount: totalOrderAmount,
-          advance_amount: 0,
-          cod_due: totalOrderAmount + courierCharge,
+          product_price: productPrice,
+          courier_charge: courierCharge,
+          total_price: derivedTotalPrice,
+          payable_amount: 0,
+          cod_due: derivedTotalPrice,
           currency: orderCurrency,
           auto_courier_queued: Boolean(brand.auto_courier_on_full_cod),
           success_url: successUrl || null,
@@ -321,14 +331,14 @@ export default {
       let calculatedDue = 0;
 
       if (isDigital) {
-        payableAmount = totalOrderAmount;
+        payableAmount = productPrice;
         calculatedDue = 0;
       } else if (isAdvance) {
         const adv = Number(advance_amount || 0);
-        payableAmount = adv > 0 ? adv : totalOrderAmount;
-        calculatedDue = Math.max(0, (totalOrderAmount + courierCharge) - payableAmount);
+        payableAmount = adv > 0 ? adv : productPrice;
+        calculatedDue = Math.max(0, (productPrice + courierCharge) - payableAmount);
       } else if (isFullPayment) {
-        payableAmount = totalOrderAmount + courierCharge;
+        payableAmount = productPrice + courierCharge;
         calculatedDue = 0;
       }
 
@@ -358,9 +368,6 @@ export default {
         product_name,
         product_type: isDigital ? 'digital' : (isFullPayment ? 'physical_full_payment' : 'physical_advance'),
         amount: payableAmount,
-        total_amount: totalOrderAmount,
-        advance_amount: (isAdvance || isFullPayment) ? payableAmount : 0,
-        cod_due: calculatedDue,
         status: 'Pending',
         gateway_used: gatewayMode,
         redirect_link: successUrl || null,
@@ -369,8 +376,9 @@ export default {
           currency: orderCurrency,
           order_id: order_id || null,
           cart_items,
-          courier_charge,
-          total_order_amount: totalOrderAmount,
+          courier_charge: courierCharge,
+          product_price: productPrice,
+          total_price: derivedTotalPrice,
           payable_amount: payableAmount,
           cod_due: calculatedDue,
           gateway_mode: gatewayMode,
@@ -412,7 +420,9 @@ export default {
         requires_payment: true,
         invoice_id: invoice.id,
         invoice_number: invoice.invoice_number,
-        total_amount: totalOrderAmount,
+        product_price: productPrice,
+        courier_charge: courierCharge,
+        total_price: derivedTotalPrice,
         payable_amount: payableAmount,
         cod_due: calculatedDue,
         currency: orderCurrency,
