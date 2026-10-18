@@ -5,7 +5,7 @@ export const WORDPRESS_PLUGIN_PHP_CODE = `<?php
  * Plugin Name: MecoPay Smart Dual-Gateway for WooCommerce
  * Plugin URI: https://mecopay.space
  * Description: High-Performance bKash, Nagad, Rocket, Upay & Card payment gateway with Zero-Waste Full COD courier automation and instant digital delivery portal. Fully synchronized with MecoPay API Worker & Edge Functions.
- * Version: 2.7.0
+ * Version: 2.8.0
  * Author: MecoPay
  * Author URI: https://mecopay.space
  * Text Domain: mecopay-gateway
@@ -257,11 +257,15 @@ function mecopay_init_smart_gateway_class() {
             $status_code = wp_remote_retrieve_response_code($response);
             $body = json_decode(wp_remote_retrieve_body($response), true);
 
-            // ইনভয়েস নম্বর বা সেশন ট্র্যাকিং লোকাল মেটাডাটাতে সংরক্ষণ
+            // API contract identifiers: keep both MecoPay invoice and merchant/WooCommerce order IDs.
             if (!empty($body['invoice_number'])) {
                 $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($body['invoice_number']));
-                $order->save();
             }
+            if (!empty($body['invoice_id'])) {
+                $order->update_meta_data('_mecopay_invoice_id', sanitize_text_field($body['invoice_id']));
+            }
+            $order->update_meta_data('_mecopay_order_id', (string) $order_id);
+            $order->save();
 
             // রিডাইরেক্ট লিঙ্ক গ্রহণ (checkout_url অথবা payment_url)
             $checkout_url = !empty($body['checkout_url']) ? $body['checkout_url'] : (!empty($body['payment_url']) ? $body['payment_url'] : '');
@@ -275,7 +279,9 @@ function mecopay_init_smart_gateway_class() {
 
             // সরাসরি পেমেন্ট ছাড়া সম্পন্ন হলে (যেমন নো-পেমেন্ট বা ফুল সিওডি ব্যাকগ্রাউন্ড বুকিং)
             if (isset($body['requires_payment']) && $body['requires_payment'] === false) {
-                $order->payment_complete();
+                // Full COD is confirmed but not paid online; keep it unpaid/on-hold.
+                $order->update_status('on-hold', __('MecoPay Full COD order confirmed; payment is due on delivery.', 'mecopay-gateway'));
+                $order->add_order_note(sprintf(__('MecoPay invoice %s created for order %s.', 'mecopay-gateway'), $body['invoice_number'] ?? 'N/A', $order_id));
                 WC()->cart->empty_cart();
                 return array(
                     'result'   => 'success',
@@ -340,20 +346,23 @@ function mecopay_init_smart_gateway_class() {
                 $order_id = $payload['order_id'] ?? ($event_data['order_id'] ?? null);
                 $trx_id   = $payload['trx_id'] ?? ($payload['transaction_id'] ?? 'N/A');
                 $invoice  = $payload['invoice_number'] ?? ($payload['invoice_no'] ?? ($payload['invoice_id'] ?? ''));
+                $invoice_id = $payload['invoice_id'] ?? '';
+                $delivery = (isset($payload['delivery']) && is_array($payload['delivery'])) ? $payload['delivery'] : array();
                 $channel  = $payload['gateway_used'] ?? ($payload['payment_channel'] ?? ($payload['gateway'] ?? 'MFS'));
 
                 // ডিজিটাল এক্সেস ও সোশ্যাল লিংকস (FB Group / Google Drive / Telegram)
-                $passcode = $payload['fb_passcode'] ?? ($payload['passcode'] ?? '');
-                $fb_group = $payload['facebook_group_link'] ?? ($payload['fb_group'] ?? '');
-                $drive_link = $payload['google_drive_link'] ?? ($payload['drive_link'] ?? '');
-                $telegram_link = $payload['telegram_link'] ?? '';
+                $passcode = $payload['fb_passcode'] ?? ($payload['passcode'] ?? ($delivery['facebook_access_code'] ?? ($delivery['passcode'] ?? '')));
+                $fb_group = $payload['facebook_group_link'] ?? ($payload['fb_group'] ?? ($delivery['facebook_group_link'] ?? ''));
+                $drive_link = $payload['google_drive_link'] ?? ($payload['drive_link'] ?? ($delivery['google_drive_link'] ?? ''));
+                $telegram_link = $payload['telegram_link'] ?? ($delivery['telegram_link'] ?? '');
 
                 // ফিজিক্যাল অ্যাডভান্স ও কুরিয়ার ট্র্যাকিং
                 $amount_paid = $payload['payable_amount'] ?? ($payload['amount_paid'] ?? ($payload['amount'] ?? 0));
                 $cod_due = $payload['cod_due'] ?? null;
-                $tracking_code = $payload['courier_tracking_code'] ?? ($payload['courier']['tracking_code'] ?? '');
-                $tracking_url = $payload['tracking_url'] ?? ($payload['courier']['tracking_url'] ?? '');
-                $courier_provider = $payload['courier']['provider'] ?? ($payload['courier_provider'] ?? '');
+                $courier_data = (isset($payload['courier']) && is_array($payload['courier'])) ? $payload['courier'] : array();
+                $tracking_code = $payload['courier_tracking_code'] ?? ($courier_data['tracking_code'] ?? '');
+                $tracking_url = $payload['tracking_url'] ?? ($courier_data['tracking_url'] ?? '');
+                $courier_provider = $payload['courier_provider'] ?? ($courier_data['provider'] ?? '');
 
                 $product_type = $payload['product_type'] ?? ($event_data['product_type'] ?? 'digital');
                 $is_digital = ($product_type === 'digital');
@@ -366,6 +375,10 @@ function mecopay_init_smart_gateway_class() {
                     if (!empty($invoice)) {
                         $order->update_meta_data('_mecopay_invoice_number', sanitize_text_field($invoice));
                     }
+                    if (!empty($invoice_id)) {
+                        $order->update_meta_data('_mecopay_invoice_id', sanitize_text_field($invoice_id));
+                    }
+                    $order->update_meta_data('_mecopay_order_id', (string) $order_id);
                     if ($trx_id !== 'N/A') {
                         $order->update_meta_data('_mecopay_trx_id', sanitize_text_field($trx_id));
                     }
@@ -462,7 +475,7 @@ function mecopay_init_smart_gateway_class() {
             // -------------------------------------------------------------------------
             if ($event === 'order.courier_booked') {
                 $order_id = $payload['order_id'] ?? ($event_data['order_id'] ?? null);
-                $courier  = $payload['courier'] ?? array();
+                $courier  = (isset($payload['courier']) && is_array($payload['courier'])) ? $payload['courier'] : array();
                 $order    = $order_id ? wc_get_order($order_id) : null;
 
                 if ($order) {

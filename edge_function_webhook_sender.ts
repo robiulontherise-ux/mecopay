@@ -59,6 +59,8 @@ serve(async (req) => {
       tracking_url: metadata.tracking_url || invoice.tracking_url || null
     };
     const webhookData = {
+      invoice_id: invoice.id || null,
+      invoice_number: invoice.invoice_number || null,
       order_id: metadata.order_id || invoice.order_id || null,
       product_name: metadata.product_name || invoice.product_name || null,
       product_id: metadata.product_id || invoice.product_id || null,
@@ -70,6 +72,7 @@ serve(async (req) => {
       cod_due: metadata.cod_due ?? invoice.cod_due ?? 0,
       success_url: metadata.success_url || invoice.success_url || invoice.redirect_link || null,
       status: event === 'order.courier_booked' ? 'cod_confirmed' : 'paid',
+      payment_status: event === 'order.courier_booked' ? 'cod_pending' : 'paid',
       ...(isDigital ? { delivery: {
         telegram_link: metadata.telegram_link || invoice.telegram_link || null,
         facebook_group_link: metadata.facebook_group_link || invoice.facebook_group_link || null,
@@ -79,7 +82,7 @@ serve(async (req) => {
         digital_access: null
       } } : { courier })
     };
-    const webhookPayload = { event, event_time: new Date().toISOString(), data: webhookData };
+    const webhookPayload = { event, event_time: new Date().toISOString(), invoice_id: invoice.id || null, invoice_number: invoice.invoice_number || null, order_id: webhookData.order_id || null, status: webhookData.status, data: webhookData };
     const payloadString = JSON.stringify(webhookPayload);
     const secret = webhook.webhook_secret || invoice.brands?.webhook_secret || '';
     if (!secret) throw new Error('Webhook secret is not configured.');

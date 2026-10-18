@@ -222,7 +222,9 @@ serve(async (req) => {
           tracking_url: metadata.tracking_url || invoice.tracking_url || null
         };
         const webhookData = {
-          order_id: metadata.order_id || invoice.order_id || null,
+          invoice_id: invoice.id || null,
+      invoice_number: invoice.invoice_number || null,
+      order_id: metadata.order_id || invoice.order_id || null,
           product_name: metadata.product_name || invoice.product_name || null,
           product_id: metadata.product_id || invoice.product_id || null,
           product_type: productType,
@@ -242,7 +244,7 @@ serve(async (req) => {
             digital_access: digitalAccess || null
           } } : { courier })
         };
-        const webhookPayload = { event: 'payment.completed', event_time: new Date().toISOString(), data: webhookData };
+        const webhookPayload = { event: 'payment.completed', event_time: new Date().toISOString(), invoice_id: invoice.id || null, invoice_number: invoice.invoice_number || null, order_id: webhookData.order_id || null, status: webhookData.status, data: webhookData };
         const payloadString = JSON.stringify(webhookPayload);
         const hmacSignature = await createHmacSha256(secret, payloadString);
 
