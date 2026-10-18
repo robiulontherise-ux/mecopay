@@ -752,7 +752,6 @@ export default function CheckoutPage() {
           total_amount: linkData.total_amount ?? checkoutAmounts.total,
           amount: linkData.price ?? checkoutAmounts.total,
           courier_charge: linkData.courier_charge ?? 0,
-          cod_due: linkData.cod_due ?? 0,
           telegram_link: linkData.product_type === 'digital' ? (linkData.telegram_link || null) : null,
           facebook_group_link: linkData.product_type === 'digital' ? (linkData.facebook_group_link || null) : null,
           facebook_access_code: linkData.product_type === 'digital' ? (linkData.facebook_access_code || null) : null,

@@ -213,13 +213,11 @@ function mecopay_init_smart_gateway_class() {
                     // ১০০% ক্যাশ অন ডেলিভারি (Just Form): গেটওয়ে চার্জ ০
                     $payload['product_type'] = 'physical_cod';
                     $payload['amount']       = 0;
-                    $payload['cod_due']      = $total_amount + $shipping_fee;
                 } else {
                     // অ্যাডভান্স ডেলিভারি ফি চার্জ + বাকি টাকা COD
                     $advance_charge = min($advance_config, $total_amount);
                     $payload['product_type'] = 'physical_advance';
                     $payload['advance_amount'] = $advance_charge;
-                    $payload['cod_due']      = max(0, ($total_amount + $shipping_fee) - $advance_charge);
                 }
             }
 

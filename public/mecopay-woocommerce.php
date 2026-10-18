@@ -224,7 +224,6 @@ function mecopay_init_smart_gateway_class() {
                     $payload['product_type'] = 'physical_cod';
                     $payload['amount']       = 0;
                     $payload['price']        = 0;
-                    $payload['cod_due']      = $total_amount + $shipping_fee;
                     $payload['advance_amount']= 0;
                 } else {
                     // অ্যাডভান্স ডেলিভারি ফি চার্জ + বাকি টাকা COD
@@ -233,7 +232,6 @@ function mecopay_init_smart_gateway_class() {
                     $payload['amount']       = $advance_charge;
                     $payload['price']        = $advance_charge;
                     $payload['advance_amount']= $advance_charge;
-                    $payload['cod_due']      = max(0, ($total_amount + $shipping_fee) - $advance_charge);
                 }
             }
 

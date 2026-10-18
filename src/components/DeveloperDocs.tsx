@@ -429,11 +429,6 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">অনলাইন গেটওয়েতে কাস্টমার থেকে তাৎক্ষণিক advance charge (যেমন: ১৫০ ৳)। Total-এর সমান বা বেশি হলে due COD শূন্য হবে।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">cod_due</td>
-                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">কুরিয়ার ডেলিভারিতে অবশিষ্ট collection; advance_amount total-এর সমান হলে due COD = ০।</td>
-                    </tr>
-                    <tr>
                       <td className="p-3 font-mono text-amber-300">callback_url</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
                       <td className="p-3 text-slate-300">পেমেন্ট সফল হলে আপনার ওয়েবসাইটের অর্ডার সাকসেস পেজে রিডাইরেক্ট করার URL।</td>
@@ -540,11 +535,6 @@ export default function DeveloperDocs() {
                       <td className="p-3 font-mono text-emerald-300">courier_charge</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">ডেলিভারি চার্জ (যেমন: ১২০ ৳)।</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-mono text-emerald-300">cod_due</td>
-                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">কুরিয়ারের কাছে মোট পাওনা = <code>total_amount + courier_charge</code> = ১৩২০ ৳।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-emerald-300">amount</td>
@@ -1155,7 +1145,6 @@ const advanceJsonPayload = `{
   "total_amount": 1250,
   "courier_charge": 120,
   "advance_amount": 150,
-  "cod_due": 1220,
   "fulfillment_type": "dropship",
   "callback_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
@@ -1173,7 +1162,6 @@ const codJsonPayload = `{
   "total_amount": 1200,
   "courier_charge": 120,
   "amount": 0,
-  "cod_due": 1320,
   "fulfillment_type": "own_inventory",
   "callback_url": "https://yourwebsite.com/order/success",
   "cancel_url": "https://yourwebsite.com/checkout",
@@ -1286,13 +1274,11 @@ class PaymentController extends Controller
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
             $payload['advance_amount'] = min($advanceAmount, $price);
-            $payload['cod_due']        = max(0, ($price + $courierCharge) - $payload['advance_amount']);
         } else { // physical_cod
             // ১০০% ক্যাশ অন ডেলিভারি: গেটওয়ে চার্জ ০ এবং বাকি টাকা কুরিয়ার ডিউ
             $payload['total_amount']   = $price;
             $payload['courier_charge'] = $courierCharge;
             $payload['amount']         = 0;
-            $payload['cod_due']        = $price + $courierCharge;
         }
 
         // MecoPay Worker Endpoint এ একক সেন্ট্রাল POST Call
@@ -1401,12 +1387,10 @@ if ($productType === 'digital') {
     $payload['total_amount']   = $price;
     $payload['courier_charge'] = $courierCharge;
     $payload['advance_amount'] = $advance;
-    $payload['cod_due']        = max(0, ($price + $courierCharge) - $advance);
 } else { // physical_cod
     $payload['total_amount']   = $price;
     $payload['courier_charge'] = $courierCharge;
     $payload['amount']         = 0;
-    $payload['cod_due']        = $price + $courierCharge;
 }
 
 // cURL রিকোয়েস্ট একক এন্ডপয়েন্টে
@@ -1522,12 +1506,10 @@ app.post('/api/checkout', async (req, res) => {
       payload.total_amount = Number(price);
       payload.courier_charge = Number(courier_charge);
       payload.advance_amount = Number(advance_amount);
-      payload.cod_due = Math.max(0, (Number(price) + Number(courier_charge)) - Number(advance_amount));
     } else { // physical_cod
       payload.total_amount = Number(price);
       payload.courier_charge = Number(courier_charge);
       payload.amount = 0;
-      payload.cod_due = Number(price) + Number(courier_charge);
     }
 
     const response = await axios.post(MECOPAY_ENDPOINT, payload, {
@@ -1619,12 +1601,10 @@ async function initiateMecoPayCheckout(orderData) {
     payload.total_amount = price;
     payload.courier_charge = courierCharge;
     payload.advance_amount = advance;
-    payload.cod_due = Math.max(0, (price + courierCharge) - advance);
   } else { // physical_cod
     payload.total_amount = price;
     payload.courier_charge = courierCharge;
     payload.amount = 0;
-    payload.cod_due = price + courierCharge;
   }
 
   try {
@@ -1718,12 +1698,10 @@ def create_checkout_session(request_data):
         payload["total_amount"] = price
         payload["courier_charge"] = courier_charge
         payload["advance_amount"] = advance
-        payload["cod_due"] = max(0, (price + courier_charge) - advance)
     else: # physical_cod
         payload["total_amount"] = price
         payload["courier_charge"] = courier_charge
         payload["amount"] = 0
-        payload["cod_due"] = price + courier_charge
 
     headers = {
         "Authorization": f"Bearer {MECOPAY_API_KEY}",

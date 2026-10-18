@@ -1278,7 +1278,6 @@ async function startServer() {
         amount = 0,
         total_amount = 0,
         courier_charge = 0,
-        cod_due = 0,
         currency = '',
         callback_url,
         cancel_url,
@@ -1327,7 +1326,7 @@ async function startServer() {
               total_amount: total_amount || 0,
               amount: amount || 0,
               courier_charge: courier_charge || 120,
-              cod_due: cod_due || ((total_amount || 0) + (courier_charge || 120)),
+              cod_due: (total_amount || 0) + (courier_charge || 120),
               telegram_link: telegram_link || null,
               facebook_group_link: facebook_group_link || null,
               facebook_access_code: facebook_access_code || null,
@@ -1386,6 +1385,12 @@ async function startServer() {
         }
       }
 
+      // cod_due is a server-calculated value. Clients only send total_amount,
+      // courier_charge and the advance payable amount; never trust client cod_due.
+      const calculatedCodDue = product_type === 'physical_advance'
+        ? Math.max(0, (Number(total_amount) + Number(courier_charge || 0)) - Number(amount))
+        : 0;
+
       // 3. Generate Stateless Secure Session
       const sessionData = {
         brand_id: brand.id,
@@ -1398,7 +1403,7 @@ async function startServer() {
         payable_amount: Number(amount) || 0,
         total_amount: Number(total_amount) || Number(amount) || 0,
         courier_charge: Number(courier_charge) || 0,
-        cod_due: Number(cod_due) || 0,
+        cod_due: calculatedCodDue,
         callback_url: callback_url || null,
         cancel_url: cancel_url || null,
         customer_name,
