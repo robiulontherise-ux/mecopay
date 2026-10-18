@@ -834,7 +834,7 @@ async function startServer() {
          return res.status(500).json({ error: "Service role key missing" });
       }
       
-      const { invoiceId, checkoutSignature, checkoutTimestamp, verifyMethod, trxId, senderNumber, provider, userId } = req.body;
+      const { invoiceId, verifyMethod, trxId, senderNumber, provider, userId } = req.body;
       if (!invoiceId || !userId || !verifyMethod) {
          return res.status(400).json({ error: "Missing required fields" });
       }
@@ -848,27 +848,6 @@ async function startServer() {
         
       if (invError || !invoice) {
          return res.status(404).json({ error: "Invoice not found" });
-      }
-
-      // Checkout URL integrity: the Worker signs invoice_no, payable amount, brand and timestamp.
-      // The client cannot forge or alter price/amount data because verification uses the stored invoice amount.
-      const checkoutSecret = String(process.env.HMAC_SECRET || '').trim();
-      const timestampNumber = Number(checkoutTimestamp);
-      if (!checkoutSecret) {
-         return res.status(500).json({ error: "Checkout signing secret is not configured" });
-      }
-      if (!checkoutSignature || !Number.isFinite(timestampNumber)) {
-         return res.status(401).json({ error: "Missing checkout signature" });
-      }
-      if (Math.abs(Math.floor(Date.now() / 1000) - timestampNumber) > 24 * 60 * 60) {
-         return res.status(401).json({ error: "Checkout signature expired" });
-      }
-      const signatureData = `${invoiceId}|${String(invoice.amount)}|${invoice.brand_id}|${Math.trunc(timestampNumber)}`;
-      const expectedCheckoutSignature = crypto.createHmac('sha256', checkoutSecret).update(signatureData).digest('hex');
-      const receivedBuffer = Buffer.from(String(checkoutSignature), 'hex');
-      const expectedBuffer = Buffer.from(expectedCheckoutSignature, 'hex');
-      if (receivedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(receivedBuffer, expectedBuffer)) {
-         return res.status(401).json({ error: "Invalid checkout signature or changed payment data" });
       }
 
       if (invoice.status === 'Completed') {

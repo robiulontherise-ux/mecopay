@@ -128,8 +128,6 @@ export default function CheckoutPage() {
   
   const [step, setStep] = useState(1);
   const [invoiceId, setInvoiceId] = useState('');
-  const [checkoutSignature, setCheckoutSignature] = useState('');
-  const [checkoutTimestamp, setCheckoutTimestamp] = useState('');
 
   const [copied, setCopied] = useState<string | false>(false);
 
@@ -517,8 +515,6 @@ export default function CheckoutPage() {
 
       // Check for Invoice ID in query params (?inv=... or ?invoice_id=...)
       const invoiceParam = urlParams.get('inv') || urlParams.get('invoice') || urlParams.get('invoice_id');
-      setCheckoutSignature(urlParams.get('sig') || '');
-      setCheckoutTimestamp(urlParams.get('ts') || '');
       if (invoiceParam) {
         try {
           const { data: inv } = await supabase
@@ -974,8 +970,6 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           invoiceId,
-          checkoutSignature,
-          checkoutTimestamp,
           trxId,
           verifyMethod: 'trx_id',
           userId: linkData.user_id,

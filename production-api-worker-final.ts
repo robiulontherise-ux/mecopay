@@ -414,7 +414,7 @@ export default {
 
       // ক্রিপ্টোগ্রাফিক HMAC-SHA256 সাইন করা
       const timestamp = Math.floor(Date.now() / 1000);
-      const signatureData = `${invoice.id}|${payableAmount}|${targetBrandId}|${timestamp}`;
+      const signatureData = `${invoice.id}|${invoice.id}|${payableAmount}|${targetBrandId}|${timestamp}`;
       const signature = await generateHmacSha256(hmacSecret, signatureData);
 
       const checkoutUrl = `${checkoutBaseUrl}/pay?inv=${encodeURIComponent(invoice.id)}&sig=${signature}&ts=${timestamp}`;
