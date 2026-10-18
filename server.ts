@@ -1490,6 +1490,24 @@ async function startServer() {
     next();
   });
 
+  // Dynamic ZIP download endpoint so no binary zip needs to be stored on disk/git
+  app.get('/mecopay-woocommerce.zip', async (req, res) => {
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const folder = zip.folder('mecopay-woocommerce');
+      const phpCode = fs.readFileSync(path.resolve(process.cwd(), 'public/mecopay-woocommerce.php'), 'utf-8');
+      folder?.file('mecopay-gateway.php', phpCode);
+      folder?.file('readme.txt', '=== MecoPay Gateway for WooCommerce ===\nTags: woocommerce, payment, gateway, bangladesh\nRequires at least: 5.8\nTested up to: 6.7\nRequires PHP: 7.4\nStable tag: 1.2.0\nLicense: GPLv2 or later\n');
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="mecopay-woocommerce.zip"');
+      res.send(buffer);
+    } catch (err: any) {
+      res.status(500).send('Error generating zip');
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

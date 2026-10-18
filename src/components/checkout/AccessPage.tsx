@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { ShieldAlert, ShieldCheck, ExternalLink, Loader2, Info, Send, Copy, Check, Lock } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, ExternalLink, Loader2, Info, Send, Copy, Check, Lock, Package, Truck, MapPin, Phone, Mail, FileText, ArrowRight, Printer } from 'lucide-react';
 import LocaleSwitcher from '../LocaleSwitcher';
 
 export default function AccessPage() {
@@ -16,11 +16,12 @@ export default function AccessPage() {
     name: 'Verified Merchant',
     logo_url: null
   });
-  const [deliveryType, setDeliveryType] = useState<'telegram' | 'tally' | 'general'>('general');
+  const [deliveryType, setDeliveryType] = useState<'telegram' | 'tally' | 'general' | 'physical'>('general');
   const [telegramInviteLink, setTelegramInviteLink] = useState('');
   const [contentUrl, setContentUrl] = useState('');
   const [productTitle, setProductTitle] = useState('Digital Access');
   const [customerName, setCustomerName] = useState('');
+  const [orderData, setOrderData] = useState<any>(null);
 
   useEffect(() => {
     async function processAccess() {
@@ -35,17 +36,8 @@ export default function AccessPage() {
         const { data: invoice, error: invError } = await supabase
           .from('invoices')
           .select(`
-            id,
-            status,
-            is_accessed,
-            redirect_link,
-            customer_name,
-            customer_phone,
-            customer_email,
-            invoice_number,
-            brand_id,
-            payment_link_id,
-            payment_links(product_name, redirect_link, brand_id)
+            *,
+            payment_links(product_name, redirect_link, brand_id, product_type)
           `)
           .eq('id', invoiceId)
           .single();
@@ -54,8 +46,8 @@ export default function AccessPage() {
           throw new Error('Transaction not found or invalid.');
         }
 
-        if (invoice.status !== 'Completed') {
-          throw new Error('Payment has not been completed or verified yet.');
+        if (invoice.status === 'Cancelled' || invoice.status === 'Failed') {
+          throw new Error('This order or transaction has been cancelled.');
         }
 
         if (invoice.customer_name) {
@@ -82,55 +74,53 @@ export default function AccessPage() {
         // Determine destination link
         const targetLink = invoice.redirect_link || (Array.isArray(invoice.payment_links) ? invoice.payment_links[0]?.redirect_link : (invoice.payment_links as any)?.redirect_link);
 
-        if (!targetLink) {
-          throw new Error('No delivery link configured for this product.');
-        }
-
-        const pName = (Array.isArray(invoice.payment_links) ? invoice.payment_links[0]?.product_name : (invoice.payment_links as any)?.product_name) || 'Digital Access';
+        const pName = (Array.isArray(invoice.payment_links) ? invoice.payment_links[0]?.product_name : (invoice.payment_links as any)?.product_name) || invoice.product_name || 'Order Package';
         setProductTitle(pName);
 
-        let cleanLink = targetLink.trim();
-        if (!cleanLink.startsWith('http')) {
-          cleanLink = 'https://' + cleanLink;
-        }
-
-        // Detect platform type: Telegram or Tally
-        const isTelegram = cleanLink.includes('t.me/') || cleanLink.toLowerCase().includes('telegram');
-        const isTally = cleanLink.includes('tally.so/');
-
-        if (isTelegram) {
-          setDeliveryType('telegram');
-          
-          // Generate or fetch one-time invite link using Telegram Master Bot
-          let dynamicInvite = cleanLink;
-          try {
-            // Attempt to call edge function or telegram API if configured
-            const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('telegram-tally-delivery', {
-              body: { action: 'get_secure_delivery', invoice_id: invoiceId }
-            });
-
-            if (!edgeErr && edgeRes?.delivery?.one_time_invite_link) {
-              dynamicInvite = edgeRes.delivery.one_time_invite_link;
-            }
-          } catch (e) {
-            console.warn('Direct edge invite generation not configured, using direct channel invite link:', e);
-          }
-
-          setTelegramInviteLink(dynamicInvite);
-          setSuccess(true);
-        } else if (isTally) {
-          setDeliveryType('tally');
-
-          // Tally Form: prefill customer details & embed without exposing direct raw link
-          const separator = cleanLink.includes('?') ? '&' : '?';
-          const maskedIframeUrl = `${cleanLink}${separator}name=${encodeURIComponent(invoice.customer_name || '')}&phone=${encodeURIComponent(invoice.customer_phone || '')}&invoice=${encodeURIComponent(invoice.invoice_number || '')}&transparentBackground=1`;
-
-          setContentUrl(maskedIframeUrl);
+        if (!targetLink) {
+          // Physical Order / COD / Advance or no digital download link -> Show Order Confirmation & Parcel Tracking Hub
+          setDeliveryType('physical');
+          setOrderData(invoice);
           setSuccess(true);
         } else {
-          setDeliveryType('general');
-          setContentUrl(cleanLink);
-          setSuccess(true);
+          let cleanLink = targetLink.trim();
+          if (!cleanLink.startsWith('http')) {
+            cleanLink = 'https://' + cleanLink;
+          }
+
+          // Detect platform type: Telegram or Tally
+          const isTelegram = cleanLink.includes('t.me/') || cleanLink.toLowerCase().includes('telegram');
+          const isTally = cleanLink.includes('tally.so/');
+
+          if (isTelegram) {
+            setDeliveryType('telegram');
+            let dynamicInvite = cleanLink;
+            try {
+              const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('telegram-tally-delivery', {
+                body: { action: 'get_secure_delivery', invoice_id: invoiceId }
+              });
+
+              if (!edgeErr && edgeRes?.delivery?.one_time_invite_link) {
+                dynamicInvite = edgeRes.delivery.one_time_invite_link;
+              }
+            } catch (e) {
+              console.warn('Direct edge invite generation not configured, using direct channel invite link:', e);
+            }
+
+            setTelegramInviteLink(dynamicInvite);
+            setSuccess(true);
+          } else if (isTally) {
+            setDeliveryType('tally');
+            const separator = cleanLink.includes('?') ? '&' : '?';
+            const maskedIframeUrl = `${cleanLink}${separator}name=${encodeURIComponent(invoice.customer_name || '')}&phone=${encodeURIComponent(invoice.customer_phone || '')}&invoice=${encodeURIComponent(invoice.invoice_number || '')}&transparentBackground=1`;
+
+            setContentUrl(maskedIframeUrl);
+            setSuccess(true);
+          } else {
+            setDeliveryType('general');
+            setContentUrl(cleanLink);
+            setSuccess(true);
+          }
         }
 
         // Mark as accessed in background
@@ -339,6 +329,223 @@ export default function AccessPage() {
             title="Secure Content"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
           />
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // CASE 4: PHYSICAL ORDER CONFIRMATION & LIVE COURIER TRACKING PORTAL
+  // ==========================================
+  if (success && deliveryType === 'physical' && orderData) {
+    const cartItems = Array.isArray(orderData.customer_data?.cart_items) 
+      ? orderData.customer_data.cart_items 
+      : Array.isArray(orderData.cart_items) 
+        ? orderData.cart_items 
+        : [];
+
+    const isConfirmed = orderData.status === 'Completed' || orderData.status === 'Confirmed' || orderData.status === 'Paid';
+    const trackingCode = orderData.consignment_id || orderData.courier_tracking_id;
+    const courierName = (orderData.courier_name || 'Steadfast').toUpperCase();
+
+    let liveTrackingUrl = orderData.tracking_url || '';
+    if (!liveTrackingUrl && trackingCode) {
+      if (courierName.includes('STEADFAST')) {
+        liveTrackingUrl = `https://steadfast.com.bd/t/${encodeURIComponent(trackingCode)}`;
+      } else if (courierName.includes('PATHAO')) {
+        liveTrackingUrl = 'https://pathao.com/courier/';
+      } else {
+        liveTrackingUrl = `https://steadfast.com.bd/t/${encodeURIComponent(trackingCode)}`;
+      }
+    }
+
+    const totalAmt = Number(orderData.total_amount || orderData.amount || 0);
+    const advanceAmt = Number(orderData.advance_amount || (orderData.total_amount ? orderData.amount : 0) || 0);
+    const codDue = Math.max(0, totalAmt - advanceAmt);
+
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center py-10 px-4 sm:px-6 relative">
+        <LocaleSwitcher className="absolute top-4 right-4 z-20" />
+        
+        {/* Main Card */}
+        <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
+
+          {/* Top Brand & Status */}
+          <div className="flex items-center justify-between pb-6 border-b border-slate-800 flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              {brandInfo.logo_url ? (
+                <img src={brandInfo.logo_url} alt={brandInfo.name} className="w-12 h-12 rounded-xl object-cover border border-slate-700" />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400 text-lg">
+                  {brandInfo.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <h1 className="text-lg font-bold text-white leading-tight">{brandInfo.name}</h1>
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400 mt-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Verified MecoPay Checkout</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                isConfirmed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              }`}>
+                {isConfirmed ? '✓ Order Confirmed' : '⏳ Verification Pending'}
+              </span>
+            </div>
+          </div>
+
+          {/* Invoice & Order ID Header */}
+          <div className="mt-6 bg-slate-800/40 rounded-2xl p-4 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+            <div>
+              <span className="text-slate-400 text-xs block">Invoice Number</span>
+              <strong className="text-white font-mono text-base">{orderData.invoice_number || orderData.id?.slice(0, 8)}</strong>
+            </div>
+            {orderData.trx_id && (
+              <div>
+                <span className="text-slate-400 text-xs block">Transaction ID (TrxID)</span>
+                <strong className="text-emerald-400 font-mono">{orderData.trx_id}</strong>
+              </div>
+            )}
+            <div>
+              <span className="text-slate-400 text-xs block">Payment Channel</span>
+              <span className="text-slate-200 font-medium">{orderData.payment_method || 'MFS / Online'}</span>
+            </div>
+          </div>
+
+          {/* Courier Live Tracking Card */}
+          <div className="mt-6 bg-gradient-to-br from-slate-800/80 to-slate-800/30 border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                  <Truck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    {courierName} Delivery Tracking
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {trackingCode ? `Consignment / Tracking: ${trackingCode}` : 'Courier booking in progress'}
+                  </p>
+                </div>
+              </div>
+
+              {liveTrackingUrl ? (
+                <a 
+                  href={liveTrackingUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="bg-emerald-600 hover:bg-emerald-500 transition-colors text-white font-semibold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-900/30"
+                >
+                  <span>Track Parcel Live</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              ) : (
+                <span className="text-xs bg-slate-800 text-slate-400 px-3 py-1.5 rounded-lg border border-slate-700">
+                  Tracking Code Pending
+                </span>
+              )}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-800/80 text-xs text-slate-300 flex items-center gap-2">
+              <Package className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>
+                {trackingCode 
+                  ? 'আপনার পার্সেল কুরিয়ারে সফলভাবে বুক করা হয়েছে। উপরে ক্লিক করে লাইভ লোকেশন দেখুন।'
+                  : 'অর্ডারটি মার্চেন্টের কাছে সংরক্ষিত হয়েছে। কুরিয়ারে হস্তান্তর হওয়া মাত্রই ট্র্যাকিং কোড আপডেট হবে।'}
+              </span>
+            </div>
+          </div>
+
+          {/* Order Items Summary */}
+          <div className="mt-6">
+            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Ordered Items / কার্ট সামগ্রী</h4>
+            <div className="bg-slate-800/30 rounded-2xl border border-slate-800 divide-y divide-slate-800/60 overflow-hidden">
+              {cartItems.length > 0 ? (
+                cartItems.map((item: any, idx: number) => (
+                  <div key={idx} className="p-3.5 flex items-center justify-between text-sm">
+                    <div>
+                      <div className="font-medium text-white">{item.product_name || item.name || 'Product Item'}</div>
+                      <div className="text-xs text-slate-400">Qty: {item.quantity || 1}</div>
+                    </div>
+                    <div className="font-semibold text-slate-200">
+                      ৳{Number(item.total || item.price || 0).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-3.5 flex items-center justify-between text-sm">
+                  <div className="font-medium text-white">{productTitle}</div>
+                  <div className="font-semibold text-slate-200">
+                    ৳{totalAmt.toLocaleString()}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Financial Breakdown */}
+          <div className="mt-6 bg-slate-800/20 rounded-2xl p-4 border border-slate-800/80 space-y-2 text-sm">
+            <div className="flex justify-between text-slate-400">
+              <span>Total Product Value</span>
+              <span className="text-white font-medium">৳{totalAmt.toLocaleString()}</span>
+            </div>
+            {advanceAmt > 0 && (
+              <div className="flex justify-between text-emerald-400">
+                <span>Advance Paid Online (MecoPay)</span>
+                <span className="font-bold">✓ ৳{advanceAmt.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 border-t border-slate-800 text-base font-bold text-white">
+              <span>Cash on Delivery Due (কুরিয়ারে বকেয়া)</span>
+              <span className="text-amber-400">৳{codDue.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* Delivery Address & Customer Details */}
+          <div className="mt-6 bg-slate-800/30 rounded-2xl p-4 border border-slate-800 text-xs text-slate-300 space-y-2">
+            <div className="flex items-center gap-2 text-white font-semibold text-sm">
+              <MapPin className="w-4 h-4 text-emerald-400" />
+              <span>ডেলিভারি ঠিকানা ও গ্রাহক তথ্য</span>
+            </div>
+            <div className="pl-6 space-y-1">
+              <div><strong className="text-slate-400">Name:</strong> {orderData.customer_name || customerName || 'Customer'}</div>
+              {orderData.customer_phone && <div><strong className="text-slate-400">Phone:</strong> {orderData.customer_phone}</div>}
+              {(orderData.customer_address || orderData.customer_data?.shipping_address) && (
+                <div><strong className="text-slate-400">Address:</strong> {orderData.customer_address || orderData.customer_data?.shipping_address}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-8 flex flex-col sm:flex-row gap-3">
+            <button 
+              onClick={() => window.print()}
+              className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm border border-slate-700"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Print / Save Receipt</span>
+            </button>
+            {orderData.redirect_link && (
+              <a 
+                href={orderData.redirect_link}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm text-center shadow-lg shadow-emerald-900/30"
+              >
+                <span>Return to Store</span>
+                <ArrowRight className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+
+          {/* Footer Badge */}
+          <div className="mt-8 pt-6 border-t border-slate-800/80 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>Secured & Verified by MecoPay Smart Gateway</span>
+          </div>
         </div>
       </div>
     );

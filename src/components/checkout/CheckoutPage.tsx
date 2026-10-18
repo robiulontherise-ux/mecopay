@@ -1673,12 +1673,22 @@ export default function CheckoutPage() {
                 </p>
               )}
               
-              <Link 
-                to="/dashboard"
-                className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 font-bold py-4 px-6 rounded-xl transition-colors inline-block w-full"
-              >
-                Return to Dashboard
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                {linkData?.redirect_url ? (
+                  <a 
+                    href={linkData.redirect_url}
+                    className="bg-[#00FF00] hover:bg-[#00E600] text-black font-bold py-3.5 px-6 rounded-xl transition-all shadow-md text-center flex-1"
+                  >
+                    {lang === 'EN' ? 'Return to Store →' : 'স্টোরে ফিরে যান →'}
+                  </a>
+                ) : null}
+                <Link 
+                  to={`/access/${invoiceId}`}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-6 rounded-xl transition-colors text-center flex-1"
+                >
+                  {lang === 'EN' ? 'View Invoice & Status' : 'ইনভয়েস ও স্ট্যাটাস দেখুন'}
+                </Link>
+              </div>
             </div>
           )}
         </div>
