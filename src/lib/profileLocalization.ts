@@ -85,4 +85,11 @@ const es: ProfileCopy = { ...en, subtitle: 'Administra tu perfil empresarial y l
 const pt: ProfileCopy = { ...en, subtitle: 'Gerencie seu perfil comercial e a verificação de segurança', rejectedTitle: 'A solicitação de verificação anterior foi rejeitada', adminNote: 'Nota do administrador:', pendingTitle: 'Os documentos de identidade estão em análise — painel desbloqueado', pendingStrong: 'Todos os recursos do seu painel já foram desbloqueados.', unlockTitle: 'Forneça as informações e os documentos de identidade abaixo para desbloquear seu painel', contactNumber: 'Número de contato', chooseContact: 'Selecione um meio de contato:', both: 'Ambos', contactNote: 'Forneça um número ativo para notificações urgentes e comunicação.', identityVerification: 'Verificação de identidade', liveCameraOnly: 'Apenas câmera ao vivo', noSelfie: 'Sem selfie', saveUpdating: 'Salvando e atualizando...' };
 
 const copies: Record<string, ProfileCopy> = { en, bn, hi, ar, fr, es, pt, ...(generatedProfileTranslations as unknown as Record<string, ProfileCopy>) };
-export const getProfileCopy = (language: string): ProfileCopy => copies[language.toLowerCase().split('-')[0]] || en;
+// For a country language that does not have a dedicated profile catalog yet,
+// keep the Bengali source copy so DashboardLocalizationBoundary can translate
+// it with the same full dashboard catalog. Falling back to English here would
+// bypass the dashboard translation pipeline for profile labels and guidance.
+export const getProfileCopy = (language: string): ProfileCopy => {
+  const locale = language.toLowerCase().split('-')[0];
+  return copies[locale] || (locale === 'en' ? en : bn);
+};
