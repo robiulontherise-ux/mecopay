@@ -291,9 +291,9 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-blue-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-blue-300">order_id</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">যেকোনো একটি অবশ্যই পাঠাতে হবে (দুটোই পাঠালে ট্র্যাকিংয়ের জন্য সর্বোত্তম)।</td>
+                      <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-blue-300">product_type</td>
@@ -389,9 +389,9 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-amber-300">order_id</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">অর্ডার আইডেন্টিফায়ারের জন্য যেকোনো একটি পাঠানো আবশ্যক।</td>
+                      <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-amber-300">product_type</td>
@@ -502,9 +502,9 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-emerald-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-emerald-300">order_id</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">যেকোনো একটি বা দুটিই পাঠানো আবশ্যক।</td>
+                      <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-emerald-300">product_type</td>

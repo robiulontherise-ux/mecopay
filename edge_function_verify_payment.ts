@@ -210,15 +210,14 @@ serve(async (req) => {
         .maybeSingle();
 
       if (webhook && webhook.payload_url) {
-        const secret = webhook.webhook_secret || brand?.webhook_secret || 'mecopay_sec_default';
+        const secret = webhook.webhook_secret || brand?.webhook_secret || '';
+        if (!secret) throw new Error('Webhook secret is not configured.');
         
         const metadata = invoice.metadata && typeof invoice.metadata === 'object' ? invoice.metadata : {};
         const webhookPayload = {
           event: 'payment.completed',
           event_time: new Date().toISOString(),
           data: {
-            invoice_id: invoice.id,
-            invoice_number: invoice.invoice_number,
             order_id: metadata.order_id || invoice.order_id || null,
             product_name: metadata.product_name || invoice.product_name || null,
             product_id: metadata.product_id || invoice.product_id || null,
@@ -229,13 +228,6 @@ serve(async (req) => {
             courier_charge: metadata.courier_charge ?? invoice.courier_charge ?? 0,
             cod_due: metadata.cod_due ?? invoice.cod_due ?? 0,
             status: 'paid',
-            gateway_used: invoice.gateway_used || gateway_type,
-            customer: {
-              name: invoice.customer_name,
-              phone: invoice.customer_phone,
-              email: invoice.customer_email,
-              address: invoice.customer_address
-            },
             delivery: {
               telegram_link: metadata.telegram_link || invoice.telegram_link || null,
               facebook_group_link: metadata.facebook_group_link || invoice.facebook_group_link || null,

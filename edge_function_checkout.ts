@@ -72,6 +72,13 @@ serve(async (req) => {
       metadata = {}
     } = payload;
 
+    if (!order_id || typeof order_id !== 'string' || !order_id.trim()) {
+      return new Response(JSON.stringify({ success: false, error: "Validation Error: 'order_id' is mandatory and must be the client's unique order ID." }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+
     const invoiceNumber = 'INV-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
 
     // =========================================================================

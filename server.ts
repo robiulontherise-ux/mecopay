@@ -770,8 +770,7 @@ async function startServer() {
       const payload = {
         event: event,
         timestamp: new Date().toISOString(),
-        data: data || {},
-        ...(data || {})
+        data: data || {}
       };
       const payloadString = JSON.stringify(payload);
 
@@ -779,6 +778,10 @@ async function startServer() {
 
       for (const wh of webhooks) {
         if (!wh.payload_url) continue;
+        if (!wh.webhook_secret) {
+          deliveryResults.push({ url: wh.payload_url, error: 'Webhook secret is not configured' });
+          continue;
+        }
 
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
@@ -786,13 +789,11 @@ async function startServer() {
           'X-MecoPay-Event': event
         };
 
-        if (wh.webhook_secret) {
-          const signature = crypto
-            .createHmac('sha256', wh.webhook_secret)
-            .update(payloadString)
-            .digest('hex');
-          headers['X-MecoPay-Signature'] = signature;
-        }
+        const signature = crypto
+          .createHmac('sha256', wh.webhook_secret)
+          .update(payloadString)
+          .digest('hex');
+        headers['X-MecoPay-Signature'] = signature;
 
         try {
           const dispatchRes = await fetch(wh.payload_url, {
@@ -1294,10 +1295,10 @@ async function startServer() {
       } = req.body;
 
       // 2. Universal Field Validation
-      if (!order_id && !product_name) {
+      if (!order_id) {
         return res.status(400).json({
           success: false,
-          error: "Validation Error: At least one of 'order_id' or 'product_name' is mandatory."
+          error: "Validation Error: 'order_id' is mandatory and must be the client's unique order ID."
         });
       }
 

@@ -2,6 +2,7 @@
 import { useLayoutEffect, useRef, useState, useEffect, type ReactNode } from 'react';
 import { useLocale } from '../lib/LocaleContext';
 import { dashboardAdditionalTranslations } from '../lib/dashboardAdditionalTranslations';
+import { dashboardRuntimeTranslations } from '../lib/dashboardRuntimeTranslations';
 
 type LocaleCatalog = Record<string, string>;
 const localeCatalogLoaders = import.meta.glob('../locales/dashboard/*.json', { import: 'default' }) as Record<string, () => Promise<LocaleCatalog>>;
@@ -52,6 +53,16 @@ function localizedValue(language: string, original: string, catalog: LocaleCatal
   }
   let result = original;
   for (const [source, translation] of phrases) {
+    if (result.includes(source)) result = result.split(source).join(translation);
+  }
+  // Runtime copy (validation errors, demo agent replies and status messages)
+  // is not always present in the generated catalogs. Translate known Bengali
+  // fragments as a safe fallback while preserving dynamic IDs, amounts and
+  // domain names. Editable textarea/code content remains excluded above.
+  const runtimePhrases = Object.entries(dashboardRuntimeTranslations)
+    .filter(([source]) => source.length >= 3)
+    .sort(([a], [b]) => b.length - a.length);
+  for (const [source, translation] of runtimePhrases) {
     if (result.includes(source)) result = result.split(source).join(translation);
   }
   return result === original ? undefined : result;
