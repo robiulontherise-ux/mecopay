@@ -328,9 +328,12 @@ function mecopay_init_smart_gateway_class() {
                 $invoice  = $payload['invoice_no'] ?? '';
                 $channel  = $payload['gateway_used'] ?? ($payload['payment_channel'] ?? ($payload['gateway'] ?? 'MFS'));
 
-                // order_id অথবা invoice_no—যেকোনো একটি থাকলেই WooCommerce order resolve হবে।
+                // দুটো identifier থাকলে একই order-এ দুটোই match হতে হবে; একটি থাকলে সেটিই যথেষ্ট।
                 $order = $order_id ? wc_get_order($order_id) : null;
-                if (!$order && !empty($invoice)) {
+                if ($order && !empty($invoice) && (string) $order->get_meta('_mecopay_invoice_no') !== (string) $invoice) {
+                    $order = null;
+                }
+                if (!$order && empty($order_id) && !empty($invoice)) {
                     $invoice_orders = wc_get_orders(array(
                         'limit'      => 1,
                         'type'       => 'shop_order',

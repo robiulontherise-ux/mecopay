@@ -1705,14 +1705,16 @@ class MecoPayWebhookController extends Controller
         }
 
         // নিজের database-এ আগে সংরক্ষিত order_id ও invoice_no দুটোই মিলতে হবে।
-        $order = Order::where(function ($query) use ($orderId, $invoiceNo) {
-            if ($orderId) {
+        $orderQuery = Order::query();
+        if ($orderId) {
+            $orderQuery->where(function ($query) use ($orderId) {
                 $query->where('id', $orderId)->orWhere('order_id', $orderId);
-            }
-            if ($invoiceNo) {
-                $orderId ? $query->orWhere('mecopay_invoice_no', $invoiceNo) : $query->where('mecopay_invoice_no', $invoiceNo);
-            }
-        })->first();
+            });
+        }
+        if ($invoiceNo) {
+            $orderQuery->where('mecopay_invoice_no', $invoiceNo);
+        }
+        $order = $orderQuery->first();
 
         if (!$order) {
             return response()->json(['error' => 'Order not found in merchant database.'], 404);
@@ -1888,10 +1890,18 @@ if (!isset($pdo) || !($pdo instanceof PDO)) {
     echo json_encode(['error' => 'Merchant PDO connection is not configured.']);
     exit;
 }
-$lookup = $pdo->prepare(
-    'SELECT * FROM orders WHERE id = :order_id OR order_id = :order_id OR mecopay_invoice_no = :invoice_no LIMIT 1'
-);
-$lookup->execute([':order_id' => $orderId ?: '', ':invoice_no' => $invoiceNo ?: '']);
+$conditions = [];
+$params = [];
+if ($orderId) {
+    $conditions[] = '(id = :order_id OR order_id = :order_id)';
+    $params[':order_id'] = $orderId;
+}
+if ($invoiceNo) {
+    $conditions[] = 'mecopay_invoice_no = :invoice_no';
+    $params[':invoice_no'] = $invoiceNo;
+}
+$lookup = $pdo->prepare('SELECT * FROM orders WHERE ' . implode(' AND ', $conditions) . ' LIMIT 1');
+$lookup->execute($params);
 $order = $lookup->fetch();
 if (!$order) {
     http_response_code(404);
@@ -2038,9 +2048,19 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     if (!orderId && !invoiceNo) {
       return res.status(400).json({ error: 'Missing order_id or invoice_no in webhook.' });
     }
+    const lookupConditions = [];
+    const lookupParams = [];
+    if (orderId) {
+      lookupParams.push(orderId);
+      lookupConditions.push(`(id::text = $${lookupParams.length} OR order_id = $${lookupParams.length})`);
+    }
+    if (invoiceNo) {
+      lookupParams.push(invoiceNo);
+      lookupConditions.push(`mecopay_invoice_no = $${lookupParams.length}`);
+    }
     const orderResult = await db.query(
-      'SELECT * FROM orders WHERE id::text = $1 OR order_id = $1 OR mecopay_invoice_no = $2 LIMIT 1',
-      [orderId || '', invoiceNo || '']
+      `SELECT * FROM orders WHERE ${lookupConditions.join(' AND ')} LIMIT 1`,
+      lookupParams
     );
     const order = orderResult.rows[0];
     if (!order) return res.status(404).json({ error: 'Order not found in merchant database.' });
@@ -2189,9 +2209,12 @@ def mecopay_webhook_view(request):
 
     if not order_id and not invoice_no:
         return JsonResponse({"error": "Missing order_id or invoice_no in webhook."}, status=400)
-    order = Order.objects.filter(
-        Q(id=order_id) | Q(order_id=order_id) | Q(mecopay_invoice_no=invoice_no)
-    ).first()
+    lookup = Q()
+    if order_id:
+        lookup &= (Q(id=order_id) | Q(order_id=order_id))
+    if invoice_no:
+        lookup &= Q(mecopay_invoice_no=invoice_no)
+    order = Order.objects.filter(lookup).first()
     if not order:
         return JsonResponse({"error": "Order not found in merchant database."}, status=404)
 
