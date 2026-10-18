@@ -59,6 +59,7 @@ serve(async (req) => {
       tracking_url: metadata.tracking_url || invoice.tracking_url || null
     };
     const webhookData = {
+      invoice_no: invoice.id,
       order_id: metadata.order_id || invoice.order_id || null,
       product_name: metadata.product_name || invoice.product_name || null,
       product_id: metadata.product_id || invoice.product_id || null,

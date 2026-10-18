@@ -209,7 +209,12 @@ export default {
       const invoiceNo = crypto.randomUUID();
       const supabaseUrl = env.SUPABASE_URL;
       const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
-      const hmacSecret = env.HMAC_SECRET || 'mecopay_sec_default_key_2026';
+      const hmacSecret = String(env.HMAC_SECRET || '').trim();
+      if (!hmacSecret) {
+        return new Response(JSON.stringify({ success: false, error: 'Checkout signing secret is not configured.' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
       const checkoutBaseUrl = (env.CHECKOUT_BASE_URL || 'https://www.mecopay.space').replace(/\/$/, '');
 
       // সেফ আইডেন্টিফায়ার (client_id ও brand_id সবসময় সঠিক থাকবে)
@@ -294,7 +299,6 @@ export default {
           order_type: 'physical_cod',
           requires_payment: false,
           status: 'cod_confirmed',
-          invoice_id: createdInvoice.id,
           invoice_no: createdInvoice.id,
           product_price: productPrice,
           courier_charge: courierCharge,
@@ -419,7 +423,6 @@ export default {
         success: true,
         order_type: isDigital ? 'digital' : (isFullPayment ? 'physical_full_payment' : 'physical_advance'),
         requires_payment: true,
-        invoice_id: invoice.id,
         invoice_no: invoice.id,
         product_price: productPrice,
         courier_charge: courierCharge,
