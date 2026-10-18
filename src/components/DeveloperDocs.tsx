@@ -1005,7 +1005,33 @@ HEADERS:
                 </pre>
               </div>
 
-              {/* Event 4: Brand Settings Real-time Sync Webhook */}
+              {/* Product 4: Physical Full Payment Webhook */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-cyan-500/30 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-cyan-400">৪. ফিজিক্যাল প্রোডাক্ট (Full Payment) Webhook Payload:</span>
+                  <span className="text-[10px] bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded font-mono">product_type: physical_full_payment</span>
+                </div>
+                <pre className="text-xs font-mono text-cyan-200 overflow-x-auto">
+{`{
+  "event": "payment.completed",
+  "event_time": "2026-10-18T10:00:00.000Z",
+  "data": {
+    "order_id": "ORD-8840",
+    "product_name": "Premium Physical Product",
+    "product_type": "physical_full_payment",
+    "currency": "USD",
+    "product_price": 1250,
+    "courier_charge": 120,
+    "total_price": 1370,
+    "payable_amount": 1370,
+    "cod_due": 0,
+    "status": "paid",
+    "courier": null
+  }
+}`}
+                </pre>
+              </div>
+              {/* Event 5: Brand Settings Real-time Sync Webhook */}
               <div className="bg-slate-950 p-4 rounded-2xl border border-purple-500/30 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-purple-400">৪. ব্র্যান্ড সেটিংস ও সার্ভিস অন/অফ রিয়েল-টাইম সিঙ্ক Webhook:</span>
@@ -1177,12 +1203,11 @@ const digitalJsonPayload = `{
 const advanceJsonPayload = `{
   "order_id": "ORD-7734",
   "product_name": "Wireless Noise Cancelling Headphones",
-  "product_type": product_type,
+  "product_type": "physical_advance",
   "currency": "USD",
   "product_price": 1250,
   "courier_charge": 120,
   "advance_amount": 150,
-  "fulfillment_type": "dropship",
   "success_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
   "customer_name": "Tanvir Hasan",
@@ -1212,7 +1237,6 @@ const codJsonPayload = `{
   "currency": "USD",
   "product_price": 1200,
   "courier_charge": 120,
-  "fulfillment_type": "own_inventory",
   "success_url": "https://yourwebsite.com/order/success",
   "cancel_url": "https://yourwebsite.com/checkout",
   "customer_name": "Mohammad Ali",
@@ -1327,13 +1351,10 @@ class PaymentController extends Controller
         } elseif ($productType === 'physical_full_payment') {
             $payload['product_price'] = $price;
             $payload['courier_charge'] = $courierCharge;
-            $payload['product_price'] = $price;
-            $payload['advance_amount'] = $price + $courierCharge;
         } else { // physical_cod
             // ১০০% ক্যাশ অন ডেলিভারি: গেটওয়ে চার্জ ০ এবং বাকি টাকা কুরিয়ার ডিউ
             $payload['product_price'] = $price;
             $payload['courier_charge'] = $courierCharge;
-            $payload['product_price'] = $price;
         }
 
         // MecoPay Worker Endpoint এ একক সেন্ট্রাল POST Call
@@ -1445,11 +1466,9 @@ if ($productType === 'digital') {
 } elseif ($productType === 'physical_full_payment') {
     $payload['product_price'] = $price;
     $payload['courier_charge'] = $courierCharge;
-    $payload['product_price'] = $price;
 } else { // physical_cod
     $payload['product_price'] = $price;
     $payload['courier_charge'] = $courierCharge;
-    $payload['product_price'] = $price;
 }
 
 // cURL রিকোয়েস্ট একক এন্ডপয়েন্টে
@@ -1568,11 +1587,9 @@ app.post('/api/checkout', async (req, res) => {
     } else if (finalProductType === 'physical_full_payment') {
       payload.product_price = Number(price);
       payload.courier_charge = Number(courier_charge);
-      payload.product_price = Number(price);
     } else { // physical_cod
       payload.product_price = Number(price);
       payload.courier_charge = Number(courier_charge);
-      payload.product_price = price;
     }
 
     const response = await axios.post(MECOPAY_ENDPOINT, payload, {
@@ -1667,11 +1684,9 @@ async function initiateMecoPayCheckout(orderData) {
   } else if (finalProductType === 'physical_full_payment') {
     payload.product_price = price;
     payload.courier_charge = courierCharge;
-    payload.product_price = price;
   } else { // physical_cod
     payload.product_price = price;
     payload.courier_charge = courierCharge;
-    payload.product_price = price;
   }
 
   try {
@@ -1768,11 +1783,9 @@ def create_checkout_session(request_data):
     elif product_type == 'physical_full_payment':
         payload["product_price"] = price
         payload["courier_charge"] = courier_charge
-        payload["product_price"] = price + courier_charge
     else: # physical_cod
         payload["product_price"] = price
         payload["courier_charge"] = courier_charge
-        payload["product_price"] = price
 
     headers = {
         "Authorization": f"Bearer {MECOPAY_API_KEY}",

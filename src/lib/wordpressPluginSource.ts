@@ -214,7 +214,6 @@ function mecopay_init_smart_gateway_class() {
                     $payload['product_price'] = $total_amount;
                 } elseif ($advance_config >= ($total_amount + $shipping_fee)) {
                     // ফিজিক্যাল ফুল পেমেন্ট: পণ্য + কুরিয়ার চার্জ সম্পূর্ণ অনলাইনে
-                    $full_payment = $total_amount + $shipping_fee;
                     $payload['product_type'] = 'physical_full_payment';
                     $payload['product_price'] = $total_amount;
                 } else {
