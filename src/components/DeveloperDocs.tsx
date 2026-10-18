@@ -1296,7 +1296,7 @@ class PaymentController extends Controller
         // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
         // $isDigital = (!empty($product->download_link) || in_array($product->category_id, [1, 5]));
         // $detectedType = $isDigital ? 'digital' : (($advanceAmount > 0) ? 'physical_advance' : 'physical_cod');
-        $productType = strtolower(trim((string) $request->input('product_type', 'digital')));
+        $productType = strtolower(trim((string) $request->input('product_type', '')));
         $allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
         if (!in_array($productType, $allowedTypes, true)) {
             return back()->with('error', 'Unsupported product_type.');
@@ -1308,7 +1308,7 @@ class PaymentController extends Controller
             return back()->with('error', 'order_id আবশ্যক।');
         }
 
-        $price = (float) $request->input('product_price', $request->input('price', 0));
+        $productPrice = (float) $request->input('product_price', 0);
         // কুরিয়ার চার্জ ডাইনামিকালি রিকোয়েস্ট বা প্রোডাক্ট থেকে নিন (ফ্রি ডেলিভারি হলে ০ থাকবে):
         $courierCharge = (float) $request->input('courier_charge', 0);
         // আপনার ডাটাবেজ বা রিকোয়েস্ট থেকে কারেন্সি নিন (যেমন: BDT, USD, EUR ইত্যাদি):
@@ -1328,29 +1328,29 @@ class PaymentController extends Controller
 
         if ($productType === 'digital') {
             // ডিজিটাল: ১০০% পেমেন্ট ও রিটার্ন URL আবশ্যক
-            if ($price <= 0) {
+            if ($productPrice <= 0) {
                 return back()->with('error', 'ডিজিটাল প্রোডাক্টের জন্য মূল্য (price) আবশ্যক।');
             }
-            $payload['product_price'] = $price;
+            $payload['product_price'] = $productPrice;
             $payload['telegram_link'] = $request->input('telegram_link', 'https://t.me/+secret_link');
             $payload['facebook_group_link'] = $request->input('facebook_group_link');
             $payload['google_drive_link'] = $request->input('google_drive_link');
         } elseif ($productType === 'physical_advance') {
             // ফিজিক্যাল অ্যাডভান্স: টোটাল এমাউন্ট, কুরিয়ার চার্জ এবং অ্যাডভান্স ফি
-            if ($price <= 0) {
+            if ($productPrice <= 0) {
                 return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য টোটাল মূল্য আবশ্যক।');
             }
             // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি; total-এর সমান হলে due COD শূন্য হবে:
             $advanceAmount = (float) $request->input('advance_amount', 0);
-            $payload['product_price'] = $price;
+            $payload['product_price'] = $productPrice;
             $payload['courier_charge'] = $courierCharge;
             $payload['advance_amount'] = $advanceAmount;
         } elseif ($productType === 'physical_full_payment') {
-            $payload['product_price'] = $price;
+            $payload['product_price'] = $productPrice;
             $payload['courier_charge'] = $courierCharge;
         } else { // physical_cod
             // ১০০% ক্যাশ অন ডেলিভারি: গেটওয়ে চার্জ ০ এবং বাকি টাকা কুরিয়ার ডিউ
-            $payload['product_price'] = $price;
+            $payload['product_price'] = $productPrice;
             $payload['courier_charge'] = $courierCharge;
         }
 
@@ -1418,7 +1418,7 @@ if (!empty($cart)) {
 // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
 // $isDigital = (!empty($product['download_link']) || in_array($product['category_id'] ?? 0, [3, 7]));
 // $detectedType = $isDigital ? 'digital' : (($advance > 0) ? 'physical_advance' : 'physical_cod');
-$productType = strtolower(trim((string) ($_POST['product_type'] ?? 'digital')));
+$productType = strtolower(trim((string) ($_POST['product_type'] ?? '')));
 $allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
 if (!in_array($productType, $allowedTypes, true)) {
     die('Unsupported product_type.');
@@ -1434,7 +1434,7 @@ if (empty($orderId)) {
 $currency = strtoupper(trim($_POST['currency'] ?? 'BDT'));
 
 // প্রোডাক্টের আসল মূল্য ও কুরিয়ার চার্জ ফর্ম বা ডাটাবেজ থেকে ডাইনামিকালি নিন (ফ্রি ডেলিভারি হলে ০):
-$price = (float) ($_POST['product_price'] ?? ($_POST['price'] ?? 0));
+$productPrice = (float) ($_POST['product_price'] ?? 0);
 $courierCharge = (float) ($_POST['courier_charge'] ?? 0);
 
 $payload = [
@@ -1451,19 +1451,19 @@ $payload = [
 ];
 
 if ($productType === 'digital') {
-    if ($price <= 0) die("ডিজিটাল পণ্যের মূল্য আবশ্যক।");
-    $payload['product_price'] = $price;
+    if ($productPrice <= 0) die("ডিজিটাল পণ্যের product_price আবশ্যক।");
+    $payload['product_price'] = $productPrice;
     $payload['telegram_link'] = "https://t.me/+join_chat";
 } elseif ($productType === 'physical_advance') {
     $advance = (float) ($_POST['advance_amount'] ?? 0); // total-এর সমান হলে physical full payment
-    $payload['product_price'] = $price;
+    $payload['product_price'] = $productPrice;
     $payload['courier_charge'] = $courierCharge;
     $payload['advance_amount'] = $advance;
 } elseif ($productType === 'physical_full_payment') {
-    $payload['product_price'] = $price;
+    $payload['product_price'] = $productPrice;
     $payload['courier_charge'] = $courierCharge;
 } else { // physical_cod
-    $payload['product_price'] = $price;
+    $payload['product_price'] = $productPrice;
     $payload['courier_charge'] = $courierCharge;
 }
 
