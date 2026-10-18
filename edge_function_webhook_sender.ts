@@ -66,8 +66,6 @@ serve(async (req) => {
       product_type: productType,
       currency: metadata.currency || invoice.currency || null,
       amount: invoice.amount ?? metadata.amount ?? 0,
-      product_price: metadata.product_price ?? invoice.metadata?.product_price ?? invoice.amount ?? 0,
-      payable_amount: metadata.payable_amount ?? invoice.metadata?.payable_amount ?? invoice.amount ?? 0,
       total_amount: metadata.total_amount ?? invoice.total_amount ?? invoice.amount ?? 0,
       courier_charge: metadata.courier_charge ?? invoice.courier_charge ?? 0,
       cod_due: metadata.cod_due ?? invoice.cod_due ?? 0,
