@@ -1268,6 +1268,7 @@ const fullPaymentJsonPayload = `{
   "cancel_url": "https://yourwebsite.com/checkout",
   "customer_name": "Karim Hasan",
   "customer_phone": "01700000000",
+  "customer_email": "karim@example.com",
   "customer_address": "Dhaka, Bangladesh"
 }`;
 
@@ -1361,6 +1362,7 @@ class PaymentController extends Controller
             'currency'         => $currency,
             'customer_name'    => $request->input('customer_name', 'Guest Customer'),
             'customer_phone'   => $request->input('customer_phone', ''),
+            'customer_email'   => $request->input('customer_email', ''),
             'customer_address' => $request->input('customer_address', ''),
             'success_url'     => route('payment.success'),
             'cancel_url'       => route('payment.cancel'),
@@ -1484,6 +1486,7 @@ $payload = [
     "currency"         => $currency,
     "customer_name"    => $_POST['customer_name'] ?? "Customer Name",
     "customer_phone"   => $_POST['customer_phone'] ?? "",
+    "customer_email"   => $_POST['customer_email'] ?? "",
     "customer_address" => $_POST['customer_address'] ?? "",
     // সাইটের নিজস্ব ডোমেন ও ডাইনামিক রিটার্ন পাথ:
     "success_url"     => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/payment_success.php",
@@ -1570,6 +1573,7 @@ app.post('/api/checkout', async (req, res) => {
       currency = 'BDT',
       customer_name = 'Guest Customer',
       customer_phone = '',
+      customer_email = '',
       customer_address = '',
       success_url,
       cancel_url
@@ -1617,6 +1621,7 @@ app.post('/api/checkout', async (req, res) => {
       currency: finalCurrency,
       customer_name,
       customer_phone,
+      customer_email,
       customer_address,
       success_url: success_url || (req.protocol + '://' + req.get('host') + '/payment/success'),
       cancel_url: cancel_url || (req.protocol + '://' + req.get('host') + '/cart')
@@ -1709,6 +1714,7 @@ MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
         "currency": (request_data.get('currency') or "BDT").upper(),
         "customer_name": request_data.get('customer_name', "Guest"),
         "customer_phone": request_data.get('customer_phone', ""),
+        "customer_email": request_data.get('customer_email', ""),
         "customer_address": request_data.get('customer_address', "Dhaka"),
         # সাইটের ডাইনামিক ডোমেন বা রিকোয়েস্ট URL:
         "success_url": request_data.get('success_url') or "/payment/callback",
