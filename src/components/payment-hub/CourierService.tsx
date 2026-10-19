@@ -67,6 +67,13 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
 
   const handleToggleFullPayment = (checked: boolean) => {
     setAutoCourierOnFullPayment(checked);
+    if (checked) {
+      // 1 month (30 days) from current date
+      const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      setAutoCourierOnFullPaymentAtExpires(expiry);
+    } else {
+      setAutoCourierOnFullPaymentAtExpires(null);
+    }
   };
 
   // New Parcel Booking Form Modal
@@ -238,7 +245,7 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
         .from('brands')
         .update({
           auto_courier_on_full_payment: autoCourierOnFullPayment,
-          auto_courier_on_full_payment_at_expires: autoCourierOnFullPaymentAtExpires,
+          auto_courier_on_full_payment_at_expires: autoCourierOnFullPayment ? autoCourierOnFullPaymentAtExpires : null,
           auto_courier_on_full_cod: autoCourierOnFullCod,
           auto_courier_on_advance: autoCourierOnAdvance,
           courier_delay_hours_full_payment: courierDelayHoursFullPayment,
@@ -279,7 +286,7 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
 
       if (currentBrand) {
         currentBrand.auto_courier_on_full_payment = autoCourierOnFullPayment;
-        currentBrand.auto_courier_on_full_payment_at_expires = autoCourierOnFullPaymentAtExpires;
+        currentBrand.auto_courier_on_full_payment_at_expires = autoCourierOnFullPayment ? autoCourierOnFullPaymentAtExpires : null;
         currentBrand.auto_courier_on_full_cod = autoCourierOnFullCod;
         currentBrand.auto_courier_on_advance = autoCourierOnAdvance;
         currentBrand.courier_delay_hours_full_payment = courierDelayHoursFullPayment;
@@ -849,10 +856,10 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                     <div className="flex items-center gap-2 flex-wrap">
                       <ShieldCheck className="w-4 h-4 text-emerald-400" />
                       <span className="text-sm font-bold text-white">Auto Courier Booking on "Full Payment" Orders</span>
-                      {autoCourierOnFullPaymentAtExpires && (
+                      {autoCourierOnFullPayment && (
                         <span className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          মেয়াদ: {new Date(autoCourierOnFullPaymentAtExpires).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          Active until {autoCourierOnFullPaymentAtExpires ? new Date(autoCourierOnFullPaymentAtExpires).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) : '১ মাস'}
                         </span>
                       )}
                     </div>
