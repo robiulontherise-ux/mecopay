@@ -53,9 +53,28 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const [customCourierSecretKey, setCustomCourierSecretKey] = useState('');
   const [customCourierProviderName, setCustomCourierProviderName] = useState('Custom Courier');
 
+  const [autoCourierOnFullPayment, setAutoCourierOnFullPayment] = useState(false);
+  const [autoCourierOnFullPaymentAtExpires, setAutoCourierOnFullPaymentAtExpires] = useState<string | null>(null);
   const [autoCourierOnAdvance, setAutoCourierOnAdvance] = useState(true);
   const [autoCourierOnFullCod, setAutoCourierOnFullCod] = useState(false);
+
+  // ⏱ Holding Delays for 3 Physical Product Automation Types (in hours)
+  const [courierDelayHoursFullPayment, setCourierDelayHoursFullPayment] = useState<number>(0);
+  const [courierDelayHoursAdvance, setCourierDelayHoursAdvance] = useState<number>(0);
+  const [courierDelayHoursFullCod, setCourierDelayHoursFullCod] = useState<number>(0);
+
   const [savingKeys, setSavingKeys] = useState(false);
+
+  const handleToggleFullPayment = (checked: boolean) => {
+    setAutoCourierOnFullPayment(checked);
+    if (checked) {
+      // 1 month (30 days) from current date
+      const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      setAutoCourierOnFullPaymentAtExpires(expiry);
+    } else {
+      setAutoCourierOnFullPaymentAtExpires(null);
+    }
+  };
 
   // New Parcel Booking Form Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -81,11 +100,28 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     if (!selectedBrandId) return;
     const currentBrand = brands.find(b => b.id === selectedBrandId);
     if (currentBrand) {
+      if (typeof currentBrand.auto_courier_on_full_payment === 'boolean') {
+        setAutoCourierOnFullPayment(currentBrand.auto_courier_on_full_payment);
+      }
+      if (currentBrand.auto_courier_on_full_payment_at_expires) {
+        setAutoCourierOnFullPaymentAtExpires(currentBrand.auto_courier_on_full_payment_at_expires);
+      } else {
+        setAutoCourierOnFullPaymentAtExpires(null);
+      }
       if (typeof currentBrand.auto_courier_on_full_cod === 'boolean') {
         setAutoCourierOnFullCod(currentBrand.auto_courier_on_full_cod);
       }
       if (typeof currentBrand.auto_courier_on_advance === 'boolean') {
         setAutoCourierOnAdvance(currentBrand.auto_courier_on_advance);
+      }
+      if (typeof currentBrand.courier_delay_hours_full_payment === 'number') {
+        setCourierDelayHoursFullPayment(currentBrand.courier_delay_hours_full_payment);
+      }
+      if (typeof currentBrand.courier_delay_hours_advance === 'number') {
+        setCourierDelayHoursAdvance(currentBrand.courier_delay_hours_advance);
+      }
+      if (typeof currentBrand.courier_delay_hours_full_cod === 'number') {
+        setCourierDelayHoursFullCod(currentBrand.courier_delay_hours_full_cod);
       }
     }
 
@@ -98,13 +134,32 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
     try {
       const { data: bData } = await supabase
         .from('brands')
-        .select('auto_courier_on_full_cod, auto_courier_on_advance')
+        .select(`
+          auto_courier_on_full_payment,
+          auto_courier_on_full_payment_at_expires,
+          auto_courier_on_full_cod,
+          auto_courier_on_advance,
+          courier_delay_hours_full_payment,
+          courier_delay_hours_advance,
+          courier_delay_hours_full_cod
+        `)
         .eq('id', selectedBrandId)
         .maybeSingle();
 
       if (bData) {
+        if (typeof bData.auto_courier_on_full_payment === 'boolean') {
+          setAutoCourierOnFullPayment(bData.auto_courier_on_full_payment);
+        }
+        if (bData.auto_courier_on_full_payment_at_expires) {
+          setAutoCourierOnFullPaymentAtExpires(bData.auto_courier_on_full_payment_at_expires);
+        } else {
+          setAutoCourierOnFullPaymentAtExpires(null);
+        }
         if (typeof bData.auto_courier_on_full_cod === 'boolean') setAutoCourierOnFullCod(bData.auto_courier_on_full_cod);
         if (typeof bData.auto_courier_on_advance === 'boolean') setAutoCourierOnAdvance(bData.auto_courier_on_advance);
+        if (typeof bData.courier_delay_hours_full_payment === 'number') setCourierDelayHoursFullPayment(bData.courier_delay_hours_full_payment);
+        if (typeof bData.courier_delay_hours_advance === 'number') setCourierDelayHoursAdvance(bData.courier_delay_hours_advance);
+        if (typeof bData.courier_delay_hours_full_cod === 'number') setCourierDelayHoursFullCod(bData.courier_delay_hours_full_cod);
       }
 
       const { data: cb } = await supabase
@@ -189,8 +244,13 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       await supabase
         .from('brands')
         .update({
+          auto_courier_on_full_payment: autoCourierOnFullPayment,
+          auto_courier_on_full_payment_at_expires: autoCourierOnFullPayment ? autoCourierOnFullPaymentAtExpires : null,
           auto_courier_on_full_cod: autoCourierOnFullCod,
-          auto_courier_on_advance: autoCourierOnAdvance
+          auto_courier_on_advance: autoCourierOnAdvance,
+          courier_delay_hours_full_payment: courierDelayHoursFullPayment,
+          courier_delay_hours_advance: courierDelayHoursAdvance,
+          courier_delay_hours_full_cod: courierDelayHoursFullCod
         })
         .eq('id', selectedBrandId);
 
@@ -225,7 +285,13 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
         }, { onConflict: 'brand_id' });
 
       if (currentBrand) {
+        currentBrand.auto_courier_on_full_payment = autoCourierOnFullPayment;
+        currentBrand.auto_courier_on_full_payment_at_expires = autoCourierOnFullPayment ? autoCourierOnFullPaymentAtExpires : null;
         currentBrand.auto_courier_on_full_cod = autoCourierOnFullCod;
+        currentBrand.auto_courier_on_advance = autoCourierOnAdvance;
+        currentBrand.courier_delay_hours_full_payment = courierDelayHoursFullPayment;
+        currentBrand.courier_delay_hours_advance = courierDelayHoursAdvance;
+        currentBrand.courier_delay_hours_full_cod = courierDelayHoursFullCod;
       }
 
       // Dispatch Webhook (Method 1) to notify merchant's WordPress/Laravel/Custom site cache
@@ -781,50 +847,147 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
               </div>
             )}
 
-            {/* Courier Automation Toggles: Advance Pay & Full COD */}
-            <div className="pt-4 border-t border-slate-800 space-y-3">
-              {/* Toggle 1: Auto Courier on Advance Pay */}
-              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm font-bold text-white">Auto Courier Booking on "Advance Pay" Orders</span>
+            {/* Courier Automation Toggles: Full Payment, Advance Pay & Full COD */}
+            <div className="pt-4 border-t border-slate-800 space-y-4">
+              {/* Toggle 1: Auto Courier on 100% Full Payment (At the Top) */}
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-bold text-white">Auto Courier Booking on "Full Payment" Orders</span>
+                      {autoCourierOnFullPayment && (
+                        <span className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Active until {autoCourierOnFullPaymentAtExpires ? new Date(autoCourierOnFullPaymentAtExpires).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) : '১ মাস'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                      অন থাকলে: ফিজিক্যাল প্রোডাক্টের ১০০% মূল্য ও কুরিয়ার চার্জ আগেই সম্পূর্ণ পরিশোধ করা হলে MecoPay ব্যাকগ্রাউন্ডে স্বয়ংক্রিয়ভাবে পার্সেল বুকিং করবে।
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
-                    অন থাকলে: কাস্টমার অগ্রিম টাকা পরিশোধ করলেই MecoPay ব্যাকগ্রাউন্ডে স্বয়ংক্রিয়ভাবে কুরিয়ার পার্সেল বুকিং করে ফেলবে।
-                  </p>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={autoCourierOnFullPayment}
+                      onChange={(e) => handleToggleFullPayment(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-                  <input
-                    type="checkbox"
-                    checked={autoCourierOnAdvance}
-                    onChange={(e) => setAutoCourierOnAdvance(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                </label>
+
+                {/* Holding Delay Dropdown for Full Payment */}
+                <div className="pt-2.5 border-t border-slate-850 flex items-center justify-between gap-3 flex-wrap">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                    Holding Delay (বুকিং ট্রিগারের পূর্বে বিলম্ব):
+                  </label>
+                  <select
+                    value={courierDelayHoursFullPayment}
+                    onChange={(e) => setCourierDelayHoursFullPayment(Number(e.target.value))}
+                    className="bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value={0}>⚡ Instant / 0 Hours (No Delay)</option>
+                    <option value={1}>⏱ 1 Hour Delay</option>
+                    <option value={2}>⏱ 2 Hours Delay</option>
+                    <option value={4}>⏱ 4 Hours Delay</option>
+                    <option value={6}>⏱ 6 Hours Delay</option>
+                    <option value={12}>⏱ 12 Hours Delay</option>
+                    <option value={24}>⏱ 24 Hours Delay</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Toggle 2: Auto Courier on 100% Full COD */}
-              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-indigo-400" />
-                    <span className="text-sm font-bold text-white">Auto Courier Booking on 100% Full COD</span>
+              {/* Toggle 2: Auto Courier on Advance Pay */}
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-bold text-white">Auto Courier Booking on "Advance Pay" Orders</span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                      অন থাকলে: কাস্টমার অগ্রিম টাকা পরিশোধ করলেই MecoPay ব্যাকগ্রাউন্ডে স্বয়ংক্রিয়ভাবে কুরিয়ার পার্সেল বুকিং করে ফেলবে।
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
-                    অন থাকলে: WordPress বা কাস্টম সাইট থেকে ১০০% COD ফর্ম সাবমিট হওয়ামাত্রই MecoPay স্বয়ংক্রিয়ভাবে কুরিয়ার বুকিং সম্পন্ন করবে। (অফ থাকলে আপনি ম্যানুয়ালি বুক করবেন)।
-                  </p>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={autoCourierOnAdvance}
+                      onChange={(e) => setAutoCourierOnAdvance(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-                  <input
-                    type="checkbox"
-                    checked={autoCourierOnFullCod}
-                    onChange={(e) => setAutoCourierOnFullCod(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-                </label>
+
+                {/* Holding Delay Dropdown for Advance Pay */}
+                <div className="pt-2.5 border-t border-slate-850 flex items-center justify-between gap-3 flex-wrap">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                    Holding Delay (বুকিং ট্রিগারের পূর্বে বিলম্ব):
+                  </label>
+                  <select
+                    value={courierDelayHoursAdvance}
+                    onChange={(e) => setCourierDelayHoursAdvance(Number(e.target.value))}
+                    className="bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value={0}>⚡ Instant / 0 Hours (No Delay)</option>
+                    <option value={1}>⏱ 1 Hour Delay</option>
+                    <option value={2}>⏱ 2 Hours Delay</option>
+                    <option value={4}>⏱ 4 Hours Delay</option>
+                    <option value={6}>⏱ 6 Hours Delay</option>
+                    <option value={12}>⏱ 12 Hours Delay</option>
+                    <option value={24}>⏱ 24 Hours Delay</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Toggle 3: Auto Courier on 100% Full COD */}
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-indigo-400" />
+                      <span className="text-sm font-bold text-white">Auto Courier Booking on 100% Full COD</span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                      অন থাকলে: WordPress বা কাস্টম সাইট থেকে ১০০% COD ফর্ম সাবমিট হওয়ামাত্রই MecoPay স্বয়ংক্রিয়ভাবে কুরিয়ার বুকিং সম্পন্ন করবে। (অফ থাকলে আপনি ম্যানুয়ালি বুক করবেন)।
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={autoCourierOnFullCod}
+                      onChange={(e) => setAutoCourierOnFullCod(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                  </label>
+                </div>
+
+                {/* Holding Delay Dropdown for Full COD */}
+                <div className="pt-2.5 border-t border-slate-850 flex items-center justify-between gap-3 flex-wrap">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                    Holding Delay (বুকিং ট্রিগারের পূর্বে বিলম্ব):
+                  </label>
+                  <select
+                    value={courierDelayHoursFullCod}
+                    onChange={(e) => setCourierDelayHoursFullCod(Number(e.target.value))}
+                    className="bg-slate-900 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value={0}>⚡ Instant / 0 Hours (No Delay)</option>
+                    <option value={1}>⏱ 1 Hour Delay</option>
+                    <option value={2}>⏱ 2 Hours Delay</option>
+                    <option value={4}>⏱ 4 Hours Delay</option>
+                    <option value={6}>⏱ 6 Hours Delay</option>
+                    <option value={12}>⏱ 12 Hours Delay</option>
+                    <option value={24}>⏱ 24 Hours Delay</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
