@@ -72,7 +72,7 @@ serve(async (req) => {
       courier_charge: metadata.courier_charge ?? invoice.courier_charge ?? 0,
       cod_due: metadata.cod_due ?? invoice.cod_due ?? 0,
       success_url: metadata.success_url || invoice.success_url || invoice.redirect_link || null,
-      status: event === 'order.courier_booked' ? 'cod_confirmed' : 'paid',
+      status: event === 'order.courier_booked' ? 'cod_confirmed' : (productType === 'physical_advance' ? 'advance_paid' : 'paid'),
       ...(isDigital ? { delivery: {
         telegram_link: metadata.telegram_link || invoice.telegram_link || null,
         facebook_group_link: metadata.facebook_group_link || invoice.facebook_group_link || null,

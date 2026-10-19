@@ -852,6 +852,24 @@ HEADERS:
 Authorization: Bearer &lt;MECOPAY_API_KEY&gt;`}</pre>
                 <p className="text-slate-400">API Key কখনো browser/frontend, public JSON বা GitHub-এ রাখবেন না। Payment-create request-এ আলাদা webhook secret পাঠানোর দরকার নেই।</p>
               </div>
+              {frameworkTab === 'nodejs' && (
+                <div className="bg-slate-950/80 border border-cyan-500/30 rounded-2xl p-4 space-y-2 text-xs text-slate-300">
+                  <h4 className="font-bold text-cyan-300">Node.js Dependency ও Database Setup</h4>
+                  <p>Client backend-এর project directory থেকে dependency install করুন:</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-cyan-200 overflow-x-auto">{'npm install express axios pg'}</pre>
+                  <p><code>db.query(...)</code> client-এর নিজের database adapter। PostgreSQL হলে <code>../db</code> module-এ pool/client export করে controller-এ <code>const db = require('../db')</code> যোগ করুন; নিজের <code>orders</code> table এবং <code>mecopay_invoice_no</code> column অনুযায়ী query মিলিয়ে নিন। অন্য database হলে তার official driver ব্যবহার করুন।</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-cyan-200 overflow-x-auto">{'MECOPAY_API_KEY=আপনার-brand-api-key\nMECOPAY_WEBHOOK_SECRET=Dashboard-এর-generated-webhook-secret'}</pre>
+                </div>
+              )}
+              {frameworkTab === 'python' && (
+                <div className="bg-slate-950/80 border border-emerald-500/30 rounded-2xl p-4 space-y-2 text-xs text-slate-300">
+                  <h4 className="font-bold text-emerald-300">Python Dependency ও Request Wrapper Setup</h4>
+                  <p>দেওয়া sample-টি Django ORM ভিত্তিক। Django project-এর virtual environment-এ install করুন:</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-emerald-200 overflow-x-auto">{'pip install requests django\n# requirements.txt: requests>=2.31, Django>=4.2'}</pre>
+                  <p>কোডটি নিজের Django view/service function-এর ভিতরে বসিয়ে request body থেকে <code>request_data</code> dictionary তৈরি করুন। <code>Order</code> model, <code>mecopay_invoice_no</code> column এবং URL routing client-এর project অনুযায়ী মিলিয়ে নিন। Flask ব্যবহার করলে <code>requests</code> রাখুন, কিন্তু Django ORM-এর বদলে নিজের Flask database adapter ও route wrapper ব্যবহার করুন।</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-emerald-200 overflow-x-auto">{'MECOPAY_API_KEY=আপনার-brand-api-key\nMECOPAY_WEBHOOK_SECRET=Dashboard-এর-generated-webhook-secret'}</pre>
+                </div>
+              )}
             </div>
 
             {/* STEP 2: Code Implementation */}
@@ -935,6 +953,7 @@ Raw PHP: getenv("MECOPAY_WEBHOOK_SECRET")`}</pre>
                   <li>Laravel/Raw PHP/Node/Python controller raw request body দিয়ে <code>X-MecoPay-Signature</code> যাচাই করবে।</li>
                 </ol>
                 <p className="text-slate-400">Payment-create controller-এ <code>MECOPAY_API_KEY</code> লাগে; success controller-এ <code>MECOPAY_WEBHOOK_SECRET</code> লাগে—দুটি আলাদা credential।</p>
+                <p className="text-slate-400">Webhook status contract: Digital ও Physical Full Payment-এ <code>status: paid</code>, Physical Advance-এ <code>status: advance_paid</code>, আর Full COD courier event-এ <code>status: cod_confirmed</code> থাকবে।</p>
               </div>
             </div>
 
@@ -996,7 +1015,7 @@ Raw PHP: getenv("MECOPAY_WEBHOOK_SECRET")`}</pre>
     "total_price": 1370,
     "payable_amount": 150,
     "cod_due": 1220,
-    "status": "paid",
+    "status": "advance_paid",
     "courier": {
       "provider": "steadfast",
       "tracking_code": "STDF-883108",
