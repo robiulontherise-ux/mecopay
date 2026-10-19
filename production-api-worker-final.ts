@@ -421,7 +421,7 @@ export default {
 
       return new Response(JSON.stringify({
         success: true,
-        order_type: isDigital ? 'digital' : (isFullPayment ? 'physical_full_payment' : 'physical_advance'),
+        product_type: isDigital ? 'digital' : (isFullPayment ? 'physical_full_payment' : 'physical_advance'),
         requires_payment: true,
         invoice_no: invoice.id,
         product_price: productPrice,

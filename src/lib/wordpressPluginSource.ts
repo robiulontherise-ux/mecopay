@@ -328,12 +328,15 @@ function mecopay_init_smart_gateway_class() {
                 $invoice  = $payload['invoice_no'] ?? '';
                 $channel  = $payload['gateway_used'] ?? ($payload['payment_channel'] ?? ($payload['gateway'] ?? 'MFS'));
 
-                // দুটো identifier থাকলে একই order-এ দুটোই match হতে হবে; একটি থাকলে সেটিই যথেষ্ট।
-                $order = $order_id ? wc_get_order($order_id) : null;
-                if ($order && !empty($invoice) && (string) $order->get_meta('_mecopay_invoice_no') !== (string) $invoice) {
-                    $order = null;
-                }
-                if (!$order && empty($order_id) && !empty($invoice)) {
+                // দুটো identifier থাকলে দুটোই একই order-এ match হতে হবে; একটি থাকলে সেই identifier-ই যথেষ্ট।
+                if (!empty($order_id) && !empty($invoice)) {
+                    $order = wc_get_order($order_id);
+                    if (!$order || (string) $order->get_meta('_mecopay_invoice_no') !== (string) $invoice) {
+                        $order = null;
+                    }
+                } elseif (!empty($order_id)) {
+                    $order = wc_get_order($order_id);
+                } elseif (!empty($invoice)) {
                     $invoice_orders = wc_get_orders(array(
                         'limit'      => 1,
                         'type'       => 'shop_order',
@@ -467,8 +470,14 @@ function mecopay_init_smart_gateway_class() {
                 $order_id = $payload['order_id'] ?? ($event_data['order_id'] ?? null);
                 $invoice  = $payload['invoice_no'] ?? '';
                 $courier  = $payload['courier'] ?? array();
-                $order    = $order_id ? wc_get_order($order_id) : null;
-                if (!$order && !empty($invoice)) {
+                if (!empty($order_id) && !empty($invoice)) {
+                    $order = wc_get_order($order_id);
+                    if (!$order || (string) $order->get_meta('_mecopay_invoice_no') !== (string) $invoice) {
+                        $order = null;
+                    }
+                } elseif (!empty($order_id)) {
+                    $order = wc_get_order($order_id);
+                } elseif (!empty($invoice)) {
                     $invoice_orders = wc_get_orders(array(
                         'limit'      => 1,
                         'type'       => 'shop_order',

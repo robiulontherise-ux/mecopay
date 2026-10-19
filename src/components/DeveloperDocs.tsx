@@ -1542,12 +1542,10 @@ app.post('/api/checkout', async (req, res) => {
   try {
     const {
       cart_items = [],
-      product_type = 'digital',
+      product_type,
       order_id,
       product_name = 'Item',
       product_price = null,
-      price = null,
-      amount = null,
       courier_charge = 0,
       advance_amount = 0,
       currency = 'BDT',
@@ -1558,11 +1556,11 @@ app.post('/api/checkout', async (req, res) => {
       cancel_url
     } = req.body;
     const allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
-    const finalProductType = String(product_type).toLowerCase().trim();
+    const finalProductType = String(product_type || '').toLowerCase().trim();
     if (!allowedTypes.includes(finalProductType)) {
       return res.status(400).json({ error: 'Unsupported product_type.' });
     }
-    const priceValue = Number(product_price ?? price ?? amount ?? 0);
+    const priceValue = Number(product_price ?? 0);
     const courierChargeValue = Number(courier_charge || 0);
     const advanceAmountValue = Number(advance_amount || 0);
 
@@ -1606,11 +1604,11 @@ app.post('/api/checkout', async (req, res) => {
     };
 
     if (finalProductType === 'digital') {
-      if (priceValue <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
+      if (priceValue <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য product_price আবশ্যক।' });
       payload.product_price = priceValue;
       payload.telegram_link = 'https://t.me/+join_group';
     } else if (finalProductType === 'physical_advance') {
-      if (priceValue <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
+      if (priceValue <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য product_price আবশ্যক।' });
       payload.product_price = priceValue;
       payload.courier_charge = courierChargeValue;
       payload.advance_amount = advanceAmountValue;
@@ -1676,13 +1674,13 @@ MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
     # ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
     # is_digital = bool(product.get("download_link") or product.get("category_id") in [3, 7])
     # detected_type = "digital" if is_digital else ("physical_advance" if advance_amount > 0 else "physical_cod")
-    product_type = str(request_data.get('product_type') or 'digital').lower().strip()
+    product_type = str(request_data.get('product_type') or '').lower().strip()
     allowed_types = {'digital', 'physical_advance', 'physical_full_payment', 'physical_cod'}
     if product_type not in allowed_types:
         return {"error": "Unsupported product_type."}
     if not request_data.get('order_id'):
         return {"error": "order_id আবশ্যক।"}
-    price = float(request_data.get('product_price') or request_data.get('price') or request_data.get('amount') or 0)
+    product_price = float(request_data.get('product_price') or 0)
     courier_charge = float(request_data.get('courier_charge') or 0) # ফ্রি ডেলিভারি হলে ০ থাকবে
 
     payload = {
@@ -1699,20 +1697,20 @@ MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
     }
 
     if product_type == 'digital':
-        if price <= 0:
+        if product_price <= 0:
             return {"error": "ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।"}
-        payload["product_price"] = price
+        payload["product_price"] = product_price
         payload["telegram_link"] = "https://t.me/+vip_invite"
     elif product_type == 'physical_advance':
         advance = float(request_data.get('advance_amount') or 0)
-        payload["product_price"] = price
+        payload["product_price"] = product_price
         payload["courier_charge"] = courier_charge
         payload["advance_amount"] = advance
     elif product_type == 'physical_full_payment':
-        payload["product_price"] = price
+        payload["product_price"] = product_price
         payload["courier_charge"] = courier_charge
     else: # physical_cod
-        payload["product_price"] = price
+        payload["product_price"] = product_price
         payload["courier_charge"] = courier_charge
 
     headers = {
@@ -1826,11 +1824,12 @@ class MecoPayWebhookController extends Controller
                 $trackingUrl  = $data['courier']['tracking_url'] ?? $data['tracking_url'] ?? null;
                 $provider     = $data['courier']['provider'] ?? $data['courier_provider'] ?? 'steadfast';
 
+                $isFullPayment = ($productType === 'physical_full_payment');
                 $order->update([
-                    'payment_status'   => 'advance_paid',
+                    'payment_status'   => $isFullPayment ? 'paid' : 'advance_paid',
                     'order_status'     => 'ready_for_dispatch',
-                    'advance_amount'   => $paidAmount,
-                    'courier_due'      => $data['cod_due'] ?? $order->cod_due,
+                    'advance_amount'   => $isFullPayment ? 0 : $paidAmount,
+                    'courier_due'      => $isFullPayment ? 0 : ($data['cod_due'] ?? $order->cod_due),
                     'courier_provider' => $provider,
                     'courier_tracking' => $trackingCode,
                     'tracking_url'     => $trackingUrl,
@@ -1857,11 +1856,11 @@ class MecoPayWebhookController extends Controller
             } else {
                 return response()->json([
                     'status' => 'success',
-                    'message' => 'Physical payment recorded and courier tracking initialized.',
+                    'message' => $isFullPayment ? 'Physical full payment processed and shipment prepared.' : 'Physical advance payment recorded and courier tracking initialized.',
                     'order_id' => $orderId,
                     'product_type' => $productType,
                     'advance_amount' => $paidAmount,
-                    'courier_due' => $data['cod_due'] ?? $order->cod_due,
+                    'courier_due' => $isFullPayment ? 0 : ($data['cod_due'] ?? $order->cod_due),
                     'courier_provider' => $provider,
                     'tracking_code' => $trackingCode,
                     'tracking_url' => $trackingUrl,
@@ -2026,12 +2025,13 @@ if ($event === 'payment.completed') {
         exit;
     } else {
         // ফিজিক্যাল অ্যাডভান্স: অগ্রিম পেমেন্ট কনফার্ম, পার্সেল শিপমেন্ট ও ট্র্যাকিং প্রস্তুত
-        $save = $pdo->prepare("UPDATE orders SET payment_status = 'advance_paid', order_status = 'ready_for_dispatch', advance_amount = :amount, courier_due = :cod_due, courier_provider = :provider, courier_tracking = :tracking, tracking_url = :tracking_url WHERE id = :id");
-        $save->execute([':amount' => $paidAmount, ':cod_due' => $codDue, ':provider' => $provider, ':tracking' => $trackingCode, ':tracking_url' => $trackingUrl, ':id' => $merchantOrderId]);
+        $isFullPayment = ($productType === 'physical_full_payment');
+        $save = $pdo->prepare("UPDATE orders SET payment_status = :payment_status, order_status = 'ready_for_dispatch', advance_amount = :amount, courier_due = :cod_due, courier_provider = :provider, courier_tracking = :tracking, tracking_url = :tracking_url WHERE id = :id");
+        $save->execute([':payment_status' => $isFullPayment ? 'paid' : 'advance_paid', ':amount' => $isFullPayment ? 0 : $paidAmount, ':cod_due' => $isFullPayment ? 0 : $codDue, ':provider' => $provider, ':tracking' => $trackingCode, ':tracking_url' => $trackingUrl, ':id' => $merchantOrderId]);
 
         echo json_encode([
             'status' => 'success',
-            'message' => 'Physical payment recorded and courier tracking initialized.',
+            'message' => $isFullPayment ? 'Physical full payment processed and shipment prepared.' : 'Physical advance payment recorded and courier tracking initialized.',
             'order_id' => $orderId,
             'product_type' => $productType,
             'advance_amount' => $paidAmount,
@@ -2180,15 +2180,16 @@ app.post('/api/mecopay/webhook', async (req, res) => {
         const trackingCode = eventData.courier?.tracking_code || eventData.courier_tracking_code;
         const trackingUrl = eventData.courier?.tracking_url || eventData.tracking_url;
         const provider = eventData.courier?.provider || eventData.courier_provider || 'steadfast';
-        await db.query('UPDATE orders SET payment_status = $1, order_status = $2, advance_amount = $3, courier_due = $4, courier_provider = $5, courier_tracking = $6, tracking_url = $7 WHERE id = $8', ['advance_paid', 'ready_for_dispatch', paidAmount, codDue, provider, trackingCode, trackingUrl, order.id]);
+        const isFullPayment = productType === 'physical_full_payment';
+        await db.query('UPDATE orders SET payment_status = $1, order_status = $2, advance_amount = $3, courier_due = $4, courier_provider = $5, courier_tracking = $6, tracking_url = $7 WHERE id = $8', [isFullPayment ? 'paid' : 'advance_paid', 'ready_for_dispatch', isFullPayment ? 0 : paidAmount, isFullPayment ? 0 : codDue, provider, trackingCode, trackingUrl, order.id]);
 
         return res.status(200).json({
           status: 'success',
-          message: 'Physical payment recorded and courier tracking initialized.',
+          message: isFullPayment ? 'Physical full payment processed and shipment prepared.' : 'Physical advance payment recorded and courier tracking initialized.',
           order_id: orderId,
           product_type: productType,
           advance_amount: paidAmount,
-          cod_due: codDue,
+          cod_due: isFullPayment ? 0 : codDue,
           courier_provider: provider,
           tracking_code: trackingCode,
           tracking_url: trackingUrl,
@@ -2334,15 +2335,16 @@ def mecopay_webhook_view(request):
             tracking_code = courier.get("tracking_code") or data.get("courier_tracking_code")
             tracking_url = courier.get("tracking_url") or data.get("tracking_url")
             provider = courier.get("provider") or data.get("courier_provider") or "steadfast"
-            Order.objects.filter(pk=order.pk).update(payment_status="advance_paid", order_status="ready_for_dispatch", advance_amount=paid_amount, cod_due=cod_due, courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url)
+            is_full_payment = product_type == "physical_full_payment"
+            Order.objects.filter(pk=order.pk).update(payment_status="paid" if is_full_payment else "advance_paid", order_status="ready_for_dispatch", advance_amount=0 if is_full_payment else paid_amount, cod_due=0 if is_full_payment else cod_due, courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url)
 
             return JsonResponse({
                 "status": "success",
-                "message": "Physical payment recorded and courier tracking initialized.",
+                "message": "Physical full payment processed and shipment prepared." if is_full_payment else "Physical advance payment recorded and courier tracking initialized.",
                 "order_id": order_id,
                 "product_type": product_type,
                 "advance_amount": paid_amount,
-                "cod_due": cod_due,
+                "cod_due": 0 if is_full_payment else cod_due,
                 "courier_provider": provider,
                 "tracking_code": tracking_code,
                 "tracking_url": tracking_url,
