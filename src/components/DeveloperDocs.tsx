@@ -1776,7 +1776,7 @@ class MecoPayWebhookController extends Controller
         return response()->json(['status' => 'ignored'], 200);
     }
 }
-`;
+\`;
 
 const rawPhpWebhookCode = `<?php
 /**
@@ -1861,7 +1861,7 @@ if ($event === 'order.courier_booked') {
 }
 
 echo json_encode(['status' => 'ignored']);
-?>`;
+?>\`;
 
 const nodeJsWebhookCode = `const express = require('express');
 const crypto = require('crypto');
