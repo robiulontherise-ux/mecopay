@@ -262,10 +262,6 @@ export default {
           courier_status: brand.auto_courier_on_full_cod ? 'queued_for_booking' : 'pending_confirmation',
           metadata: {
             ...metadata,
-            // Root-level access links take precedence; metadata is the fallback.
-            telegram_link: telegram_link || metadata.telegram_link || null,
-            facebook_group_link: facebook_group_link || metadata.facebook_group_link || null,
-            google_drive_link: google_drive_link || metadata.google_drive_link || null,
             currency: orderCurrency,
             success_url: successUrl || null,
             cancel_url: cancel_url || null,
@@ -385,10 +381,12 @@ export default {
         redirect_link: successUrl || null,
         metadata: {
           ...metadata,
-          // Root-level access links take precedence; metadata is the fallback.
-          telegram_link: telegram_link || metadata.telegram_link || null,
-          facebook_group_link: facebook_group_link || metadata.facebook_group_link || null,
-          google_drive_link: google_drive_link || metadata.google_drive_link || null,
+          // Digital access links are stored only for digital products.
+          ...(isDigital ? {
+            telegram_link: telegram_link || metadata.telegram_link || null,
+            facebook_group_link: facebook_group_link || metadata.facebook_group_link || null,
+            google_drive_link: google_drive_link || metadata.google_drive_link || null,
+          } : {}),
           currency: orderCurrency,
           order_id: order_id || null,
           cart_items,
