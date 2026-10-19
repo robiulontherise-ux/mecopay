@@ -19,8 +19,8 @@ import { showToast } from '../lib/toast';
 export default function DeveloperDocs() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'three-products' | 'laravel' | 'webhook' | 'overview'>('three-products');
-  const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_cod'>('digital');
-  const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'javascript' | 'python'>('laravel');
+  const [productSubTab, setProductSubTab] = useState<'digital' | 'physical_advance' | 'physical_full_payment' | 'physical_cod'>('digital');
+  const [frameworkTab, setFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'python'>('laravel');
   const [webhookFrameworkTab, setWebhookFrameworkTab] = useState<'laravel' | 'php' | 'nodejs' | 'python'>('laravel');
 
   const handleCopy = (text: string, index: number) => {
@@ -68,8 +68,6 @@ export default function DeveloperDocs() {
         return rawPhpController;
       case 'nodejs':
         return nodeJsFullController;
-      case 'javascript':
-        return jsFetchController;
       case 'python':
         return pythonFullController;
       default:
@@ -85,8 +83,6 @@ export default function DeveloperDocs() {
         return 'process_payment.php (Core PHP)';
       case 'nodejs':
         return 'controllers/paymentController.js (Express)';
-      case 'javascript':
-        return 'checkout.js (Fetch API)';
       case 'python':
         return 'views.py / payment.py (Django / Flask)';
       default:
@@ -106,7 +102,7 @@ export default function DeveloperDocs() {
             MecoPay Multi-Product & Developer Docs
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-            Laravel, Raw PHP, Node.js, JavaScript, Python এবং কাস্টম ওয়েবসাইটের জন্য Digital, Physical Advance ও 100% Full COD ইন্টিগ্রেশন স্পেসিফিকেশন।
+            Laravel, Raw PHP, Node.js, Python এবং কাস্টম ওয়েবসাইটের জন্য Digital, Physical Advance ও 100% Full COD ইন্টিগ্রেশন স্পেসিফিকেশন।
           </p>
         </div>
       </div>
@@ -161,7 +157,7 @@ export default function DeveloperDocs() {
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Layers className="w-4 h-4" /> ১. ৩ ধরনের প্রোডাক্ট ও JSON
+          <Layers className="w-4 h-4" /> ১. ৪ ধরনের প্রোডাক্ট ও JSON
         </button>
 
         <button
@@ -204,7 +200,7 @@ export default function DeveloperDocs() {
       {activeTab === 'three-products' && (
         <div className="space-y-6">
           {/* Sub Tab Switcher */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <button
               onClick={() => setProductSubTab('digital')}
               className={`p-4 rounded-2xl border text-left transition-all ${
@@ -238,6 +234,22 @@ export default function DeveloperDocs() {
             </button>
 
             <button
+              onClick={() => setProductSubTab('physical_full_payment')}
+              className={`p-4 rounded-2xl border text-left transition-all ${
+                productSubTab === 'physical_full_payment'
+                  ? 'bg-cyan-950/40 border-cyan-500 text-white shadow-lg shadow-cyan-500/10'
+                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-2 font-bold text-xs text-cyan-400 mb-1">
+                <Package className="w-4 h-4" /> ৩. Physical Full Payment
+              </div>
+              <div className="text-[11px] text-slate-300 leading-snug">
+                পণ্য ও কুরিয়ার চার্জের সম্পূর্ণ টাকা অনলাইনে; courier due COD = ০৳।
+              </div>
+            </button>
+
+            <button
               onClick={() => setProductSubTab('physical_cod')}
               className={`p-4 rounded-2xl border text-left transition-all ${
                 productSubTab === 'physical_cod'
@@ -246,7 +258,7 @@ export default function DeveloperDocs() {
               }`}
             >
               <div className="flex items-center gap-2 font-bold text-xs text-emerald-400 mb-1">
-                <Package className="w-4 h-4" /> ৩. Physical (100% COD + Courier Fee)
+                <Package className="w-4 h-4" /> ৪. Physical (100% COD + Courier Fee)
               </div>
               <div className="text-[11px] text-slate-300 leading-snug">
                 গেটওয়েতে ০৳ চার্জ। পণ্যমূল্য + কুরিয়ার ফি সহ মোট টাকা ডেলিভারিতে আদায় ও কুরিয়ার বুকিং।
@@ -264,7 +276,7 @@ export default function DeveloperDocs() {
                   </div>
                   <h3 className="text-lg font-bold text-white">Digital Product JSON Payload Specification</h3>
                   <p className="text-xs text-slate-400">
-                    ফুল পেমেন্ট সফল হওয়ার সাথে সাথে গ্রাহককে <code>callback_url</code>-এ ফিরিয়ে আনা হয় এবং স্ক্রিনে পাসকোড দেওয়া হয়।
+                    ফুল পেমেন্ট সফল হওয়ার সাথে সাথে গ্রাহককে <code>success_url</code>-এ ফিরিয়ে আনা হয় এবং স্ক্রিনে পাসকোড দেওয়া হয়।
                   </p>
                 </div>
                 <button
@@ -291,9 +303,14 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-blue-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-blue-300">order_id</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">যেকোনো একটি অবশ্যই পাঠাতে হবে (দুটোই পাঠালে ট্র্যাকিংয়ের জন্য সর্বোত্তম)।</td>
+                      <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-blue-300">product_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">শুধু invoice বা checkout-এ display করার জন্য; order matching-এর জন্য ব্যবহার হবে না।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-blue-300">product_type</td>
@@ -311,7 +328,7 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">ডিজিটাল পণ্যের ১০০% সম্পূর্ণ মূল্য।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-blue-300">callback_url</td>
+                      <td className="p-3 font-mono text-blue-300">success_url</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">পেমেন্ট সফল হলে আপনার ওয়েবসাইটের যে পেজে কাস্টমারকে রিডাইরেক্ট করা হবে।</td>
                     </tr>
@@ -346,7 +363,7 @@ export default function DeveloperDocs() {
                   <span>সার্ভিস ইন্টিগ্রেশন নোট (Digital Products):</span>
                 </div>
                 <p className="text-slate-400 leading-relaxed text-[11px]">
-                  ডিজিটাল পণ্যের ক্ষেত্রে ক্লায়েন্টের ওয়েবসাইটে গ্রাহক ইতিমধ্যে লগইন বা রেজিস্টার্ড অবস্থায় থাকতে পারেন। MecoPay কোর গেটওয়েতে নাম, ফোন বা ইমেইল পাঠানো বাধ্যতামূলক নয়। তবে আপনার ব্র্যান্ডে যদি <strong>SMS / WhatsApp / Email সার্ভিস</strong> সক্রিয় করা থাকে, তবে সেই সার্ভিসগুলোর মাধ্যমে সফল ডেলিভারি নিশ্চিত করতে সংশ্লিষ্ট ফিল্ডগুলো পাঠাতে হবে। কোনো সার্ভিস সক্রিয় না থাকলে এগুলো ছাড়া শুধু <code>order_id</code>, <code>amount</code> ও <code>callback_url</code> পাঠালেই চলবে।
+                  ডিজিটাল পণ্যের ক্ষেত্রে ক্লায়েন্টের ওয়েবসাইটে গ্রাহক ইতিমধ্যে লগইন বা রেজিস্টার্ড অবস্থায় থাকতে পারেন। MecoPay কোর গেটওয়েতে নাম, ফোন বা ইমেইল পাঠানো বাধ্যতামূলক নয়। তবে আপনার ব্র্যান্ডে যদি <strong>SMS / WhatsApp / Email সার্ভিস</strong> সক্রিয় করা থাকে, তবে সেই সার্ভিসগুলোর মাধ্যমে সফল ডেলিভারি নিশ্চিত করতে সংশ্লিষ্ট ফিল্ডগুলো পাঠাতে হবে। কোনো সার্ভিস সক্রিয় না থাকলে এগুলো ছাড়া শুধু <code>order_id</code>, <code>amount</code> ও <code>success_url</code> পাঠালেই চলবে।
                 </p>
               </div>
             </div>
@@ -389,9 +406,14 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-amber-300">order_id</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">অর্ডার আইডেন্টিফায়ারের জন্য যেকোনো একটি পাঠানো আবশ্যক।</td>
+                      <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-amber-300">product_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">শুধু invoice বা checkout-এ display করার জন্য; order matching-এর জন্য ব্যবহার হবে না।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-amber-300">product_type</td>
@@ -404,7 +426,7 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">মুদ্রার কোড (যেমন: <code>"USD"</code>, <code>"BDT"</code>, <code>"EUR"</code>, <code>"GBP"</code>)। <strong>বাধ্যতামূলক:</strong> বিভিন্ন দেশে ও গেটওয়েতে মুদ্রার মানের ভিন্নতার কারণে কারেন্সি উল্লেখ করা বাধ্যতামূলক। পে-লোডে না পেলে ব্র্যান্ড/গেটওয়ে কনফিগ থেকে ফ্রন্টএন্ডে কারেন্সি প্রদর্শিত হবে।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">total_amount</td>
+                      <td className="p-3 font-mono text-amber-300">product_price</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">পণ্যের মূল মূল্য (যেমন: ১২৫০ ৳)।</td>
                     </tr>
@@ -414,17 +436,12 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">ডেলিভারি ফি (যেমন: ১২০ ৳)।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">amount</td>
+                      <td className="p-3 font-mono text-amber-300">advance_amount</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">অনলাইন গেটওয়েতে কাস্টমার থেকে তাৎক্ষণিক চার্জ (যেমন: ১৫০ ৳)।</td>
+                      <td className="p-3 text-slate-300">অনলাইন গেটওয়েতে কাস্টমার থেকে তাৎক্ষণিক advance charge (যেমন: ১৫০ ৳)। Total-এর সমান বা বেশি হলে due COD শূন্য হবে।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-amber-300">cod_due</td>
-                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">কুরিয়ার ডেলিভারিতে কালেকশন = <code>(total_amount + courier_charge) - amount</code> = ১২২০ ৳।</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-mono text-amber-300">callback_url</td>
+                      <td className="p-3 font-mono text-amber-300">success_url</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
                       <td className="p-3 text-slate-300">পেমেন্ট সফল হলে আপনার ওয়েবসাইটের অর্ডার সাকসেস পেজে রিডাইরেক্ট করার URL।</td>
                     </tr>
@@ -465,7 +482,24 @@ export default function DeveloperDocs() {
             </div>
           )}
 
-          {/* Sub Tab Content 3: Physical COD */}
+          {/* Sub Tab Content 3: Physical Full Payment */}
+          {productSubTab === 'physical_full_payment' && (
+            <div className="bg-slate-900/60 border border-cyan-500/30 rounded-3xl p-6 sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-semibold border border-cyan-500/20 mb-2">
+                    <Package className="w-3.5 h-3.5" /> Physical Full Payment
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Physical Product (Full Payment) JSON Payload</h3>
+                  <p className="text-xs text-slate-400">পণ্যের মূল্য ও courier charge সম্পূর্ণ online payment হবে; API Worker-এর হিসাব অনুযায়ী <code>cod_due = 0</code>।</p>
+                </div>
+                <button onClick={() => handleCopy(fullPaymentJsonPayload, 4)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs border border-slate-700">{copiedIndex === 4 ? 'Copied' : 'Copy JSON'}</button>
+              </div>
+              <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-cyan-300 overflow-x-auto leading-relaxed">{fullPaymentJsonPayload}</pre>
+            </div>
+          )}
+
+          {/* Sub Tab Content 4: Physical COD */}
           {productSubTab === 'physical_cod' && (
             <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -502,9 +536,14 @@ export default function DeveloperDocs() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-400">
                     <tr>
-                      <td className="p-3 font-mono text-emerald-300">order_id বা product_name</td>
+                      <td className="p-3 font-mono text-emerald-300">order_id</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">যেকোনো একটি বা দুটিই পাঠানো আবশ্যক।</td>
+                      <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; এটি বাধ্যতামূলক।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-emerald-300">product_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">শুধু invoice বা checkout-এ display করার জন্য; order matching-এর জন্য ব্যবহার হবে না।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-emerald-300">product_type</td>
@@ -517,7 +556,7 @@ export default function DeveloperDocs() {
                       <td className="p-3 text-slate-300">মুদ্রার কোড (যেমন: <code>"USD"</code>, <code>"BDT"</code>, <code>"INR"</code>)। <strong>বাধ্যতামূলক:</strong> অর্ডার ভ্যালু ও কুরিয়ার অ্যামাউন্ট সঠিক রাখতে কারেন্সি পাঠানো আবশ্যক। পে-লোডে না পেলে ব্র্যান্ড/গেটওয়ে কনফিগ থেকে ফ্রন্টএন্ডে প্রদর্শিত হবে।</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-emerald-300">total_amount</td>
+                      <td className="p-3 font-mono text-emerald-300">product_price</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">পণ্যের মোট মূল্য (যেমন: ১২০০ ৳)।</td>
                     </tr>
@@ -525,11 +564,6 @@ export default function DeveloperDocs() {
                       <td className="p-3 font-mono text-emerald-300">courier_charge</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
                       <td className="p-3 text-slate-300">ডেলিভারি চার্জ (যেমন: ১২০ ৳)।</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-mono text-emerald-300">cod_due</td>
-                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
-                      <td className="p-3 text-slate-300">কুরিয়ারের কাছে মোট পাওনা = <code>total_amount + courier_charge</code> = ১৩২০ ৳।</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-mono text-emerald-300">amount</td>
@@ -584,7 +618,7 @@ export default function DeveloperDocs() {
                 <FileCode2 className="w-5 h-5 text-emerald-400" /> যেকোনো কাস্টম ওয়েবসাইট ও ব্যাকএন্ড ইন্টিগ্রেশন কোড
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                আপনার পছন্দের প্রোগ্রামিং ল্যাঙ্গুয়েজ বা ফ্রেমওয়ার্ক নির্বাচন করুন (Laravel, Raw PHP, Node.js, JavaScript, Python):
+                আপনার পছন্দের প্রোগ্রামিং ল্যাঙ্গুয়েজ বা ফ্রেমওয়ার্ক নির্বাচন করুন (Laravel, Raw PHP, Node.js, Python):
               </p>
             </div>
 
@@ -601,7 +635,7 @@ export default function DeveloperDocs() {
                     স্টোরের ডাটাবেজ
                   </div>
                   <p className="text-slate-400 leading-relaxed text-[11px]">
-                    মার্চেন্টের সাইটে প্রোডাক্ট টেবিলে <code>product_type</code> (digital, physical_advance, physical_cod) এবং <code>currency</code> (BDT, USD, EUR) সেট থাকে।
+                    মার্চেন্টের সাইটে প্রোডাক্ট টেবিলে <code>product_type</code> (digital, physical_advance, physical_full_payment, physical_cod) এবং <code>currency</code> (BDT, USD, EUR) সেট থাকে।
                   </p>
                 </div>
                 <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
@@ -610,7 +644,7 @@ export default function DeveloperDocs() {
                     ফ্রন্টএন্ড ফর্ম / Buy Now
                   </div>
                   <p className="text-slate-400 leading-relaxed text-[11px]">
-                    গ্রাহক যখন সাইটে কোনো প্রোডাক্টে "অর্ডার করুন" চাপেন, ফ্রন্টএন্ড থেকে শুধু <code>product_id</code> অথবা কার্ট ডেটা আপনার ব্যাকএন্ড কন্ট্রোলারে যায়।
+                    গ্রাহক যখন সাইটে কোনো প্রোডাক্টে "অর্ডার করুন" চাপেন, ফ্রন্টএন্ড থেকে প্রোডাক্টের প্রয়োজনীয় তথ্য বা কার্ট ডেটা আপনার ব্যাকএন্ড কন্ট্রোলারে যায়; MecoPay payment payload-এ কেবল client-এর <code>order_id</code> পাঠানো বাধ্যতামূলক।
                   </p>
                 </div>
                 <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-1.5">
@@ -785,16 +819,6 @@ export default function DeveloperDocs() {
                 Node.js (Express / Axios)
               </button>
               <button
-                onClick={() => setFrameworkTab('javascript')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  frameworkTab === 'javascript'
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                JavaScript (Fetch API)
-              </button>
-              <button
                 onClick={() => setFrameworkTab('python')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   frameworkTab === 'python'
@@ -821,6 +845,31 @@ HEADERS:
               <p className="text-[11px] text-slate-400">
                 * কোনো Brand ID আলাদা পাস করার দরকার নেই—API Key থেকেই MecoPay Server Engine সংশ্লিষ্ট ব্র্যান্ড শনাক্ত করে নেবে।
               </p>
+              <div className="bg-blue-950/30 border border-blue-500/30 rounded-2xl p-4 space-y-2 text-xs text-slate-300">
+                <h4 className="font-bold text-blue-300">Payment-create Controller Credential Setup</h4>
+                <p>Dashboard-এর <strong>Brand Settings → API Key</strong> থেকে API Key নিন। এটি শুধু আপনার server-side payment-create controller-এ রাখবেন:</p>
+                <pre className="bg-slate-950 p-3 rounded-xl text-blue-200 overflow-x-auto">{`MECOPAY_API_KEY=আপনার-brand-api-key
+Authorization: Bearer &lt;MECOPAY_API_KEY&gt;`}</pre>
+                <p className="text-slate-400">API Key কখনো browser/frontend, public JSON বা GitHub-এ রাখবেন না। Payment-create request-এ আলাদা webhook secret পাঠানোর দরকার নেই।</p>
+              </div>
+              {frameworkTab === 'nodejs' && (
+                <div className="bg-slate-950/80 border border-cyan-500/30 rounded-2xl p-4 space-y-2 text-xs text-slate-300">
+                  <h4 className="font-bold text-cyan-300">Node.js Dependency ও Database Setup</h4>
+                  <p>Client backend-এর project directory থেকে dependency install করুন:</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-cyan-200 overflow-x-auto">{'npm install express axios pg'}</pre>
+                  <p><code>db.query(...)</code> client-এর নিজের database adapter। PostgreSQL হলে <code>../db</code> module-এ pool/client export করে controller-এ <code>const db = require('../db')</code> যোগ করুন; নিজের <code>orders</code> table এবং <code>mecopay_invoice_no</code> column অনুযায়ী query মিলিয়ে নিন। অন্য database হলে তার official driver ব্যবহার করুন।</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-cyan-200 overflow-x-auto">{'MECOPAY_API_KEY=আপনার-brand-api-key\nMECOPAY_WEBHOOK_SECRET=Dashboard-এর-generated-webhook-secret'}</pre>
+                </div>
+              )}
+              {frameworkTab === 'python' && (
+                <div className="bg-slate-950/80 border border-emerald-500/30 rounded-2xl p-4 space-y-2 text-xs text-slate-300">
+                  <h4 className="font-bold text-emerald-300">Python Dependency ও Request Wrapper Setup</h4>
+                  <p>দেওয়া sample-টি Django ORM ভিত্তিক। Django project-এর virtual environment-এ install করুন:</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-emerald-200 overflow-x-auto">{'pip install requests django\n# requirements.txt: requests>=2.31, Django>=4.2'}</pre>
+                  <p>কোডটি নিজের Django view/service function-এর ভিতরে বসিয়ে request body থেকে <code>request_data</code> dictionary তৈরি করুন। <code>Order</code> model, <code>mecopay_invoice_no</code> column এবং URL routing client-এর project অনুযায়ী মিলিয়ে নিন। Flask ব্যবহার করলে <code>requests</code> রাখুন, কিন্তু Django ORM-এর বদলে নিজের Flask database adapter ও route wrapper ব্যবহার করুন।</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-emerald-200 overflow-x-auto">{'MECOPAY_API_KEY=আপনার-brand-api-key\nMECOPAY_WEBHOOK_SECRET=Dashboard-এর-generated-webhook-secret'}</pre>
+                </div>
+              )}
             </div>
 
             {/* STEP 2: Code Implementation */}
@@ -846,10 +895,26 @@ HEADERS:
                 <h5 className="font-bold text-white">কোডটি কীভাবে কাজ করে?</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>কাস্টমার যখন চেকআউট বাটনে চাপ দেয়, কোড রিকোয়েস্টটি ধরে।</li>
-                  <li><code>order_id</code> বা <code>product_name</code> এবং <code>courier_charge</code> সহ পে-লোড বানায়।</li>
+                  <li>বাধ্যতামূলক <code>order_id</code>; response-এর <code>invoice_no</code> নিজের order row-তে সংরক্ষণ করুন; এবং ঐচ্ছিক display field <code>product_name</code> ও <code>courier_charge</code> সহ পে-লোড বানায়।</li>
                   <li>MecoPay Worker-এর <code>https://api.mecopay.space/v1/create-checkout</code> এ পাঠায়।</li>
                   <li>MecoPay সাথে সাথে একটি সিকিউর <code>checkout_url</code> রিটার্ন করে এবং কাস্টমার রিডাইরেক্ট হয় (অথবা ফুল COD-তে অর্ডার কনফার্ম করে)।</li>
+                  <li>MecoPay সাথে সাথে <code>invoice_no</code> এবং payment-required হলে <code>checkout_url</code> রিটার্ন করে; controller-কে <code>invoice_no</code> নিজের order table-এ সংরক্ষণ করতে হবে।</li>
                 </ol>
+                <div className="bg-slate-900/80 border border-emerald-500/20 rounded-xl p-3 space-y-2">
+                  <p className="font-semibold text-emerald-300">Payment-create Response Contract</p>
+                  <pre className="bg-slate-950 p-3 rounded-xl text-emerald-200 overflow-x-auto">{`{
+  "success": true,
+  "invoice_no": "MecoPay-invoice-no",
+  "checkout_url": "https://www.mecopay.space/pay?...",
+  "requires_payment": true,
+  "product_type": "physical_full_payment",
+  "product_price": 1250,
+  "courier_charge": 120,
+  "payable_amount": 1370,
+  "cod_due": 0
+}`}</pre>
+                  <p className="text-slate-400">Payment-create controller এই response থেকে <code>invoice_no</code> save করবে এবং <code>checkout_url</code>-এ customer-কে redirect করবে। Full COD হলে <code>requires_payment: false</code> থাকবে এবং checkout_url নাও থাকতে পারে।</p>
+                </div>
               </div>
             </div>
           </div>
@@ -869,6 +934,29 @@ HEADERS:
               </p>
             </div>
 
+            <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 space-y-2 text-xs">
+              <h4 className="font-bold text-amber-300">Webhook Secret ও Signature সেটআপ</h4>
+              <p className="text-slate-300">Secret কখনো frontend, JSON payload বা GitHub-এ রাখবেন না। এটি merchant backend-এর environment secret হিসেবে রাখুন এবং একই secret দিয়ে raw request body-এর HMAC-SHA256 hash যাচাই করুন।</p>
+              <pre className="bg-slate-950 p-3 rounded-xl text-amber-200 overflow-x-auto">{`MECOPAY_WEBHOOK_SECRET=আপনার-দীর্ঘ-র‌্যান্ডম-secret
+Header: X-MecoPay-Signature: <hex HMAC-SHA256(raw request body)>
+Laravel: .env + config cache
+Node.js: process.env.MECOPAY_WEBHOOK_SECRET
+Python: os.environ["MECOPAY_WEBHOOK_SECRET"]
+Raw PHP: getenv("MECOPAY_WEBHOOK_SECRET")`}</pre>
+              <p className="text-slate-400">Signature যাচাই সফল না হওয়া পর্যন্ত order status, payment status বা digital link update করবেন না।</p>
+              <div className="bg-slate-950/70 border border-amber-500/20 rounded-xl p-3 space-y-1.5">
+                <p className="font-semibold text-amber-200">Success/Webhook Controller Setup:</p>
+                <ol className="list-decimal pl-5 space-y-1 text-slate-300">
+                  <li>Dashboard → <strong>Webhooks</strong> → আপনার brand নির্বাচন করে client backend-এর webhook URL দিন।</li>
+                  <li>Dashboard যে generated webhook secret দেখাবে, সেটি copy করুন; নতুন secret নিজে বানানোর প্রয়োজন নেই।</li>
+                  <li>Client backend-এ শুধু environment secret হিসেবে বসান: <code>MECOPAY_WEBHOOK_SECRET=...</code>।</li>
+                  <li>Laravel/Raw PHP/Node/Python controller raw request body দিয়ে <code>X-MecoPay-Signature</code> যাচাই করবে।</li>
+                </ol>
+                <p className="text-slate-400">Payment-create controller-এ <code>MECOPAY_API_KEY</code> লাগে; success controller-এ <code>MECOPAY_WEBHOOK_SECRET</code> লাগে—দুটি আলাদা credential।</p>
+                <p className="text-slate-400">Webhook status contract: Digital ও Physical Full Payment-এ <code>status: paid</code>, Physical Advance-এ <code>status: advance_paid</code>, আর Full COD courier event-এ <code>status: cod_confirmed</code> থাকবে।</p>
+              </div>
+            </div>
+
             {/* Webhook JSON Payload */}
             <div className="space-y-4">
               <span className="text-xs font-bold text-slate-300">Webhook POST Payload Samples (ক্যাটাগরি অনুযায়ী আলাদা পে-লোড):</span>
@@ -882,14 +970,26 @@ HEADERS:
                 <pre className="text-xs font-mono text-blue-200 overflow-x-auto">
 {`{
   "event": "payment.completed",
-  "order_id": "ORD-9812",
-  "product_type": "digital",
-  "amount_paid": 1500,
-  "status": "paid",
-  "telegram_link": "https://t.me/+join_onetime_secret",
-  "facebook_group_link": "https://facebook.com/groups/aimasteryvip",
-  "passcode": "MCP-8921",
-  "google_drive_link": "https://drive.google.com/drive/folders/sample_materials"
+  "event_time": "2026-10-18T10:00:00.000Z",
+  "data": {
+    "invoice_no": "8f2b1c9a-0000-4000-8000-9812000000",
+    "order_id": "ORD-9812",
+    "product_name": "Fullstack AI Mastery Course",
+    "product_type": "digital",
+    "currency": "USD",
+    "product_price": 1500,
+    "total_price": 1500,
+    "payable_amount": 1500,
+    "cod_due": 0,
+    "status": "paid",
+    "delivery": {
+      "telegram_link": "https://t.me/+join_onetime_secret",
+      "facebook_group_link": "https://facebook.com/groups/aimasteryvip",
+      "facebook_access_code": "MCP-8921",
+      "google_drive_link": "https://drive.google.com/drive/folders/sample_materials"
+    },
+    "courier": null
+  }
 }`}
                 </pre>
               </div>
@@ -903,14 +1003,25 @@ HEADERS:
                 <pre className="text-xs font-mono text-amber-200 overflow-x-auto">
 {`{
   "event": "payment.completed",
-  "order_id": "ORD-7734",
-  "product_type": "physical_advance",
-  "amount_paid": 150,
-  "cod_due": 1220,
-  "status": "advance_paid",
-  "courier_provider": "steadfast",
-  "tracking_code": "STDF-981245",
-  "tracking_url": "https://steadfast.com.bd/tracking/STDF-981245"
+  "event_time": "2026-10-18T10:00:00.000Z",
+  "data": {
+    "invoice_no": "8f2b1c9a-0000-4000-8000-7734000000",
+    "order_id": "ORD-7734",
+    "product_name": "Wireless Noise Cancelling Headphones",
+    "product_type": "physical_advance",
+    "currency": "USD",
+    "product_price": 1250,
+    "courier_charge": 120,
+    "total_price": 1370,
+    "payable_amount": 150,
+    "cod_due": 1220,
+    "status": "advance_paid",
+    "courier": {
+      "provider": "steadfast",
+      "tracking_code": "STDF-883108",
+      "tracking_url": "https://steadfast.com.bd/tracking/STDF-883108"
+    }
+  }
 }`}
                 </pre>
               </div>
@@ -924,31 +1035,60 @@ HEADERS:
                 <pre className="text-xs font-mono text-emerald-200 overflow-x-auto">
 {`{
   "event": "order.courier_booked",
-  "order_id": "ORD-5519",
-  "product_type": "physical_cod",
-  "status": "shipped",
-  "courier_provider": "steadfast",
-  "tracking_code": "STDF-883109",
-  "tracking_url": "https://steadfast.com.bd/tracking/STDF-883109"
+  "event_time": "2026-10-18T10:00:00.000Z",
+  "data": {
+    "invoice_no": "8f2b1c9a-0000-4000-8000-5519000000",
+    "order_id": "ORD-5519",
+    "product_name": "Leather Executive Wallet",
+    "product_type": "physical_cod",
+    "currency": "USD",
+    "product_price": 1200,
+    "courier_charge": 120,
+    "total_price": 1320,
+    "payable_amount": 0,
+    "cod_due": 1320,
+    "status": "cod_confirmed",
+    "courier": {
+      "provider": "steadfast",
+      "tracking_code": "STDF-883109",
+      "tracking_url": "https://steadfast.com.bd/tracking/STDF-883109"
+    }
+  }
 }`}
                 </pre>
               </div>
 
-              {/* Event 4: Brand Settings Real-time Sync Webhook */}
-              <div className="bg-slate-950 p-4 rounded-2xl border border-purple-500/30 space-y-2">
+              {/* Product 4: Physical Full Payment Webhook */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-cyan-500/30 space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-purple-400">৪. ব্র্যান্ড সেটিংস ও সার্ভিস অন/অফ রিয়েল-টাইম সিঙ্ক Webhook:</span>
-                  <span className="text-[10px] bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded font-mono">event: brand.settings_updated</span>
+                  <span className="text-xs font-bold text-cyan-400">৪. ফিজিক্যাল প্রোডাক্ট (Full Payment) Webhook Payload:</span>
+                  <span className="text-[10px] bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded font-mono">product_type: physical_full_payment</span>
                 </div>
-                <pre className="text-xs font-mono text-purple-200 overflow-x-auto">
+                <pre className="text-xs font-mono text-cyan-200 overflow-x-auto">
 {`{
-  "event": "brand.settings_updated",
-  "payment_gateways_active": true,
-  "auto_courier_on_full_cod": false,
-  "courier_provider": "steadfast",
-  "status": "active"
+  "event": "payment.completed",
+  "event_time": "2026-10-18T10:00:00.000Z",
+  "data": {
+    "invoice_no": "8f2b1c9a-0000-4000-8000-8840000000",
+    "order_id": "ORD-8840",
+    "product_name": "Premium Physical Product",
+    "product_type": "physical_full_payment",
+    "currency": "USD",
+    "product_price": 1250,
+    "courier_charge": 120,
+    "total_price": 1370,
+    "payable_amount": 1370,
+    "cod_due": 0,
+    "status": "paid",
+    "courier": {
+      "provider": "steadfast",
+      "tracking_code": "STDF-883110",
+      "tracking_url": "https://steadfast.com.bd/tracking/STDF-883110"
+    }
+  }
 }`}
                 </pre>
+                <p className="text-[11px] text-slate-400">Physical full payment-এর ক্ষেত্রেও courier object পাঠানো হবে; courier booking সম্পন্ন হলে provider, tracking_code এবং tracking_url-এর বাস্তব value বসবে।</p>
               </div>
             </div>
 
@@ -1026,7 +1166,7 @@ HEADERS:
                 <h5 className="font-bold text-white">Webhook কন্ট্রোলার যেভাবে কাজ করে:</h5>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li><strong>HMAC-SHA256 সিগনেচার ভেরিফিকেশন:</strong> <code>X-MecoPay-Signature</code> হেডারের মাধ্যমে প্রেরিত ডাটার নিরাপত্তা ও বৈধতা নিশ্চিত করে।</li>
-                  <li><strong>অর্ডার ও ইনভয়েস ম্যাপিং:</strong> ক্লায়েন্টের মূল <code>order_id</code> এবং MecoPay-এর <code>invoice_number</code> দিয়ে লোকাল ডাটাবেজে অর্ডার খুঁজে বের করে।</li>
+                  <li><strong>অর্ডার ম্যাপিং:</strong> webhook-এর <code>invoice_no</code> দিয়ে আপনার লোকাল ডাটাবেজে অর্ডার খুঁজে বের করুন। <code>invoice_no</code> হলো MecoPay-এর canonical invoice number; <code>order_id</code> থাকলে অতিরিক্ত মিল হিসেবে ব্যবহার করুন, কিন্তু order_id না থাকলেও invoice_no দিয়ে verification সম্পন্ন হবে।</li>
                   <li><strong>ইভেন্ট হ্যান্ডলিং:</strong> <code>payment.completed</code> হলে ডিজিটাল (পাসকোড প্রদান) বা ফিজিক্যাল (অ্যাডভান্স কনফার্ম ও শিপমেন্ট প্রস্তুত) আপডেট করে। <code>order.courier_booked</code> হলে কুরিয়ার ট্র্যাকিং কোড সংরক্ষণ করে।</li>
                 </ol>
               </div>
@@ -1090,8 +1230,8 @@ const digitalJsonPayload = `{
   "product_name": "Fullstack AI Mastery Course",
   "product_type": "digital",
   "currency": "USD",
-  "amount": 1500,
-  "callback_url": "https://yourwebsite.com/payment/callback",
+  "product_price": 1500,
+  "success_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
   "customer_name": "Rahim Ahmed",
   "customer_phone": "01712345678",
@@ -1106,12 +1246,10 @@ const advanceJsonPayload = `{
   "product_name": "Wireless Noise Cancelling Headphones",
   "product_type": "physical_advance",
   "currency": "USD",
-  "total_amount": 1250,
+  "product_price": 1250,
   "courier_charge": 120,
-  "amount": 150,
-  "cod_due": 1220,
-  "fulfillment_type": "dropship",
-  "callback_url": "https://yourwebsite.com/payment/callback",
+  "advance_amount": 150,
+  "success_url": "https://yourwebsite.com/payment/callback",
   "cancel_url": "https://yourwebsite.com/payment/cancel",
   "customer_name": "Tanvir Hasan",
   "customer_phone": "01812345678",
@@ -1119,17 +1257,28 @@ const advanceJsonPayload = `{
   "customer_address": "House 12, Road 4, Sector 7, Uttara, Dhaka"
 }`;
 
+const fullPaymentJsonPayload = `{
+  "order_id": "ORD-8840",
+  "product_name": "Premium Physical Product",
+  "product_type": "physical_full_payment",
+  "currency": "USD",
+  "product_price": 1250,
+  "courier_charge": 120,
+  "success_url": "https://yourwebsite.com/order/success",
+  "cancel_url": "https://yourwebsite.com/checkout",
+  "customer_name": "Karim Hasan",
+  "customer_phone": "01700000000",
+  "customer_address": "Dhaka, Bangladesh"
+}`;
+
 const codJsonPayload = `{
   "order_id": "ORD-5519",
   "product_name": "Leather Executive Wallet",
   "product_type": "physical_cod",
   "currency": "USD",
-  "total_amount": 1200,
+  "product_price": 1200,
   "courier_charge": 120,
-  "amount": 0,
-  "cod_due": 1320,
-  "fulfillment_type": "own_inventory",
-  "callback_url": "https://yourwebsite.com/order/success",
+  "success_url": "https://yourwebsite.com/order/success",
   "cancel_url": "https://yourwebsite.com/checkout",
   "customer_name": "Mohammad Ali",
   "customer_phone": "01912345678",
@@ -1154,14 +1303,6 @@ class PaymentController extends Controller
      */
     public function initiatePayment(Request $request)
     {
-        // -------------------------------------------------------------------------
-        // গার্ড ১: MecoPay গেটওয়ে সার্ভিস স্ট্যাটাস ক্যাশ চেক (Network Call রোধে)
-        // -------------------------------------------------------------------------
-        $isGatewayActive = Cache::get('mecopay_gateways_active', true);
-        if (!$isGatewayActive) {
-            return back()->with('error', 'MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে স্থগিত আছে।');
-        }
-
         // -------------------------------------------------------------------------
         // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
         // -------------------------------------------------------------------------
@@ -1190,63 +1331,67 @@ class PaymentController extends Controller
         }
 
         // -------------------------------------------------------------------------
-        // গার্ড ৩: ৩ ধরনের প্রোডাক্টের স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+        // গার্ড ৩: ৪ ধরনের প্রোডাক্টের স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
         // -------------------------------------------------------------------------
         // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
         // $isDigital = (!empty($product->download_link) || in_array($product->category_id, [1, 5]));
         // $detectedType = $isDigital ? 'digital' : (($advanceAmount > 0) ? 'physical_advance' : 'physical_cod');
-        $productType = $request->input('product_type') ?: ($detectedType ?? 'digital'); // 'digital' | 'physical_advance' | 'physical_cod'
+        $productType = strtolower(trim((string) $request->input('product_type', '')));
+        $allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
+        if (!in_array($productType, $allowedTypes, true)) {
+            return back()->with('error', 'Unsupported product_type.');
+        }
         $orderId = $request->input('order_id');
         $productName = $request->input('product_name');
 
-        if (empty($orderId) && empty($productName)) {
-            return back()->with('error', 'অর্ডার আইডি অথবা প্রোডাক্টের নাম যেকোনো একটি আবশ্যক।');
+        if (empty($orderId)) {
+            return back()->with('error', 'order_id আবশ্যক।');
         }
 
-        $price = (float) $request->input('price', 0);
+        $productPrice = (float) $request->input('product_price', 0);
         // কুরিয়ার চার্জ ডাইনামিকালি রিকোয়েস্ট বা প্রোডাক্ট থেকে নিন (ফ্রি ডেলিভারি হলে ০ থাকবে):
         $courierCharge = (float) $request->input('courier_charge', 0);
         // আপনার ডাটাবেজ বা রিকোয়েস্ট থেকে কারেন্সি নিন (যেমন: BDT, USD, EUR ইত্যাদি):
         $currency = strtoupper(trim($request->input('currency', 'BDT')));
 
         $payload = [
-            'order_id'         => $orderId ?: ('ORD-' . time()),
+            'order_id'         => $orderId,
             'product_name'     => $productName ?: 'General Item',
             'product_type'     => $productType,
             'currency'         => $currency,
             'customer_name'    => $request->input('customer_name', 'Guest Customer'),
             'customer_phone'   => $request->input('customer_phone', ''),
             'customer_address' => $request->input('customer_address', ''),
-            'callback_url'     => route('payment.callback'),
+            'success_url'     => route('payment.success'),
             'cancel_url'       => route('payment.cancel'),
         ];
 
         if ($productType === 'digital') {
             // ডিজিটাল: ১০০% পেমেন্ট ও রিটার্ন URL আবশ্যক
-            if ($price <= 0) {
-                return back()->with('error', 'ডিজিটাল প্রোডাক্টের জন্য মূল্য (price) আবশ্যক।');
+            if ($productPrice <= 0) {
+                return back()->with('error', 'ডিজিটাল প্রোডাক্টের জন্য product_price আবশ্যক।');
             }
-            $payload['amount'] = $price;
+            $payload['product_price'] = $productPrice;
             $payload['telegram_link'] = $request->input('telegram_link', 'https://t.me/+secret_link');
             $payload['facebook_group_link'] = $request->input('facebook_group_link');
             $payload['google_drive_link'] = $request->input('google_drive_link');
         } elseif ($productType === 'physical_advance') {
             // ফিজিক্যাল অ্যাডভান্স: টোটাল এমাউন্ট, কুরিয়ার চার্জ এবং অ্যাডভান্স ফি
-            if ($price <= 0) {
-                return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য টোটাল মূল্য আবশ্যক।');
+            if ($productPrice <= 0) {
+                return back()->with('error', 'ফিজিক্যাল প্রোডাক্টের জন্য product_price আবশ্যক।');
             }
-            // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি (০ হলে ১০০% ফুল ক্যাশ অন ডেলিভারি):
+            // ক্লায়েন্টের প্রোডাক্ট/স্টোর থেকে ডাইনামিক অগ্রিম ফি; total-এর সমান হলে due COD শূন্য হবে:
             $advanceAmount = (float) $request->input('advance_amount', 0);
-            $payload['total_amount']   = $price;
+            $payload['product_price'] = $productPrice;
             $payload['courier_charge'] = $courierCharge;
-            $payload['amount']         = min($advanceAmount, $price);
-            $payload['cod_due']        = max(0, ($price + $courierCharge) - $payload['amount']);
+            $payload['advance_amount'] = $advanceAmount;
+        } elseif ($productType === 'physical_full_payment') {
+            $payload['product_price'] = $productPrice;
+            $payload['courier_charge'] = $courierCharge;
         } else { // physical_cod
             // ১০০% ক্যাশ অন ডেলিভারি: গেটওয়ে চার্জ ০ এবং বাকি টাকা কুরিয়ার ডিউ
-            $payload['total_amount']   = $price;
+            $payload['product_price'] = $productPrice;
             $payload['courier_charge'] = $courierCharge;
-            $payload['amount']         = 0;
-            $payload['cod_due']        = $price + $courierCharge;
         }
 
         // MecoPay Worker Endpoint এ একক সেন্ট্রাল POST Call
@@ -1257,6 +1402,11 @@ class PaymentController extends Controller
 
         if ($response->successful()) {
             $data = $response->json();
+            $invoiceNo = $data['invoice_no'] ?? null;
+            if ($invoiceNo) {
+                // নিজের order row-তে invoice_no সংরক্ষণ করুন; পরের webhook-এ invoice_no থাকবে, order_id থাকলে অতিরিক্ত মিল হবে।
+                Order::where('id', $orderId)->orWhere('order_id', $orderId)->update(['mecopay_invoice_no' => $invoiceNo]);
+            }
             if (!empty($data['checkout_url'])) {
                 return redirect()->away($data['checkout_url']);
             }
@@ -1265,28 +1415,18 @@ class PaymentController extends Controller
             }
         }
 
-        return back()->with('error', 'Checkout error: ' . ($response['error'] ?? 'MecoPay সার্ভারের সাথে সংযোগে ব্যর্থ হয়েছে।'));
+        return back()->with('error', 'Checkout error: ' . ($response->json('error') ?? 'MecoPay সার্ভারের সাথে সংযোগে ব্যর্থ হয়েছে।'));
     }
 }`;
 
 // 2. Raw PHP (Core PHP) with 3 Architecture Guards
 const rawPhpController = `<?php
 /**
- * Raw PHP Integration for MecoPay (With 3 Guards: Gateway Status, Cart Rules & 3-Product Validation)
+ * Raw PHP Integration for MecoPay (With cart rules and 4-product validation)
  */
-
-session_start();
 
 $apiKey = "YOUR_MECOPAY_API_KEY_HERE";
 $endpoint = "https://api.mecopay.space/v1/create-checkout";
-
-// -------------------------------------------------------------------------
-// গার্ড ১: গেটওয়ে সার্ভিস স্ট্যাটাস চেক (ক্যাশ বা সেশন থেকে)
-// -------------------------------------------------------------------------
-$isGatewayActive = $_SESSION['mecopay_gateways_active'] ?? true;
-if (!$isGatewayActive) {
-    die("MecoPay পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।");
-}
 
 // -------------------------------------------------------------------------
 // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
@@ -1313,20 +1453,28 @@ if (!empty($cart)) {
 }
 
 // -------------------------------------------------------------------------
-// গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+// গার্ড ৩: ৪ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
 // -------------------------------------------------------------------------
 // ৫০০+ পুরোনো প্রোডাক্টের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
 // $isDigital = (!empty($product['download_link']) || in_array($product['category_id'] ?? 0, [3, 7]));
 // $detectedType = $isDigital ? 'digital' : (($advance > 0) ? 'physical_advance' : 'physical_cod');
-$productType = $_POST['product_type'] ?? ($detectedType ?? 'digital');
-$orderId = $_POST['order_id'] ?? ("ORD-" . time());
+$productType = strtolower(trim((string) ($_POST['product_type'] ?? '')));
+$allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
+if (!in_array($productType, $allowedTypes, true)) {
+    die('Unsupported product_type.');
+}
+$orderId = $_POST['order_id'] ?? null;
 $productName = $_POST['product_name'] ?? "E-Commerce Product";
 
+if (empty($orderId)) {
+    die("order_id আবশ্যক।");
+}
+
 // ডাইনামিক কারেন্সি (BDT, USD, EUR ইত্যাদি):
-$currency = strtoupper(trim($_POST['currency'] ?? $order['currency'] ?? 'BDT'));
+$currency = strtoupper(trim($_POST['currency'] ?? 'BDT'));
 
 // প্রোডাক্টের আসল মূল্য ও কুরিয়ার চার্জ ফর্ম বা ডাটাবেজ থেকে ডাইনামিকালি নিন (ফ্রি ডেলিভারি হলে ০):
-$price = (float) ($_POST['price'] ?? 0);
+$productPrice = (float) ($_POST['product_price'] ?? 0);
 $courierCharge = (float) ($_POST['courier_charge'] ?? 0);
 
 $payload = [
@@ -1338,25 +1486,25 @@ $payload = [
     "customer_phone"   => $_POST['customer_phone'] ?? "",
     "customer_address" => $_POST['customer_address'] ?? "",
     // সাইটের নিজস্ব ডোমেন ও ডাইনামিক রিটার্ন পাথ:
-    "callback_url"     => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/payment_success.php",
+    "success_url"     => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/payment_success.php",
     "cancel_url"       => ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://") . $_SERVER['HTTP_HOST'] . "/cart.php"
 ];
 
 if ($productType === 'digital') {
-    if ($price <= 0) die("ডিজিটাল পণ্যের মূল্য আবশ্যক।");
-    $payload['amount'] = $price;
+    if ($productPrice <= 0) die("ডিজিটাল পণ্যের product_price আবশ্যক।");
+    $payload['product_price'] = $productPrice;
     $payload['telegram_link'] = "https://t.me/+join_chat";
 } elseif ($productType === 'physical_advance') {
-    $advance = (float) ($_POST['advance_amount'] ?? 0); // ০ হলে ১০০% ফুল COD
-    $payload['total_amount']   = $price;
+    $advance = (float) ($_POST['advance_amount'] ?? 0); // total-এর সমান হলে physical full payment
+    $payload['product_price'] = $productPrice;
     $payload['courier_charge'] = $courierCharge;
-    $payload['amount']         = $advance;
-    $payload['cod_due']        = ($price + $courierCharge) - $advance;
+    $payload['advance_amount'] = $advance;
+} elseif ($productType === 'physical_full_payment') {
+    $payload['product_price'] = $productPrice;
+    $payload['courier_charge'] = $courierCharge;
 } else { // physical_cod
-    $payload['total_amount']   = $price;
+    $payload['product_price'] = $productPrice;
     $payload['courier_charge'] = $courierCharge;
-    $payload['amount']         = 0;
-    $payload['cod_due']        = $price + $courierCharge;
 }
 
 // cURL রিকোয়েস্ট একক এন্ডপয়েন্টে
@@ -1374,12 +1522,24 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 $result = json_decode($response, true);
+$invoiceNo = $result['invoice_no'] ?? null;
+if ($httpCode === 200 && $invoiceNo) {
+    // $pdo হলো আপনার বিদ্যমান merchant database PDO connection।
+    $saveInvoice = $pdo->prepare(
+        'UPDATE orders SET mecopay_invoice_no = :invoice_no WHERE id = :order_id OR order_id = :order_id'
+    );
+    $saveInvoice->execute([
+        ':invoice_no' => $invoiceNo,
+        ':order_id' => $orderId,
+    ]);
+}
+// invoice_no-ই পরের webhook verification-এর canonical identifier; order_id থাকলে অতিরিক্ত মিল হবে।
 
 if ($httpCode === 200 && !empty($result['checkout_url'])) {
     header("Location: " . $result['checkout_url']);
     exit;
-} elseif ($httpCode === 200 && empty($result['requires_payment'])) {
-    header("Location: " . $result['checkout_url']);
+} elseif ($httpCode === 200 && (($result['requires_payment'] ?? true) === false)) {
+    header('Location: ' . $payload['success_url']);
     exit;
 } else {
     echo "MecoPay Error: " . ($result['error'] ?? 'Connection Failed');
@@ -1397,30 +1557,31 @@ app.use(express.urlencoded({ extended: true }));
 const MECOPAY_API_KEY = process.env.MECOPAY_API_KEY || 'your_api_key_here';
 const MECOPAY_ENDPOINT = 'https://api.mecopay.space/v1/create-checkout';
 
-// মেমোরি ক্যাশ (Webhook দিয়ে রিয়েল-টাইমে সিঙ্ক হয়)
-let isMecoPayActive = true;
-
 app.post('/api/checkout', async (req, res) => {
   try {
-    // -------------------------------------------------------------------------
-    // গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
-    // -------------------------------------------------------------------------
-    if (!isMecoPayActive) {
-      return res.status(503).json({ error: 'MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।' });
-    }
-
-    const { 
-      order_id, 
-      product_name, 
-      product_type = 'digital', 
-      price = 0, 
-      courier_charge = 0, // ফ্রি ডেলিভারি হলে ০ 
-      advance_amount = 0, // ০ হলে ১০০% ফুল COD
+    const {
       cart_items = [],
-      customer_name, 
-      customer_phone, 
-      customer_address 
+      product_type,
+      order_id,
+      product_name = 'Item',
+      product_price = null,
+      courier_charge = 0,
+      advance_amount = 0,
+      currency = 'BDT',
+      customer_name = 'Guest Customer',
+      customer_phone = '',
+      customer_address = '',
+      success_url,
+      cancel_url
     } = req.body;
+    const allowedTypes = ['digital', 'physical_advance', 'physical_full_payment', 'physical_cod'];
+    const finalProductType = String(product_type || '').toLowerCase().trim();
+    if (!allowedTypes.includes(finalProductType)) {
+      return res.status(400).json({ error: 'Unsupported product_type.' });
+    }
+    const priceValue = Number(product_price ?? 0);
+    const courierChargeValue = Number(courier_charge || 0);
+    const advanceAmountValue = Number(advance_amount || 0);
 
     // -------------------------------------------------------------------------
     // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
@@ -1438,46 +1599,44 @@ app.post('/api/checkout', async (req, res) => {
     }
 
     // -------------------------------------------------------------------------
-    // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+    // গার্ড ৩: ৪ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     // -------------------------------------------------------------------------
     // ৫০০+ পুরোনো পণ্যের ডাটাবেজ আপডেট ছাড়াই ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
     // const isDigital = Boolean(product?.download_link || [3, 7].includes(product?.category_id));
     // const detectedType = isDigital ? 'digital' : (advance_amount > 0 ? 'physical_advance' : 'physical_cod');
-    const finalProductType = product_type || (typeof detectedType !== 'undefined' ? detectedType : 'digital');
-    const finalCurrency = (req.body.currency || 'BDT').toUpperCase();
+    const finalCurrency = String(currency || 'BDT').toUpperCase();
 
-    if (!order_id && !product_name) {
-      return res.status(400).json({ error: 'order_id অথবা product_name যেকোনো একটি ফিল্ড আবশ্যক।' });
+    if (!order_id) {
+      return res.status(400).json({ error: 'order_id ফিল্ড আবশ্যক।' });
     }
 
     const payload = {
-      order_id: order_id || ('ORD-' + Date.now()),
-      product_name: product_name || 'Item',
+      order_id,
+      product_name,
       product_type: finalProductType,
       currency: finalCurrency,
-      customer_name: customer_name || 'Guest Customer',
-      customer_phone: customer_phone || '',
-      customer_address: customer_address || '',
-      // ডাইনামিক সাইট ডোমেন ও পাথ:
-      callback_url: (req.protocol + '://' + req.get('host') + '/payment/success'),
-      cancel_url: (req.protocol + '://' + req.get('host') + '/cart')
+      customer_name,
+      customer_phone,
+      customer_address,
+      success_url: success_url || (req.protocol + '://' + req.get('host') + '/payment/success'),
+      cancel_url: cancel_url || (req.protocol + '://' + req.get('host') + '/cart')
     };
 
-    if (product_type === 'digital') {
-      if (!price || price <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।' });
-      payload.amount = Number(price);
+    if (finalProductType === 'digital') {
+      if (priceValue <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য product_price আবশ্যক।' });
+      payload.product_price = priceValue;
       payload.telegram_link = 'https://t.me/+join_group';
-    } else if (product_type === 'physical_advance') {
-      if (!price || price <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য price (total) ফিল্ড আবশ্যক।' });
-      payload.total_amount = Number(price);
-      payload.courier_charge = Number(courier_charge);
-      payload.amount = Number(advance_amount);
-      payload.cod_due = (Number(price) + Number(courier_charge)) - Number(advance_amount);
+    } else if (finalProductType === 'physical_advance') {
+      if (priceValue <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য product_price আবশ্যক।' });
+      payload.product_price = priceValue;
+      payload.courier_charge = courierChargeValue;
+      payload.advance_amount = advanceAmountValue;
+    } else if (finalProductType === 'physical_full_payment') {
+      payload.product_price = priceValue;
+      payload.courier_charge = courierChargeValue;
     } else { // physical_cod
-      payload.total_amount = Number(price);
-      payload.courier_charge = Number(courier_charge);
-      payload.amount = 0;
-      payload.cod_due = Number(price) + Number(courier_charge);
+      payload.product_price = priceValue;
+      payload.courier_charge = courierChargeValue;
     }
 
     const response = await axios.post(MECOPAY_ENDPOINT, payload, {
@@ -1486,6 +1645,16 @@ app.post('/api/checkout', async (req, res) => {
         'Content-Type': 'application/json'
       }
     });
+
+    const invoiceNo = response.data.invoice_no || null;
+    if (invoiceNo) {
+      // db হলো আপনার বিদ্যমান PostgreSQL/MySQL client বা query adapter।
+      await db.query(
+        'UPDATE orders SET mecopay_invoice_no = $1 WHERE id = $2 OR order_id = $2',
+        [invoiceNo, order_id]
+      );
+    }
+    // invoice_no-ই পরের webhook verification-এর canonical identifier; order_id থাকলে অতিরিক্ত মিল হবে。
 
     if (response.data.checkout_url) {
       return res.redirect(response.data.checkout_url);
@@ -1497,123 +1666,13 @@ app.post('/api/checkout', async (req, res) => {
   }
 });`;
 
-// 4. JavaScript (Fetch API - Frontend / Vanilla) with 3 Architecture Guards
-const jsFetchController = `/**
- * JavaScript (Fetch API) Implementation for MecoPay
- * With 3 Guards: Gateway Status, Cart Rules & 3-Product Validation
- */
-async function initiateMecoPayCheckout(orderData) {
-  const apiKey = "YOUR_MECOPAY_API_KEY_HERE";
-  const endpoint = "https://api.mecopay.space/v1/create-checkout";
-
-  // -------------------------------------------------------------------------
-  // গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
-  // -------------------------------------------------------------------------
-  const isGatewayActive = localStorage.getItem('mecopay_gateways_active') !== 'false';
-  if (!isGatewayActive) {
-    alert("MecoPay পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।");
-    return;
-  }
-
-  // -------------------------------------------------------------------------
-  // গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
-  // -------------------------------------------------------------------------
-  const cartItems = orderData.cart_items || [];
-  if (cartItems.length > 0) {
-    const digitalCount = cartItems.filter(i => i.type === 'digital').length;
-    const physicalCount = cartItems.filter(i => i.type !== 'digital').length;
-
-    if (digitalCount > 0 && physicalCount > 0) {
-      alert("কার্ট এরর: একই সাথে ডিজিটাল এবং ফিজিক্যাল প্রোডাক্ট কেনা নিষিদ্ধ। আলাদা অর্ডার করুন।");
-      return;
-    }
-    if (digitalCount > 1) {
-      alert("কার্ট এরর: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।");
-      return;
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
-  // -------------------------------------------------------------------------
-  // ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন ফলব্যাক:
-  // const isDigital = Boolean(item.download_link || [3, 7].includes(item.category_id));
-  // const detectedType = isDigital ? 'digital' : (Number(item.advance_amount) > 0 ? 'physical_advance' : 'physical_cod');
-  const finalProductType = orderData.product_type || (typeof detectedType !== 'undefined' ? detectedType : 'digital');
-  const price = Number(orderData.price || 0);
-  const courierCharge = Number(orderData.courier_charge || 0); // ফ্রি ডেলিভারি হলে ০ থাকবে
-
-  const payload = {
-    order_id: orderData.order_id || ("ORD-" + Date.now()),
-    product_name: orderData.product_name || "Order Item",
-    product_type: finalProductType,
-    currency: (orderData.currency || "BDT").toUpperCase(),
-    customer_name: orderData.customer_name || "Customer Name",
-    customer_phone: orderData.customer_phone || "",
-    customer_address: orderData.customer_address || "",
-    // ব্রাউজারের ডাইনামিক অরিজিন URL:
-    callback_url: window.location.origin + "/order-success",
-    cancel_url: window.location.origin + "/cart"
-  };
-
-  if (finalProductType === 'digital') {
-    payload.amount = price;
-    payload.telegram_link = orderData.telegram_link || "https://t.me/+vip_invite";
-  } else if (finalProductType === 'physical_advance') {
-    const advance = Number(orderData.advance_amount || 0); // ০ হলে ১০০% ফুল COD
-    payload.total_amount = price;
-    payload.courier_charge = courierCharge;
-    payload.amount = advance;
-    payload.cod_due = (price + courierCharge) - advance;
-  } else { // physical_cod
-    payload.total_amount = price;
-    payload.courier_charge = courierCharge;
-    payload.amount = 0;
-    payload.cod_due = price + courierCharge;
-  }
-
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-
-    if (data.success && data.checkout_url) {
-      // MecoPay চেকআউট পেজে রিডাইরেক্ট
-      window.location.href = data.checkout_url;
-    } else if (data.success && !data.requires_payment) {
-      // ১০০% ক্যাশ অন ডেলিভারি (লোকাল সাকসেস)
-      window.location.href = "/order-success?inv=" + data.invoice_number;
-    } else {
-      alert("Error: " + (data.error || "Failed to create checkout"));
-    }
-  } catch (error) {
-    console.error("MecoPay Request Failed:", error);
-  }
-}`;
-
-// 5. Python (Django / Flask / Requests) with 3 Architecture Guards
+// 4. Python (Django / Flask / Requests) with 3 Architecture Guards
 const pythonFullController = `import requests
-import time
+from django.db.models import Q
+from orders.models import Order
 
 MECOPAY_API_KEY = "your_brand_api_key_here"
 MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
-
-# লোকাল ক্যাশ ফ্ল্যাগ (Webhook এর মাধ্যমে রিয়েল-টাইমে আপডেট হয়)
-is_mecopay_active = True
-
-def create_checkout_session(request_data):
-    # -------------------------------------------------------------------------
-    # গার্ড ১: গেটওয়ে স্ট্যাটাস ক্যাশ চেক
-    # -------------------------------------------------------------------------
-    if not is_mecopay_active:
-        return {"error": "MecoPay অনলাইন পেমেন্ট সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।"}
 
     # -------------------------------------------------------------------------
     # গার্ড ২: কার্ট পলিসি ও মিক্সড প্রোডাক্ট গার্ড (Cart Integrity Rules)
@@ -1629,17 +1688,22 @@ def create_checkout_session(request_data):
             return {"error": "কার্ট পলিসি এরর: ডিজিটাল প্রোডাক্ট এক অর্ডারে সর্বোচ্চ ১টি নেওয়া যাবে।"}
 
     # -------------------------------------------------------------------------
-    # গার্ড ৩: ৩ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
+    # গার্ড ৩: ৪ ধরনের প্রোডাক্ট স্মার্ট অটো-ডিটেকশন ও পে-লোড প্রস্তুতি
     # -------------------------------------------------------------------------
     # ৫০০+ পুরোনো পণ্যের ক্যাটাগরি বা ফাইল দেখে অটো ডিটেকশন:
     # is_digital = bool(product.get("download_link") or product.get("category_id") in [3, 7])
     # detected_type = "digital" if is_digital else ("physical_advance" if advance_amount > 0 else "physical_cod")
-    product_type = request_data.get('product_type') or locals().get('detected_type', 'digital')
-    price = float(request_data.get('price') or request_data.get('amount') or 0)
+    product_type = str(request_data.get('product_type') or '').lower().strip()
+    allowed_types = {'digital', 'physical_advance', 'physical_full_payment', 'physical_cod'}
+    if product_type not in allowed_types:
+        return {"error": "Unsupported product_type."}
+    if not request_data.get('order_id'):
+        return {"error": "order_id আবশ্যক।"}
+    product_price = float(request_data.get('product_price') or 0)
     courier_charge = float(request_data.get('courier_charge') or 0) # ফ্রি ডেলিভারি হলে ০ থাকবে
 
     payload = {
-        "order_id": request_data.get('order_id', f"ORD-{int(time.time())}"),
+        "order_id": request_data['order_id'],
         "product_name": request_data.get('product_name', "Digital E-Book"),
         "product_type": product_type,
         "currency": (request_data.get('currency') or "BDT").upper(),
@@ -1647,26 +1711,26 @@ def create_checkout_session(request_data):
         "customer_phone": request_data.get('customer_phone', ""),
         "customer_address": request_data.get('customer_address', "Dhaka"),
         # সাইটের ডাইনামিক ডোমেন বা রিকোয়েস্ট URL:
-        "callback_url": request_data.get('callback_url') or "/payment/callback",
+        "success_url": request_data.get('success_url') or "/payment/callback",
         "cancel_url": request_data.get('cancel_url') or "/cart"
     }
 
     if product_type == 'digital':
-        if price <= 0:
+        if product_price <= 0:
             return {"error": "ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।"}
-        payload["amount"] = price
+        payload["product_price"] = product_price
         payload["telegram_link"] = "https://t.me/+vip_invite"
     elif product_type == 'physical_advance':
         advance = float(request_data.get('advance_amount') or 0)
-        payload["total_amount"] = price
+        payload["product_price"] = product_price
         payload["courier_charge"] = courier_charge
-        payload["amount"] = advance
-        payload["cod_due"] = (price + courier_charge) - advance
+        payload["advance_amount"] = advance
+    elif product_type == 'physical_full_payment':
+        payload["product_price"] = product_price
+        payload["courier_charge"] = courier_charge
     else: # physical_cod
-        payload["total_amount"] = price
+        payload["product_price"] = product_price
         payload["courier_charge"] = courier_charge
-        payload["amount"] = 0
-        payload["cod_due"] = price + courier_charge
 
     headers = {
         "Authorization": f"Bearer {MECOPAY_API_KEY}",
@@ -1675,11 +1739,16 @@ def create_checkout_session(request_data):
 
     response = requests.post(MECOPAY_ENDPOINT, json=payload, headers=headers)
     result = response.json()
+    invoice_no = result.get('invoice_no')
+    if response.status_code == 200 and invoice_no:
+        # আপনার Django Order model/ORM বা বিদ্যমান DB adapter ব্যবহার করুন।
+        Order.objects.filter(Q(pk=request_data['order_id']) | Q(order_id=request_data['order_id'])).update(mecopay_invoice_no=invoice_no)
+    # invoice_no-ই পরের webhook verification-এর canonical identifier; order_id থাকলে অতিরিক্ত মিল হবে।
 
     if response.status_code == 200:
         if result.get("checkout_url"):
             return {"redirect": result["checkout_url"]}
-        return {"success": True, "invoice_number": result.get("invoice_number")}
+        return {"success": True, "order_id": request_data['order_id'], "requires_payment": result.get("requires_payment", True)}
     else:
         return {"error": result.get("error", "API request failed")}
 `;
@@ -1695,36 +1764,50 @@ class MecoPayWebhookController extends Controller
 {
     /**
      * MecoPay Webhook Listener & Order Fulfillment
-     * Verify payment and update order status using order_id
+     * Synchronized with Cloudflare API Worker & Supabase Edge Functions
      */
     public function handle(Request $request)
     {
         $rawPayload = $request->getContent();
         $receivedSignature = $request->header('X-MecoPay-Signature');
-        $webhookSecret = env('MECOPAY_WEBHOOK_SECRET', 'your_webhook_secret_here');
+        $webhookSecret = env('MECOPAY_WEBHOOK_SECRET');
 
         // -------------------------------------------------------------------------
-        // ১. সিকিউরিটি ভেরিফিকেশন: HMAC-SHA256 (Header-based)
+        // ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
         // -------------------------------------------------------------------------
-        if (!empty($webhookSecret) && $webhookSecret !== 'your_webhook_secret_here') {
-            $expectedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
-            if (!hash_equals($expectedSignature, (string)$receivedSignature)) {
-                return response()->json(['error' => 'Invalid webhook signature.'], 401);
-            }
+        if (empty($webhookSecret) || $webhookSecret === 'your_webhook_secret_here' || empty($receivedSignature)) {
+            return response()->json(['error' => 'Webhook signature configuration or header is missing.'], 401);
+        }
+        $expectedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
+        if (!hash_equals($expectedSignature, (string)$receivedSignature)) {
+            return response()->json(['error' => 'Invalid webhook signature.'], 401);
         }
 
         $payload = $request->all();
         $event = $payload['event'] ?? '';
-        $orderId = $payload['order_id'] ?? null;
+        $data = $payload['data'] ?? $payload;
 
         // -------------------------------------------------------------------------
-        // ২. শুধুমাত্র order_id দিয়ে ক্লায়েন্টের নিজস্ব ডাটাবেজে অর্ডার অনুসন্ধান
+        // ২. canonical invoice_no এবং optional order_id দিয়ে অর্ডার অনুসন্ধান
         // -------------------------------------------------------------------------
-        if (!$orderId) {
-            return response()->json(['error' => 'Missing order_id in webhook.'], 400);
+        $orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
+        $invoiceNo = $data['invoice_no'] ?? $payload['invoice_no'] ?? null;
+
+        if (!$orderId && !$invoiceNo) {
+            return response()->json(['error' => 'Missing order_id or invoice_no in webhook.'], 400);
         }
 
-        $order = Order::where('order_id', $orderId)->first();
+        // নিজের database-এ আগে সংরক্ষিত order_id ও invoice_no দুটোই মিলতে হবে।
+        $orderQuery = Order::query();
+        if ($orderId) {
+            $orderQuery->where(function ($query) use ($orderId) {
+                $query->where('id', $orderId)->orWhere('order_id', $orderId);
+            });
+        }
+        if ($invoiceNo) {
+            $orderQuery->where('mecopay_invoice_no', $invoiceNo);
+        }
+        $order = $orderQuery->first();
 
         if (!$order) {
             return response()->json(['error' => 'Order not found in merchant database.'], 404);
@@ -1734,49 +1817,116 @@ class MecoPayWebhookController extends Controller
         // ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
         // -------------------------------------------------------------------------
         if ($event === 'payment.completed') {
-            $productType = $payload['product_type'] ?? 'digital';
+            $productType = $data['order_type'] ?? $data['product_type'] ?? $order->product_type ?? 'digital';
+            $paidAmount = $data['payable_amount'] ?? $data['amount_paid'] ?? $data['amount'] ?? 0;
 
             if ($productType === 'digital') {
-                // ডিজিটাল প্রোডাক্ট: লিঙ্ক ও পাসকোড সেভ করে অর্ডার পেইড মার্ক করা
+                // ডিজিটাল প্রোডাক্ট: ১০০% পেমেন্ট সফল, অ্যাক্সেস ও ডেলিভারি লিংক সংরক্ষণ
+                $delivery = is_array($data['delivery'] ?? null) ? $data['delivery'] : [];
+                $digitalPasscode = $delivery['facebook_access_code'] ?? $delivery['passcode'] ?? null;
+                $telegramLink    = $delivery['telegram_link'] ?? null;
+                $fbGroupLink     = $delivery['facebook_group_link'] ?? null;
+                $driveLink       = $delivery['google_drive_link'] ?? null;
+
                 $order->update([
-                    'status'         => 'paid',
-                    'telegram_link'  => $payload['telegram_link'] ?? null,
-                    'facebook_group' => $payload['facebook_group_link'] ?? null,
-                    'passcode'       => $payload['passcode'] ?? null,
-                    'google_drive'   => $payload['google_drive_link'] ?? null,
+                    'payment_status' => 'paid',
+                    'order_status'   => 'completed',
+                    'amount_paid'    => $paidAmount,
+                    'access_passcode'=> $digitalPasscode,
+                    'telegram_link'  => $telegramLink,
+                    'facebook_group' => $fbGroupLink,
+                    'google_drive'   => $driveLink,
                 ]);
             } else {
-                // ফিজিক্যাল প্রোডাক্ট (অ্যাডভান্স পেইড): কুরিয়ার ট্র্যাকিং লিঙ্ক ও বাকি COD সেভ করা
+                // ফিজিক্যাল প্রোডাক্ট (অ্যাডভান্স পেইড): অগ্রিম কনফার্ম, বাকি টাকা কুরিয়ারে ডিউ ও ট্র্যাকিং
+                $trackingCode = $data['courier']['tracking_code'] ?? $data['courier_tracking_code'] ?? null;
+                $trackingUrl  = $data['courier']['tracking_url'] ?? $data['tracking_url'] ?? null;
+                $provider     = $data['courier']['provider'] ?? $data['courier_provider'] ?? 'steadfast';
+
+                $isFullPayment = ($productType === 'physical_full_payment');
                 $order->update([
-                    'status'           => 'advance_paid',
-                    'courier_provider' => $payload['courier_provider'] ?? 'steadfast',
-                    'tracking_code'    => $payload['tracking_code'] ?? null,
-                    'tracking_url'     => $payload['tracking_url'] ?? null,
-                    'cod_due'          => $payload['cod_due'] ?? $order->cod_due,
+                    'payment_status'   => $isFullPayment ? 'paid' : 'advance_paid',
+                    'order_status'     => 'ready_for_dispatch',
+                    'advance_amount'   => $isFullPayment ? 0 : $paidAmount,
+                    'courier_due'      => $isFullPayment ? 0 : ($data['cod_due'] ?? $order->cod_due),
+                    'courier_provider' => $provider,
+                    'courier_tracking' => $trackingCode,
+                    'tracking_url'     => $trackingUrl,
                 ]);
             }
 
-            return response()->json(['status' => 'success', 'order_id' => $orderId], 200);
+            if ($productType === 'digital') {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Digital payment processed and access links granted.',
+                    'order_id' => $orderId,
+                    'product_type' => 'digital',
+                    'passcode' => $digitalPasscode,
+                    'telegram_link' => $telegramLink,
+                    'facebook_group_link' => $fbGroupLink,
+                    'google_drive_link' => $driveLink,
+                    'digital_access' => [
+                        'passcode' => $digitalPasscode,
+                        'telegram_link' => $telegramLink,
+                        'facebook_group_link' => $fbGroupLink,
+                        'google_drive_link' => $driveLink,
+                    ]
+                ], 200);
+            } else {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => $isFullPayment ? 'Physical full payment processed and shipment prepared.' : 'Physical advance payment recorded and courier tracking initialized.',
+                    'order_id' => $orderId,
+                    'product_type' => $productType,
+                    'advance_amount' => $paidAmount,
+                    'courier_due' => $isFullPayment ? 0 : ($data['cod_due'] ?? $order->cod_due),
+                    'courier_provider' => $provider,
+                    'tracking_code' => $trackingCode,
+                    'tracking_url' => $trackingUrl,
+                    'courier' => [
+                        'provider' => $provider,
+                        'tracking_code' => $trackingCode,
+                        'tracking_url' => $trackingUrl,
+                    ]
+                ], 200);
+            }
         }
 
         // -------------------------------------------------------------------------
         // ৪. ইভেন্ট ২: ১০০% Full COD অর্ডারে কুরিয়ার বুকিং নিশ্চিত হওয়া
         // -------------------------------------------------------------------------
         if ($event === 'order.courier_booked') {
+            $courier = $data['courier'] ?? [];
+            $trackingCode = $courier['tracking_code'] ?? ($data['courier_tracking_code'] ?? null);
+            $provider = $courier['provider'] ?? 'steadfast';
+            $trackingUrl = $courier['tracking_url'] ?? null;
+
             $order->update([
-                'status'           => 'shipped',
-                'courier_provider' => $payload['courier_provider'] ?? 'steadfast',
-                'tracking_code'    => $payload['tracking_code'] ?? null,
-                'tracking_url'     => $payload['tracking_url'] ?? null,
+                'order_status'     => 'shipped',
+                'courier_provider' => $provider,
+                'courier_tracking' => $trackingCode,
+                'tracking_url'     => $trackingUrl,
             ]);
 
-            return response()->json(['status' => 'success', 'order_id' => $orderId], 200);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Courier booking recorded with parcel tracking URL.',
+                'order_id' => $orderId,
+                'courier_provider' => $provider,
+                'tracking_code' => $trackingCode,
+                'tracking_url' => $trackingUrl,
+                'courier' => [
+                    'provider' => $provider,
+                    'tracking_code' => $trackingCode,
+                    'tracking_url' => $trackingUrl,
+                ]
+            ], 200);
         }
 
-        return response()->json(['status' => 'ignored'], 200);
+        return response()->json(['status' => 'ignored', 'message' => 'Event not handled.'], 200);
     }
 }
-\`;
+`;
 
 const rawPhpWebhookCode = `<?php
 /**
@@ -1786,20 +1936,23 @@ const rawPhpWebhookCode = `<?php
 
 header('Content-Type: application/json');
 
-$webhookSecret = getenv('MECOPAY_WEBHOOK_SECRET') ?: 'your_webhook_secret_here';
+$webhookSecret = getenv('MECOPAY_WEBHOOK_SECRET');
 $rawPayload = file_get_contents('php://input');
 $receivedSignature = $_SERVER['HTTP_X_MECOPAY_SIGNATURE'] ?? '';
 
 // -------------------------------------------------------------------------
 // ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
 // -------------------------------------------------------------------------
-if (!empty($webhookSecret) && $webhookSecret !== 'your_webhook_secret_here') {
-    $expectedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
-    if (!hash_equals($expectedSignature, (string)$receivedSignature)) {
-        http_response_code(401);
-        echo json_encode(['error' => 'Invalid webhook signature.']);
-        exit;
-    }
+if (empty($webhookSecret) || $webhookSecret === 'your_webhook_secret_here' || empty($receivedSignature)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Webhook signature configuration or header is missing.']);
+    exit;
+}
+$expectedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
+if (!hash_equals($expectedSignature, (string)$receivedSignature)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid webhook signature.']);
+    exit;
 }
 
 $payload = json_decode($rawPayload, true);
@@ -1810,61 +1963,144 @@ if (!$payload) {
 }
 
 $event = $payload['event'] ?? '';
-$orderId = $payload['order_id'] ?? null;
+$data = $payload['data'] ?? $payload;
 
 // -------------------------------------------------------------------------
-// ২. শুধুমাত্র order_id দিয়ে অর্ডার অনুসন্ধান ও ভেরিফিকেশন
+// ২. canonical invoice_no এবং optional order_id
 // -------------------------------------------------------------------------
-if (!$orderId) {
+$orderId = $data['order_id'] ?? $payload['order_id'] ?? null;
+$invoiceNo = $data['invoice_no'] ?? $payload['invoice_no'] ?? null;
+
+if (!$orderId && !$invoiceNo) {
     http_response_code(400);
-    echo json_encode(['error' => 'Missing order_id in webhook.']);
+    echo json_encode(['error' => 'Missing order_id or invoice_no in webhook.']);
     exit;
 }
 
-// আপনার ডাটাবেজ কানেকশন (MySQL / MariaDB via PDO)
-/*
-$pdo = new PDO("mysql:host=localhost;dbname=your_store_db;charset=utf8mb4", "db_user", "db_password", [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-]);
-*/
+// $pdo আপনার existing merchant bootstrap/database connection থেকে নিন।
+// উদাহরণ: require __DIR__ . '/bootstrap.php'; যেখানে $pdo তৈরি হয়েছে。
+if (!isset($pdo) || !($pdo instanceof PDO)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Merchant PDO connection is not configured.']);
+    exit;
+}
+$conditions = [];
+$params = [];
+if ($orderId) {
+    $conditions[] = '(id = :order_id OR order_id = :order_id)';
+    $params[':order_id'] = $orderId;
+}
+if ($invoiceNo) {
+    $conditions[] = 'mecopay_invoice_no = :invoice_no';
+    $params[':invoice_no'] = $invoiceNo;
+}
+$lookup = $pdo->prepare('SELECT * FROM orders WHERE ' . implode(' AND ', $conditions) . ' LIMIT 1');
+$lookup->execute($params);
+$order = $lookup->fetch();
+if (!$order) {
+    http_response_code(404);
+    echo json_encode(['error' => 'Order not found in merchant database.']);
+    exit;
+}
+$merchantOrderId = $order['id'];
 
 // -------------------------------------------------------------------------
 // ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
 // -------------------------------------------------------------------------
 if ($event === 'payment.completed') {
-    $productType = $payload['product_type'] ?? 'digital';
+    $productType = $data['order_type'] ?? $data['product_type'] ?? 'digital';
+    $paidAmount = (float)($data['payable_amount'] ?? $data['amount_paid'] ?? $data['amount'] ?? 0);
+            $delivery = is_array($data['delivery'] ?? null) ? $data['delivery'] : [];
+            $passcode = $delivery['facebook_access_code'] ?? $delivery['passcode'] ?? '';
+            $telegramLink = $delivery['telegram_link'] ?? '';
+            $fbGroupLink = $delivery['facebook_group_link'] ?? '';
+            $driveLink = $delivery['google_drive_link'] ?? '';
+    $codDue = $data['cod_due'] ?? null;
+    $trackingCode = $data['courier']['tracking_code'] ?? $data['courier_tracking_code'] ?? '';
+    $trackingUrl = $data['courier']['tracking_url'] ?? $data['tracking_url'] ?? '';
+    $provider = $data['courier']['provider'] ?? $data['courier_provider'] ?? 'steadfast';
 
     if ($productType === 'digital') {
-        // ডিজিটাল প্রোডাক্ট: লিঙ্ক ও পাসকোড সেভ করে অর্ডার পেইড মার্ক করা
-        // $stmt = $pdo->prepare("UPDATE orders SET status = 'paid', telegram_link = ?, facebook_group = ?, passcode = ?, google_drive = ? WHERE order_id = ?");
-        // $stmt->execute([$payload['telegram_link'] ?? '', $payload['facebook_group_link'] ?? '', $payload['passcode'] ?? '', $payload['google_drive_link'] ?? '', $orderId]);
-    } else {
-        // ফিজিক্যাল অ্যাডভান্স: কুরিয়ার ট্র্যাকিং লিঙ্ক ও বাকি COD সেভ করা
-        // $stmt = $pdo->prepare("UPDATE orders SET status = 'advance_paid', courier_provider = ?, tracking_code = ?, tracking_url = ?, cod_due = ? WHERE order_id = ?");
-        // $stmt->execute([$payload['courier_provider'] ?? 'steadfast', $payload['tracking_code'] ?? '', $payload['tracking_url'] ?? '', $payload['cod_due'] ?? 0, $orderId]);
-    }
+        // ডিজিটাল: ১০০% ফুল পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক কনফার্ম
+        $save = $pdo->prepare("UPDATE orders SET payment_status = 'paid', order_status = 'completed', amount_paid = :amount, mecopay_passcode = :passcode, telegram_link = :telegram, facebook_group = :facebook, google_drive = :drive WHERE id = :id");
+        $save->execute([':amount' => $paidAmount, ':passcode' => $passcode, ':telegram' => $telegramLink, ':facebook' => $fbGroupLink, ':drive' => $driveLink, ':id' => $merchantOrderId]);
 
-    echo json_encode(['status' => 'success', 'order_id' => $orderId]);
-    exit;
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Digital payment processed and access links granted.',
+            'order_id' => $orderId,
+            'product_type' => 'digital',
+            'passcode' => $passcode,
+            'telegram_link' => $telegramLink,
+            'facebook_group_link' => $fbGroupLink,
+            'google_drive_link' => $driveLink,
+            'digital_access' => [
+                'passcode' => $passcode,
+                'telegram_link' => $telegramLink,
+                'facebook_group_link' => $fbGroupLink,
+                'google_drive_link' => $driveLink,
+            ]
+        ]);
+        exit;
+    } else {
+        // ফিজিক্যাল অ্যাডভান্স: অগ্রিম পেমেন্ট কনফার্ম, পার্সেল শিপমেন্ট ও ট্র্যাকিং প্রস্তুত
+        $isFullPayment = ($productType === 'physical_full_payment');
+        $save = $pdo->prepare("UPDATE orders SET payment_status = :payment_status, order_status = 'ready_for_dispatch', advance_amount = :amount, courier_due = :cod_due, courier_provider = :provider, courier_tracking = :tracking, tracking_url = :tracking_url WHERE id = :id");
+        $save->execute([':payment_status' => $isFullPayment ? 'paid' : 'advance_paid', ':amount' => $isFullPayment ? 0 : $paidAmount, ':cod_due' => $isFullPayment ? 0 : $codDue, ':provider' => $provider, ':tracking' => $trackingCode, ':tracking_url' => $trackingUrl, ':id' => $merchantOrderId]);
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => $isFullPayment ? 'Physical full payment processed and shipment prepared.' : 'Physical advance payment recorded and courier tracking initialized.',
+            'order_id' => $orderId,
+            'product_type' => $productType,
+            'advance_amount' => $paidAmount,
+            'cod_due' => $codDue,
+            'courier_provider' => $provider,
+            'tracking_code' => $trackingCode,
+            'tracking_url' => $trackingUrl,
+            'courier' => [
+                'provider' => $provider,
+                'tracking_code' => $trackingCode,
+                'tracking_url' => $trackingUrl,
+            ]
+        ]);
+        exit;
+    }
 }
 
 // -------------------------------------------------------------------------
 // ৪. ইভেন্ট ২: ১০০% Full COD অর্ডারে কুরিয়ার বুকিং নিশ্চিত হওয়া
 // -------------------------------------------------------------------------
 if ($event === 'order.courier_booked') {
-    // $stmt = $pdo->prepare("UPDATE orders SET status = 'shipped', courier_provider = ?, tracking_code = ?, tracking_url = ? WHERE order_id = ?");
-    // $stmt->execute([$payload['courier_provider'] ?? 'steadfast', $payload['tracking_code'] ?? '', $payload['tracking_url'] ?? '', $orderId]);
+    $save = $pdo->prepare("UPDATE orders SET order_status = 'shipped', courier_provider = :provider, courier_tracking = :tracking, tracking_url = :tracking_url WHERE id = :id");
+    $save->execute([':provider' => $data['courier']['provider'] ?? 'steadfast', ':tracking' => $data['courier']['tracking_code'] ?? ($data['courier_tracking_code'] ?? ''), ':tracking_url' => $data['courier']['tracking_url'] ?? ($data['tracking_url'] ?? ''), ':id' => $merchantOrderId]);
+    $trackingCode = $data['courier']['tracking_code'] ?? $data['courier_tracking_code'] ?? '';
+    $provider = $data['courier']['provider'] ?? 'steadfast';
+    $trackingUrl = $data['courier']['tracking_url'] ?? '';
 
-    echo json_encode(['status' => 'success', 'order_id' => $orderId]);
+
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'Courier tracking updated successfully with parcel tracking URL.',
+        'order_id' => $orderId,
+        'courier_provider' => $provider,
+        'tracking_code' => $trackingCode,
+        'tracking_url' => $trackingUrl,
+        'courier' => [
+            'provider' => $provider,
+            'tracking_code' => $trackingCode,
+            'tracking_url' => $trackingUrl,
+        ]
+    ]);
     exit;
 }
 
 echo json_encode(['status' => 'ignored']);
-?>\`;
+?>`;
 
 const nodeJsWebhookCode = `const express = require('express');
 const crypto = require('crypto');
+const db = require('../db'); // আপনার existing PostgreSQL query client
 const app = express();
 
 // গুরুত্বপূর্ণ: সিগনেচার ভেরিফিকেশনের জন্য হুবহু raw body প্রয়োজন
@@ -1874,7 +2110,7 @@ app.use(express.json({
   }
 }));
 
-const WEBHOOK_SECRET = process.env.MECOPAY_WEBHOOK_SECRET || 'your_webhook_secret_here';
+const WEBHOOK_SECRET = process.env.MECOPAY_WEBHOOK_SECRET;
 
 app.post('/api/mecopay/webhook', async (req, res) => {
   try {
@@ -1883,51 +2119,68 @@ app.post('/api/mecopay/webhook', async (req, res) => {
     // -------------------------------------------------------------------------
     // ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
     // -------------------------------------------------------------------------
-    if (WEBHOOK_SECRET && WEBHOOK_SECRET !== 'your_webhook_secret_here') {
-      const expectedSignature = crypto
-        .createHmac('sha256', WEBHOOK_SECRET)
-        .update(req.rawBody || JSON.stringify(req.body))
-        .digest('hex');
+    if (!WEBHOOK_SECRET || WEBHOOK_SECRET === 'your_webhook_secret_here' || !receivedSignature) {
+      return res.status(401).json({ error: 'Webhook signature configuration or header is missing.' });
+    }
+    const expectedSignature = crypto
+      .createHmac('sha256', WEBHOOK_SECRET)
+      .update(req.rawBody || JSON.stringify(req.body))
+      .digest('hex');
 
-      if (receivedSignature !== expectedSignature) {
-        return res.status(401).json({ error: 'Invalid webhook signature.' });
-      }
+    if (receivedSignature !== expectedSignature) {
+      return res.status(401).json({ error: 'Invalid webhook signature.' });
     }
 
     const { event, data } = req.body;
     const eventData = data || req.body;
 
     // -------------------------------------------------------------------------
-    // ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
+    // ২. canonical invoice_no এবং optional order_id
     // -------------------------------------------------------------------------
     const orderId = eventData.order_id || req.body.order_id;
-    const invoiceNumber = eventData.invoice_number || req.body.invoice_number;
+    const invoiceNo = eventData.invoice_no || req.body.invoice_no;
 
-    if (!orderId && !invoiceNumber) {
-      return res.status(400).json({ error: 'Missing order_id or invoice_number in webhook.' });
+    if (!orderId && !invoiceNo) {
+      return res.status(400).json({ error: 'Missing order_id or invoice_no in webhook.' });
     }
+    const lookupConditions = [];
+    const lookupParams = [];
+    if (orderId) {
+      lookupParams.push(orderId);
+      lookupConditions.push('(id::text = $' + lookupParams.length + ' OR order_id = $' + lookupParams.length + ')');
+    }
+    if (invoiceNo) {
+      lookupParams.push(invoiceNo);
+      lookupConditions.push('mecopay_invoice_no = $' + lookupParams.length);
+    }
+    const lookupSql = 'SELECT * FROM orders WHERE ' + lookupConditions.join(' AND ') + ' LIMIT 1';
+    const orderResult = await db.query(
+      lookupSql,
+      lookupParams
+    );
+    const order = orderResult.rows[0];
+    if (!order) return res.status(404).json({ error: 'Order not found in merchant database.' });
 
     // -------------------------------------------------------------------------
     // ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
     // -------------------------------------------------------------------------
     if (event === 'payment.completed') {
       const productType = eventData.order_type || eventData.product_type || 'digital';
-      const trxId = eventData.trx_id || eventData.transaction_id;
-      const paidAmount = eventData.amount || eventData.amount_paid;
+      const paidAmount = eventData.payable_amount ?? eventData.amount_paid ?? eventData.amount;
 
       if (productType === 'digital') {
         // ডিজিটাল: ১০০% পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক প্রদান
-        const passcode = eventData.digital_access?.passcode || eventData.digital_access?.fb_passcode || eventData.fb_passcode;
-        const telegramLink = eventData.digital_access?.telegram_link || eventData.telegram_link;
-        const fbGroupLink = eventData.digital_access?.facebook_group_link || eventData.facebook_group_link;
-        const driveLink = eventData.digital_access?.google_drive_link || eventData.google_drive_link;
-        // await db.order.update({ where: { id: orderId }, data: { paymentStatus: 'paid', status: 'completed', trxId, invoiceNumber, passcode, telegramLink, fbGroupLink, driveLink } });
+        const delivery = eventData.delivery || {};
+        const passcode = delivery.facebook_access_code || delivery.passcode || '';
+        const telegramLink = delivery.telegram_link || '';
+        const fbGroupLink = delivery.facebook_group_link || '';
+        const driveLink = delivery.google_drive_link || '';
+        await db.query('UPDATE orders SET payment_status = $1, order_status = $2, amount_paid = $3, mecopay_passcode = $4, telegram_link = $5, facebook_group = $6, google_drive = $7 WHERE id = $8', ['paid', 'completed', paidAmount, passcode, telegramLink, fbGroupLink, driveLink, order.id]);
 
         return res.status(200).json({
           status: 'success',
           message: 'Digital payment processed and access links granted.',
           order_id: orderId,
-          invoice_number: invoiceNumber,
           product_type: 'digital',
           passcode,
           telegram_link: telegramLink,
@@ -1946,16 +2199,16 @@ app.post('/api/mecopay/webhook', async (req, res) => {
         const trackingCode = eventData.courier?.tracking_code || eventData.courier_tracking_code;
         const trackingUrl = eventData.courier?.tracking_url || eventData.tracking_url;
         const provider = eventData.courier?.provider || eventData.courier_provider || 'steadfast';
-        // await db.order.update({ where: { id: orderId }, data: { paymentStatus: 'advance_paid', status: 'ready_to_ship', trxId, invoiceNumber, advanceAmount: paidAmount, courierDue: codDue, courierTracking: trackingCode, trackingUrl } });
+        const isFullPayment = productType === 'physical_full_payment';
+        await db.query('UPDATE orders SET payment_status = $1, order_status = $2, advance_amount = $3, courier_due = $4, courier_provider = $5, courier_tracking = $6, tracking_url = $7 WHERE id = $8', [isFullPayment ? 'paid' : 'advance_paid', 'ready_for_dispatch', isFullPayment ? 0 : paidAmount, isFullPayment ? 0 : codDue, provider, trackingCode, trackingUrl, order.id]);
 
         return res.status(200).json({
           status: 'success',
-          message: 'Advance payment recorded and courier tracking initialized.',
+          message: isFullPayment ? 'Physical full payment processed and shipment prepared.' : 'Physical advance payment recorded and courier tracking initialized.',
           order_id: orderId,
-          invoice_number: invoiceNumber,
-          product_type: 'physical_advance',
+          product_type: productType,
           advance_amount: paidAmount,
-          cod_due: codDue,
+          cod_due: isFullPayment ? 0 : codDue,
           courier_provider: provider,
           tracking_code: trackingCode,
           tracking_url: trackingUrl,
@@ -1975,14 +2228,12 @@ app.post('/api/mecopay/webhook', async (req, res) => {
       const trackingCode = eventData.courier?.tracking_code || eventData.courier_tracking_code;
       const provider = eventData.courier?.provider || eventData.courier_provider || 'steadfast';
       const trackingUrl = eventData.courier?.tracking_url || eventData.tracking_url;
-
-      // await db.order.update({ where: { id: orderId }, data: { status: 'shipped', courierProvider: provider, trackingCode, trackingUrl, invoiceNumber } });
+      await db.query('UPDATE orders SET order_status = $1, courier_provider = $2, courier_tracking = $3, tracking_url = $4 WHERE id = $5', ['shipped', provider, trackingCode, trackingUrl, order.id]);
 
       return res.status(200).json({
         status: 'success',
         message: 'Courier booking saved with parcel tracking URL.',
         order_id: orderId,
-        invoice_number: invoiceNumber,
         courier_provider: provider,
         tracking_code: trackingCode,
         tracking_url: trackingUrl,
@@ -2008,8 +2259,10 @@ import json
 import os
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
+from orders.models import Order  # আপনার existing Order model
 
-WEBHOOK_SECRET = os.getenv("MECOPAY_WEBHOOK_SECRET", "your_webhook_secret_here")
+WEBHOOK_SECRET = os.getenv("MECOPAY_WEBHOOK_SECRET")
 
 @csrf_exempt
 def mecopay_webhook_view(request):
@@ -2026,15 +2279,16 @@ def mecopay_webhook_view(request):
     # -------------------------------------------------------------------------
     # ১. সিকিউরিটি গার্ড: HMAC-SHA256 সিগনেচার ভেরিফিকেশন
     # -------------------------------------------------------------------------
-    if WEBHOOK_SECRET and WEBHOOK_SECRET != "your_webhook_secret_here":
-        expected_signature = hmac.new(
-            WEBHOOK_SECRET.encode('utf-8'),
-            raw_body.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
+    if not WEBHOOK_SECRET or WEBHOOK_SECRET == "your_webhook_secret_here" or not received_signature:
+        return JsonResponse({"error": "Webhook signature configuration or header is missing."}, status=401)
+    expected_signature = hmac.new(
+        WEBHOOK_SECRET.encode('utf-8'),
+        raw_body.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
 
-        if not hmac.compare_digest(expected_signature, received_signature):
-            return JsonResponse({"error": "Invalid webhook signature."}, status=401)
+    if not hmac.compare_digest(expected_signature, received_signature):
+        return JsonResponse({"error": "Invalid webhook signature."}, status=401)
 
     try:
         payload = json.loads(raw_body)
@@ -2045,36 +2299,42 @@ def mecopay_webhook_view(request):
     data = payload.get("data") or payload
 
     # -------------------------------------------------------------------------
-    # ২. ক্লায়েন্ট অর্ডার আইডি ও ইনভয়েস নাম্বার
+    # ২. ক্লায়েন্ট order_id ও invoice_no
     # -------------------------------------------------------------------------
     order_id = data.get("order_id") or payload.get("order_id")
-    invoice_number = data.get("invoice_number") or payload.get("invoice_number")
+    invoice_no = data.get("invoice_no") or payload.get("invoice_no")
 
-    if not order_id and not invoice_number:
-        return JsonResponse({"error": "Missing order_id or invoice_number in webhook."}, status=400)
+    if not order_id and not invoice_no:
+        return JsonResponse({"error": "Missing order_id or invoice_no in webhook."}, status=400)
+    lookup = Q()
+    if order_id:
+        lookup &= (Q(id=order_id) | Q(order_id=order_id))
+    if invoice_no:
+        lookup &= Q(mecopay_invoice_no=invoice_no)
+    order = Order.objects.filter(lookup).first()
+    if not order:
+        return JsonResponse({"error": "Order not found in merchant database."}, status=404)
 
     # -------------------------------------------------------------------------
     # ৩. ইভেন্ট ১: ডিজিটাল বা ফিজিক্যাল অ্যাডভান্স পেমেন্ট সফল হওয়া
     # -------------------------------------------------------------------------
     if event == "payment.completed":
         product_type = data.get("order_type") or data.get("product_type") or "digital"
-        trx_id = data.get("trx_id") or data.get("transaction_id")
-        paid_amount = data.get("amount") or data.get("amount_paid")
+        paid_amount = data.get("payable_amount") or data.get("amount_paid") or data.get("amount")
 
         if product_type == "digital":
             # ডিজিটাল প্রোডাক্ট: ১০০% পেমেন্ট সফল, পাসকোড ও এক্সেস লিংক ডেলিভারি
-            digital_access = data.get("digital_access") or {}
-            passcode = digital_access.get("passcode") or digital_access.get("fb_passcode") or data.get("fb_passcode")
-            telegram_link = digital_access.get("telegram_link") or data.get("telegram_link")
-            fb_group_link = digital_access.get("facebook_group_link") or data.get("facebook_group_link")
-            drive_link = digital_access.get("google_drive_link") or data.get("google_drive_link")
-            # Order.objects.filter(id=order_id).update(payment_status="paid", status="completed", trx_id=trx_id, invoice_number=invoice_number, passcode=passcode, telegram_link=telegram_link, fb_group=fb_group_link, drive_link=drive_link)
+            delivery = data.get("delivery") or {}
+            passcode = delivery.get("facebook_access_code") or delivery.get("passcode")
+            telegram_link = delivery.get("telegram_link")
+            fb_group_link = delivery.get("facebook_group_link")
+            drive_link = delivery.get("google_drive_link")
+            Order.objects.filter(pk=order.pk).update(payment_status="paid", order_status="completed", amount_paid=paid_amount, mecopay_passcode=passcode, telegram_link=telegram_link, facebook_group=fb_group_link, google_drive=drive_link)
 
             return JsonResponse({
                 "status": "success",
                 "message": "Digital payment processed and access links granted.",
                 "order_id": order_id,
-                "invoice_number": invoice_number,
                 "product_type": "digital",
                 "passcode": passcode,
                 "telegram_link": telegram_link,
@@ -2094,16 +2354,16 @@ def mecopay_webhook_view(request):
             tracking_code = courier.get("tracking_code") or data.get("courier_tracking_code")
             tracking_url = courier.get("tracking_url") or data.get("tracking_url")
             provider = courier.get("provider") or data.get("courier_provider") or "steadfast"
-            # Order.objects.filter(id=order_id).update(payment_status="advance_paid", status="ready_to_ship", trx_id=trx_id, invoice_number=invoice_number, advance_amount=paid_amount, courier_due=cod_due, courier_tracking=tracking_code, tracking_url=tracking_url)
+            is_full_payment = product_type == "physical_full_payment"
+            Order.objects.filter(pk=order.pk).update(payment_status="paid" if is_full_payment else "advance_paid", order_status="ready_for_dispatch", advance_amount=0 if is_full_payment else paid_amount, cod_due=0 if is_full_payment else cod_due, courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url)
 
             return JsonResponse({
                 "status": "success",
-                "message": "Advance payment recorded and courier tracking initialized.",
+                "message": "Physical full payment processed and shipment prepared." if is_full_payment else "Physical advance payment recorded and courier tracking initialized.",
                 "order_id": order_id,
-                "invoice_number": invoice_number,
-                "product_type": "physical_advance",
+                "product_type": product_type,
                 "advance_amount": paid_amount,
-                "cod_due": cod_due,
+                "cod_due": 0 if is_full_payment else cod_due,
                 "courier_provider": provider,
                 "tracking_code": tracking_code,
                 "tracking_url": tracking_url,
@@ -2122,13 +2382,12 @@ def mecopay_webhook_view(request):
         tracking_code = courier.get("tracking_code") or data.get("courier_tracking_code")
         provider = courier.get("provider", "steadfast")
         tracking_url = courier.get("tracking_url") or data.get("tracking_url")
-        # Order.objects.filter(id=order_id).update(status="shipped", courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url, invoice_number=invoice_number)
+        Order.objects.filter(pk=order.pk).update(order_status="shipped", courier_provider=provider, courier_tracking=tracking_code, tracking_url=tracking_url)
 
         return JsonResponse({
             "status": "success",
             "message": "Courier booked successfully with parcel tracking URL.",
             "order_id": order_id,
-            "invoice_number": invoice_number,
             "courier_provider": provider,
             "tracking_code": tracking_code,
             "tracking_url": tracking_url,
