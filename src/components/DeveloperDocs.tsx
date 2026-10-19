@@ -1559,9 +1559,11 @@ $payload = [
 ];
 
 if ($productType === 'digital') {
-    if ($productPrice <= 0) die("ডিজিটাল পণ্যের product_price আবশ্যক।");
+    if ($productPrice <= 0) die("ডিজিটাল প্রোডাক্টের জন্য product_price আবশ্যক।");
     $payload['product_price'] = $productPrice;
     $payload['telegram_link'] = "https://t.me/+join_chat";
+    $payload['facebook_group_link'] = $_POST['facebook_group_link'] ?? null;
+    $payload['google_drive_link'] = $_POST['google_drive_link'] ?? null;
 } elseif ($productType === 'physical_advance') {
     $advance = (float) ($_POST['advance_amount'] ?? 0); // total-এর সমান হলে physical full payment
     $payload['product_price'] = $productPrice;
@@ -1696,6 +1698,8 @@ app.post('/api/checkout', async (req, res) => {
       if (priceValue <= 0) return res.status(400).json({ error: 'ডিজিটাল প্রোডাক্টের জন্য product_price আবশ্যক।' });
       payload.product_price = priceValue;
       payload.telegram_link = 'https://t.me/+join_group';
+      payload.facebook_group_link = req.body.facebook_group_link || null;
+      payload.google_drive_link = req.body.google_drive_link || null;
     } else if (finalProductType === 'physical_advance') {
       if (priceValue <= 0) return res.status(400).json({ error: 'ফিজিক্যাল প্রোডাক্টের জন্য product_price আবশ্যক।' });
       payload.product_price = priceValue;
@@ -1791,6 +1795,8 @@ MECOPAY_ENDPOINT = "https://api.mecopay.space/v1/create-checkout"
             return {"error": "ডিজিটাল প্রোডাক্টের জন্য price ফিল্ড আবশ্যক।"}
         payload["product_price"] = product_price
         payload["telegram_link"] = "https://t.me/+vip_invite"
+        payload["facebook_group_link"] = request_data.get("facebook_group_link")
+        payload["google_drive_link"] = request_data.get("google_drive_link")
     elif product_type == 'physical_advance':
         advance = float(request_data.get('advance_amount') or 0)
         payload["product_price"] = product_price
