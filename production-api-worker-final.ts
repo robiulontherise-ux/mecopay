@@ -296,7 +296,7 @@ export default {
 
         return new Response(JSON.stringify({
           success: true,
-          order_type: 'physical_cod',
+          product_type: 'physical_cod',
           requires_payment: false,
           status: 'cod_confirmed',
           invoice_no: createdInvoice.id,
