@@ -1559,7 +1559,7 @@ $payload = [
 ];
 
 if ($productType === 'digital') {
-    if ($productPrice <= 0) die("ডিজিটাল প্রোডাক্টের জন্য product_price আবশ্যক।");
+    if ($productPrice <= 0) die("ডিজিটাল প্রোডাক্টের product_price আবশ্যক。");
     $payload['product_price'] = $productPrice;
     $payload['telegram_link'] = "https://t.me/+join_chat";
     $payload['facebook_group_link'] = $_POST['facebook_group_link'] ?? null;
