@@ -496,6 +496,71 @@ export default function DeveloperDocs() {
                 <button onClick={() => handleCopy(fullPaymentJsonPayload, 4)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs border border-slate-700">{copiedIndex === 4 ? 'Copied' : 'Copy JSON'}</button>
               </div>
               <pre className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 text-xs font-mono text-cyan-300 overflow-x-auto leading-relaxed">{fullPaymentJsonPayload}</pre>
+
+              {/* Mandatory vs Optional Table for Physical Full Payment */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse border border-slate-800 rounded-xl overflow-hidden">
+                  <thead>
+                    <tr className="bg-slate-950 text-slate-300 font-semibold border-b border-slate-800">
+                      <th className="p-3">ফিল্ড নেম</th>
+                      <th className="p-3">স্ট্যাটাস</th>
+                      <th className="p-3">বিবরণ ও সার্ভিস গাইডলাইন</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-slate-400">
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">order_id</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
+                      <td className="p-3 text-slate-300">ক্লায়েন্টের unique order ID; পরবর্তী webhook matching-এর জন্য প্রয়োজনীয়।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">product_name</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">Invoice বা checkout display-এর জন্য; না দিলে Worker default name ব্যবহার করবে।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">product_type</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
+                      <td className="p-3 text-slate-300">মান হতে হবে <code>"physical_full_payment"</code>।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">currency</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
+                      <td className="p-3 text-slate-300">অর্ডারের মুদ্রার কোড, যেমন <code>"BDT"</code>, <code>"USD"</code> বা <code>"EUR"</code>।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">product_price</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
+                      <td className="p-3 text-slate-300">পণ্যের মূল্য; Full Payment-এ সম্পূর্ণ online payment-এর হিসাবের অংশ।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">courier_charge</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">বাধ্যতামূলক (Must)</span></td>
+                      <td className="p-3 text-slate-300">ডেলিভারি চার্জ; Free delivery হলে <code>0</code> পাঠাবেন।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">success_url</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">পেমেন্ট সফল হলে client website-এর order success page-এ ফেরত পাঠানোর URL; production integration-এ পাঠানো recommended।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">cancel_url</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">ঐচ্ছিক (Optional)</span></td>
+                      <td className="p-3 text-slate-300">পেমেন্ট বাতিল হলে client website-এ ফেরত পাঠানোর URL।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">customer_name / customer_phone / customer_address</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-semibold">ঐচ্ছিক (কুরিয়ার সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">Auto courier booking চালু থাকলে parcel booking-এর জন্য customer-এর নাম, ফোন ও পূর্ণ delivery address পাঠানো প্রয়োজন।</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-mono text-cyan-300">customer_email</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold">ঐচ্ছিক (সার্ভিস নির্ভর)</span></td>
+                      <td className="p-3 text-slate-300">Email invoice বা receipt service চালু থাকলে customer-এর email পাঠাবেন।</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
