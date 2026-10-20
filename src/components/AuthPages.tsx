@@ -88,6 +88,12 @@ export default function AuthPage({ kind }: { kind: AuthPageKind }) {
 
           {page.intro && <p className="mecopay-auth-intro">{page.intro}</p>}
 
+          {kind === 'home' && (
+            <p className="mecopay-auth-policy-link">
+              <a href="/auth/privacy">Privacy Policy</a>
+            </p>
+          )}
+
           {page.sections && (
             <div className="mecopay-auth-sections">
               {page.sections.map((section) => (
