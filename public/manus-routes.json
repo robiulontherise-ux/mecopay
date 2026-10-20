@@ -1,0 +1,22 @@
+{
+  "routes": [
+    { "path": "/auth/home", "title": "MecoPay Auth - Identity & Authentication Portal" },
+    { "path": "/auth/privacy", "title": "MecoPay Auth - Privacy Policy" },
+    { "path": "/auth/terms", "title": "MecoPay Auth - Terms of Service" },
+    { "path": "/login", "title": "Login" },
+    { "path": "/checkout", "title": "Checkout" },
+    { "path": "/checkout/:slug", "title": "Checkout" },
+    { "path": "/pay", "title": "Payment" },
+    { "path": "/pay/:slug", "title": "Payment" },
+    { "path": "/access/:invoiceId", "title": "Access" },
+    { "path": "/privacy-policy", "title": "Privacy Policy" },
+    { "path": "/terms-conditions", "title": "Terms & Conditions" },
+    { "path": "/refund-policy", "title": "Refund Policy" },
+    { "path": "/customer-rights", "title": "Customer Rights" },
+    { "path": "/anti-fraud", "title": "Anti-Fraud" },
+    { "path": "/features", "title": "Features" },
+    { "path": "/docs", "title": "Developer Docs" },
+    { "path": "/developers", "title": "Developer Docs" },
+    { "path": "/dashboard/*", "title": "Dashboard" }
+  ]
+}

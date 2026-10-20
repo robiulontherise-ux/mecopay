@@ -8,6 +8,7 @@ import CheckoutPage from './components/checkout/CheckoutPage';
 import AccessPage from './components/checkout/AccessPage';
 import { PrivacyPolicy, TermsConditions, RefundPolicy, CustomerRightsAndAntiFraud, DeveloperDocsPage } from './components/Legal';
 import FeaturesPage from './components/FeaturesPage';
+import AuthPage from './components/AuthPages';
 import TimeSpentBeaconTracker from './components/analytics/TimeSpentBeaconTracker';
 import { LocaleProvider } from './lib/LocaleContext';
 
@@ -85,6 +86,11 @@ function App() {
         <BrowserRouter>
           <TimeSpentBeaconTracker />
           <Routes>
+          {/* Hidden MecoPay Auth identity and legal pages. These routes must stay before the catch-all. */}
+          <Route path="/auth/home" element={<AuthPage kind="home" />} />
+          <Route path="/auth/privacy" element={<AuthPage kind="privacy" />} />
+          <Route path="/auth/terms" element={<AuthPage kind="terms" />} />
+
           {/* Authentication */}
           <Route
             path="/login"
