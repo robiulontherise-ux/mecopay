@@ -41,6 +41,13 @@ class ErrorBoundary extends React.Component<EBProps, EBState> {
 function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const publicAuthPage = window.location.pathname === '/auth/home'
+    ? 'home'
+    : window.location.pathname === '/auth/privacy'
+      ? 'privacy'
+      : window.location.pathname === '/auth/terms'
+        ? 'terms'
+        : null;
 
   useEffect(() => {
     // Check for hash errors from OAuth
@@ -71,6 +78,16 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // MecoPay Auth legal/identity pages are intentionally public and must not
+  // wait for Supabase or redirect through the login flow.
+  if (publicAuthPage) {
+    return (
+      <ErrorBoundary>
+        <AuthPage kind={publicAuthPage} />
+      </ErrorBoundary>
+    );
+  }
 
   if (loading) {
     return (
