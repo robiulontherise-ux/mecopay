@@ -59,6 +59,24 @@ const pageContent: Record<AuthPageKind, {
 function useAuthPageMetadata(title: string) {
   useEffect(() => {
     document.title = title;
+
+    let robots = document.head.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    const existingRobotsContent = robots?.content;
+    const createdByAuthPage = !robots;
+    if (!robots) {
+      robots = document.createElement('meta');
+      robots.name = 'robots';
+      document.head.appendChild(robots);
+    }
+    robots.content = 'noindex, nofollow';
+
+    return () => {
+      if (createdByAuthPage) {
+        robots?.remove();
+      } else if (robots && existingRobotsContent !== undefined) {
+        robots.content = existingRobotsContent;
+      }
+    };
   }, [title]);
 }
 
