@@ -59,23 +59,6 @@ const pageContent: Record<AuthPageKind, {
 function useAuthPageMetadata(title: string) {
   useEffect(() => {
     document.title = title;
-
-    let robots = document.head.querySelector<HTMLMetaElement>('meta[name="robots"]');
-    const createdByAuthPage = !robots;
-    if (!robots) {
-      robots = document.createElement('meta');
-      robots.name = 'robots';
-      document.head.appendChild(robots);
-    }
-
-    robots.content = 'noindex, nofollow';
-    robots.dataset.mecopayAuth = 'true';
-
-    return () => {
-      if (createdByAuthPage && robots?.dataset.mecopayAuth === 'true') {
-        robots.remove();
-      }
-    };
   }, [title]);
 }
 
