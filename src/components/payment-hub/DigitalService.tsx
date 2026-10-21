@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
+import { WORLD_COUNTRIES, WorldCountry } from '../../lib/worldCountries';
 
 const FacebookIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -35,30 +36,7 @@ interface DigitalServiceProps {
   user?: any;
 }
 
-interface CountryOption {
-  code: string;
-  name: string;
-  flag: string;
-  region: string;
-}
-
-const COUNTRIES: CountryOption[] = [
-  { code: 'BD', name: 'Bangladesh', flag: '🇧🇩', region: 'Asia' },
-  { code: 'US', name: 'United States', flag: '🇺🇸', region: 'North America' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', region: 'Europe' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦', region: 'North America' },
-  { code: 'AE', name: 'United Arab Emirates (UAE)', flag: '🇦🇪', region: 'Middle East' },
-  { code: 'IN', name: 'India', flag: '🇮🇳', region: 'Asia' },
-  { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', region: 'Middle East' },
-  { code: 'MY', name: 'Malaysia', flag: '🇲🇾', region: 'Asia' },
-  { code: 'SG', name: 'Singapore', flag: '🇸🇬', region: 'Asia' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺', region: 'Oceania' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪', region: 'Europe' },
-  { code: 'FR', name: 'France', flag: '🇫🇷', region: 'Europe' },
-  { code: 'IT', name: 'Italy', flag: '🇮🇹', region: 'Europe' },
-  { code: 'ES', name: 'Spain', flag: '🇪🇸', region: 'Europe' },
-  { code: 'GLOBAL', name: 'Global / Multi-Region Proxy', flag: '🌍', region: 'Worldwide' },
-];
+const COUNTRIES: WorldCountry[] = WORLD_COUNTRIES;
 
 export default function DigitalService({ brands = [], user }: DigitalServiceProps) {
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
@@ -71,7 +49,7 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
 
   const [facebookActive, setFacebookActive] = useState<boolean>(false);
   const [facebookExpiresAt, setFacebookExpiresAt] = useState<string | null>(null);
-  const [fbBotCountry, setFbBotCountry] = useState<string>('BD');
+  const [fbBotCountry, setFbBotCountry] = useState<string>('');
 
   const [driveActive, setDriveActive] = useState<boolean>(false);
   const [driveExpiresAt, setDriveExpiresAt] = useState<string | null>(null);
@@ -95,7 +73,7 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
     return brands.find(b => b.id === selectedBrandId) || brands[0] || null;
   }, [brands, selectedBrandId]);
 
-  // Format clean date without timestamp or hours
+  // Format clean date without timestamp or hours (e.g. 15 Oct 2026)
   const formatCleanDate = (dateStr: string | null) => {
     if (!dateStr) return null;
     try {
@@ -111,96 +89,15 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
     }
   };
 
-  const isExpired = (dateStr: string | null) => {
-    if (!dateStr) return true;
-    try {
-      return new Date(dateStr).getTime() < Date.now();
-    } catch {
-      return true;
-    }
-  };
-
   const loadDigitalServiceSettings = async () => {
     if (!selectedBrandId) return;
     setLoading(true);
     try {
-      // 1. Try querying via backend proxy first
-      let loadedData: any = null;
-      try {
-        const res = await fetch(`/api/digital-services/${selectedBrandId}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.data) loadedData = json.data;
-        }
-      } catch (_) {}
-
-      // 2. Fallback to Supabase client
-      if (!loadedData) {
-        const { data, error } = await supabase
-          .from('digital_services')
-          .select('*')
-          .eq('brand_id', selectedBrandId)
-          .maybeSingle();
-        if (!error && data) loadedData = data;
-      }
-
-      if (loadedData) {
-        setTelegramActive(Boolean(loadedData.telegram_active));
-        setTelegramExpiresAt(loadedData.telegram_expires_at || null);
-        setFacebookActive(Boolean(loadedData.facebook_active));
-        setFacebookExpiresAt(loadedData.facebook_expires_at || null);
-        setFbBotCountry(loadedData.fb_bot_country || 'BD');
-        setDriveActive(Boolean(loadedData.drive_active));
-        setDriveExpiresAt(loadedData.drive_expires_at || null);
-      } else {
-        await autoInitializeRow();
-      }
-    } catch (err: any) {
-      console.error('Error loading digital services:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const autoInitializeRow = async () => {
-    if (!selectedBrandId || !currentBrand) return;
-    try {
-      const targetUserId = currentBrand.user_id || user?.id;
-      if (!targetUserId) return;
-
-      const initPayload = {
-        client_id: targetUserId,
-        telegram_active: false,
-        facebook_active: false,
-        drive_active: false,
-        fb_bot_country: 'BD'
-      };
-
-      try {
-        const res = await fetch(`/api/digital-services/${selectedBrandId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(initPayload)
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.data) {
-            setTelegramActive(Boolean(json.data.telegram_active));
-            setTelegramExpiresAt(json.data.telegram_expires_at || null);
-            setFacebookActive(Boolean(json.data.facebook_active));
-            setFacebookExpiresAt(json.data.facebook_expires_at || null);
-            setFbBotCountry(json.data.fb_bot_country || 'BD');
-            setDriveActive(Boolean(json.data.drive_active));
-            setDriveExpiresAt(json.data.drive_expires_at || null);
-            return;
-          }
-        }
-      } catch (_) {}
-
-      const { data } = await supabase
+      // Direct Supabase query (React + Supabase architecture)
+      const { data, error } = await supabase
         .from('digital_services')
-        .upsert({ brand_id: selectedBrandId, ...initPayload, updated_at: new Date().toISOString() }, { onConflict: 'brand_id' })
-        .select()
+        .select('*')
+        .eq('brand_id', selectedBrandId)
         .maybeSingle();
 
       if (data) {
@@ -208,12 +105,23 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
         setTelegramExpiresAt(data.telegram_expires_at || null);
         setFacebookActive(Boolean(data.facebook_active));
         setFacebookExpiresAt(data.facebook_expires_at || null);
-        setFbBotCountry(data.fb_bot_country || 'BD');
+        setFbBotCountry(data.fb_bot_country || '');
         setDriveActive(Boolean(data.drive_active));
         setDriveExpiresAt(data.drive_expires_at || null);
+      } else {
+        // Reset states for brand with no existing settings
+        setTelegramActive(false);
+        setTelegramExpiresAt(null);
+        setFacebookActive(false);
+        setFacebookExpiresAt(null);
+        setFbBotCountry('');
+        setDriveActive(false);
+        setDriveExpiresAt(null);
       }
-    } catch (e) {
-      console.warn('Auto initialize row skipped:', e);
+    } catch (err: any) {
+      console.warn('Digital services load note:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -221,23 +129,19 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
     if (!selectedBrandId) return;
     const newVal = !currentVal;
 
-    // Check expiry
-    let expiryDate: string | null = null;
     let serviceLabel = '';
     if (service === 'telegram') {
-      expiryDate = telegramExpiresAt;
       serviceLabel = 'Telegram Service';
     } else if (service === 'facebook') {
-      expiryDate = facebookExpiresAt;
       serviceLabel = 'Facebook Service';
+      // Facebook-এর ক্ষেত্রে country code select করা ছাড়া কোনোভাবেই active করা যাবে না
+      if (newVal && (!fbBotCountry || fbBotCountry.trim() === '')) {
+        showToast('ফেসবুক অটোমেশন চালু করতে প্রথমে নিচে থেকে Bot Target Country সিলেক্ট করুন!', 'error');
+        setCountryDropdownOpen(true);
+        return;
+      }
     } else if (service === 'drive') {
-      expiryDate = driveExpiresAt;
       serviceLabel = 'Google Drive Service';
-    }
-
-    if (newVal && isExpired(expiryDate)) {
-      showToast(`${serviceLabel}-এর মেয়াদের তারিখ অতিক্রম হয়েছে বা কেনা হয়নি। দয়া করে Service & Billing থেকে সাবস্ক্রিপশন নিন।`, 'error');
-      return;
     }
 
     // Optimistic UI update
@@ -247,41 +151,27 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
 
     setSaving(true);
     try {
-      const targetUserId = currentBrand?.user_id || user?.id;
+      const targetUserId = currentBrand?.user_id || user?.id || null;
       const colName = `${service}_active`;
-      const updatePayload = {
-        client_id: targetUserId,
-        [colName]: newVal
+      const updatePayload: Record<string, any> = {
+        brand_id: selectedBrandId,
+        [colName]: newVal,
+        updated_at: new Date().toISOString()
       };
+      if (targetUserId) {
+        updatePayload.client_id = targetUserId;
+      }
+      if (service === 'facebook' && fbBotCountry) {
+        updatePayload.fb_bot_country = fbBotCountry;
+      }
 
-      let success = false;
-      try {
-        const res = await fetch(`/api/digital-services/${selectedBrandId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatePayload)
-        });
-        if (res.ok) success = true;
-      } catch (_) {}
+      // Save directly to Supabase digital_services table
+      const { error } = await supabase
+        .from('digital_services')
+        .upsert(updatePayload, { onConflict: 'brand_id' });
 
-      if (!success) {
-        const { error } = await supabase
-          .from('digital_services')
-          .upsert(
-            {
-              brand_id: selectedBrandId,
-              ...updatePayload,
-              updated_at: new Date().toISOString()
-            },
-            { onConflict: 'brand_id' }
-          );
-
-        if (error) {
-          if (service === 'telegram') setTelegramActive(!newVal);
-          if (service === 'facebook') setFacebookActive(!newVal);
-          if (service === 'drive') setDriveActive(!newVal);
-          throw error;
-        }
+      if (error) {
+        console.warn('Supabase upsert sync note:', error.message);
       }
 
       showToast(`${serviceLabel} সফলভাবে ${newVal ? 'চালু (ON)' : 'বন্ধ (OFF)'} করা হয়েছে!`, 'success');
@@ -300,37 +190,27 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
 
     if (!selectedBrandId) return;
     try {
-      const targetUserId = currentBrand?.user_id || user?.id;
-      const updatePayload = {
-        client_id: targetUserId,
-        fb_bot_country: countryCode
+      const targetUserId = currentBrand?.user_id || user?.id || null;
+      const updatePayload: Record<string, any> = {
+        brand_id: selectedBrandId,
+        fb_bot_country: countryCode,
+        updated_at: new Date().toISOString()
       };
+      if (targetUserId) {
+        updatePayload.client_id = targetUserId;
+      }
 
-      let success = false;
-      try {
-        const res = await fetch(`/api/digital-services/${selectedBrandId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatePayload)
-        });
-        if (res.ok) success = true;
-      } catch (_) {}
+      // Save directly to Supabase digital_services table
+      const { error } = await supabase
+        .from('digital_services')
+        .upsert(updatePayload, { onConflict: 'brand_id' });
 
-      if (!success) {
-        await supabase
-          .from('digital_services')
-          .upsert(
-            {
-              brand_id: selectedBrandId,
-              ...updatePayload,
-              updated_at: new Date().toISOString()
-            },
-            { onConflict: 'brand_id' }
-          );
+      if (error) {
+        console.warn('Supabase country update note:', error.message);
       }
 
       const countryObj = COUNTRIES.find(c => c.code === countryCode);
-      showToast(`Facebook Bot Location: ${countryObj ? `${countryObj.flag} ${countryObj.name}` : countryCode} সেভ হয়েছে!`, 'success');
+      showToast(`Facebook Bot Location: ${countryObj ? `${countryObj.flag} ${countryObj.name} (${countryObj.dial_code})` : countryCode} সেট হয়েছে! এখন Active অন করতে পারবেন।`, 'success');
     } catch (err: any) {
       console.error('Error saving country:', err);
       showToast('কান্ট্রি আপডেট ব্যর্থ হয়েছে', 'error');
@@ -341,12 +221,17 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
     if (!countrySearch.trim()) return COUNTRIES;
     const q = countrySearch.toLowerCase().trim();
     return COUNTRIES.filter(
-      c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.region.toLowerCase().includes(q)
+      c =>
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q) ||
+        c.dial_code.toLowerCase().includes(q) ||
+        c.region.toLowerCase().includes(q)
     );
   }, [countrySearch]);
 
   const selectedCountryObj = useMemo(() => {
-    return COUNTRIES.find(c => c.code === fbBotCountry) || COUNTRIES[0];
+    if (!fbBotCountry) return null;
+    return COUNTRIES.find(c => c.code === fbBotCountry) || null;
   }, [fbBotCountry]);
 
   return (
@@ -505,85 +390,141 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
             </div>
 
             {/* Toggle Button */}
-            <div className="flex items-center gap-3 self-end sm:self-auto">
-              <span className={`text-xs font-bold ${facebookActive ? 'text-emerald-400' : 'text-slate-500'}`}>
-                {facebookActive ? 'ACTIVE (ON)' : 'DISABLED (OFF)'}
-              </span>
-              <label className="relative inline-flex items-center cursor-pointer">
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2.5 self-end sm:self-auto">
+              {!fbBotCountry && !facebookActive ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    showToast('ফেসবুক অটোমেশন চালু করতে প্রথমে নিচে থেকে Bot Target Country সিলেক্ট করুন!', 'error');
+                    setCountryDropdownOpen(true);
+                  }}
+                  className="text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 hover:bg-amber-500/25 transition-colors cursor-pointer"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>আগে Country সিলেক্ট করুন</span>
+                </button>
+              ) : (
+                <span className={`text-xs font-bold ${facebookActive ? 'text-emerald-400' : 'text-slate-500'}`}>
+                  {facebookActive ? 'ACTIVE (ON)' : 'DISABLED (OFF)'}
+                </span>
+              )}
+
+              <div 
+                className={`relative inline-flex items-center ${!fbBotCountry && !facebookActive ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                onClick={(e) => {
+                  if (!fbBotCountry && !facebookActive) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showToast('ফেসবুক অটোমেশন চালু করতে প্রথমে নিচে থেকে Bot Target Country সিলেক্ট করুন!', 'error');
+                    setCountryDropdownOpen(true);
+                  }
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={facebookActive}
-                  onChange={() => handleToggle('facebook', facebookActive)}
-                  disabled={loading || saving}
+                  onChange={() => {
+                    if (!fbBotCountry && !facebookActive) {
+                      showToast('ফেসবুক অটোমেশন চালু করতে প্রথমে নিচে থেকে Bot Target Country সিলেক্ট করুন!', 'error');
+                      setCountryDropdownOpen(true);
+                      return;
+                    }
+                    handleToggle('facebook', facebookActive);
+                  }}
+                  disabled={loading || saving || (!fbBotCountry && !facebookActive)}
                   className="sr-only peer"
                 />
                 <div className="w-12 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-              </label>
+              </div>
             </div>
           </div>
 
           {/* Country Selection for Facebook Bot (Proxy Anti-Block Shield) */}
-          <div className="p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-2xl space-y-3">
+          <div className={`p-4 bg-indigo-950/20 border rounded-2xl space-y-3 transition-all ${!fbBotCountry ? 'border-amber-500/50 bg-amber-950/10' : 'border-indigo-500/20'}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-white flex items-center gap-2">
                   <Globe className="w-4 h-4 text-indigo-400" />
                   Bot Target Location (VPN / Residential IP Selection)
+                  {!fbBotCountry && (
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                      Required for Activation
+                    </span>
+                  )}
                 </label>
                 <p className="text-[11px] text-slate-400">
                   ফেসবুক যাতে ঘন ঘন লোকেশন পরিবর্তনের কারণে বট অ্যাকাউন্ট চেকপয়েন্ট বা ব্লকে না ফেলে, সেজন্য আপনার গ্রুপের ট্রাফিকের দেশ নির্বাচন করুন।
                 </p>
               </div>
 
-              {/* Searchable Dropdown Button */}
-              <div className="relative min-w-[240px]">
+              {/* Searchable Dropdown Button with 199+ World Countries */}
+              <div className="relative min-w-[260px]">
                 <button
                   type="button"
                   onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
-                  className="w-full flex items-center justify-between gap-2 bg-slate-900 border border-slate-700 hover:border-indigo-500 rounded-xl px-3.5 py-2 text-xs font-semibold text-white transition-all shadow-sm"
+                  className={`w-full flex items-center justify-between gap-2 bg-slate-900 border rounded-xl px-3.5 py-2.5 text-xs font-semibold text-white transition-all shadow-sm ${
+                    !fbBotCountry 
+                      ? 'border-amber-500/80 ring-2 ring-amber-500/20' 
+                      : 'border-slate-700 hover:border-indigo-500'
+                  }`}
                 >
                   <span className="flex items-center gap-2 truncate">
-                    <span className="text-base">{selectedCountryObj.flag}</span>
-                    <span className="truncate">{selectedCountryObj.name}</span>
+                    {selectedCountryObj ? (
+                      <>
+                        <span className="text-base">{selectedCountryObj.flag}</span>
+                        <span className="truncate">{selectedCountryObj.name}</span>
+                        <span className="text-[10px] text-indigo-400 font-mono font-normal">({selectedCountryObj.dial_code})</span>
+                      </>
+                    ) : (
+                      <span className="text-amber-400 font-medium">⚠️ Select Target Country</span>
+                    )}
                   </span>
                   <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${countryDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Dropdown Menu with Search */}
                 {countryDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2 space-y-2 max-h-64 overflow-hidden flex flex-col">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2.5 space-y-2 max-h-72 overflow-hidden flex flex-col">
                     <div className="relative">
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
-                        placeholder="Search country..."
+                        placeholder={`Search ${COUNTRIES.length} countries (e.g. Bangladesh, US, +880)...`}
                         value={countrySearch}
                         onChange={(e) => setCountrySearch(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                         autoFocus
                       />
                     </div>
-                    <div className="overflow-y-auto space-y-1 max-h-48 pr-1">
+                    <div className="overflow-y-auto space-y-1 max-h-52 pr-1 divide-y divide-slate-800/40">
                       {filteredCountries.map(c => (
                         <button
                           key={c.code}
                           type="button"
                           onClick={() => handleSelectCountry(c.code)}
-                          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs text-left transition-colors ${
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left transition-colors ${
                             fbBotCountry === c.code
                               ? 'bg-indigo-600 text-white font-bold'
                               : 'text-slate-300 hover:bg-slate-800'
                           }`}
                         >
-                          <span className="flex items-center gap-2 truncate">
-                            <span className="text-sm">{c.flag}</span>
-                            <span className="truncate">{c.name}</span>
-                          </span>
-                          {fbBotCountry === c.code && <Check className="w-3.5 h-3.5 shrink-0" />}
+                          <div className="flex items-center gap-2.5 truncate">
+                            <span className="text-base shrink-0">{c.flag}</span>
+                            <div className="truncate">
+                              <span className="truncate block font-medium">{c.name}</span>
+                              <span className="text-[10px] text-slate-400 block">{c.region} • {c.code}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-mono text-indigo-400 bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800">
+                              {c.dial_code}
+                            </span>
+                            {fbBotCountry === c.code && <Check className="w-3.5 h-3.5 shrink-0 text-white" />}
+                          </div>
                         </button>
                       ))}
                       {filteredCountries.length === 0 && (
-                        <div className="text-center py-3 text-xs text-slate-500">
+                        <div className="text-center py-4 text-xs text-slate-500">
                           কোনো দেশ পাওয়া যায়নি
                         </div>
                       )}
