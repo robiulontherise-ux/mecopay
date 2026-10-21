@@ -6,6 +6,8 @@ import { showToast } from '../lib/toast';
 type Application = {
   id: string;
   status: 'pending' | 'approved' | 'rejected';
+  wants_dashboard_work?: boolean;
+  dashboard_work_review_status?: 'not_requested' | 'pending' | 'approved' | 'rejected';
   admin_note?: string | null;
   created_at: string;
 };
@@ -24,6 +26,7 @@ export default function FreelancerApplicationSection({ userId }: { userId: strin
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [serviceCategories, setServiceCategories] = useState<string[]>([]);
+  const [wantsDashboardWork, setWantsDashboardWork] = useState(false);
   const [portfolioUrl, setPortfolioUrl] = useState('');
   const [portfolioLinks, setPortfolioLinks] = useState('');
   const [experienceYears, setExperienceYears] = useState('');
@@ -38,7 +41,7 @@ export default function FreelancerApplicationSection({ userId }: { userId: strin
     setLoading(true);
     const { data, error } = await supabase
       .from('freelancer_applications')
-      .select('id,status,admin_note,created_at')
+      .select('id,status,admin_note,created_at,wants_dashboard_work,dashboard_work_review_status')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -81,6 +84,8 @@ export default function FreelancerApplicationSection({ userId }: { userId: strin
         .insert({
           user_id: userId,
           service_categories: serviceCategories,
+          wants_dashboard_work: wantsDashboardWork,
+          dashboard_work_review_status: wantsDashboardWork ? 'pending' : 'not_requested',
           portfolio_url: portfolioUrl.trim() || null,
           portfolio_links: splitList(portfolioLinks),
           experience_years: experienceYears ? Number(experienceYears) : null,
@@ -92,7 +97,7 @@ export default function FreelancerApplicationSection({ userId }: { userId: strin
           applicant_note: applicantNote.trim() || null,
           status: 'pending',
         })
-        .select('id,status,admin_note,created_at')
+        .select('id,status,admin_note,created_at,wants_dashboard_work,dashboard_work_review_status')
         .single();
       if (error) throw error;
       setApplication(data as Application);
@@ -160,6 +165,16 @@ export default function FreelancerApplicationSection({ userId }: { userId: strin
                 </label>
               ))}
             </div>
+          </fieldset>
+          <fieldset className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+            <legend className="px-1 text-sm font-semibold text-slate-100">Dashboard Work (optional)</legend>
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-300">
+              <input type="checkbox" checked={wantsDashboardWork} onChange={event => setWantsDashboardWork(event.target.checked)} className="mt-1 accent-cyan-500" />
+              <span>
+                <span className="font-semibold text-white">I can work across client dashboard pages</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-400">After approval, each client chooses the specific page(s) or full dashboard to share. You receive no client access until that client grants it.</span>
+              </span>
+            </label>
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm text-slate-300">Portfolio website

@@ -17,6 +17,8 @@ type Application = {
   rate_note: string | null;
   applicant_note: string | null;
   status: 'pending' | 'approved' | 'rejected';
+  wants_dashboard_work: boolean;
+  dashboard_work_review_status: 'not_requested' | 'pending' | 'approved' | 'rejected';
   admin_note: string | null;
   created_at: string;
   profile?: { name: string | null; email: string | null; verification_status: string | null };
@@ -30,7 +32,7 @@ const labels: Record<string, string> = {
   marketing: 'Digital Marketing & Ads',
 };
 
-export default function FreelancerApplicationsAdmin({ adminUserId }: { adminUserId: string }) {
+export default function FreelancerApplicationsAdmin() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -76,20 +78,12 @@ export default function FreelancerApplicationsAdmin({ adminUserId }: { adminUser
     }
     setBusyId(application.id);
     try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ is_freelancer: true, updated_at: new Date().toISOString() })
-        .eq('id', application.user_id);
-      if (profileError) throw profileError;
-
-      const { error: appError } = await supabase
-        .from('freelancer_applications')
-        .update({ status: 'approved', reviewed_by: adminUserId, reviewed_at: new Date().toISOString(), admin_note: null, updated_at: new Date().toISOString() })
-        .eq('id', application.id);
-      if (appError) {
-        await supabase.from('profiles').update({ is_freelancer: false, updated_at: new Date().toISOString() }).eq('id', application.user_id);
-        throw appError;
-      }
+      const { error } = await supabase.rpc('admin_review_freelancer_application', {
+        p_application_id: application.id,
+        p_decision: 'approve',
+        p_admin_note: null,
+      });
+      if (error) throw error;
       showToast('Freelancer application approved.', 'success');
       await loadApplications();
     } catch (err: any) {
@@ -104,12 +98,12 @@ export default function FreelancerApplicationsAdmin({ adminUserId }: { adminUser
     const note = window.prompt('Optional note for the applicant:') || '';
     setBusyId(application.id);
     try {
-      const { error } = await supabase
-        .from('freelancer_applications')
-        .update({ status: 'rejected', reviewed_by: adminUserId, reviewed_at: new Date().toISOString(), admin_note: note.trim() || null, updated_at: new Date().toISOString() })
-        .eq('id', application.id);
+      const { error } = await supabase.rpc('admin_review_freelancer_application', {
+        p_application_id: application.id,
+        p_decision: 'reject',
+        p_admin_note: note.trim() || null,
+      });
       if (error) throw error;
-      await supabase.from('profiles').update({ is_freelancer: false, updated_at: new Date().toISOString() }).eq('id', application.user_id);
       showToast('Application marked as rejected.', 'success');
       await loadApplications();
     } catch (err: any) {
@@ -155,6 +149,9 @@ export default function FreelancerApplicationsAdmin({ adminUserId }: { adminUser
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {(application.service_categories || []).map(key => <span key={key} className="rounded-full bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200">{labels[key] || key}</span>)}
+                  </div>
+                  <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${application.wants_dashboard_work ? 'border-violet-500/30 bg-violet-500/10 text-violet-200' : 'border-slate-700 bg-slate-950 text-slate-400'}`}>
+                    Dashboard Work: {application.wants_dashboard_work ? `requested (${application.dashboard_work_review_status}) — client chooses page scope` : 'not requested'}
                   </div>
                   {application.experience_summary && <p className="whitespace-pre-wrap text-sm text-slate-300">{application.experience_summary}</p>}
                   <div className="grid gap-2 text-sm text-slate-400 sm:grid-cols-2">

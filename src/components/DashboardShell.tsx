@@ -12,6 +12,9 @@ import Marketplace from './Marketplace';
 import HeadlessOrchestrator from './admin/HeadlessOrchestrator';
 import FreelancerApplicationsAdmin from './admin/FreelancerApplicationsAdmin';
 import FreelancerApplicationSection from './FreelancerApplicationSection';
+import FreelancerWorkspace from './FreelancerWorkspace';
+import InfluencerWorkspace from './InfluencerWorkspace';
+import TeleSalesWorkspace from './TeleSalesWorkspace';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
 import { showConfirm } from '../lib/confirm';
@@ -38,7 +41,7 @@ export default function DashboardShell() {
   const [hmacSecret, setHmacSecret] = useState<string>('');
   const isAdmin = Boolean(user?.email && (user.email === 'robiulontherise@gmail.com' || ((import.meta as any).env.VITE_ADMIN_EMAIL && user.email === (import.meta as any).env.VITE_ADMIN_EMAIL)));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'brand' | 'payments' | 'site' | 'admin'>('brand');
+  const [activeTab, setActiveTab] = useState<'brand' | 'payments' | 'site' | 'freelancer' | 'influencer' | 'teleSales' | 'admin'>('brand');
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error', id: number} | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<any | null>(null);
   const [confirmInput, setConfirmInput] = useState('');
@@ -349,6 +352,9 @@ export default function DashboardShell() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
   const [verificationStatus, setVerificationStatus] = useState<'unverified' | 'pending' | 'verified' | 'rejected' | 'banned'>('unverified');
+  const [isFreelancer, setIsFreelancer] = useState(false);
+  const [isInfluencer, setIsInfluencer] = useState(false);
+  const [hasTeleSalesAccess, setHasTeleSalesAccess] = useState(false);
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const isDashboardUnlocked = verificationStatus === 'pending' || verificationStatus === 'verified' || isAdmin;
 
@@ -801,6 +807,12 @@ export default function DashboardShell() {
         return;
       }
       setUser(user);
+      setIsFreelancer(false);
+      setIsInfluencer(false);
+      setHasTeleSalesAccess(false);
+      supabase.rpc('has_tele_sales_access').then(({ data, error: accessError }) => {
+        if (isMounted && !accessError) setHasTeleSalesAccess(data === true);
+      });
       
       // Fetch hmac_secret from profiles table (with retry for trigger delay)
       const fetchHmac = async (retries = 5) => {
@@ -867,6 +879,8 @@ export default function DashboardShell() {
             else if (hasSubmittedDocs) vStatus = 'pending';
             else vStatus = 'unverified';
             setVerificationStatus(vStatus as any);
+            setIsFreelancer(Boolean(dbProf.is_freelancer));
+            setIsInfluencer(Boolean(dbProf.is_influencer));
             setRejectionReason(dbProf.rejection_reason || '');
 
             const isLocked = vStatus === 'verified';
@@ -886,6 +900,8 @@ export default function DashboardShell() {
         }
 
         if (isMounted) {
+          setIsFreelancer(false);
+          setIsInfluencer(false);
           setProfileName(user.user_metadata?.full_name || '');
           setProfilePhone(user.user_metadata?.phone || '');
           setAgeGroup(user.user_metadata?.age_group || '18_plus');
@@ -1066,6 +1082,24 @@ export default function DashboardShell() {
         'Marketplace'
       ],
     },
+    ...(isFreelancer && {
+      freelancer: {
+        title: 'Freelancer Workspace',
+        items: ['Freelancer Work'],
+      }
+    }),
+    ...(isInfluencer && {
+      influencer: {
+        title: 'Influencer Workspace',
+        items: ['Influencer Profile'],
+      }
+    }),
+    ...(hasTeleSalesAccess && {
+      teleSales: {
+        title: 'Tele Sales',
+        items: ['Tele Sales Invoices'],
+      }
+    }),
     ...(isAdmin && {
       admin: {
         title: 'Admin Panel',
@@ -3154,9 +3188,19 @@ export default function DashboardShell() {
     if (activeSubMenu === 'Marketplace') {
       return (
         <div className="w-full">
-          <Marketplace />
+          <Marketplace userId={user?.id || ''} brands={brands} />
         </div>
       );
+    }
+
+    if (activeSubMenu === 'Freelancer Work' && activeTab === 'freelancer' && isFreelancer && user?.id) {
+      return <FreelancerWorkspace userId={user.id} />;
+    }
+    if (activeSubMenu === 'Influencer Profile' && activeTab === 'influencer' && isInfluencer && user?.id) {
+      return <InfluencerWorkspace userId={user.id} />;
+    }
+    if (activeSubMenu === 'Tele Sales Invoices' && activeTab === 'teleSales' && hasTeleSalesAccess) {
+      return <TeleSalesWorkspace />;
     }
 
     if (activeSubMenu === 'Analytics') {
@@ -3444,7 +3488,7 @@ export default function DashboardShell() {
     }
 
     if (activeSubMenu === 'Freelancer Applications' && isAdmin) {
-      return <FreelancerApplicationsAdmin adminUserId={user?.id || ''} />;
+      return <FreelancerApplicationsAdmin />;
     }
 
     if (activeSubMenu === 'Users' && isAdmin) {
@@ -4058,8 +4102,11 @@ export default function DashboardShell() {
     );
   };
 
-  const handleTabChange = (tab: 'brand' | 'payments' | 'site' | 'admin') => {
-    if (!isDashboardUnlocked && tab !== 'brand' && tab !== 'admin') {
+  const handleTabChange = (tab: 'brand' | 'payments' | 'site' | 'freelancer' | 'influencer' | 'teleSales' | 'admin') => {
+    if (tab === 'freelancer' && !isFreelancer) return;
+    if (tab === 'influencer' && !isInfluencer) return;
+    if (tab === 'teleSales' && !hasTeleSalesAccess) return;
+    if (!isDashboardUnlocked && !['brand', 'admin', 'freelancer', 'influencer', 'teleSales'].includes(tab)) {
       showToast("ড্যাশবোর্ড সম্পূর্ণ আনলক করতে প্রোফাইলে তথ্য ও পরিচয়পত্র জমা দিন!", "error");
       return;
     }
@@ -4153,6 +4200,45 @@ export default function DashboardShell() {
             My Site
             {!isDashboardUnlocked && <Lock className="w-3.5 h-3.5 text-red-500" />}
           </button>
+
+          {isFreelancer && (
+            <button
+              onClick={() => handleTabChange('freelancer')}
+              className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
+                activeTab === 'freelancer'
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'bg-slate-900/50 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              Freelancer
+            </button>
+          )}
+
+          {isInfluencer && (
+            <button
+              onClick={() => handleTabChange('influencer')}
+              className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
+                activeTab === 'influencer'
+                  ? 'bg-fuchsia-600 text-white shadow-sm'
+                  : 'bg-slate-900/50 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              Influencer
+            </button>
+          )}
+
+          {hasTeleSalesAccess && (
+            <button
+              onClick={() => handleTabChange('teleSales')}
+              className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
+                activeTab === 'teleSales'
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'bg-slate-900/50 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              Tele Sales
+            </button>
+          )}
 
           {isAdmin && (
             <button

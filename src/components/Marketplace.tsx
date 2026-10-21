@@ -11,6 +11,7 @@ import {
   Share2,
   Sparkles,
 } from 'lucide-react';
+import ClientDashboardAccess from './ClientDashboardAccess';
 
 type Category = {
   id: string;
@@ -82,7 +83,7 @@ const categories: Category[] = [
   },
 ];
 
-export default function Marketplace() {
+export default function Marketplace({ userId, brands }: { userId: string; brands: any[] }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const visibleCategories = useMemo(() => {
@@ -153,7 +154,7 @@ export default function Marketplace() {
                 <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
                 <div><p className="text-sm font-semibold text-white">How packages are shaped</p><p className="mt-1 text-sm text-slate-400">{selectedCategory.packageHint}</p></div>
               </div>
-              <p className="mt-5 text-xs text-slate-500">Order options and package details will be configured in a later step.</p>
+              <p className="mt-5 text-xs text-slate-500">Fixed-price package checkout is not enabled yet; it needs the platform package catalogue and a verified platform payment flow.</p>
             </div>
           </div>
         </section>
@@ -191,6 +192,7 @@ export default function Marketplace() {
           ) : <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-10 text-center text-sm text-slate-400">No services match “{query}”. Try another search.</div>}
         </section>
       )}
+      {userId && <ClientDashboardAccess userId={userId} brands={brands} />}
     </div>
   );
 }
