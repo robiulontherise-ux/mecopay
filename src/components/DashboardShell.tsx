@@ -10,6 +10,8 @@ import WebCustomAgent from './mysite/WebCustomAgent';
 import SocialCustomAgent from './mysite/SocialCustomAgent';
 import Marketplace from './Marketplace';
 import HeadlessOrchestrator from './admin/HeadlessOrchestrator';
+import FreelancerApplicationsAdmin from './admin/FreelancerApplicationsAdmin';
+import FreelancerApplicationSection from './FreelancerApplicationSection';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
 import { showConfirm } from '../lib/confirm';
@@ -1067,7 +1069,7 @@ export default function DashboardShell() {
     ...(isAdmin && {
       admin: {
         title: 'Admin Panel',
-        items: ['Overview', 'Users', 'Sms Forwarder Settings', 'Headless Orchestrator', 'System Settings', 'Reports']
+        items: ['Overview', 'Users', 'Freelancer Applications', 'Sms Forwarder Settings', 'Headless Orchestrator', 'System Settings', 'Reports']
       }
     })
   };
@@ -2283,6 +2285,9 @@ export default function DashboardShell() {
               <MfaSettings />
             </div>
           </div>
+          {verificationStatus === 'verified' && user?.id && (
+            <FreelancerApplicationSection userId={user.id} />
+          )}
         </div>
       );
     }
@@ -3436,6 +3441,10 @@ export default function DashboardShell() {
           </div>
          </div>
        )
+    }
+
+    if (activeSubMenu === 'Freelancer Applications' && isAdmin) {
+      return <FreelancerApplicationsAdmin adminUserId={user?.id || ''} />;
     }
 
     if (activeSubMenu === 'Users' && isAdmin) {
