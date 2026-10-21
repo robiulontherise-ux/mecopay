@@ -404,38 +404,39 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
                   <span>আগে Country সিলেক্ট করুন</span>
                 </button>
               ) : (
-                <span className={`text-xs font-bold ${facebookActive ? 'text-emerald-400' : 'text-slate-500'}`}>
+                <button
+                  type="button"
+                  onClick={() => handleToggle('facebook', facebookActive)}
+                  className={`text-xs font-bold transition-colors cursor-pointer ${facebookActive ? 'text-emerald-400 hover:text-emerald-300' : 'text-slate-500 hover:text-slate-400'}`}
+                >
                   {facebookActive ? 'ACTIVE (ON)' : 'DISABLED (OFF)'}
-                </span>
+                </button>
               )}
 
-              <div 
-                className={`relative inline-flex items-center ${!fbBotCountry && !facebookActive ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                onClick={(e) => {
+              <button
+                type="button"
+                role="switch"
+                aria-checked={facebookActive}
+                disabled={loading || saving}
+                onClick={() => {
                   if (!fbBotCountry && !facebookActive) {
-                    e.preventDefault();
-                    e.stopPropagation();
                     showToast('ফেসবুক অটোমেশন চালু করতে প্রথমে নিচে থেকে Bot Target Country সিলেক্ট করুন!', 'error');
                     setCountryDropdownOpen(true);
+                    return;
                   }
+                  handleToggle('facebook', facebookActive);
                 }}
+                className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  facebookActive ? 'bg-indigo-600' : 'bg-slate-800'
+                } ${!fbBotCountry && !facebookActive ? 'opacity-60 cursor-not-allowed' : ''}`}
+                title={!fbBotCountry && !facebookActive ? 'আগে Bot Target Country সিলেক্ট করুন' : (facebookActive ? 'Disable Facebook Automation' : 'Enable Facebook Automation')}
               >
-                <input
-                  type="checkbox"
-                  checked={facebookActive}
-                  onChange={() => {
-                    if (!fbBotCountry && !facebookActive) {
-                      showToast('ফেসবুক অটোমেশন চালু করতে প্রথমে নিচে থেকে Bot Target Country সিলেক্ট করুন!', 'error');
-                      setCountryDropdownOpen(true);
-                      return;
-                    }
-                    handleToggle('facebook', facebookActive);
-                  }}
-                  disabled={loading || saving || (!fbBotCountry && !facebookActive)}
-                  className="sr-only peer"
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    facebookActive ? 'translate-x-6' : 'translate-x-0'
+                  }`}
                 />
-                <div className="w-12 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-              </div>
+              </button>
             </div>
           </div>
 
