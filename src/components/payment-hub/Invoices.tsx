@@ -320,6 +320,7 @@ export default function Invoices({ brands }: { brands: any[] }) {
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Invoice Management</h2>
       </div>
+      <TeleSalesAccessPanel brands={brands} invoices={invoices} />
 
       
       
@@ -744,7 +745,6 @@ export default function Invoices({ brands }: { brands: any[] }) {
           </button>
         </div>
       )}
-      <TeleSalesAccessPanel brands={brands} invoices={invoices} />
     </div>
   );
 }

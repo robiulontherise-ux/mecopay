@@ -30,7 +30,7 @@ type AccessRow = {
 type CallLogRow = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string };
 
 export default function TeleSalesAccessPanel({ brands, invoices }: { brands: any[]; invoices: any[] }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [brandId, setBrandId] = useState('');
   const [memberEmail, setMemberEmail] = useState('');
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
@@ -149,7 +149,7 @@ export default function TeleSalesAccessPanel({ brands, invoices }: { brands: any
       <button type="button" onClick={() => setOpen(value => !value)} className="flex w-full items-center justify-between gap-3 text-left">
         <span className="flex items-center gap-3">
           <span className="rounded-xl bg-cyan-500/10 p-2.5 text-cyan-200"><ShieldCheck className="h-5 w-5" /></span>
-          <span><span className="block text-lg font-bold text-white">Tele Sales Access</span><span className="mt-1 block text-sm text-slate-400">Choose exactly which invoice fields a verified teammate can view.</span></span>
+          <span><span className="block text-lg font-bold text-white">Tele Sales Access</span><span className="mt-1 block text-sm text-slate-400">Usage: select a verified teammate, choose the invoice fields they may use for sales calls, then review call outcomes and follow-ups here.</span></span>
         </span>
         <span className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200">{open ? 'Close' : 'Manage access'}</span>
       </button>
