@@ -379,7 +379,7 @@ async function startServer() {
       
       const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
       
-      let allDevices = data.filter(d => d.device_name !== '__GLOBAL_CONFIG__');
+      let allDevices = (data || []).filter(d => !d.device_name?.startsWith('__GLOBAL_CONFIG_') && d.device_name !== '__GLOBAL_CONFIG__');
       
       if (usersData && usersData.users) {
         allDevices = allDevices.map(d => {

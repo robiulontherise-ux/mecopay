@@ -34,6 +34,7 @@ import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck
 import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
 import { useLocale } from '../lib/LocaleContext';
 import { getProfileCopy } from '../lib/profileLocalization';
+import { ASIA_COUNTRIES, AFRICA_COUNTRIES } from '../lib/countries';
 
 export default function DashboardShell() {
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -2802,11 +2803,16 @@ export default function DashboardShell() {
                           onChange={(e) => setNewDeviceCountry(e.target.value)}
                           className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
                         >
-                          <option value="Bangladesh">🇧🇩 Bangladesh (bKash, Nagad, Rocket)</option>
-                          <option value="India">🇮🇳 India (UPI, Paytm, PhonePe)</option>
-                          <option value="Pakistan">🇵🇰 Pakistan (Easypaisa, JazzCash)</option>
-                          <option value="United States">🇺🇸 United States (Zelle, CashApp)</option>
-                          <option value="United Kingdom">🇬🇧 United Kingdom (Faster Payments)</option>
+                          <optgroup label="Asia">
+                            {ASIA_COUNTRIES.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Africa">
+                            {AFRICA_COUNTRIES.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </optgroup>
                         </select>
                       </div>
                     </div>
@@ -3788,11 +3794,17 @@ export default function DashboardShell() {
                 sender_number: 'Easypaisa,JazzCash,SadaPay,Nayapay,UBL',
                 text_filter: '(?:TRX|TID|ID)\\s*[:\\s]\\s*([A-Z0-9]+)'
               }));
-            } else if (countryName === 'United States') {
+            } else if (countryName === 'Nigeria') {
               setForwarderSettings(prev => ({
                 ...prev,
-                sender_number: 'Zelle,CashApp,Venmo,Chase,BoA',
-                text_filter: '(?:sent you|received|confirmation)\\s*[:\\s]\\s*([A-Z0-9$]+)'
+                sender_number: 'OPay,PalmPay,Moniepoint,Kuda,GTBank,Access',
+                text_filter: '(?:Txn|Ref|Amount|Credited)\\s*[:\\s]\\s*([A-Z0-9]+)'
+              }));
+            } else if (countryName === 'Kenya') {
+              setForwarderSettings(prev => ({
+                ...prev,
+                sender_number: 'MPESA,M-PESA,Equity,KCB',
+                text_filter: '([A-Z0-9]{10})\\s*Confirmed'
               }));
             }
           }
@@ -3879,11 +3891,16 @@ export default function DashboardShell() {
                 onChange={(e) => handleCountryChange(e.target.value)}
                 className="bg-slate-900 border border-indigo-500/50 rounded-lg px-4 py-2.5 text-sm text-white font-semibold focus:outline-none focus:border-indigo-400"
               >
-                <option value="Bangladesh">🇧🇩 Bangladesh</option>
-                <option value="India">🇮🇳 India</option>
-                <option value="Pakistan">🇵🇰 Pakistan</option>
-                <option value="United States">🇺🇸 United States</option>
-                <option value="United Kingdom">🇬🇧 United Kingdom</option>
+                <optgroup label="Asia">
+                  {ASIA_COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Africa">
+                  {AFRICA_COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 
