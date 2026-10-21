@@ -459,22 +459,22 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
     { 
       id: 'bkash', 
       name: 'Bkash', 
-      logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/bkash.png'
+      logoUrl: '/assets/mfs/bkash.png'
     },
     { 
       id: 'nagad', 
       name: 'Nagad', 
-      logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/nagad.png'
+      logoUrl: '/assets/mfs/nagad.png'
     },
     { 
       id: 'upay', 
       name: 'Upay', 
-      logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/upay.png'
+      logoUrl: '/assets/mfs/upay.png'
     },
     { 
       id: 'rocket', 
       name: 'Rocket', 
-      logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/rocket.png'
+      logoUrl: '/assets/mfs/rocket.png'
     },
     {
       id: 'tap',
@@ -513,13 +513,13 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
       id: 'bkash', 
       name: 'bKash Merchant', 
       badge: 'Tokenized API Gateway',
-      logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/bkash.png'
+      logoUrl: '/assets/mfs/bkash.png'
     },
     { 
       id: 'nagad', 
       name: 'Nagad Merchant', 
       badge: 'Direct Official PGW',
-      logoUrl: 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/nagad.png'
+      logoUrl: '/assets/mfs/nagad.png'
     }
   ];
   type InternationalField = { label: string; key: string; type?: string; placeholder?: string; required?: boolean; options?: string[] };
@@ -804,7 +804,7 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
                   }`}
                 >
                   <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-                  Merchant (MFS / Bank / Card)
+                  Local Gateway
                 </button>
 
                 <button
@@ -855,7 +855,7 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                    <h3 className="text-lg font-bold text-white">Merchant (MFS / Bank / Card) Gateways</h3>
+                    <h3 className="text-lg font-bold text-white">Local Gateways</h3>
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1030,8 +1030,8 @@ export default function GatewaySettings({ brands, isAdmin }: GatewaySettingsProp
               <div className="flex items-center gap-3 mb-6">
                 <img
                   src={selectedMerchantProvider === 'bkash' 
-                    ? 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/bkash.png'
-                    : 'https://raw.githubusercontent.com/helloanaroul/bd-mfs-logos/main/logos/png/nagad.png'}
+                    ? '/assets/mfs/bkash.png'
+                    : '/assets/mfs/nagad.png'}
                   alt={selectedMerchantProvider}
                   className="h-8 object-contain"
                 />
