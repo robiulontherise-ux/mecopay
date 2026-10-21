@@ -8,6 +8,7 @@ import EmailServiceSettings from './mysite/EmailServiceSettings';
 import ServerSideTrackingSettings from './mysite/ServerSideTrackingSettings';
 import WebCustomAgent from './mysite/WebCustomAgent';
 import SocialCustomAgent from './mysite/SocialCustomAgent';
+import Marketplace from './Marketplace';
 import HeadlessOrchestrator from './admin/HeadlessOrchestrator';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
@@ -1059,7 +1060,8 @@ export default function DashboardShell() {
         'Email Service',
         'Server Side Tracking',
         'Web Custom Agent',
-        'Social Custom Agent'
+        'Social Custom Agent',
+        'Marketplace'
       ],
     },
     ...(isAdmin && {
@@ -3140,6 +3142,14 @@ export default function DashboardShell() {
       return (
         <div className="w-full">
           <SocialCustomAgent user={user} brands={brands} />
+        </div>
+      );
+    }
+
+    if (activeSubMenu === 'Marketplace') {
+      return (
+        <div className="w-full">
+          <Marketplace />
         </div>
       );
     }
