@@ -15,6 +15,7 @@ import FreelancerApplicationSection from './FreelancerApplicationSection';
 import FreelancerWorkspace from './FreelancerWorkspace';
 import InfluencerWorkspace from './InfluencerWorkspace';
 import TeleSalesWorkspace from './TeleSalesWorkspace';
+import TeleSalesAccessPanel from './payment-hub/TeleSalesAccessPanel';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
 import { showConfirm } from '../lib/confirm';
@@ -1067,7 +1068,7 @@ export default function DashboardShell() {
     },
     payments: {
       title: 'Payments Hub',
-      items: ['Gateway Settings', 'Payment Links', 'Invoices', 'Digital Service', 'Full COD Service', 'Courier Service', 'SMS + WhatsApp Service', 'Transactions', 'Transaction Analysis', 'Analytics'],
+      items: ['Gateway Settings', 'Payment Links', 'Invoices', 'Tele Sales Access', 'Digital Service', 'Full COD Service', 'Courier Service', 'SMS + WhatsApp Service', 'Transactions', 'Transaction Analysis', 'Analytics'],
     },
     site: {
       title: 'My Site',
@@ -2507,6 +2508,10 @@ export default function DashboardShell() {
 
     if (activeSubMenu === 'Invoices') {
       return <Invoices brands={brands} />;
+    }
+
+    if (activeSubMenu === 'Tele Sales Access') {
+      return <TeleSalesAccessPanel brands={brands} userId={user?.id || ''} />;
     }
 
     if (activeSubMenu === 'Digital Service') {

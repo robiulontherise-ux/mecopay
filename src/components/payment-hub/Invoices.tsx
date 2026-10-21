@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { showToast } from '../../lib/toast';
 import { supabase } from '../../lib/supabase';
 import { Search, Filter, Trash2, Copy, Download, Eye, X, CheckCircle2, ExternalLink } from 'lucide-react';
-import TeleSalesAccessPanel from './TeleSalesAccessPanel';
 
 export default function Invoices({ brands }: { brands: any[] }) {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -320,7 +319,6 @@ export default function Invoices({ brands }: { brands: any[] }) {
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Invoice Management</h2>
       </div>
-      <TeleSalesAccessPanel brands={brands} invoices={invoices} />
 
       
       

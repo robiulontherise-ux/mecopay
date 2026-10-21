@@ -29,8 +29,7 @@ type AccessRow = {
 };
 type CallLogRow = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string };
 
-export default function TeleSalesAccessPanel({ brands, invoices }: { brands: any[]; invoices: any[] }) {
-  const [open, setOpen] = useState(true);
+export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]; userId: string }) {
   const [brandId, setBrandId] = useState('');
   const [memberEmail, setMemberEmail] = useState('');
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
@@ -39,12 +38,32 @@ export default function TeleSalesAccessPanel({ brands, invoices }: { brands: any
   const [saving, setSaving] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [callLogs, setCallLogs] = useState<CallLogRow[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   useEffect(() => {
     if (!brandId && brands.length) setBrandId(String(brands[0].id));
   }, [brands, brandId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadInvoices = async () => {
+      if (!userId) return;
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('id,brand_id,invoice_number,product_name,customer_name')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(250);
+      if (error) {
+        console.error('Could not load invoices for Tele Sales history:', error);
+        if (!cancelled) showToast(error.message || 'Could not load invoices for call history.', 'error');
+      } else if (!cancelled) setInvoices(data || []);
+    };
+    void loadInvoices();
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const loadAccess = async () => {
     if (!brandId) { setRows([]); return; }
@@ -62,8 +81,8 @@ export default function TeleSalesAccessPanel({ brands, invoices }: { brands: any
   };
 
   useEffect(() => {
-    if (open) void loadAccess();
-  }, [open, brandId]);
+    if (brandId) void loadAccess();
+  }, [brandId]);
 
   useEffect(() => {
     const eligibleInvoices = invoices.filter(invoice => !brandId || String(invoice.brand_id) === brandId);
@@ -88,8 +107,8 @@ export default function TeleSalesAccessPanel({ brands, invoices }: { brands: any
   };
 
   useEffect(() => {
-    if (open && selectedInvoiceId) void loadCallLogs();
-  }, [open, selectedInvoiceId]);
+    if (selectedInvoiceId) void loadCallLogs();
+  }, [selectedInvoiceId]);
 
   const toggleField = (key: string) => setSelectedFields(current => current.includes(key)
     ? current.filter(field => field !== key)
@@ -146,15 +165,14 @@ export default function TeleSalesAccessPanel({ brands, invoices }: { brands: any
 
   return (
     <section className="mt-6 rounded-2xl border border-cyan-500/20 bg-slate-950/60 p-5 sm:p-6">
-      <button type="button" onClick={() => setOpen(value => !value)} className="flex w-full items-center justify-between gap-3 text-left">
+      <header className="flex items-center gap-3">
         <span className="flex items-center gap-3">
           <span className="rounded-xl bg-cyan-500/10 p-2.5 text-cyan-200"><ShieldCheck className="h-5 w-5" /></span>
           <span><span className="block text-lg font-bold text-white">Tele Sales Access</span><span className="mt-1 block text-sm text-slate-400">Usage: select a verified teammate, choose the invoice fields they may use for sales calls, then review call outcomes and follow-ups here.</span></span>
         </span>
-        <span className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200">{open ? 'Close' : 'Manage access'}</span>
-      </button>
+      </header>
 
-      {open && <div className="mt-6 space-y-6">
+      <div className="mt-6 space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm text-slate-300">Brand
             <select value={brandId} onChange={event => setBrandId(event.target.value)} disabled={!brands.length} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-white">
@@ -193,7 +211,7 @@ export default function TeleSalesAccessPanel({ brands, invoices }: { brands: any
           </div>
           {loadingLogs ? <div className="mt-3 flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading call history…</div> : callLogs.length === 0 ? <p className="mt-3 text-sm text-slate-500">No call history for this invoice.</p> : <div className="mt-3 space-y-2">{callLogs.map(log => <article key={log.id} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3"><p className="text-sm font-semibold text-slate-200">{log.call_status.replaceAll('_', ' ')} <span className="font-normal text-slate-500">by {log.member_name || 'teammate'} · {new Date(log.called_at).toLocaleString()}</span></p>{log.call_note && <p className="mt-1 whitespace-pre-wrap text-sm text-slate-400">{log.call_note}</p>}{log.follow_up_at && <p className="mt-1 text-xs text-amber-200">Follow-up: {new Date(log.follow_up_at).toLocaleString()}</p>}</article>)}</div>}
         </div>
-      </div>}
+      </div>
     </section>
   );
 }
