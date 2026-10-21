@@ -1031,6 +1031,47 @@ export default function DashboardShell() {
     };
   }, [navigate]);
 
+  // Role approval can happen in a separate admin session while this dashboard stays open.
+  // Re-read only the user's role flags on focus/visibility and while the page is active so
+  // the Freelancer/Influencer tabs appear without requiring a sign-out or hard reload.
+  useEffect(() => {
+    const profileId = user?.id;
+    if (!profileId) return;
+    let isActive = true;
+    let warned = false;
+    const refreshWorkspaceRoles = async () => {
+      if (document.visibilityState === 'hidden') return;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_freelancer,is_influencer')
+        .eq('id', profileId)
+        .maybeSingle();
+      if (!isActive) return;
+      if (error) {
+        if (!warned) console.warn('Could not refresh workspace role flags:', error.message);
+        warned = true;
+        return;
+      }
+      if (data) {
+        setIsFreelancer(data.is_freelancer === true);
+        setIsInfluencer(data.is_influencer === true);
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void refreshWorkspaceRoles();
+    };
+    void refreshWorkspaceRoles();
+    window.addEventListener('focus', refreshWorkspaceRoles);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    const timer = window.setInterval(() => void refreshWorkspaceRoles(), 15000);
+    return () => {
+      isActive = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshWorkspaceRoles);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [user?.id]);
+
   
   const handleRegenerateHmac = () => {
     setShowRegenerateModal(true);

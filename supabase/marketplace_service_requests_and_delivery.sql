@@ -6,6 +6,17 @@ BEGIN;
 -- charge money, or place/activate an order after payment. A trusted payment integration
 -- can later move pending_payment -> placed.
 
+-- Repair role flags for previously approved applicants; never enables unverified or
+-- pending/rejected applications.
+UPDATE public.profiles p
+SET is_freelancer = true, updated_at = now()
+WHERE p.is_freelancer IS DISTINCT FROM true
+  AND p.verification_status = 'verified'
+  AND EXISTS (
+    SELECT 1 FROM public.freelancer_applications fa
+    WHERE fa.user_id = p.id AND fa.status = 'approved'
+  );
+
 ALTER TABLE public.marketplace_orders
   ADD COLUMN IF NOT EXISTS client_revision_note text;
 

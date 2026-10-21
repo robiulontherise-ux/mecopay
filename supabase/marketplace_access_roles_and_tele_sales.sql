@@ -22,6 +22,18 @@ REVOKE INSERT, UPDATE, DELETE ON public.marketplace_orders FROM anon, authentica
 REVOKE INSERT, UPDATE, DELETE ON public.client_resource_access FROM anon, authenticated;
 REVOKE SELECT, INSERT, UPDATE, DELETE ON public.tele_sales_call_logs FROM anon, authenticated;
 
+-- Repair the role flag for legacy applicants already approved by an admin. This is
+-- limited to verified profiles with an approved application; pending/rejected users
+-- are never promoted by this backfill.
+UPDATE public.profiles p
+SET is_freelancer = true, updated_at = now()
+WHERE p.is_freelancer IS DISTINCT FROM true
+  AND p.verification_status = 'verified'
+  AND EXISTS (
+    SELECT 1 FROM public.freelancer_applications fa
+    WHERE fa.user_id = p.id AND fa.status = 'approved'
+  );
+
 DROP POLICY IF EXISTS freelancer_applications_select_owner_admin ON public.freelancer_applications;
 CREATE POLICY freelancer_applications_select_owner_admin
   ON public.freelancer_applications FOR SELECT TO authenticated
