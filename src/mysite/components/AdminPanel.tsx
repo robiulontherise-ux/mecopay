@@ -183,8 +183,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!onSaveSiteSettings) return;
     try {
       await onSaveSiteSettings({
-        id: 'default',
-        site_name: siteName,
+        ...(siteSettings || {}),
+        id: siteSettings?.id || 'default',
+        site_name: siteName.trim(),
         site_logo: siteLogo,
         primary_color: primaryColor,
         text_size: textSize,
@@ -409,16 +410,22 @@ ${postContent}`
       .map(t => t.trim())
       .filter(Boolean);
 
+    // Validate category exists in categories array or set to null
+    const validCategory = categories.find((c) => c.id === postCategory)?.id 
+      || (!isCustomPage && categories.length > 0 ? categories[0].id : null);
+
     const newOrUpdatedPost: Post = {
       id: editingPost?.id || `post_${Date.now()}`,
-      title: (seoTitle.trim() || postTitle.trim()),
+      title: (postTitle.trim() || seoTitle.trim() || 'Untitled Post'),
       slug: postSlug.trim() || `post-${Date.now()}`,
       content: finalContent,
-      category_id: postCategory || categories[0]?.id || 'cat-ssc',
+      category_id: validCategory as any,
       thumbnail: postThumbnail.trim() || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=1200&q=80',
       created_at: editingPost?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
       views_count: editingPost?.views_count || 1,
+      format_type: isLiveCode ? 'code' : 'standard',
+      code_language: isLiveCode ? (codeLanguage || 'live_html') : undefined,
       is_custom_page: isCustomPage,
       product_type: productType,
       digital_settings: digitalSettings,
@@ -429,12 +436,13 @@ ${postContent}`
       summary: effectiveSummary,
       tags: tagsArray,
     };
-    // Note: We are no longer adding format_type or code_language to the payload to avoid schema errors on Supabase.
-
 
     await onSavePost(newOrUpdatedPost);
-    showNotice(editingPost ? 'Post updated successfully!' : 'New post published to Supabase!');
-    setActiveTab('posts');
+    showNotice(isCustomPage 
+      ? (editingPost ? 'Custom Page updated successfully!' : 'New Page published successfully!')
+      : (editingPost ? 'Post updated successfully!' : 'New post published successfully!')
+    );
+    setActiveTab(isCustomPage ? 'pages' : 'posts');
   };
 
   const handleSaveCategoryForm = async (e: React.FormEvent) => {
@@ -583,7 +591,12 @@ ${postContent}`
             </div>
 
             <div className="grid gap-3">
-              {posts.map((post) => {
+              {posts.filter(p => !p.is_custom_page).length === 0 && (
+                <div className="p-8 text-center text-slate-400 bg-slate-900 border border-slate-800 rounded-2xl">
+                  No published posts found. Create your first post!
+                </div>
+              )}
+              {posts.filter(p => !p.is_custom_page).map((post) => {
                 const categoryObj = categories.find((c) => c.id === post.category_id);
                 return (
                   <div
@@ -710,7 +723,12 @@ ${postContent}`
                       <span>Edit</span>
                     </button>
                     <button
-                      onClick={() => onDeletePost(post.id)}
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete page "${post.title}"?`)) {
+                          onDeletePost(post.id);
+                          showNotice('Page deleted.');
+                        }
+                      }}
                       className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium flex items-center justify-center transition-colors cursor-pointer"
                       title="Delete Page"
                     >

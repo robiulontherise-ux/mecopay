@@ -225,22 +225,11 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
         }
       }
       
-      // Always set the browser tab title to the subdomain or custom domain, prioritizing the URL params
-      const params = new URLSearchParams(window.location.search);
-      const urlDomainName = params.get('subdomain') || params.get('custom_domain');
-      
-      if (urlDomainName) {
-        // Capitalize first letter for a professional look
-        document.title = urlDomainName.charAt(0).toUpperCase() + urlDomainName.slice(1);
+      // Set browser tab title to the client's custom site name
+      if (settingsData?.site_name?.trim()) {
+        document.title = settingsData.site_name.trim();
       } else {
-        // Fallback for direct access without params
-        let currentHost = window.location.hostname;
-        if (currentHost.endsWith('.mecopay.space')) {
-           let sub = currentHost.replace('.mecopay.space', '');
-           document.title = sub.charAt(0).toUpperCase() + sub.slice(1);
-        } else {
-           document.title = currentHost;
-        }
+        document.title = 'My Site';
       }
 
       // Fetch categories
@@ -364,42 +353,73 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
 
   // --- ADMIN CMS ACTIONS ---
 
-  const handleSaveCategory = async (cat: Category) => {
-    if (!user?.id) return alert('No client ID found (not logged in).');
-    cat.client_id = user.id;
-    if (siteSettings?.brand_id) {
-      cat.brand_id = siteSettings.brand_id;
+  // Keep browser title in sync with site name
+  useEffect(() => {
+    if (siteSettings?.site_name?.trim()) {
+      document.title = siteSettings.site_name.trim();
     }
+  }, [siteSettings?.site_name]);
+
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const handleSaveCategory = async (cat: Category) => {
+    const effectiveClientId = (user?.id && UUID_REGEX.test(user.id))
+      ? user.id
+      : (siteSettings?.client_id && UUID_REGEX.test(siteSettings.client_id))
+        ? siteSettings.client_id
+        : null;
+
+    const validCatIds = categories.map((c) => c.id);
+    const sanitizedCat: any = {
+      id: cat.id || `cat_${Date.now()}`,
+      client_id: effectiveClientId,
+      name: (cat.name || '').trim() || 'General',
+      slug: (cat.slug || '').trim() || `cat-${Date.now()}`,
+      order_index: typeof cat.order_index === 'number' ? cat.order_index : 0,
+      description: cat.description || null,
+      icon_name: cat.icon_name || 'BookOpen',
+      parent_id: (cat.parent_id && validCatIds.includes(cat.parent_id)) ? cat.parent_id : null,
+      brand_id: siteSettings?.brand_id || cat.brand_id || null,
+      created_at: cat.created_at || new Date().toISOString()
+    };
+
     try {
-      // 1. Save to Supabase
-      const { error } = await supabase.from('categories').upsert([cat]);
+      const { data, error } = await supabase.from('categories').upsert([sanitizedCat]).select();
       if (error) {
-        console.error('Supabase save error:', error.message);
-        alert(`Database Error: ${error.message}
-(Check if Row Level Security is blocking inserts)`);
+        console.error('Supabase save category error:', error.message);
+        alert(`Database Error saving category: ${error.message}`);
         return;
       }
-    } catch (err) {
+      const savedCat: Category = {
+        ...cat,
+        ...sanitizedCat,
+        ...(data && data[0] ? data[0] : {})
+      };
+      setCategories((prev) => {
+        const idx = prev.findIndex((c) => c.id === savedCat.id);
+        let updated;
+        if (idx >= 0) {
+          updated = [...prev];
+          updated[idx] = savedCat;
+        } else {
+          updated = [...prev, savedCat];
+        }
+        updated.sort((a, b) => a.order_index - b.order_index);
+        return updated;
+      });
+    } catch (err: any) {
       console.warn('Supabase categories error:', err);
     }
-
-    setCategories((prev) => {
-      const idx = prev.findIndex((c) => c.id === cat.id);
-      let updated;
-      if (idx >= 0) {
-        updated = [...prev];
-        updated[idx] = cat;
-      } else {
-        updated = [...prev, cat];
-      }
-      updated.sort((a, b) => a.order_index - b.order_index);
-      return updated;
-    });
   };
 
   const handleDeleteCategory = async (catId: string) => {
     try {
-      await supabase.from('categories').delete().eq('id', catId);
+      const { error } = await supabase.from('categories').delete().eq('id', catId);
+      if (error) {
+        console.error('Supabase delete category error:', error.message);
+        alert(`Error deleting category: ${error.message}`);
+        return;
+      }
     } catch (err) {
       console.warn('Supabase delete category error:', err);
     }
@@ -408,41 +428,95 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
   };
 
   const handleSavePost = async (post: Post) => {
-    if (!user?.id) return alert('No client ID found (not logged in).');
-    post.client_id = user.id;
-    if (siteSettings?.brand_id) {
-      post.brand_id = siteSettings.brand_id;
-    }
+    const effectiveClientId = (user?.id && UUID_REGEX.test(user.id))
+      ? user.id
+      : (siteSettings?.client_id && UUID_REGEX.test(siteSettings.client_id))
+        ? siteSettings.client_id
+        : null;
+
+    const validCatIds = categories.map((c) => c.id);
+    const validCategoryId = (post.category_id && validCatIds.includes(post.category_id))
+      ? post.category_id
+      : null;
+
+    // Build strictly valid payload matching database columns to prevent PostgREST column-not-found errors
+    const sanitizedPayload: any = {
+      id: post.id || `post_${Date.now()}`,
+      client_id: effectiveClientId,
+      title: (post.title || '').trim() || 'Untitled',
+      slug: (post.slug || '').trim() || `post-${Date.now()}`,
+      content: post.content || '',
+      category_id: validCategoryId,
+      thumbnail: post.thumbnail || null,
+      views_count: typeof post.views_count === 'number' ? post.views_count : 0,
+      format_type: post.format_type || 'standard',
+      code_language: post.code_language || null,
+      show_details_btn: post.show_details_btn !== false,
+      show_share_btn: post.show_share_btn !== false,
+      show_thumbnail: post.show_thumbnail !== false,
+      show_full_post: !!post.show_full_post,
+      is_custom_page: !!post.is_custom_page,
+      created_at: post.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      product_type: post.product_type || 'physical',
+      digital_settings: post.digital_settings || {},
+      brand_id: siteSettings?.brand_id || post.brand_id || null,
+      meta_title: (post as any).meta_title || post.title || null,
+      meta_description: (post as any).meta_description || post.summary || null,
+      featured_image: (post as any).featured_image || post.thumbnail || null,
+      price: typeof (post as any).price === 'number' ? (post as any).price : 0,
+      currency: (post as any).currency || 'BDT',
+      in_stock: (post as any).in_stock !== false
+    };
+
     try {
-      const { error } = await supabase.from('posts').upsert([post]);
+      const { data, error } = await supabase.from('posts').upsert([sanitizedPayload]).select();
       if (error) {
-        console.error('Supabase save error:', error.message);
-        alert(`Database Error: ${error.message}
-(Check if Row Level Security is blocking inserts)`);
+        console.error('Supabase save post error:', error.message);
+        alert(`Database Error: ${error.message}`);
         return;
       }
-    } catch (err) {
-      console.warn('Supabase posts error:', err);
-    }
 
-    setPosts((prev) => {
-      const idx = prev.findIndex((p) => p.id === post.id);
-      let updated;
-      if (idx >= 0) {
-        updated = [...prev];
-        updated[idx] = post;
-      } else {
-        updated = [post, ...prev];
-      }
-      return updated;
-    });
+      // Merge saved data with any UI-only fields so preview works seamlessly
+      const savedPost: Post = {
+        ...post,
+        ...sanitizedPayload,
+        ...(data && data[0] ? data[0] : {})
+      };
+
+      setPosts((prev) => {
+        const idx = prev.findIndex((p) => p.id === savedPost.id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = savedPost;
+          return updated;
+        } else {
+          return [savedPost, ...prev];
+        }
+      });
+    } catch (err: any) {
+      console.warn('Supabase posts error:', err);
+      alert(`Error saving post: ${err?.message || err}`);
+    }
   };
 
   const handleSaveSiteSettings = async (settings: SiteSettings) => {
-    if (!user?.id) return alert('No client ID found (not logged in).');
-    settings.client_id = user.id;
+    const effectiveClientId = (user?.id && UUID_REGEX.test(user.id))
+      ? user.id
+      : (siteSettings?.client_id && UUID_REGEX.test(siteSettings.client_id))
+        ? siteSettings.client_id
+        : null;
 
-    const sitePayload: any = { ...settings };
+    const siteId = siteSettings?.id || settings.id || 'default';
+    const sitePayload: any = {
+      ...siteSettings,
+      ...settings,
+      id: siteId,
+      site_name: settings.site_name?.trim() || siteSettings?.site_name || 'My Site',
+    };
+    if (effectiveClientId) {
+      sitePayload.client_id = effectiveClientId;
+    }
     if (sitePayload.website_service_active === undefined) {
       sitePayload.website_service_active = true;
     }
@@ -450,32 +524,45 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       sitePayload.website_service_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     }
 
-    // Try to update first
-    const { error: updateError, data: updateData } = await supabase.from('site_settings').update(sitePayload).eq('client_id', user.id).select();
-    
+    // Try to update first by id, or by client_id if available
+    let updateQuery = supabase.from('site_settings').update(sitePayload);
+    if (sitePayload.id && sitePayload.id !== 'default') {
+      updateQuery = updateQuery.eq('id', sitePayload.id);
+    } else if (effectiveClientId) {
+      updateQuery = updateQuery.eq('client_id', effectiveClientId);
+    } else {
+      updateQuery = updateQuery.eq('id', siteId);
+    }
+    const { error: updateError, data: updateData } = await updateQuery.select();
+
     if (updateError) {
       console.error('Supabase settings update error:', updateError);
       throw new Error(updateError.message);
     }
-    
-    // If update affected 0 rows, it means the row doesn't exist, so insert it
+
+    // If update affected 0 rows, insert
     if (!updateData || updateData.length === 0) {
-       const { error: insertError, data: insertData } = await supabase.from('site_settings').insert([settings]).select();
-       if (insertError) {
-          console.error('Supabase settings insert error:', insertError);
-          throw new Error(insertError.message);
-       }
-       if (!insertData || insertData.length === 0) {
-          throw new Error("RLS Error: Database blocked the save. Check your table policies!");
-       }
+      const { error: insertError } = await supabase.from('site_settings').insert([sitePayload]).select();
+      if (insertError) {
+        console.error('Supabase settings insert error:', insertError);
+        throw new Error(insertError.message);
+      }
     }
-    
-    setSiteSettings(settings);
+
+    setSiteSettings(sitePayload);
+    if (sitePayload.site_name) {
+      document.title = sitePayload.site_name.trim();
+    }
   };
 
   const handleDeletePost = async (postId: string) => {
     try {
-      await supabase.from('posts').delete().eq('id', postId);
+      const { error } = await supabase.from('posts').delete().eq('id', postId);
+      if (error) {
+        console.error('Supabase delete post error:', error.message);
+        alert(`Error deleting post: ${error.message}`);
+        return;
+      }
     } catch (err) {
       console.warn('Supabase delete post error:', err);
     }
