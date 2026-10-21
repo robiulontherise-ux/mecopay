@@ -985,6 +985,56 @@ async function startServer() {
   });
 
   // =========================================================================
+  // DIGITAL SERVICES API (TELEGRAM, FACEBOOK, GOOGLE DRIVE AUTOMATION)
+  // =========================================================================
+  app.get('/api/digital-services/:brandId', async (req, res) => {
+    try {
+      const { brandId } = req.params;
+      if (!brandId || !supabaseAdmin) return res.status(400).json({ error: "Missing brandId" });
+
+      const { data, error } = await supabaseAdmin
+        .from('digital_services')
+        .select('*')
+        .eq('brand_id', brandId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        return res.status(500).json({ error: error.message });
+      }
+
+      res.json({ success: true, data: data || null });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/digital-services/:brandId', async (req, res) => {
+    try {
+      const { brandId } = req.params;
+      if (!brandId || !supabaseAdmin) return res.status(400).json({ error: "Missing brandId" });
+
+      const payload = req.body || {};
+      const { data, error } = await supabaseAdmin
+        .from('digital_services')
+        .upsert({
+          brand_id: brandId,
+          ...payload,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'brand_id' })
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      res.json({ success: true, data });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // =========================================================================
   // CUSTOM DOMAIN, HOSTNAME & AUTOMATED TLS CACHE & APIS
   // =========================================================================
   interface DomainCacheEntry {

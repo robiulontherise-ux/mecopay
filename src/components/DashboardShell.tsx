@@ -19,6 +19,7 @@ import PaymentLinks from "./payment-hub/PaymentLinks";
 import Invoices from "./payment-hub/Invoices";
 import CourierService from "./payment-hub/CourierService";
 import FullCodService from "./payment-hub/FullCodService";
+import DigitalService from "./payment-hub/DigitalService";
 import DeveloperDocs from "./DeveloperDocs";
 import { downloadWordPressPluginZip } from '../lib/wordpressPluginSource';
 import { useNavigate } from 'react-router-dom';
@@ -1047,7 +1048,7 @@ export default function DashboardShell() {
     },
     payments: {
       title: 'Payments Hub',
-      items: ['Gateway Settings', 'Payment Links', 'Invoices', 'Full COD Service', 'Courier Service', 'SMS + WhatsApp Service', 'Transactions', 'Transaction Analysis', 'Analytics'],
+      items: ['Gateway Settings', 'Payment Links', 'Invoices', 'Digital Service', 'Full COD Service', 'Courier Service', 'SMS + WhatsApp Service', 'Transactions', 'Transaction Analysis', 'Analytics'],
     },
     site: {
       title: 'My Site',
@@ -2465,6 +2466,10 @@ export default function DashboardShell() {
 
     if (activeSubMenu === 'Invoices') {
       return <Invoices brands={brands} />;
+    }
+
+    if (activeSubMenu === 'Digital Service') {
+      return <DigitalService brands={brands} user={user} />;
     }
 
     if (activeSubMenu === 'Full COD Service') {
