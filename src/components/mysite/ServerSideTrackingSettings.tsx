@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Activity, Save, CheckCircle2, RefreshCw, Zap, ShieldCheck, Globe, Building2, Clock, Calendar, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface ServerSideTrackingSettingsProps {
   user: any;
   brands?: any[];
+  sharedContext?: SharedDashboardPageContext;
 }
 
-export default function ServerSideTrackingSettings({ user, brands = [] }: ServerSideTrackingSettingsProps) {
+export default function ServerSideTrackingSettings({ user, brands = [], sharedContext }: ServerSideTrackingSettingsProps) {
   const [brandList, setBrandList] = useState<any[]>(brands);
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [activeDomain, setActiveDomain] = useState<string>('');
@@ -57,6 +59,23 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const verifySharedAccess = async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    if (!sharedContext.accessId || (sharedContext.pageKey !== 'server_side_tracking' && sharedContext.pageKey !== '*')) {
+      throw new Error('This shared access grant is not valid for Server Side Tracking.');
+    }
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'server_side_tracking',
+      p_action: action
+    });
+    if (error) throw error;
+    if (allowed !== true) {
+      throw new Error(`Active shared ${action} access for Server Side Tracking was not verified.`);
+    }
+  };
 
   // Helper: check if a platform's expiry date is passed
   const isExpired = (expiresAt: string | null) => {
@@ -114,7 +133,10 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
   // Initialize and ensure selected brand is populated
   useEffect(() => {
     const initBrands = async () => {
-      if (brands && brands.length > 0) {
+      if (sharedContext) {
+        setBrandList([sharedContext.brand]);
+        setSelectedBrandId(sharedContext.brandId);
+      } else if (brands && brands.length > 0) {
         setBrandList(brands);
         if (!selectedBrandId) {
           setSelectedBrandId(brands[0].id);
@@ -140,36 +162,50 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
     };
 
     initBrands();
-  }, [brands, user?.id]);
+  }, [brands, user?.id, sharedContext]);
 
   // Keep brand list synced if parent brands prop updates
   useEffect(() => {
-    if (brands && brands.length > 0) {
+    if (sharedContext) {
+      setBrandList([sharedContext.brand]);
+      setSelectedBrandId(sharedContext.brandId);
+    } else if (brands && brands.length > 0) {
       setBrandList(brands);
       if (!selectedBrandId) {
         setSelectedBrandId(brands[0].id);
       }
     }
-  }, [brands, selectedBrandId]);
+  }, [brands, selectedBrandId, sharedContext]);
 
   // Load tracking data from Supabase server_side_tracking table
   useEffect(() => {
-    if (!user) return;
+    if (!user && !sharedContext) return;
     loadTrackingConfig();
-  }, [user, selectedBrandId]);
+  }, [user, selectedBrandId, sharedContext]);
 
   const loadTrackingConfig = async () => {
     try {
       setLoading(true);
+      await verifySharedAccess('view');
+      const ownerId = sharedContext?.clientId || user?.id;
+      const brandId = sharedContext?.brandId || selectedBrandId;
+      if (!ownerId || (sharedContext && !brandId)) {
+        throw new Error('A valid client and brand are required to load tracking settings.');
+      }
       
       // 1. Fetch domain from site_settings for the selected brand
       let domainName = '';
-      if (selectedBrandId) {
-        const { data: siteData } = await supabase
+      if (brandId) {
+        let siteQuery = supabase
           .from('site_settings')
-          .select('domain, subdomain')
-          .or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`)
-          .maybeSingle();
+          .select('domain, subdomain');
+        if (sharedContext) {
+          siteQuery = siteQuery.eq('client_id', ownerId).eq('brand_id', brandId);
+        } else {
+          siteQuery = siteQuery.or(`id.eq.${brandId},brand_id.eq.${brandId}`);
+        }
+        const { data: siteData, error: siteError } = await siteQuery.maybeSingle();
+        if (siteError) throw siteError;
 
         if (siteData) {
           domainName = siteData.domain || (siteData.subdomain ? `${siteData.subdomain}.mecopay.space` : '');
@@ -178,14 +214,15 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
       setActiveDomain(domainName);
 
       // 2. Fetch tracking config from server_side_tracking table
-      let query = supabase.from('server_side_tracking').select('*').eq('client_id', user.id);
-      if (selectedBrandId) {
-        query = query.eq('brand_id', selectedBrandId);
+      let query = supabase.from('server_side_tracking').select('*').eq('client_id', ownerId);
+      if (brandId) {
+        query = query.eq('brand_id', brandId);
       }
       
       const { data, error } = await query.maybeSingle();
+      if (error) throw error;
 
-      if (!error && data) {
+      if (data) {
         // Meta
         setMetaPixelId(data.meta_pixel_id || '');
         setMetaAccessToken(data.meta_access_token || '');
@@ -263,6 +300,7 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
       }
     } catch (err) {
       console.error('Failed to load tracking settings:', err);
+      showToast((err as any)?.message || 'Failed to load tracking settings.', 'error');
     } finally {
       setLoading(false);
     }
@@ -270,12 +308,17 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    const ownerId = sharedContext?.clientId || user?.id;
+    const brandId = sharedContext?.brandId || selectedBrandId;
+    if (!ownerId || !brandId) {
+      showToast('Select a brand before saving tracking settings.', 'error');
+      return;
+    }
     setSaving(true);
 
     const payload = {
-      client_id: user.id,
-      brand_id: selectedBrandId || null,
+      client_id: ownerId,
+      brand_id: brandId,
       domain: activeDomain || 'default',
 
       // Meta
@@ -324,6 +367,7 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
     };
 
     try {
+      await verifySharedAccess('edit');
       // 1. Save to Supabase server_side_tracking table
       const { error } = await supabase
         .from('server_side_tracking')
@@ -331,22 +375,30 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
 
       if (error) {
         console.warn('Upsert onConflict notice, falling back:', error);
-        await supabase
+        const { error: deleteError } = await supabase
           .from('server_side_tracking')
           .delete()
-          .match({ client_id: user.id, brand_id: selectedBrandId });
-        await supabase.from('server_side_tracking').insert(payload);
+          .eq('client_id', ownerId)
+          .eq('brand_id', brandId)
+          .eq('domain', payload.domain);
+        if (deleteError) throw deleteError;
+        const { error: insertError } = await supabase.from('server_side_tracking').insert(payload);
+        if (insertError) throw insertError;
       }
 
       // 2. Also keep localStorage as client cache backup
-      localStorage.setItem(`mecopay_tracking_config_${user?.id}_${selectedBrandId}`, JSON.stringify(payload));
+      if (!sharedContext && typeof localStorage !== 'undefined') {
+        localStorage.setItem(`mecopay_tracking_config_${ownerId}_${brandId}`, JSON.stringify(payload));
+      }
 
-      // 3. Sync to Cloudflare Gateway Worker KV (Auto-Merge with domain settings)
-      if (activeDomain) {
+      // 3. Sync to Cloudflare Gateway Worker KV only in normal mode. The endpoint
+      // cannot validate this active client_resource_access grant, so it is disabled
+      // for shared freelancers rather than risking an unscoped side effect.
+      if (!sharedContext && activeDomain) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.access_token) {
-            await fetch('https://cname.mecopay.space/api/internal/sync-cache', {
+            const syncResponse = await fetch('https://cname.mecopay.space/api/internal/sync-cache', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -380,16 +432,19 @@ export default function ServerSideTrackingSettings({ user, brands = [] }: Server
                 }
               })
             });
+            if (!syncResponse.ok) {
+              throw new Error(`Tracking settings saved, but Edge sync failed (${syncResponse.status}).`);
+            }
           }
         } catch (syncErr) {
-          console.warn('Edge tracking sync note:', syncErr);
+          throw syncErr;
         }
       }
 
-      showToast('Server-Side Tracking settings saved & synced to Edge successfully!', 'success');
+      showToast(sharedContext ? 'Server-Side Tracking settings saved successfully.' : 'Server-Side Tracking settings saved & synced to Edge successfully!', 'success');
     } catch (err: any) {
       console.error('Error saving tracking settings:', err);
-      showToast(err.message || 'Saved locally, but database sync had an issue.', 'error');
+      showToast(err.message || 'Failed to save Server-Side Tracking settings.', 'error');
     } finally {
       setSaving(false);
     }

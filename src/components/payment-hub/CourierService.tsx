@@ -18,15 +18,18 @@ import {
 import { showToast } from '../../lib/toast';
 import { supabase } from '../../lib/supabase';
 import { notifyMerchantWebhook } from '../../lib/webhookDispatcher';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface CourierServiceProps {
   brands?: any[];
   user?: any;
+  sharedContext?: SharedDashboardPageContext;
 }
 
-export default function CourierService({ brands = [], user }: CourierServiceProps) {
+export default function CourierService({ brands = [], user, sharedContext }: CourierServiceProps) {
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'parcels' | 'settings'>('parcels');
+  const isSharedReadOnly = Boolean(sharedContext && !sharedContext.actions.includes('edit'));
 
   // Courier API Keys & Brand Automation Settings (Domestic + International)
   const [courierProvider, setCourierProvider] = useState<'steadfast' | 'pathao' | 'redx' | 'dhl' | 'fedex' | 'aramex' | 'custom'>('steadfast');
@@ -71,10 +74,14 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const [loadingParcels, setLoadingParcels] = useState(false);
 
   useEffect(() => {
+    if (sharedContext) {
+      setSelectedBrandId(sharedContext.brandId);
+      return;
+    }
     if (brands && brands.length > 0 && !selectedBrandId) {
       setSelectedBrandId(brands[0].id);
     }
-  }, [brands]);
+  }, [brands, sharedContext?.brandId]);
 
   // Load Courier Settings from Supabase brands table
   useEffect(() => {
@@ -91,57 +98,103 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
 
     fetchParcels();
     loadCourierSettings();
-  }, [selectedBrandId, brands]);
+  }, [selectedBrandId, brands, sharedContext?.clientId, sharedContext?.brandId]);
+
+  const verifySharedAccess = async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    if (!['courier_service', '*'].includes(sharedContext.pageKey)) {
+      throw new Error('This shared access grant is not valid for Courier Service.');
+    }
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Authentication required.');
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'courier_service',
+      p_action: action,
+    });
+    if (error) throw error;
+    if (allowed !== true) throw new Error(`Active shared ${action} access for Courier Service was not verified.`);
+  };
 
   const loadCourierSettings = async () => {
     if (!selectedBrandId) return;
     try {
-      const { data: bData } = await supabase
+      await verifySharedAccess('view');
+      let brandQuery = supabase
         .from('brands')
         .select('auto_courier_on_full_cod, auto_courier_on_advance')
-        .eq('id', selectedBrandId)
-        .maybeSingle();
+        .eq('id', sharedContext?.brandId || selectedBrandId);
+      if (sharedContext) brandQuery = brandQuery.eq('user_id', sharedContext.clientId);
+      const { data: bData, error: brandError } = await brandQuery.maybeSingle();
+      if (brandError) throw brandError;
 
       if (bData) {
         if (typeof bData.auto_courier_on_full_cod === 'boolean') setAutoCourierOnFullCod(bData.auto_courier_on_full_cod);
         if (typeof bData.auto_courier_on_advance === 'boolean') setAutoCourierOnAdvance(bData.auto_courier_on_advance);
       }
 
-      const { data: cb } = await supabase
-        .from('courier_bookings')
-        .select('*')
+      const { data: settings, error: settingsError } = await supabase
+        .from('brand_courier_settings')
+        .select('provider,api_endpoint,api_key,secret_key,config')
+        .eq('client_id', sharedContext?.clientId || user?.id)
         .eq('brand_id', selectedBrandId)
-        .order('created_at', { ascending: false })
-        .limit(1)
         .maybeSingle();
+      if (settingsError) throw settingsError;
 
-      if (cb) {
-        if (cb.api_endpoint) setCustomCourierEndpoint(cb.api_endpoint);
-        if (cb.api_key) setCustomCourierApiKey(cb.api_key);
-        if (cb.secret_key) setCustomCourierSecretKey(cb.secret_key);
-        if (cb.provider) setCustomCourierProviderName(cb.provider);
+      if (settings) {
+        const provider = settings.provider || 'steadfast';
+        const config = settings.config || {};
+        setCourierProvider(['steadfast', 'pathao', 'redx', 'dhl', 'fedex', 'aramex', 'custom'].includes(provider) ? provider : 'custom');
+        setCustomCourierProviderName(provider);
+        setCustomCourierEndpoint(settings.api_endpoint || '');
+        setCustomCourierApiKey(settings.api_key || '');
+        setCustomCourierSecretKey(settings.secret_key || '');
+        setSteadfastApiKey(settings.api_key || '');
+        setSteadfastSecretKey(settings.secret_key || '');
+        setPathaoClientId(settings.api_key || '');
+        setPathaoClientSecret(settings.secret_key || '');
+        setDhlApiKey(settings.api_key || '');
+        setDhlApiSecret(settings.secret_key || '');
+        setFedexApiKey(settings.api_key || '');
+        setFedexSecretKey(settings.secret_key || '');
+        setAramexPassword(settings.secret_key || '');
+        setPathaoStoreId(config.pathao_store_id || '');
+        setDhlAccountNumber(config.dhl_account || '');
+        setFedexAccountNumber(config.fedex_account || '');
+        setAramexUsername(config.aramex_user || '');
+        setAramexAccountNumber(config.aramex_account || '');
       }
-    } catch (_err) {}
+    } catch (err: any) {
+      console.error('Courier settings load error:', err);
+      showToast(err?.message || 'Failed to load courier settings.', 'error');
+    }
   };
 
   const fetchParcels = async () => {
     if (!selectedBrandId) return;
     setLoadingParcels(true);
     try {
+      await verifySharedAccess('view');
       // 1. Fetch from invoices: All Full COD orders + orders with courier consignment
-      const { data: invData, error: invErr } = await supabase
+      let invoiceQuery = supabase
         .from('invoices')
         .select('*')
         .eq('brand_id', selectedBrandId)
-        .or('consignment_id.not.is.null,is_full_cod.eq.true,product_type.eq.physical')
+        .or('consignment_id.not.is.null,product_type.eq.physical')
         .order('created_at', { ascending: false });
+      if (sharedContext) invoiceQuery = invoiceQuery.eq('user_id', sharedContext.clientId);
+      const { data: invData, error: invErr } = await invoiceQuery;
+      if (invErr) throw invErr;
 
       // 2. Fetch from courier_bookings table
-      const { data: cbData } = await supabase
+      let courierQuery = supabase
         .from('courier_bookings')
         .select('*')
         .eq('brand_id', selectedBrandId)
         .order('created_at', { ascending: false });
+      const { data: cbData, error: cbErr } = await courierQuery;
+      if (cbErr) throw cbErr;
 
       const combinedMap = new Map();
 
@@ -171,8 +224,9 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       });
 
       setParcels(Array.from(combinedMap.values()));
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Error fetching parcels:', e);
+      showToast(e?.message || 'Failed to load courier parcels.', 'error');
     } finally {
       setLoadingParcels(false);
     }
@@ -181,38 +235,63 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
   const handleSaveKeys = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBrandId) return;
+    if (isSharedReadOnly) {
+      showToast('This shared Courier Service page is view-only.', 'error');
+      return;
+    }
     setSavingKeys(true);
     try {
+      await verifySharedAccess('edit');
       const currentBrand = brands.find(b => b.id === selectedBrandId);
+      const ownerId = sharedContext?.clientId || user?.id;
+      const brandId = sharedContext?.brandId || selectedBrandId;
 
       // Save directly to brands table & whatsapp_gateway_settings
-      await supabase
-        .from('brands')
-        .update({
-          auto_courier_on_full_cod: autoCourierOnFullCod,
-          auto_courier_on_advance: autoCourierOnAdvance
-        })
-        .eq('id', selectedBrandId);
+      const brandUpdatePayload = {
+        auto_courier_on_full_cod: autoCourierOnFullCod,
+        auto_courier_on_advance: autoCourierOnAdvance
+      };
+      if (sharedContext) {
+        const { data: updatedBrands, error: brandError } = await supabase
+          .from('brands')
+          .update(brandUpdatePayload)
+          .eq('id', brandId)
+          .eq('user_id', sharedContext.clientId)
+          .select('id');
+        if (brandError) throw brandError;
+        if (!updatedBrands || updatedBrands.length === 0) throw new Error('No authorized brand record was updated.');
+      } else {
+        const { error: brandError } = await supabase
+          .from('brands')
+          .update(brandUpdatePayload)
+          .eq('id', brandId);
+        if (brandError) throw brandError;
+      }
 
-      await supabase
-        .from('whatsapp_gateway_settings')
-        .upsert({
-          brand_id: selectedBrandId,
+      if (!sharedContext) {
+        const gatewayPayload = {
+          brand_id: String(brandId),
+          user_id: ownerId,
           auto_courier_advance: autoCourierOnAdvance,
           auto_courier_cod: autoCourierOnFullCod,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'brand_id' });
+        };
+        const { error: gatewayError } = await supabase
+          .from('whatsapp_gateway_settings')
+          .upsert(gatewayPayload, { onConflict: 'brand_id' });
+        if (gatewayError) throw gatewayError;
+      }
 
-      // Save courier provider credentials + Universal 3-Field Custom API
-      await supabase
-        .from('courier_bookings')
-        .upsert({
-          brand_id: selectedBrandId,
+      // Courier credentials belong to one brand settings row, not to a booking row.
+      // The settings table is shared by owner and grant-scoped freelancer sessions.
+      const courierSettingsPayload = {
+          client_id: ownerId,
+          brand_id: brandId,
           provider: customCourierProviderName || courierProvider,
           api_endpoint: customCourierEndpoint || (courierProvider === 'steadfast' ? 'https://portal.steadfast.com.bd/api/v1/create_order' : ''),
           api_key: customCourierApiKey || (courierProvider === 'steadfast' ? steadfastApiKey : (courierProvider === 'pathao' ? pathaoClientId : (courierProvider === 'dhl' ? dhlApiKey : fedexApiKey))),
           secret_key: customCourierSecretKey || (courierProvider === 'steadfast' ? steadfastSecretKey : (courierProvider === 'pathao' ? pathaoClientSecret : (courierProvider === 'dhl' ? dhlApiSecret : fedexSecretKey))),
-          raw_response: {
+          config: {
             provider: courierProvider,
             custom_endpoint: customCourierEndpoint,
             pathao_store_id: pathaoStoreId,
@@ -222,26 +301,33 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
             aramex_account: aramexAccountNumber
           },
           updated_at: new Date().toISOString()
-        }, { onConflict: 'brand_id' });
+      };
+      const { error: courierError } = await supabase
+        .from('brand_courier_settings')
+        .upsert(courierSettingsPayload, { onConflict: 'client_id,brand_id' });
+      if (courierError) throw courierError;
 
       if (currentBrand) {
         currentBrand.auto_courier_on_full_cod = autoCourierOnFullCod;
       }
 
-      // Dispatch Webhook (Method 1) to notify merchant's WordPress/Laravel/Custom site cache
-      notifyMerchantWebhook(selectedBrandId, 'brand.settings_updated', {
-        brand_id: selectedBrandId,
-        auto_courier_on_full_cod: autoCourierOnFullCod,
-        personal_api_active: currentBrand?.personal_api ?? true,
-        merchant_api_active: currentBrand?.merchant_api ?? false
-      });
+      if (!sharedContext) {
+        // Dispatch Webhook (Method 1) to notify merchant's WordPress/Laravel/Custom site cache
+        notifyMerchantWebhook(selectedBrandId, 'brand.settings_updated', {
+          brand_id: selectedBrandId,
+          auto_courier_on_full_cod: autoCourierOnFullCod,
+          personal_api_active: currentBrand?.personal_api ?? true,
+          merchant_api_active: currentBrand?.merchant_api ?? false
+        });
 
-      // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
-      supabase.functions.invoke('cloudflare-custom-hostname', {
-        body: { action: 'sync_brand', brand_id: selectedBrandId }
-      }).catch(err => console.warn('Edge KV sync error:', err));
-
-      showToast('Courier automation settings saved & real-time webhook dispatched!', 'success');
+        // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
+        supabase.functions.invoke('cloudflare-custom-hostname', {
+          body: { action: 'sync_brand', brand_id: selectedBrandId }
+        }).catch(err => console.warn('Edge KV sync error:', err));
+        showToast('Courier automation settings saved & real-time webhook dispatched!', 'success');
+      } else {
+        showToast('Courier automation settings saved. External webhook and Edge KV sync are disabled in shared mode.', 'success');
+      }
     } catch (err: any) {
       console.error(err);
       showToast('Failed to save settings: ' + (err.message || ''), 'error');
@@ -256,9 +342,16 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       showToast('Please fill in recipient details', 'error');
       return;
     }
+    if (isSharedReadOnly) {
+      showToast('This shared Courier Service page is view-only.', 'error');
+      return;
+    }
 
     setBookingLoading(true);
     try {
+      await verifySharedAccess('edit');
+      const ownerId = sharedContext?.clientId || user?.id;
+      const brandId = sharedContext?.brandId || selectedBrandId;
       const newConsignment =
         courierProvider === 'pathao'
           ? `PTH-${Math.floor(1000000 + Math.random() * 9000000)}`
@@ -276,9 +369,8 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
       const courierName = courierProvider === 'pathao' ? 'Pathao' : courierProvider === 'redx' ? 'RedX' : 'Steadfast';
 
       const newBookingRecord: any = {
-        brand_id: selectedBrandId,
-        user_id: user?.id,
-        courier: courierName,
+        brand_id: brandId,
+        provider: courierName,
         consignment_id: newConsignment,
         recipient_name: recipientName,
         recipient_phone: recipientPhone,
@@ -294,13 +386,9 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
         .insert([newBookingRecord])
         .select()
         .maybeSingle();
-
-      if (!error && data) {
-        setParcels(prev => [data, ...prev]);
-      } else {
-        // Safe local state fallback if table permissions/schema are pending
-        setParcels(prev => [{ id: `PAR-${Date.now()}`, ...newBookingRecord }, ...prev]);
-      }
+      if (error) throw error;
+      if (!data) throw new Error('The courier booking was not returned by the database.');
+      setParcels(prev => [data, ...prev]);
 
       setShowBookingModal(false);
       setRecipientName('');
@@ -349,8 +437,9 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
           )}
 
           <button
+            disabled={isSharedReadOnly}
             onClick={() => setShowBookingModal(true)}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-500/10 shrink-0"
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-500/10 shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
             Book New Parcel
@@ -413,8 +502,9 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                 </p>
                 <button
                   type="button"
+                  disabled={isSharedReadOnly}
                   onClick={() => setShowBookingModal(true)}
-                  className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                  className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Plus className="w-3.5 h-3.5" /> Book First Parcel
                 </button>
@@ -496,6 +586,7 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                               {parcel.status === 'pending_call' ? (
                                 <button
                                   type="button"
+                                  disabled={isSharedReadOnly}
                                   onClick={() => {
                                     setRecipientName(recName);
                                     setRecipientPhone(recPhone);
@@ -503,7 +594,7 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
                                     setCodAmount(String(cod));
                                     setShowBookingModal(true);
                                   }}
-                                  className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 transition-colors"
+                                  className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   🚚 Book Courier
                                 </button>
@@ -831,8 +922,8 @@ export default function CourierService({ brands = [], user }: CourierServiceProp
 
           <button
             type="submit"
-            disabled={savingKeys}
-            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 disabled:opacity-50"
+            disabled={savingKeys || isSharedReadOnly}
+            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {savingKeys ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Courier Settings

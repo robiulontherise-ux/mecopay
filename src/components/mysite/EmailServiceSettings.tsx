@@ -20,13 +20,15 @@ import {
 import { supabase, supabaseAnonKey } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 import MecoPayWebmailInbox from './MecoPayWebmailInbox';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface EmailServiceSettingsProps {
   user: any;
   brands?: any[];
+  sharedContext?: SharedDashboardPageContext;
 }
 
-export default function EmailServiceSettings({ user, brands = [] }: EmailServiceSettingsProps) {
+export default function EmailServiceSettings({ user, brands = [], sharedContext }: EmailServiceSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [brandList, setBrandList] = useState<any[]>([]);
   const [verifiedBrands, setVerifiedBrands] = useState<any[]>([]);
@@ -51,14 +53,29 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
   const [sendAdminAlert, setSendAdminAlert] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const verifySharedAccess = async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    if (!sharedContext.accessId || (sharedContext.pageKey !== 'email_service' && sharedContext.pageKey !== '*')) {
+      throw new Error('This shared access grant is not valid for Email Service.');
+    }
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'email_service',
+      p_action: action
+    });
+    if (error) throw error;
+    if (allowed !== true) throw new Error(`Active shared ${action} access for Email Service was not verified.`);
+  };
+
   // 1. Fetch Brands and Validate Custom Domains from site_settings
   useEffect(() => {
     const fetchBrandsAndDomains = async () => {
       try {
         setLoading(true);
-        let currentBrands = brands;
+        let currentBrands = sharedContext ? [sharedContext.brand] : brands;
 
-        if (!currentBrands || currentBrands.length === 0) {
+        if (!sharedContext && (!currentBrands || currentBrands.length === 0)) {
           if (user?.id) {
             const { data: bData } = await supabase
               .from('brands')
@@ -72,13 +89,29 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         setBrandList(currentBrands || []);
 
         if (user?.id) {
-          // Fetch site_settings for this user or by brand_id
-          const { data: settingsData } = await supabase
-            .from('site_settings')
-            .select('id, brand_id, domain, subdomain, client_id, ssl_status, domain_status, email_service_active, service_status');
+          let settingsData: any[] | null = null;
+          if (sharedContext) {
+            await verifySharedAccess('view');
+            const { data, error } = await supabase
+              .from('site_settings')
+              .select('id, brand_id, domain, subdomain, client_id, ssl_status, domain_status, email_service_active, service_status')
+              .eq('client_id', sharedContext.clientId)
+              .eq('brand_id', sharedContext.brandId);
+            if (error) throw error;
+            settingsData = data;
+          } else {
+            // Preserve normal merchant behavior, including the legacy broad settings lookup.
+            const { data, error } = await supabase
+              .from('site_settings')
+              .select('id, brand_id, domain, subdomain, client_id, ssl_status, domain_status, email_service_active, service_status');
+            if (error) throw error;
+            settingsData = data;
+          }
 
           const valid = (currentBrands || []).map((b) => {
-            const s = (settingsData || []).find((st) => st.brand_id === b.id || st.id === b.id || st.client_id === user.id);
+            const s = (settingsData || []).find((st) => sharedContext
+              ? st.brand_id === sharedContext.brandId && st.client_id === sharedContext.clientId
+              : st.brand_id === b.id || st.id === b.id || st.client_id === user.id);
             const foundDomain = s?.domain?.trim() || b.website_url?.trim() || '';
             const cleanDomain = foundDomain.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].trim();
             return {
@@ -102,37 +135,61 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         }
       } catch (err) {
         console.error('Error validating brand domains:', err);
+        showToast((err as any)?.message || 'Failed to load Email Service settings.', 'error');
       } finally {
         setLoading(false);
       }
     };
 
     fetchBrandsAndDomains();
-  }, [brands, user?.id]);
+  }, [brands, user?.id, sharedContext]);
 
   // Load configured business emails for brand from Supabase brand_mailboxes table
   const loadBrandEmails = async (brandId: string, domain: string) => {
     try {
       if (user?.id) {
-        let query = supabase
-          .from('brand_mailboxes')
-          .select('email_address')
-          .eq('client_id', user.id);
-
-        if (domain) {
-          query = query.eq('domain', domain);
+        let data: any[] | null = null;
+        let error: any = null;
+        if (sharedContext) {
+          await verifySharedAccess('view');
+          const result = await supabase
+            .from('brand_mailboxes')
+            .select('email_address')
+            .eq('client_id', sharedContext.clientId)
+            .eq('brand_id', sharedContext.brandId)
+            .eq('domain', domain);
+          data = result.data;
+          error = result.error;
+        } else {
+          let query = supabase
+            .from('brand_mailboxes')
+            .select('email_address')
+            .eq('client_id', user.id);
+          if (domain) query = query.eq('domain', domain);
+          const result = await query;
+          data = result.data;
+          error = result.error;
         }
-
-        const { data, error } = await query;
 
         if (!error && data && data.length > 0) {
           const list = data.map((d: any) => d.email_address);
           setCreatedEmails(list);
           return;
         }
+        if (error && sharedContext) throw error;
       }
     } catch (err) {
       console.warn('DB mailboxes fetch notice:', err);
+      if (sharedContext) {
+        showToast((err as any)?.message || 'Failed to load shared mailboxes.', 'error');
+        setCreatedEmails([]);
+        return;
+      }
+    }
+
+    if (sharedContext) {
+      setCreatedEmails([]);
+      return;
     }
 
     const key = `mecopay_biz_emails_${user?.id}_${brandId}`;
@@ -171,7 +228,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
   // Load SMTP config from localStorage
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && !sharedContext) {
       const saved = localStorage.getItem(`mecopay_email_config_${user.id}_${selectedBrandId || 'default'}`);
       if (saved) {
         try {
@@ -188,7 +245,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
         } catch (e) {}
       }
     }
-  }, [user, selectedBrandId]);
+  }, [user, selectedBrandId, sharedContext]);
 
   // Create Business Email handler with Cloudflare Edge Function automation & brand_mailboxes table sync
   const handleCreateBusinessEmail = async (e: React.FormEvent) => {
@@ -206,6 +263,11 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
     const newFullEmail = `${cleanPrefix}@${activeDomain}`;
     if (createdEmails.includes(newFullEmail)) {
       showToast(`'${newFullEmail}' ইমেইলটি ইতিমধ্যে তালিকায় বিদ্যমান!`, 'error');
+      return;
+    }
+
+    if (sharedContext) {
+      showToast('Shared Email Service cannot create mailboxes because the Cloudflare routing function cannot verify this active grant.', 'error');
       return;
     }
 
@@ -341,6 +403,11 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
   };
 
   const handleDeleteEmail = async (emailToRemove: string) => {
+    if (sharedContext) {
+      showToast('Shared Email Service cannot remove mailboxes because routing cleanup requires an unverified Cloudflare function.', 'error');
+      return;
+    }
+
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
@@ -363,16 +430,22 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
     }
 
     // Remove from brand_mailboxes table
-    if (user?.id) {
-      try {
-        await supabase
+    if (!user?.id) {
+      showToast('User session not found; mailbox was not removed.', 'error');
+      return;
+    }
+    try {
+        let deleteQuery = supabase
           .from('brand_mailboxes')
           .delete()
           .eq('client_id', user.id)
           .eq('email_address', emailToRemove);
-      } catch (dbErr) {
-        console.warn('Mailbox DB delete notice:', dbErr);
-      }
+        const { error: deleteError } = await deleteQuery;
+        if (deleteError) throw deleteError;
+    } catch (dbErr: any) {
+      console.warn('Mailbox DB delete notice:', dbErr);
+      showToast(dbErr?.message || 'Mailbox database delete failed.', 'error');
+      return;
     }
 
     const updated = createdEmails.filter((e) => e !== emailToRemove);
@@ -383,6 +456,10 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
   const handleSaveSmtp = (e: React.FormEvent) => {
     e.preventDefault();
+    if (sharedContext) {
+      showToast('SMTP delivery settings are not available in shared mode because they are not stored in a shared database record.', 'error');
+      return;
+    }
     setSaving(true);
     setTimeout(() => {
       localStorage.setItem(
@@ -568,6 +645,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
           brandName={selectedBrand?.name}
           createdEmails={createdEmails}
           isEmailServiceActive={selectedBrand?.email_service_active !== false && selectedBrand?.service_status !== 'inactive'}
+          sharedContext={sharedContext}
         />
       )}
 
@@ -612,7 +690,7 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
 
                 <button
                   type="submit"
-                  disabled={creatingEmail || !emailPrefix.trim()}
+                  disabled={creatingEmail || !emailPrefix.trim() || Boolean(sharedContext)}
                   className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {creatingEmail ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
@@ -659,7 +737,8 @@ export default function EmailServiceSettings({ user, brands = [] }: EmailService
                     <button
                       type="button"
                       onClick={() => handleDeleteEmail(email)}
-                      className="p-2 text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
+                      disabled={Boolean(sharedContext)}
+                      className="p-2 text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
                       title="Remove Mailbox"
                     >
                       <Trash2 className="w-4 h-4" />

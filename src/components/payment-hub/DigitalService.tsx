@@ -24,6 +24,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
 import { WORLD_COUNTRIES, WorldCountry } from '../../lib/worldCountries';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 const FacebookIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -34,14 +35,16 @@ const FacebookIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
 interface DigitalServiceProps {
   brands?: any[];
   user?: any;
+  sharedContext?: SharedDashboardPageContext;
 }
 
 const COUNTRIES: WorldCountry[] = WORLD_COUNTRIES;
 
-export default function DigitalService({ brands = [], user }: DigitalServiceProps) {
+export default function DigitalService({ brands = [], user, sharedContext }: DigitalServiceProps) {
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const isSharedReadOnly = Boolean(sharedContext && !sharedContext.actions.includes('edit'));
 
   // Digital Services State
   const [telegramActive, setTelegramActive] = useState<boolean>(false);
@@ -59,19 +62,40 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
   const [countrySearch, setCountrySearch] = useState<string>('');
 
   useEffect(() => {
+    if (sharedContext) {
+      setSelectedBrandId(sharedContext.brandId);
+      return;
+    }
     if (brands && brands.length > 0 && !selectedBrandId) {
       setSelectedBrandId(brands[0].id);
     }
-  }, [brands, selectedBrandId]);
+  }, [brands, selectedBrandId, sharedContext?.brandId]);
 
   useEffect(() => {
     if (!selectedBrandId) return;
-    loadDigitalServiceSettings();
-  }, [selectedBrandId]);
+    void loadDigitalServiceSettings();
+  }, [selectedBrandId, sharedContext?.clientId, sharedContext?.brandId, sharedContext?.pageKey]);
 
   const currentBrand = useMemo(() => {
     return brands.find(b => b.id === selectedBrandId) || brands[0] || null;
   }, [brands, selectedBrandId]);
+
+  const verifySharedAccess = async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    if (!['digital_service', '*'].includes(sharedContext.pageKey)) {
+      throw new Error('This shared access grant is not valid for Digital Service.');
+    }
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Authentication required.');
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'digital_service',
+      p_action: action,
+    });
+    if (error) throw error;
+    if (allowed !== true) throw new Error(`Active shared ${action} access for Digital Service was not verified.`);
+  };
 
   // Format clean date without timestamp or hours (e.g. 15 Oct 2026)
   const formatCleanDate = (dateStr: string | null) => {
@@ -93,12 +117,15 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
     if (!selectedBrandId) return;
     setLoading(true);
     try {
-      // Direct Supabase query (React + Supabase architecture)
-      const { data, error } = await supabase
+      await verifySharedAccess('view');
+      const brandId = sharedContext?.brandId || selectedBrandId;
+      let settingsQuery = supabase
         .from('digital_services')
         .select('*')
-        .eq('brand_id', selectedBrandId)
-        .maybeSingle();
+        .eq('brand_id', brandId);
+      if (sharedContext) settingsQuery = settingsQuery.eq('client_id', sharedContext.clientId);
+      const { data, error } = await settingsQuery.maybeSingle();
+      if (error) throw error;
 
       if (data) {
         setTelegramActive(Boolean(data.telegram_active));
@@ -119,13 +146,18 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
         setDriveExpiresAt(null);
       }
     } catch (err: any) {
-      console.warn('Digital services load note:', err);
+      console.warn('Digital services load error:', err);
+      showToast(err?.message || 'ডিজিটাল সার্ভিস সেটিংস লোড ব্যর্থ হয়েছে!', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleToggle = async (service: 'telegram' | 'facebook' | 'drive', currentVal: boolean) => {
+    if (isSharedReadOnly) {
+      showToast('This shared Digital Service page is view-only.', 'error');
+      return;
+    }
     if (!selectedBrandId) return;
     const newVal = !currentVal;
 
@@ -151,69 +183,96 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
 
     setSaving(true);
     try {
-      const targetUserId = currentBrand?.user_id || user?.id || null;
+      await verifySharedAccess('edit');
+      const targetUserId = sharedContext?.clientId || currentBrand?.user_id || user?.id || null;
+      const brandId = sharedContext?.brandId || selectedBrandId;
       const colName = `${service}_active`;
       const updatePayload: Record<string, any> = {
-        brand_id: selectedBrandId,
+        brand_id: brandId,
         [colName]: newVal,
         updated_at: new Date().toISOString()
       };
-      if (targetUserId) {
-        updatePayload.client_id = targetUserId;
-      }
-      if (service === 'facebook' && fbBotCountry) {
-        updatePayload.fb_bot_country = fbBotCountry;
-      }
+      if (targetUserId) updatePayload.client_id = targetUserId;
+      if (service === 'facebook' && fbBotCountry) updatePayload.fb_bot_country = fbBotCountry;
 
-      // Save directly to Supabase digital_services table
-      const { error } = await supabase
-        .from('digital_services')
-        .upsert(updatePayload, { onConflict: 'brand_id' });
-
-      if (error) {
-        console.warn('Supabase upsert sync note:', error.message);
+      if (sharedContext) {
+        const { data: updatedRows, error: updateError } = await supabase
+          .from('digital_services')
+          .update(updatePayload)
+          .eq('brand_id', sharedContext.brandId)
+          .eq('client_id', sharedContext.clientId)
+          .select('brand_id');
+        if (updateError) throw updateError;
+        if (!updatedRows || updatedRows.length === 0) {
+          const { error: insertError } = await supabase.from('digital_services').insert(updatePayload);
+          if (insertError) throw insertError;
+        }
+      } else {
+        const { error } = await supabase
+          .from('digital_services')
+          .upsert(updatePayload, { onConflict: 'brand_id' });
+        if (error) throw error;
       }
 
       showToast(`${serviceLabel} সফলভাবে ${newVal ? 'চালু (ON)' : 'বন্ধ (OFF)'} করা হয়েছে!`, 'success');
     } catch (err: any) {
+      if (service === 'telegram') setTelegramActive(currentVal);
+      if (service === 'facebook') setFacebookActive(currentVal);
+      if (service === 'drive') setDriveActive(currentVal);
       console.error('Error updating digital service:', err);
-      showToast(err.message || 'সেটিংস আপডেট ব্যর্থ হয়েছে!', 'error');
+      showToast(err?.message || 'সেটিংস আপডেট ব্যর্থ হয়েছে!', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleSelectCountry = async (countryCode: string) => {
+    if (isSharedReadOnly) {
+      showToast('This shared Digital Service page is view-only.', 'error');
+      return;
+    }
+    const previousCountry = fbBotCountry;
     setFbBotCountry(countryCode);
     setCountryDropdownOpen(false);
     setCountrySearch('');
 
     if (!selectedBrandId) return;
     try {
-      const targetUserId = currentBrand?.user_id || user?.id || null;
+      await verifySharedAccess('edit');
+      const targetUserId = sharedContext?.clientId || currentBrand?.user_id || user?.id || null;
+      const brandId = sharedContext?.brandId || selectedBrandId;
       const updatePayload: Record<string, any> = {
-        brand_id: selectedBrandId,
+        brand_id: brandId,
         fb_bot_country: countryCode,
         updated_at: new Date().toISOString()
       };
-      if (targetUserId) {
-        updatePayload.client_id = targetUserId;
-      }
+      if (targetUserId) updatePayload.client_id = targetUserId;
 
-      // Save directly to Supabase digital_services table
-      const { error } = await supabase
-        .from('digital_services')
-        .upsert(updatePayload, { onConflict: 'brand_id' });
-
-      if (error) {
-        console.warn('Supabase country update note:', error.message);
+      if (sharedContext) {
+        const { data: updatedRows, error: updateError } = await supabase
+          .from('digital_services')
+          .update(updatePayload)
+          .eq('brand_id', sharedContext.brandId)
+          .eq('client_id', sharedContext.clientId)
+          .select('brand_id');
+        if (updateError) throw updateError;
+        if (!updatedRows || updatedRows.length === 0) {
+          const { error: insertError } = await supabase.from('digital_services').insert(updatePayload);
+          if (insertError) throw insertError;
+        }
+      } else {
+        const { error } = await supabase
+          .from('digital_services')
+          .upsert(updatePayload, { onConflict: 'brand_id' });
+        if (error) throw error;
       }
 
       const countryObj = COUNTRIES.find(c => c.code === countryCode);
       showToast(`Facebook Bot Location: ${countryObj ? `${countryObj.flag} ${countryObj.name} (${countryObj.dial_code})` : countryCode} সেট হয়েছে! এখন Active অন করতে পারবেন।`, 'success');
     } catch (err: any) {
+      setFbBotCountry(previousCountry);
       console.error('Error saving country:', err);
-      showToast('কান্ট্রি আপডেট ব্যর্থ হয়েছে', 'error');
+      showToast(err?.message || 'কান্ট্রি আপডেট ব্যর্থ হয়েছে', 'error');
     }
   };
 
@@ -327,7 +386,7 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
                   type="checkbox"
                   checked={telegramActive}
                   onChange={() => handleToggle('telegram', telegramActive)}
-                  disabled={loading || saving}
+                  disabled={loading || saving || isSharedReadOnly}
                   className="sr-only peer"
                 />
                 <div className="w-12 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -417,7 +476,7 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
                 type="button"
                 role="switch"
                 aria-checked={facebookActive}
-                disabled={loading || saving}
+                disabled={loading || saving || isSharedReadOnly}
                 onClick={() => {
                   if (!fbBotCountry && !facebookActive) {
                     showToast('ফেসবুক অটোমেশন চালু করতে প্রথমে নিচে থেকে Bot Target Country সিলেক্ট করুন!', 'error');
@@ -463,6 +522,7 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
                 <button
                   type="button"
                   onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
+                  disabled={loading || saving || isSharedReadOnly}
                   className={`w-full flex items-center justify-between gap-2 bg-slate-900 border rounded-xl px-3.5 py-2.5 text-xs font-semibold text-white transition-all shadow-sm ${
                     !fbBotCountry 
                       ? 'border-amber-500/80 ring-2 ring-amber-500/20' 
@@ -606,7 +666,7 @@ export default function DigitalService({ brands = [], user }: DigitalServiceProp
                   type="checkbox"
                   checked={driveActive}
                   onChange={() => handleToggle('drive', driveActive)}
-                  disabled={loading || saving}
+                  disabled={loading || saving || isSharedReadOnly}
                   className="sr-only peer"
                 />
                 <div className="w-12 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>

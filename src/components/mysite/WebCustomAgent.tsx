@@ -16,13 +16,16 @@ import {
   ShoppingBag
 } from 'lucide-react';
 import { showToast } from '../../lib/toast';
+import { supabase } from '../../lib/supabase';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface WebCustomAgentProps {
   user: any;
   brands?: any[];
+  sharedContext?: SharedDashboardPageContext;
 }
 
-export default function WebCustomAgent({ user, brands = [] }: WebCustomAgentProps) {
+export default function WebCustomAgent({ user, brands = [], sharedContext }: WebCustomAgentProps) {
   const [selectedBrandId, setSelectedBrandId] = useState('');
   const [agentName, setAgentName] = useState('Maya - Sales Executive');
   const [welcomeMessage, setWelcomeMessage] = useState('স্বাগতম! আমি কীভাবে আপনাকে সাহায্য করতে পারি? যেকোনো প্রোডাক্ট বা অর্ডারের বিষয়ে জানতে মেসেজ করুন।');
@@ -50,10 +53,35 @@ export default function WebCustomAgent({ user, brands = [] }: WebCustomAgentProp
   }, [brands]);
 
   useEffect(() => {
-    const saved = localStorage.getItem(`mecopay_web_agent_${user?.id}_${selectedBrandId || 'default'}`);
-    if (saved) {
+    const loadConfig = async () => {
+      const brandId = selectedBrandId || sharedContext?.brandId;
+      const ownerId = sharedContext?.clientId || user?.id;
+      if (!ownerId || !brandId) return;
       try {
-        const p = JSON.parse(saved);
+        if (sharedContext) {
+          if (sharedContext.pageKey !== 'web_custom_agent' || sharedContext.brandId !== brandId || sharedContext.clientId !== ownerId) {
+            throw new Error('The shared Web Custom Agent context is invalid.');
+          }
+          const { data: allowed, error: accessError } = await supabase.rpc('has_dashboard_page_access', {
+            p_client_id: sharedContext.clientId,
+            p_brand_id: sharedContext.brandId,
+            p_page_key: 'web_custom_agent',
+            p_action: 'view'
+          });
+          if (accessError) throw accessError;
+          if (allowed !== true) throw new Error('Active shared access for Web Custom Agent was not verified.');
+        }
+        const { data, error } = await supabase
+          .from('brand_agent_configs')
+          .select('config')
+          .eq('user_id', ownerId)
+          .eq('client_id', ownerId)
+          .eq('brand_id', brandId)
+          .eq('agent_type', 'web')
+          .maybeSingle();
+        if (error) throw error;
+        const p = data?.config;
+        if (!p) return;
         if (p.agentName) setAgentName(p.agentName);
         if (p.welcomeMessage) setWelcomeMessage(p.welcomeMessage);
         if (p.agentPrompt) setAgentPrompt(p.agentPrompt);
@@ -61,17 +89,46 @@ export default function WebCustomAgent({ user, brands = [] }: WebCustomAgentProp
         if (p.widgetPosition) setWidgetPosition(p.widgetPosition);
         if (p.autoSendPaymentLink !== undefined) setAutoSendPaymentLink(p.autoSendPaymentLink);
         if (p.orderTrackingSupport !== undefined) setOrderTrackingSupport(p.orderTrackingSupport);
-      } catch (e) {}
-    }
-  }, [user, selectedBrandId]);
+      } catch (e: any) {
+        showToast(e?.message || 'Failed to load Web Custom Agent configuration.', 'error');
+      }
+    };
+    void loadConfig();
+  }, [user?.id, selectedBrandId, sharedContext]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const brandId = selectedBrandId || sharedContext?.brandId;
+    const ownerId = sharedContext?.clientId || user?.id;
+    if (!ownerId || !brandId) {
+      showToast('Select a brand before saving the Web Custom Agent.', 'error');
+      return;
+    }
+    if (sharedContext && !sharedContext.actions.includes('edit')) {
+      showToast('This shared Web Custom Agent page is view-only.', 'error');
+      return;
+    }
     setSaving(true);
-    setTimeout(() => {
-      localStorage.setItem(
-        `mecopay_web_agent_${user?.id}_${selectedBrandId || 'default'}`,
-        JSON.stringify({
+    try {
+      if (sharedContext) {
+        if (sharedContext.pageKey !== 'web_custom_agent' || sharedContext.brandId !== brandId || sharedContext.clientId !== ownerId) {
+          throw new Error('The shared Web Custom Agent context is invalid.');
+        }
+        const { data: allowed, error: accessError } = await supabase.rpc('has_dashboard_page_access', {
+          p_client_id: sharedContext.clientId,
+          p_brand_id: sharedContext.brandId,
+          p_page_key: 'web_custom_agent',
+          p_action: 'edit'
+        });
+        if (accessError) throw accessError;
+        if (allowed !== true) throw new Error('Active shared edit access for Web Custom Agent was not verified.');
+      }
+      const { error } = await supabase.from('brand_agent_configs').upsert({
+        user_id: ownerId,
+        client_id: ownerId,
+        brand_id: brandId,
+        agent_type: 'web',
+        config: {
           agentName,
           welcomeMessage,
           agentPrompt,
@@ -79,11 +136,17 @@ export default function WebCustomAgent({ user, brands = [] }: WebCustomAgentProp
           widgetPosition,
           autoSendPaymentLink,
           orderTrackingSupport
-        })
-      );
+        },
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,client_id,brand_id,agent_type' });
+      if (error) throw error;
       setSaving(false);
       showToast('Web Custom Agent configuration saved successfully!', 'success');
-    }, 400);
+    } catch (saveError: any) {
+      showToast(saveError?.message || 'Failed to save Web Custom Agent configuration.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -117,7 +180,8 @@ export default function WebCustomAgent({ user, brands = [] }: WebCustomAgentProp
     }, 500);
   };
 
-  const embedScript = `<script async src="https://cdn.mecopay.space/agent/web.js" data-client-id="${user?.id || 'client_demo'}" data-brand="${selectedBrandId || 'brand_default'}" data-theme="${themeColor}" data-position="${widgetPosition}"></script>`;
+  const embedClientId = sharedContext?.clientId || user?.id || 'client_demo';
+  const embedScript = `<script async src="https://cdn.mecopay.space/agent/web.js" data-client-id="${embedClientId}" data-brand="${selectedBrandId || sharedContext?.brandId || 'brand_default'}" data-theme="${themeColor}" data-position="${widgetPosition}"></script>`;
 
   const copyEmbedCode = () => {
     navigator.clipboard.writeText(embedScript);
@@ -280,7 +344,7 @@ export default function WebCustomAgent({ user, brands = [] }: WebCustomAgentProp
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || Boolean(sharedContext && !sharedContext.actions.includes('edit'))}
               className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

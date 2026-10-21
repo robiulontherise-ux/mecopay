@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Check, Clock3, Eye, Loader2, RefreshCw, ShieldCheck, BriefcaseBusiness } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import SharedDashboardPage from './shared-dashboard/SharedDashboardPage';
 
 const statusLabel: Record<string, string> = {
   pending_payment: 'Payment pending — no payment system connected',
@@ -21,11 +22,9 @@ export default function FreelancerWorkspace({ userId }: { userId: string }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deliveryDrafts, setDeliveryDrafts] = useState<Record<string, { note: string; urls: string }>>({});
   const [openedAccessId, setOpenedAccessId] = useState<string | null>(null);
-  const [sharedInvoices, setSharedInvoices] = useState<any[]>([]);
-  const [loadingSharedPage, setLoadingSharedPage] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError('');
     try {
       const [ordersResult, accessResult] = await Promise.all([
@@ -50,11 +49,17 @@ export default function FreelancerWorkspace({ userId }: { userId: string }) {
       console.error('Freelancer workspace load failed:', err);
       setError(err?.message || 'Could not load your freelancer work.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [userId]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load(true);
+    }, 20_000);
+    return () => window.clearInterval(refreshTimer);
+  }, [load]);
 
   const acceptAccess = async (id: string) => {
     setBusyId(id);
@@ -73,20 +78,9 @@ export default function FreelancerWorkspace({ userId }: { userId: string }) {
     }
   };
 
-  const openGrantedInvoices = async (access: any) => {
-    setLoadingSharedPage(true);
+  const openGrantedPage = (access: any) => {
     setError('');
-    try {
-      const { data, error: readError } = await supabase.rpc('get_shared_dashboard_invoices', { p_access_id: access.id });
-      if (readError) throw readError;
-      setSharedInvoices(data || []);
-      setOpenedAccessId(access.id);
-    } catch (err: any) {
-      console.error('Shared invoice page could not be opened:', err);
-      setError(err?.message || 'Could not open this shared page. Check the active grant and SQL migration.');
-    } finally {
-      setLoadingSharedPage(false);
-    }
+    setOpenedAccessId(access.id);
   };
 
   const updateOrder = async (order: any, nextStatus: string) => {
@@ -129,7 +123,7 @@ export default function FreelancerWorkspace({ userId }: { userId: string }) {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="flex items-center gap-2 text-2xl font-bold text-white"><BriefcaseBusiness className="h-6 w-6 text-cyan-300" /> Freelancer Workspace</h2>
-          <p className="mt-1 text-sm text-slate-400">Marketplace service requests and client-granted dashboard access appear here. Unpaid requests are visible but cannot be started until a trusted payment flow marks them placed.</p>
+          <p className="mt-1 text-sm text-slate-400">Marketplace service requests and client-granted dashboard pages appear here. Each shared page is opened against its accepted client-and-brand grant.</p>
         </div>
         <button onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50">
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
@@ -146,19 +140,22 @@ export default function FreelancerWorkspace({ userId }: { userId: string }) {
           <article key={row.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               {row.status === 'active' ? <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-400" /> : <Clock3 className="mt-0.5 h-5 w-5 text-amber-300" />}
-              <div><p className="font-semibold text-white">{accessLabel(row)}</p><p className="mt-1 text-xs text-slate-500">Client/brand: {row.client_id} · {row.status}{['invoices', '*'].includes(row.resource_key) ? ' · secure invoice viewer is read-only' : ' · page data view is not implemented yet'}</p></div>
+              <div><p className="font-semibold text-white">{accessLabel(row)}</p><p className="mt-1 text-xs text-slate-500">Brand-scoped access · {row.status} · {row.actions?.includes('edit') ? 'view and edit' : 'view only'}</p></div>
             </div>
             {row.status === 'requested' && <button onClick={() => void acceptAccess(row.id)} disabled={busyId === row.id} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50">{busyId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Accept access</button>}
-            {row.status === 'active' && ['invoices', '*'].includes(row.resource_key) && <button onClick={() => void openGrantedInvoices(row)} disabled={loadingSharedPage} className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/30 px-3 py-2 text-sm font-bold text-cyan-100 hover:bg-cyan-500/10 disabled:opacity-50">{loadingSharedPage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Open shared invoices</button>}
-            {row.status === 'active' && !['invoices', '*'].includes(row.resource_key) && <span className="text-xs text-amber-200">Grant is active; this page's secure viewer is not wired yet.</span>}
+            {row.status === 'active' && <button onClick={() => openGrantedPage(row)} className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/30 px-3 py-2 text-sm font-bold text-cyan-100 hover:bg-cyan-500/10"><Eye className="h-4 w-4" /> Open shared page</button>}
           </article>
         ))}
       </section>
 
-      {openedAccessId && <section className="space-y-3 rounded-xl border border-cyan-500/20 bg-slate-950/60 p-4">
-        <div className="flex items-center justify-between gap-3"><div><h3 className="font-bold text-white">Shared Invoices — read only</h3><p className="text-xs text-slate-500">Only the client-selected brand and allow-listed invoice columns are returned by a permission-checked RPC.</p></div><button type="button" onClick={() => { setOpenedAccessId(null); setSharedInvoices([]); }} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Close page</button></div>
-        {sharedInvoices.length === 0 ? <p className="rounded-lg border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">No invoices for this brand.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr>{['Invoice', 'Customer', 'Product', 'Type', 'Amount', 'Status', 'Date'].map(label => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody>{sharedInvoices.map(invoice => <tr key={invoice.id} className="border-t border-slate-800 text-slate-300"><td className="px-3 py-3">{invoice.invoice_number || invoice.id}</td><td className="px-3 py-3">{invoice.customer_name || '—'}<div className="text-xs text-slate-500">{invoice.customer_phone || invoice.customer_email || ''}</div></td><td className="px-3 py-3">{invoice.product_name || '—'}</td><td className="px-3 py-3">{invoice.product_type || '—'}</td><td className="px-3 py-3">{invoice.amount ?? '—'}</td><td className="px-3 py-3">{invoice.status || '—'}</td><td className="px-3 py-3">{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString() : '—'}</td></tr>)}</tbody></table></div>}
-      </section>}
+      {openedAccessId && (() => {
+        const openedAccess = accessRequests.find(row => row.id === openedAccessId && row.status === 'active');
+        return openedAccess ? <SharedDashboardPage
+          accessId={openedAccess.id}
+          resourceKey={openedAccess.resource_key}
+          onClose={() => setOpenedAccessId(null)}
+        /> : null;
+      })()}
 
       <section className="space-y-3">
         <div><h3 className="text-lg font-bold text-white">Marketplace Orders</h3><p className="mt-1 text-sm text-slate-500">An order is actionable only after the trusted payment function marks it as placed.</p></div>

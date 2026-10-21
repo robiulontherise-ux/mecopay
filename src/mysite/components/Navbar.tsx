@@ -32,6 +32,7 @@ interface NavbarProps {
   onNavigateAdmin: () => void;
   onBackToHub?: () => void;
   onSimulateLogin?: (email: string) => void;
+  disableAuthActions?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -48,6 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigateHome,
   onNavigateAdmin,
   onBackToHub,
+  disableAuthActions = false,
 }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -162,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Auth CTA / User Profile Menu */}
-            {user ? (
+            {user && !disableAuthActions ? (
               <div className="relative">
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -241,7 +243,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 )}
               </div>
-            ) : (
+            ) : disableAuthActions ? null : (
               <button
                 onClick={async () => {
                   try {

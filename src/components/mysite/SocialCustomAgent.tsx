@@ -15,13 +15,16 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { showToast } from '../../lib/toast';
+import { supabase } from '../../lib/supabase';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface SocialCustomAgentProps {
   user: any;
   brands?: any[];
+  sharedContext?: SharedDashboardPageContext;
 }
 
-export default function SocialCustomAgent({ user, brands = [] }: SocialCustomAgentProps) {
+export default function SocialCustomAgent({ user, brands = [], sharedContext }: SocialCustomAgentProps) {
   const [selectedBrandId, setSelectedBrandId] = useState('');
   const [channel, setChannel] = useState<'messenger' | 'instagram' | 'whatsapp' | 'telegram'>('messenger');
 
@@ -49,17 +52,42 @@ export default function SocialCustomAgent({ user, brands = [] }: SocialCustomAge
   ]);
   const [testInput, setTestInput] = useState('');
 
-  useEffect(() => {
-    if (brands && brands.length > 0 && !selectedBrandId) {
-      setSelectedBrandId(brands[0].id);
-    }
-  }, [brands]);
+    useEffect(() => {
+      if (brands && brands.length > 0 && !selectedBrandId) {
+        setSelectedBrandId(sharedContext?.brandId || brands[0].id);
+      }
+    }, [brands, sharedContext?.brandId, selectedBrandId]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem(`mecopay_social_agent_${user?.id}_${selectedBrandId || 'default'}`);
-    if (saved) {
+    useEffect(() => {
+      const loadConfig = async () => {
+        const brandId = sharedContext?.brandId || selectedBrandId;
+      const ownerId = sharedContext?.clientId || user?.id;
+      if (!ownerId || !brandId) return;
       try {
-        const p = JSON.parse(saved);
+        if (sharedContext) {
+          if (sharedContext.pageKey !== 'social_custom_agent' || sharedContext.brandId !== brandId || sharedContext.clientId !== ownerId) {
+            throw new Error('The shared Social Custom Agent context is invalid.');
+          }
+          const { data: allowed, error: accessError } = await supabase.rpc('has_dashboard_page_access', {
+            p_client_id: sharedContext.clientId,
+            p_brand_id: sharedContext.brandId,
+            p_page_key: 'social_custom_agent',
+            p_action: 'view'
+          });
+          if (accessError) throw accessError;
+          if (allowed !== true) throw new Error('Active shared access for Social Custom Agent was not verified.');
+        }
+        const { data, error } = await supabase
+          .from('brand_agent_configs')
+          .select('config')
+          .eq('user_id', ownerId)
+          .eq('client_id', ownerId)
+          .eq('brand_id', brandId)
+          .eq('agent_type', 'social')
+          .maybeSingle();
+        if (error) throw error;
+        const p = data?.config;
+        if (!p) return;
         if (p.channel) setChannel(p.channel);
         if (p.metaPageToken) setMetaPageToken(p.metaPageToken);
         if (p.metaVerifyToken) setMetaVerifyToken(p.metaVerifyToken);
@@ -70,17 +98,46 @@ export default function SocialCustomAgent({ user, brands = [] }: SocialCustomAge
         if (p.autoAdvancePaymentRequest !== undefined) setAutoAdvancePaymentRequest(p.autoAdvancePaymentRequest);
         if (p.advanceAmount) setAdvanceAmount(p.advanceAmount);
         if (p.humanHandoverKeyword) setHumanHandoverKeyword(p.humanHandoverKeyword);
-      } catch (e) {}
-    }
-  }, [user, selectedBrandId]);
+      } catch (e: any) {
+        showToast(e?.message || 'Failed to load Social Custom Agent configuration.', 'error');
+      }
+    };
+    void loadConfig();
+  }, [user?.id, selectedBrandId, sharedContext]);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+    const handleSave = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const brandId = sharedContext?.brandId || selectedBrandId;
+    const ownerId = sharedContext?.clientId || user?.id;
+    if (!ownerId || !brandId) {
+      showToast('Select a brand before saving the Social Custom Agent.', 'error');
+      return;
+    }
+    if (sharedContext && !sharedContext.actions.includes('edit')) {
+      showToast('This shared Social Custom Agent page is view-only.', 'error');
+      return;
+    }
     setSaving(true);
-    setTimeout(() => {
-      localStorage.setItem(
-        `mecopay_social_agent_${user?.id}_${selectedBrandId || 'default'}`,
-        JSON.stringify({
+    try {
+      if (sharedContext) {
+        if (sharedContext.pageKey !== 'social_custom_agent' || sharedContext.brandId !== brandId || sharedContext.clientId !== ownerId) {
+          throw new Error('The shared Social Custom Agent context is invalid.');
+        }
+        const { data: allowed, error: accessError } = await supabase.rpc('has_dashboard_page_access', {
+          p_client_id: sharedContext.clientId,
+          p_brand_id: sharedContext.brandId,
+          p_page_key: 'social_custom_agent',
+          p_action: 'edit'
+        });
+        if (accessError) throw accessError;
+        if (allowed !== true) throw new Error('Active shared edit access for Social Custom Agent was not verified.');
+      }
+      const { error } = await supabase.from('brand_agent_configs').upsert({
+        user_id: ownerId,
+        client_id: ownerId,
+        brand_id: brandId,
+        agent_type: 'social',
+        config: {
           channel,
           metaPageToken,
           metaVerifyToken,
@@ -91,14 +148,21 @@ export default function SocialCustomAgent({ user, brands = [] }: SocialCustomAge
           autoAdvancePaymentRequest,
           advanceAmount,
           humanHandoverKeyword
-        })
-      );
+        },
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,client_id,brand_id,agent_type' });
+      if (error) throw error;
       setSaving(false);
       showToast('Social Custom Agent configuration saved successfully!', 'success');
-    }, 400);
+    } catch (saveError: any) {
+      showToast(saveError?.message || 'Failed to save Social Custom Agent configuration.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const webhookUrl = `https://api.mecopay.space/webhooks/social-agent/${user?.id || 'client_id'}`;
+  const webhookClientId = sharedContext?.clientId || user?.id || 'client_id';
+  const webhookUrl = `https://api.mecopay.space/webhooks/social-agent/${webhookClientId}`;
 
   const copyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
@@ -373,10 +437,10 @@ export default function SocialCustomAgent({ user, brands = [] }: SocialCustomAge
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 disabled:opacity-50"
+              <button
+                type="submit"
+                disabled={saving || Boolean(sharedContext && !sharedContext.actions.includes('edit'))}
+                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Social Agent Settings

@@ -43,6 +43,7 @@ interface AdminPanelProps {
   onBackToSite: () => void;
   onNavigateUpload?: () => void;
   userEmail: string;
+  disableExternalEffects?: boolean;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -57,6 +58,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onBackToSite,
   onNavigateUpload,
   userEmail,
+  disableExternalEffects = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'posts' | 'pages' | 'categories' | 'new-post' | 'edit-post' | 'site-settings' | 'apps'>('posts');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -205,6 +207,10 @@ ${defaultHomeContent}`
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disableExternalEffects) {
+      alert('Image uploads are disabled in shared mode because storage access is not covered by the active Website Builder grant. Paste an existing image URL instead.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     try {
@@ -256,6 +262,10 @@ ${defaultHomeContent}`
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isContentImage = false) => {
+    if (disableExternalEffects) {
+      alert('Image uploads are disabled in shared mode because storage access is not covered by the active Website Builder grant. Paste an existing image URL instead.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -952,11 +962,11 @@ ${postContent}`
                       accept="image/*"
                       onChange={handleLogoUpload}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      disabled={isUploading}
+                      disabled={isUploading || disableExternalEffects}
                     />
                     <button
                       type="button"
-                      disabled={isUploading}
+                      disabled={isUploading || disableExternalEffects}
                       className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center h-full border border-slate-700"
                     >
                       {isUploading ? "..." : "Upload"}
@@ -1169,11 +1179,11 @@ ${postContent}`
                       accept="image/*"
                       onChange={(e) => handleImageUpload(e, false)}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      disabled={isUploading}
+                      disabled={isUploading || disableExternalEffects}
                     />
                     <button
                       type="button"
-                      disabled={isUploading}
+                      disabled={isUploading || disableExternalEffects}
                       className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center h-full border border-slate-700"
                     >
                       {isUploading ? 'Uploading...' : 'Upload'}
@@ -1452,11 +1462,11 @@ ${postContent}`
                     accept="image/*"
                     onChange={(e) => handleImageUpload(e, true)}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    disabled={isUploading}
+                    disabled={isUploading || disableExternalEffects}
                   />
                   <button
                     type="button"
-                    disabled={isUploading}
+                    disabled={isUploading || disableExternalEffects}
                     className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 text-[11px] font-bold flex items-center gap-1 hover:bg-indigo-600/30 transition-colors"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>

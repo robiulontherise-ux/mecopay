@@ -14,49 +14,83 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface FullCodServiceProps {
   brands?: any[];
   user?: any;
+  sharedContext?: SharedDashboardPageContext;
 }
 
-export default function FullCodService({ brands = [], user }: FullCodServiceProps) {
+export default function FullCodService({ brands = [], user, sharedContext }: FullCodServiceProps) {
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [fullCodActive, setFullCodActive] = useState<boolean>(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [toggling, setToggling] = useState<boolean>(false);
   const [brandData, setBrandData] = useState<any>(null);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const isSharedReadOnly = Boolean(sharedContext && !sharedContext.actions.includes('edit'));
 
   useEffect(() => {
+    if (sharedContext) {
+      setSelectedBrandId(sharedContext.brandId);
+      return;
+    }
     if (brands && brands.length > 0 && !selectedBrandId) {
       setSelectedBrandId(brands[0].id);
     }
-  }, [brands, selectedBrandId]);
+  }, [brands, selectedBrandId, sharedContext?.brandId]);
 
   useEffect(() => {
     if (!selectedBrandId) return;
-    loadBrandDetails();
-  }, [selectedBrandId]);
+    void loadBrandDetails();
+  }, [selectedBrandId, sharedContext?.clientId, sharedContext?.brandId, sharedContext?.pageKey]);
+
+  const verifySharedAccess = async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    if (!['full_cod_service', '*'].includes(sharedContext.pageKey)) {
+      throw new Error('This shared access grant is not valid for Full COD Service.');
+    }
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Authentication required.');
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'full_cod_service',
+      p_action: action,
+    });
+    if (error) throw error;
+    if (allowed !== true) throw new Error(`Active shared ${action} access for Full COD Service was not verified.`);
+  };
 
   const loadBrandDetails = async () => {
     if (!selectedBrandId) return;
     setLoading(true);
+    setErrorMessage('');
     try {
-      const { data, error } = await supabase
+      await verifySharedAccess('view');
+      const ownerId = sharedContext?.clientId;
+      let brandQuery = supabase
         .from('brands')
-        .select('*')
-        .eq('id', selectedBrandId)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (data) {
-        setBrandData(data);
-        setFullCodActive(Boolean(data.full_cod_active));
-        setExpiresAt(data.full_cod_expires_at || null);
+        .select('id, user_id, name, full_cod_active, full_cod_expires_at, personal_api, merchant_api, international_api, auto_courier_on_full_cod, auto_courier_on_advance')
+        .eq('id', selectedBrandId);
+      if (ownerId) brandQuery = brandQuery.eq('user_id', ownerId);
+      const { data: brand, error: brandError } = await brandQuery.maybeSingle();
+      if (brandError) throw brandError;
+      if (!brand) {
+        throw new Error('The granted brand could not be loaded for this client.');
+      }
+      if (brand) {
+        setBrandData(brand);
+        setFullCodActive(Boolean(brand.full_cod_active));
+        setExpiresAt(brand.full_cod_expires_at || null);
       }
     } catch (err: any) {
       console.error('Error loading brand details:', err);
+      setBrandData(null);
+      setErrorMessage(err?.message || 'Failed to load Full COD service details.');
+      showToast(err?.message || 'Failed to load Full COD service details.', 'error');
     } finally {
       setLoading(false);
     }
@@ -81,29 +115,42 @@ export default function FullCodService({ brands = [], user }: FullCodServiceProp
   const isFullCodFree = hasPaymentGateway || hasCourierActive;
 
   const handleToggleFullCod = async () => {
+    if (isSharedReadOnly) {
+      showToast('This shared Full COD Service page is view-only.', 'error');
+      return;
+    }
     if (!selectedBrandId) return;
     setToggling(true);
+    setErrorMessage('');
     try {
+      await verifySharedAccess('edit');
       const nextVal = !fullCodActive;
+      const updatePayload = sharedContext
+        ? { full_cod_active: nextVal, user_id: sharedContext.clientId }
+        : { full_cod_active: nextVal };
 
-      const { error } = await supabase
+      let updateQuery = supabase
         .from('brands')
-        .update({
-          full_cod_active: nextVal
-        })
+        .update(updatePayload)
         .eq('id', selectedBrandId);
+      if (sharedContext) updateQuery = updateQuery.eq('user_id', sharedContext.clientId);
+      const { data: updatedRows, error } = await updateQuery.select('id');
 
       if (error) throw error;
+      if (!updatedRows?.length) throw new Error('No matching client brand was updated.');
 
       setFullCodActive(nextVal);
       if (currentBrand) {
         currentBrand.full_cod_active = nextVal;
       }
 
-      // 🚀 Auto-sync to Cloudflare Edge KV via Edge Function
-      supabase.functions.invoke('cloudflare-custom-hostname', {
-        body: { action: 'sync_brand', brand_id: selectedBrandId }
-      }).catch(err => console.warn('Edge KV sync error:', err));
+      // Shared grants cannot be verified by this side-effecting function, so do
+      // not invoke it in shared mode. Normal merchant behavior is preserved.
+      if (!sharedContext) {
+        supabase.functions.invoke('cloudflare-custom-hostname', {
+          body: { action: 'sync_brand', brand_id: selectedBrandId }
+        }).catch(err => console.warn('Edge KV sync error:', err));
+      }
 
       showToast(
         nextVal
@@ -113,7 +160,8 @@ export default function FullCodService({ brands = [], user }: FullCodServiceProp
       );
     } catch (err: any) {
       console.error(err);
-      showToast('Failed to update Full COD service: ' + (err.message || ''), 'error');
+      setErrorMessage(err?.message || 'Failed to update Full COD service.');
+      showToast('Failed to update Full COD service: ' + (err?.message || ''), 'error');
     } finally {
       setToggling(false);
     }
@@ -150,6 +198,12 @@ export default function FullCodService({ brands = [], user }: FullCodServiceProp
           </div>
         )}
       </div>
+
+      {errorMessage && (
+        <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+          {errorMessage}
+        </div>
+      )}
 
       {/* Main Service Card */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6">
@@ -193,7 +247,7 @@ export default function FullCodService({ brands = [], user }: FullCodServiceProp
             <button
               type="button"
               onClick={handleToggleFullCod}
-              disabled={toggling || loading}
+              disabled={toggling || loading || isSharedReadOnly}
               className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2.5 shadow-lg ${
                 fullCodActive
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'

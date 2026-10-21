@@ -2,10 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { showToast } from '../../lib/toast';
 import { supabase } from '../../lib/supabase';
 import { Search, Filter, Trash2, Copy, Download, Eye, X, CheckCircle2, ExternalLink } from 'lucide-react';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
-export default function Invoices({ brands }: { brands: any[] }) {
+interface InvoicesProps {
+  brands: any[];
+  sharedContext?: SharedDashboardPageContext;
+  readOnly?: boolean;
+}
+
+export default function Invoices({ brands, sharedContext, readOnly = false }: InvoicesProps) {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [methodFilter, setMethodFilter] = useState('All Methods');
@@ -23,6 +31,33 @@ export default function Invoices({ brands }: { brands: any[] }) {
   const [deleteInput, setDeleteInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [bulkError, setBulkError] = useState('');
+  const isSharedReadOnly = Boolean(sharedContext && (readOnly || !sharedContext.actions.includes('edit')));
+
+  const verifySharedAccess = async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    const sharedPageKey = sharedContext.pageKey === '*' ? 'invoices' : sharedContext.pageKey;
+    if (!['invoices', 'transactions', 'transaction_analysis', 'analytics'].includes(sharedPageKey)) {
+      throw new Error('This shared access grant is not valid for the invoice-backed page.');
+    }
+    const [{ data: verifiedContext, error: contextError }, { data: allowed, error: accessError }] = await Promise.all([
+      supabase.rpc('get_shared_dashboard_page_context', {
+        p_access_id: sharedContext.accessId,
+        p_page_key: sharedPageKey,
+      }),
+      supabase.rpc('has_dashboard_page_access', {
+        p_client_id: sharedContext.clientId,
+        p_brand_id: sharedContext.brandId,
+        p_page_key: sharedPageKey,
+        p_action: action,
+      }),
+    ]);
+    if (contextError) throw contextError;
+    if (accessError) throw accessError;
+    const verified = typeof verifiedContext === 'string' ? JSON.parse(verifiedContext) : verifiedContext;
+    if (!verified || verified.access_id !== sharedContext.accessId || verified.client_id !== sharedContext.clientId || verified.brand_id !== sharedContext.brandId || verified.page_key !== sharedPageKey || allowed !== true) {
+      throw new Error(`Active shared ${action} access for ${sharedPageKey} was not verified.`);
+    }
+  };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -44,8 +79,18 @@ export default function Invoices({ brands }: { brands: any[] }) {
     if (deleteInput.toLowerCase() !== 'delete') return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase.from('invoices').delete().in('id', selectedInvoiceIds);
+      if (isSharedReadOnly) throw new Error('This shared Invoices page is view-only.');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Authentication required.');
+      await verifySharedAccess('edit');
+      const ownerId = sharedContext?.clientId || user.id;
+      let deleteQuery = supabase.from('invoices').delete()
+        .in('id', selectedInvoiceIds)
+        .eq('user_id', ownerId);
+      if (sharedContext) deleteQuery = deleteQuery.eq('brand_id', sharedContext.brandId);
+      const { data: deletedRows, error } = await deleteQuery.select('id');
       if (error) throw error;
+      if (!deletedRows?.length) throw new Error('No matching invoices were deleted.');
       setInvoices(prev => prev.filter(inv => !selectedInvoiceIds.includes(inv.id)));
       setSelectedInvoiceIds([]);
       setShowDeleteModal(false);
@@ -53,16 +98,18 @@ export default function Invoices({ brands }: { brands: any[] }) {
       showToast("Invoices deleted successfully", "success");
     } catch (err: any) {
       console.error(err);
-      showToast("Failed to delete invoices", "error");
+      const message = err?.message || 'Failed to delete invoices.';
+      setErrorMessage(message);
+      showToast(message, "error");
     } finally {
       setIsDeleting(false);
     }
   };
 
   useEffect(() => {
-    fetchInvoices();
-    fetchGateways();
-  }, []);
+    void fetchInvoices();
+    void fetchGateways();
+  }, [sharedContext?.clientId, sharedContext?.brandId, sharedContext?.pageKey]);
 
   const handleViewInvoice = async (inv: any) => {
     setSelectedInvoice(inv);
@@ -74,8 +121,17 @@ export default function Invoices({ brands }: { brands: any[] }) {
     if (inv.trx_id) {
       setIsLoadingSms(true);
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Authentication required.');
+        await verifySharedAccess('view');
         // Find by extracted trx_id
-        const { data } = await supabase.from('sms_events').select('*').ilike('trx_id_extracted', inv.trx_id).maybeSingle();
+        let smsQuery = supabase.from('sms_events').select('*')
+          .ilike('trx_id_extracted', inv.trx_id)
+          .eq('user_id', sharedContext?.clientId || user.id);
+        // sms_events is owner-scoped in the existing schema and has no brand_id;
+        // invoice_id provides the safest available brand-bound match in shared mode.
+        if (sharedContext) smsQuery = smsQuery.eq('invoice_id', inv.id);
+        const { data } = await smsQuery.maybeSingle();
         
         if (data) {
           metadataObj = data;
@@ -102,7 +158,12 @@ export default function Invoices({ brands }: { brands: any[] }) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data, error } = await supabase.from('payment_numbers').select('provider').eq('user_id', user.id);
+      await verifySharedAccess('view');
+      let gatewayQuery = supabase.from('payment_numbers').select('provider')
+        .eq('user_id', sharedContext?.clientId || user.id);
+      if (sharedContext) gatewayQuery = gatewayQuery.eq('brand_id', sharedContext.brandId);
+      const { data, error } = await gatewayQuery;
+      if (error) throw error;
       if (!error && data) {
         const unique = Array.from(new Set(data.map(d => d.provider.toUpperCase())));
         setClientGateways(unique);
@@ -115,24 +176,41 @@ export default function Invoices({ brands }: { brands: any[] }) {
   const fetchInvoices = async () => {
     try {
       setLoading(true);
+      setErrorMessage('');
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) throw new Error('Authentication required.');
+      await verifySharedAccess('view');
 
-      const { data: invoicesData, error: invError } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          brand:brands(name)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const ownerId = sharedContext?.clientId || user.id;
+      let invoicesData: any[] | null = null;
+      let invError: any = null;
+      if (sharedContext) {
+        const result = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('user_id', ownerId)
+          .eq('brand_id', sharedContext.brandId)
+          .order('created_at', { ascending: false });
+        invoicesData = result.data;
+        invError = result.error;
+      } else {
+        const result = await supabase
+          .from('invoices')
+          .select('*, brand:brands(name)')
+          .eq('user_id', ownerId)
+          .order('created_at', { ascending: false });
+        invoicesData = result.data;
+        invError = result.error;
+      }
 
       if (invError) throw invError;
 
-      const { data: linksData, error: linksError } = await supabase
+      let linksQuery = supabase
         .from('payment_links')
         .select('id, product_name, redirect_link')
-        .eq('user_id', user.id);
+        .eq('user_id', sharedContext?.clientId || user.id);
+      if (sharedContext) linksQuery = linksQuery.eq('brand_id', sharedContext.brandId);
+      const { data: linksData, error: linksError } = await linksQuery;
 
       if (linksError) {
         console.error("Failed to fetch payment links for mapping:", linksError);
@@ -142,6 +220,7 @@ export default function Invoices({ brands }: { brands: any[] }) {
         const linkInfo = (linksData || []).find(l => l.id === inv.payment_link_id);
         return {
           ...inv,
+          brand: inv.brand || (sharedContext ? { name: sharedContext.brand?.name || '' } : undefined),
           product_name: inv.product_name || linkInfo?.product_name || 'N/A',
           redirect_link: inv.redirect_link || linkInfo?.redirect_link || ''
         };
@@ -150,6 +229,9 @@ export default function Invoices({ brands }: { brands: any[] }) {
       setInvoices(mergedInvoices);
     } catch (err) {
       console.error(err);
+      const message = (err as any)?.message || 'Failed to load invoices.';
+      setErrorMessage(message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -157,8 +239,18 @@ export default function Invoices({ brands }: { brands: any[] }) {
 
   const updateInvoiceStatus = async (invoiceId: string, newStatus: string) => {
     try {
-      const { error } = await supabase.from('invoices').update({ status: newStatus }).eq('id', invoiceId);
+      if (isSharedReadOnly) throw new Error('This shared Invoices page is view-only.');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Authentication required.');
+      await verifySharedAccess('edit');
+      const ownerId = sharedContext?.clientId || user.id;
+      let updateQuery = supabase.from('invoices').update({ status: newStatus })
+        .eq('id', invoiceId)
+        .eq('user_id', ownerId);
+      if (sharedContext) updateQuery = updateQuery.eq('brand_id', sharedContext.brandId);
+      const { data: updatedRows, error } = await updateQuery.select('id');
       if (error) throw error;
+      if (!updatedRows?.length) throw new Error('No matching invoice was updated.');
       setInvoices(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: newStatus } : inv));
       if (selectedInvoice && selectedInvoice.id === invoiceId) {
         setSelectedInvoice({ ...selectedInvoice, status: newStatus });
@@ -166,7 +258,7 @@ export default function Invoices({ brands }: { brands: any[] }) {
       showToast(`Status updated to ${newStatus}!`, "success");
 
       // 🚀 Trigger Edge Function 'send-notification' automatically when status is 'Completed'
-      if (newStatus.toLowerCase() === 'completed') {
+      if (!sharedContext && newStatus.toLowerCase() === 'completed') {
         const targetInv = invoices.find(i => i.id === invoiceId) || selectedInvoice;
         if (targetInv) {
           try {
@@ -198,7 +290,9 @@ export default function Invoices({ brands }: { brands: any[] }) {
         }
       }
     } catch (err: any) {
-      showToast("Failed to update!", "error");
+      const message = err?.message || 'Failed to update invoice status.';
+      setErrorMessage(message);
+      showToast(message, "error");
     }
   };
 
@@ -320,12 +414,20 @@ export default function Invoices({ brands }: { brands: any[] }) {
         <h2 className="text-2xl font-bold text-white mb-2">Invoice Management</h2>
       </div>
 
+      {errorMessage && (
+        <div role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+          {errorMessage}
+        </div>
+      )}
+
       
       
       <div className="flex flex-col sm:flex-row gap-4 items-center">
-        <button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 whitespace-nowrap transition-colors">
-          <span>+</span> Create Custom Invoice
-        </button>
+        {!sharedContext && (
+          <button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 whitespace-nowrap transition-colors">
+            <span>+</span> Create Custom Invoice
+          </button>
+        )}
         <div className="flex-1 relative w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input 
@@ -637,7 +739,7 @@ export default function Invoices({ brands }: { brands: any[] }) {
               </button>
               
               <div className="flex gap-3 items-center">
-                {selectedInvoice.status?.toLowerCase() === 'pending' && (
+                {!isSharedReadOnly && selectedInvoice.status?.toLowerCase() === 'pending' && (
                   <>
                     <button onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Cancelled')} className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg transition-colors border border-slate-700">
                       Cancel
@@ -647,7 +749,7 @@ export default function Invoices({ brands }: { brands: any[] }) {
                     </button>
                   </>
                 )}
-                {selectedInvoice.status?.toLowerCase() === 'pending' && selectedInvoice.trx_id && (
+                {!isSharedReadOnly && selectedInvoice.status?.toLowerCase() === 'pending' && selectedInvoice.trx_id && (
                   <button onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Completed')} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-colors shadow-lg">
                     Verify Manually
                   </button>
@@ -706,7 +808,7 @@ export default function Invoices({ brands }: { brands: any[] }) {
       )}
 
       {/* Floating Bulk Action Bar */}
-      {selectedInvoiceIds.length > 0 && (
+      {selectedInvoiceIds.length > 0 && !isSharedReadOnly && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 border border-slate-700 p-3 sm:p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-4 sm:gap-6 animate-in slide-in-from-bottom-8 fade-in duration-300">
           <div className="flex items-center gap-3">
             <span className="bg-rose-500/20 text-rose-400 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">{selectedInvoiceIds.length}</span>

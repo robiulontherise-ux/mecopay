@@ -100,6 +100,7 @@ export default function Marketplace({ userId, brands }: { userId: string; brands
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
+  const [latestOrderId, setLatestOrderId] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const visibleCategories = useMemo(() => {
@@ -119,8 +120,8 @@ export default function Marketplace({ userId, brands }: { userId: string; brands
     if (!brandId && brands.length) setBrandId(String(brands[0].id));
   }, [brands, brandId]);
 
-  const loadOrders = async () => {
-    if (!userId) return;
+  const loadOrders = async (): Promise<any[]> => {
+    if (!userId) return [];
     const { data, error } = await supabase
       .from('marketplace_orders')
       .select('id,brand_id,provider_id,service_category,service_key,title,client_brief,order_status,due_at,delivery_note,delivery_urls,client_revision_note,created_at')
@@ -130,9 +131,11 @@ export default function Marketplace({ userId, brands }: { userId: string; brands
     if (error) {
       console.error('Could not load Marketplace service requests:', error);
       showToast(error.message || 'Could not load your service requests.', 'error');
-      return;
+      return [];
     }
-    setOrders(data || []);
+    const rows = data || [];
+    setOrders(rows);
+    return rows;
   };
 
   useEffect(() => { void loadOrders(); }, [userId]);
@@ -165,7 +168,7 @@ export default function Marketplace({ userId, brands }: { userId: string; brands
     }
     setSendingRequest(true);
     try {
-      const { error } = await supabase.rpc('request_marketplace_service', {
+      const { data: orderId, error } = await supabase.rpc('request_marketplace_service', {
         p_brand_id: brandId,
         p_provider_id: providerId,
         p_service_category: selectedCategory.id,
@@ -175,11 +178,15 @@ export default function Marketplace({ userId, brands }: { userId: string; brands
         p_due_at: dueDate ? new Date(`${dueDate}T23:59:59`).toISOString() : null,
       });
       if (error) throw error;
-      showToast('Service request sent. No payment was taken; it is saved as pending payment.', 'success');
+      if (typeof orderId !== 'string' || !orderId) {
+        throw new Error('The database did not confirm a saved Marketplace order ID. No success was reported.');
+      }
+      setLatestOrderId(orderId);
       setProjectTitle('');
       setBrief('');
       setDueDate('');
       await loadOrders();
+      showToast(`Request saved as order ${orderId.slice(0, 8)}. No payment was taken; it is pending payment.`, 'success');
     } catch (error: any) {
       console.error('Could not submit Marketplace service request:', error);
       showToast(error?.message || 'Could not submit service request. Run the service-request SQL first.', 'error');
@@ -341,6 +348,7 @@ export default function Marketplace({ userId, brands }: { userId: string; brands
       )}
       {userId && <section className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 sm:p-6">
         <div className="mb-4"><h2 className="text-xl font-bold text-white">My Marketplace Requests</h2><p className="mt-1 text-sm text-slate-400">Requests remain payment-pending until a trusted payment flow is added. Delivery handoff is by HTTPS link and/or note.</p></div>
+        {latestOrderId && <p className="mb-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-200">Latest request was saved in the database: {latestOrderId}</p>}
         {orders.length === 0 ? <p className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-400">No service requests yet.</p> : <div className="space-y-3">{orders.map(order => <article key={order.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="font-bold text-white">{order.title}</h3><p className="mt-1 text-xs text-slate-400">{order.service_category} · {order.service_key?.replaceAll('_', ' ')} · {order.order_status === 'pending_payment' ? 'Payment pending (no charge taken)' : order.order_status.replaceAll('_', ' ')}</p>{order.due_at && <p className="mt-1 text-xs text-slate-500">Requested by: {new Date(order.due_at).toLocaleDateString()}</p>}</div></div>
           {order.client_brief?.description && <p className="mt-3 whitespace-pre-wrap text-sm text-slate-300">{order.client_brief.description}</p>}

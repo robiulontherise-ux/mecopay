@@ -21,13 +21,15 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface IntegrateCustomDomainProps {
   user: any;
   brands?: any[];
+  sharedContext?: SharedDashboardPageContext;
 }
 
-export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCustomDomainProps) {
+export default function IntegrateCustomDomain({ user, brands = [], sharedContext }: IntegrateCustomDomainProps) {
   const [brandList, setBrandList] = useState<any[]>(brands);
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
   const [currentSubdomain, setCurrentSubdomain] = useState<string>('');
@@ -43,6 +45,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const [purging, setPurging] = useState(false);
   const [copied, setCopied] = useState<string | false>(false);
   const [activeTab, setActiveTab] = useState<'wordpress' | 'laravel' | 'nocode'>('wordpress');
+  const isSharedMode = Boolean(sharedContext);
 
   // Ref and state for Origin URL 3-line auto-resize and overflow detection
   const originTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -82,6 +85,18 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       .trim();
   };
 
+  const verifySharedAccess = async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'custom_domain',
+      p_action: action
+    });
+    if (error) throw error;
+    if (allowed !== true) throw new Error(`Active shared ${action} access for Custom Domain was not verified.`);
+  };
+
   // Sync / fetch brands
   useEffect(() => {
     if (brands && brands.length > 0) {
@@ -89,10 +104,10 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       if (!selectedBrandId) {
         setSelectedBrandId(brands[0].id);
       }
-    } else if (user?.id) {
+    } else if (!sharedContext && user?.id) {
       fetchBrands();
     }
-  }, [brands, user]);
+  }, [brands, user, sharedContext]);
 
   const fetchBrands = async () => {
     if (!user?.id) return;
@@ -117,19 +132,35 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
     if (selectedBrandId) {
       fetchDomainSettings();
     }
-  }, [user, selectedBrandId]);
+  }, [user, selectedBrandId, sharedContext]);
 
   const fetchDomainSettings = async () => {
     if (!user || !selectedBrandId) return;
     try {
       setLoading(true);
-      // Look up site_settings for this specific brand (id = brand_id or brand_id = selectedBrandId)
-      let query = supabase
-        .from('site_settings')
-        .select('*')
-        .or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`);
+      let data: any = null;
+      let error: any = null;
 
-      const { data, error } = await query.maybeSingle();
+      if (sharedContext) {
+        await verifySharedAccess('view');
+        const result = await supabase
+          .from('site_settings')
+          .select('*')
+          .eq('client_id', sharedContext.clientId)
+          .eq('brand_id', sharedContext.brandId)
+          .maybeSingle();
+        data = result.data;
+        error = result.error;
+      } else {
+        // Preserve normal merchant behavior, including the legacy id/brand_id lookup.
+        const result = await supabase
+          .from('site_settings')
+          .select('*')
+          .or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`)
+          .maybeSingle();
+        data = result.data;
+        error = result.error;
+      }
 
       if (!error && data) {
         setCurrentSubdomain(data.subdomain || '');
@@ -140,7 +171,7 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
         if (data.app_type) {
           setActiveTab(data.app_type === 'no_code' ? 'nocode' : (data.app_type as any));
         }
-      } else {
+      } else if (!sharedContext) {
         // Fallback: check by client_id if brand row not created yet
         const { data: fallbackData } = await supabase
           .from('site_settings')
@@ -164,9 +195,18 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           setDomainStatus('none');
           setHostnameId('');
         }
+      } else if (error) {
+        throw error;
+      } else {
+        setCustomDomain('');
+        setOriginUrl('');
+        setCurrentSubdomain('');
+        setDomainStatus('none');
+        setHostnameId('');
       }
     } catch (err) {
       console.error('Error fetching domain settings:', err);
+      showToast((err as any)?.message || 'Failed to load custom domain settings.', 'error');
     } finally {
       setLoading(false);
     }
@@ -185,6 +225,8 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const handleSaveDomain = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    const targetBrandId = sharedContext?.brandId || selectedBrandId;
 
     if (!selectedBrand) {
       showToast('Please select a Brand first!', 'error');
@@ -215,15 +257,32 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
 
     try {
       setSaving(true);
+      if (sharedContext) {
+        await verifySharedAccess('edit');
+      }
 
       // Check existing row in site_settings for this brand
-      let { data: existing } = await supabase
-        .from('site_settings')
-        .select('*')
-        .or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`)
-        .maybeSingle();
+      let existing: any = null;
+      if (sharedContext) {
+        const result = await supabase
+          .from('site_settings')
+          .select('*')
+          .eq('client_id', sharedContext.clientId)
+          .eq('brand_id', sharedContext.brandId)
+          .maybeSingle();
+        if (result.error) throw result.error;
+        existing = result.data;
+      } else {
+        const result = await supabase
+          .from('site_settings')
+          .select('*')
+          .or(`id.eq.${selectedBrandId},brand_id.eq.${selectedBrandId}`)
+          .maybeSingle();
+        if (result.error) throw result.error;
+        existing = result.data;
+      }
 
-      if (!existing) {
+      if (!existing && !sharedContext) {
         // Also check by client_id
         const { data: clientExisting } = await supabase
           .from('site_settings')
@@ -238,18 +297,32 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       if (existing) {
         // UPDATE THAT EXACT ROW in site_settings:
         // Keeps the existing subdomain in its column and updates domain & origin_url!
-        const { error } = await supabase
+        let updateQuery = supabase
           .from('site_settings')
           .update({
             domain: cleanInputDomain,
             origin_url: cleanOrigin || null,
-            brand_id: selectedBrandId || existing.brand_id,
-            app_type: activeTab === 'nocode' ? 'no_code' : activeTab
+            ...(sharedContext ? {
+              client_id: sharedContext.clientId,
+              brand_id: sharedContext.brandId
+            } : {
+              brand_id: selectedBrandId || existing.brand_id
+            }),
+            ...(!sharedContext ? { app_type: activeTab === 'nocode' ? 'no_code' : activeTab } : {})
           })
           .eq('id', existing.id);
+        if (sharedContext) {
+          updateQuery = updateQuery
+            .eq('client_id', sharedContext.clientId)
+            .eq('brand_id', sharedContext.brandId);
+        }
+        const { error } = await updateQuery;
 
         if (error) throw error;
       } else {
+        if (sharedContext) {
+          throw new Error('No website settings exist for this client brand yet. The client must initialize the site in Website Builder first.');
+        }
         // INSERT new row tied to this brand
         const autoSub = `${(selectedBrand.name || user.id)
           .toLowerCase()
@@ -257,9 +330,9 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           .slice(0, 10)}.mecopay.space`;
 
         const { error } = await supabase.from('site_settings').insert({
-          id: selectedBrandId || user.id,
-          brand_id: selectedBrandId || null,
-          client_id: user.id,
+          id: targetBrandId || user.id,
+          brand_id: targetBrandId || null,
+          client_id: sharedContext?.clientId || user.id,
           site_name: selectedBrand.name || 'My Store',
           domain: cleanInputDomain,
           origin_url: cleanOrigin || null,
@@ -273,44 +346,51 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
       setCustomDomain(cleanInputDomain);
       setOriginUrl(cleanOrigin);
 
-      // Automated Cloudflare for SaaS Custom Hostname provisioning
-      try {
-        const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-custom-hostname', {
-          body: {
-            action: 'create',
-            domain: cleanInputDomain,
-            origin_url: cleanOrigin || null,
-            brand_id: selectedBrandId
-          }
-        });
+      if (!sharedContext) {
+        // Automated Cloudflare for SaaS Custom Hostname provisioning
+        try {
+          const { data: edgeRes, error: edgeErr } = await supabase.functions.invoke('cloudflare-custom-hostname', {
+            body: {
+              action: 'create',
+              domain: cleanInputDomain,
+              origin_url: cleanOrigin || null,
+              brand_id: selectedBrandId
+            }
+          });
 
-        if (!edgeErr && edgeRes?.ok) {
-          if (edgeRes.hostname_id) setHostnameId(edgeRes.hostname_id);
-          if (edgeRes.status === 'active' && edgeRes.ssl_status === 'active') {
-            setDomainStatus('active');
-            setSslStatus('active');
-          } else {
-            setDomainStatus('pending_validation');
-            setSslStatus(edgeRes.ssl_status || 'pending_validation');
+          if (!edgeErr && edgeRes?.ok) {
+            if (edgeRes.hostname_id) setHostnameId(edgeRes.hostname_id);
+            if (edgeRes.status === 'active' && edgeRes.ssl_status === 'active') {
+              setDomainStatus('active');
+              setSslStatus('active');
+            } else {
+              setDomainStatus('pending_validation');
+              setSslStatus(edgeRes.ssl_status || 'pending_validation');
+            }
           }
+        } catch (cfErr) {
+          console.warn('Cloudflare SaaS auto-provisioning note:', cfErr);
         }
-      } catch (cfErr) {
-        console.warn('Cloudflare SaaS auto-provisioning note:', cfErr);
+
+        // KV sync for the normal merchant flow.
+        try {
+          await supabase.functions.invoke('cloudflare-custom-hostname', {
+            body: {
+              action: 'sync_brand',
+              brand_id: selectedBrandId
+            }
+          });
+        } catch (syncErr) {
+          console.warn('Cloudflare KV sync note:', syncErr);
+        }
       }
 
-      // KV সিঙ্ক নিশ্চিত করা (গেটওয়ে ওয়ার্কার ও এজ সিঙ্ক)
-      try {
-        await supabase.functions.invoke('cloudflare-custom-hostname', {
-          body: {
-            action: 'sync_brand',
-            brand_id: selectedBrandId
-          }
-        });
-      } catch (syncErr) {
-        console.warn('Cloudflare KV sync note:', syncErr);
-      }
-
-      showToast(`Custom domain (${cleanInputDomain}) and origin settings saved successfully!`, 'success');
+      showToast(
+        sharedContext
+          ? `Custom domain (${cleanInputDomain}) and origin settings saved to the client brand.`
+          : `Custom domain (${cleanInputDomain}) and origin settings saved successfully!`,
+        'success'
+      );
       fetchDomainSettings();
     } catch (err: any) {
       console.error(err);
@@ -323,6 +403,10 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const handleVerifyDomain = async () => {
     if (!customDomain) {
       showToast('Please save your custom domain first!', 'error');
+      return;
+    }
+    if (sharedContext) {
+      showToast('DNS/SSL verification is unavailable in shared mode because this action cannot verify the active grant.', 'error');
       return;
     }
 
@@ -378,6 +462,10 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
   const handlePurgeCache = async () => {
     if (!customDomain) {
       showToast('No active custom domain to purge cache for!', 'error');
+      return;
+    }
+    if (sharedContext) {
+      showToast('CDN cache purge is unavailable in shared mode because this action cannot verify the active grant.', 'error');
       return;
     }
 
@@ -542,9 +630,9 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
               Custom Domain যুক্ত হলেও এই সাবডোমেনটি আপনার ডাটাবেস রো-তে সুরক্ষিত থাকবে।
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 self-start sm:self-auto">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Active & SSL Secured
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border shrink-0 self-start sm:self-auto ${isSharedMode ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+            {isSharedMode ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+            {isSharedMode ? 'Edge status not verified here' : 'Active & SSL Secured'}
           </span>
         </div>
       </div>
@@ -575,6 +663,12 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
           নিরাপত্তা নিশ্চিত করতে এটি অবশ্যই{' '}
           <strong className="text-white">Your MecoPay &gt; Brands</strong>-এর প্রাইমারি ওয়েবসাইটের সাথে ১০০% একই হতে হবে।
         </p>
+        {isSharedMode && (
+          <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            <span>Shared mode can read and save this client brand&apos;s <code className="font-mono">site_settings</code> row after the active grant is revalidated. Cloudflare provisioning, DNS/SSL verification, KV sync, and CDN purge are disabled here because their Edge Functions do not verify this grant.</span>
+          </div>
+        )}
 
         <form onSubmit={handleSaveDomain} className="space-y-4">
           {/* Side-by-Side: Custom Domain & Origin URL with identical width (Equal columns) */}
@@ -796,8 +890,9 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                   <button
                     type="button"
                     onClick={handleVerifyDomain}
-                    disabled={verifying}
+                    disabled={verifying || isSharedMode}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                    title={isSharedMode ? 'Unavailable in shared mode: active grant cannot be verified by this Edge Function.' : undefined}
                   >
                     {verifying ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" /> : <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />}
                     {verifying ? 'Checking DNS...' : 'Verify DNS & SSL'}
@@ -807,9 +902,9 @@ export default function IntegrateCustomDomain({ user, brands = [] }: IntegrateCu
                 <button
                   type="button"
                   onClick={handlePurgeCache}
-                  disabled={purging || domainStatus !== 'active'}
+                  disabled={purging || domainStatus !== 'active' || isSharedMode}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  title="150ms-এ সারা বিশ্বের ক্লাউডফ্লেয়ার এজ থেকে এই ডোমেনের ক্যাশ রিফ্রেশ করুন"
+                  title={isSharedMode ? 'Unavailable in shared mode: active grant cannot be verified by this Edge Function.' : '150ms-এ সারা বিশ্বের ক্লাউডফ্লেয়ার এজ থেকে এই ডোমেনের ক্যাশ রিফ্রেশ করুন'}
                 >
                   {purging ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" /> : <Zap className="w-3.5 h-3.5 text-cyan-400" />}
                   {purging ? 'Purging CDN...' : '⚡ Instant Purge CDN Cache'}

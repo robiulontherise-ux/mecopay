@@ -2,16 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { Globe, UploadCloud, ArrowRight, Code, Box, FolderGit2, Loader2, Plus, FileText, Server, AlertCircle, X } from 'lucide-react';
 import MySiteApp from '../mysite/App';
 import { supabase } from '../lib/supabase';
+import type { SharedDashboardPageContext } from './shared-dashboard/types';
 
-export default function WebsiteBuilderHub({ user }) {
+interface WebsiteBuilderHubProps {
+  user: any;
+  brands?: any[];
+  sharedContext?: SharedDashboardPageContext;
+}
+
+export default function WebsiteBuilderHub({ user, brands: suppliedBrands = [], sharedContext }: WebsiteBuilderHubProps) {
+  const isSharedMode = Boolean(sharedContext);
   const [activeView, setActiveView] = useState('hub'); // 'hub', 'brand_selection', 'no_code', 'upload'
-  const [brands, setBrands] = useState([]);
+  const [brands, setBrands] = useState<any[]>(isSharedMode ? [sharedContext!.brand] : suppliedBrands);
   const [selectedBrand, setSelectedBrand] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showHostingModal, setShowHostingModal] = useState(false);
   const [selectedSiteId, setSelectedSiteId] = useState('');
-  
+
   // New state for brand logic
   const [brandSiteExists, setBrandSiteExists] = useState(false);
   const [subdomain, setSubdomain] = useState('');
@@ -21,53 +29,85 @@ export default function WebsiteBuilderHub({ user }) {
     setTimeout(() => setToast(null), 4000);
   };
 
+  const verifySharedAccess = async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    if (sharedContext.pageKey !== 'website_builder' && sharedContext.pageKey !== '*') {
+      throw new Error('This shared access grant is not valid for Website Builder.');
+    }
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'website_builder',
+      p_action: action,
+    });
+    if (error) throw error;
+    if (allowed !== true) throw new Error(`Active shared ${action} access for Website Builder was not verified.`);
+  };
+
   // Resolve existing sites created by either the current brand flow or the
   // earlier client-scoped flow, without changing any saved site content.
   useEffect(() => {
     const findExistingSite = async () => {
-      if (!selectedBrand || !user?.id) {
+      const ownerId = sharedContext?.clientId || user?.id;
+      const brandId = sharedContext?.brandId || selectedBrand;
+      if (!brandId || !ownerId) {
         setBrandSiteExists(false);
         setSelectedSiteId('');
         return;
       }
 
-      const byBrand = await supabase
-        .from('site_settings')
-        .select('id')
-        .eq('client_id', user.id)
-        .eq('brand_id', selectedBrand)
-        .limit(1)
-        .maybeSingle();
-
-      let site = byBrand.data;
-      if (!site) {
-        const bySiteId = await supabase
+      try {
+        await verifySharedAccess('view');
+        const byBrand = await supabase
           .from('site_settings')
           .select('id')
-          .eq('client_id', user.id)
-          .eq('id', selectedBrand)
+          .eq('client_id', ownerId)
+          .eq('brand_id', brandId)
           .limit(1)
           .maybeSingle();
-        site = bySiteId.data;
+        if (byBrand.error) throw byBrand.error;
+        let site = byBrand.data;
+        if (!isSharedMode && !site) {
+          const bySiteId = await supabase
+            .from('site_settings')
+            .select('id')
+            .eq('client_id', ownerId)
+            .eq('id', brandId)
+            .limit(1)
+            .maybeSingle();
+          if (bySiteId.error) throw bySiteId.error;
+          site = bySiteId.data;
+        }
+        if (!isSharedMode && !site) {
+          const legacy = await supabase
+            .from('site_settings')
+            .select('id')
+            .eq('client_id', ownerId)
+            .is('brand_id', null)
+            .limit(1)
+            .maybeSingle();
+          if (legacy.error) throw legacy.error;
+          site = legacy.data;
+        }
+        setBrandSiteExists(!!site);
+        setSelectedSiteId(site?.id || '');
+      } catch (error: any) {
+        setBrandSiteExists(false);
+        setSelectedSiteId('');
+        showToast(error?.message || 'Unable to verify Website Builder access.', 'error');
       }
-      if (!site) {
-        const legacy = await supabase
-          .from('site_settings')
-          .select('id')
-          .eq('client_id', user.id)
-          .is('brand_id', null)
-          .limit(1)
-          .maybeSingle();
-        site = legacy.data;
-      }
-
-      setBrandSiteExists(!!site);
-      setSelectedSiteId(site?.id || '');
     };
     findExistingSite();
-  }, [selectedBrand, user?.id]);
+  }, [selectedBrand, user?.id, sharedContext?.clientId, sharedContext?.brandId, sharedContext?.pageKey, isSharedMode]);
 
   useEffect(() => {
+    if (isSharedMode) {
+      const nextBrands = suppliedBrands.length > 0 ? suppliedBrands : [sharedContext!.brand];
+      setBrands((previous) => previous.length === nextBrands.length && previous[0]?.id === nextBrands[0]?.id ? previous : nextBrands);
+      setSelectedBrand((previous) => previous === sharedContext!.brandId ? previous : sharedContext!.brandId);
+      setIsLoading(false);
+      return;
+    }
     if (activeView === 'brand_selection') {
       const fetchBrands = async () => {
         setIsLoading(true);
@@ -76,7 +116,7 @@ export default function WebsiteBuilderHub({ user }) {
             .from('brands')
             .select('id, name')
             .eq('user_id', user?.id);
-          
+
           if (!error && data) {
             setBrands(data);
             if (data.length > 0) setSelectedBrand(data[0].id);
@@ -89,23 +129,30 @@ export default function WebsiteBuilderHub({ user }) {
       };
       fetchBrands();
     }
-  }, [activeView, user?.id]);
+  }, [activeView, user?.id, isSharedMode, suppliedBrands, sharedContext?.brandId]);
 
   const handleConfirmCreate = async () => {
-    if (!selectedBrand || !user?.email) return;
+    if (isSharedMode) {
+      showToast('The client must initialize this website in Website Builder before a freelancer can manage it.', 'error');
+      return;
+    }
+    if (!selectedBrand || (!user?.email && !isSharedMode)) return;
     if (!subdomain.trim()) {
       showToast("Please enter a subdomain", "error");
       return;
     }
-    
+
     setIsLoading(true);
     try {
+      await verifySharedAccess('edit');
+      const ownerId = sharedContext?.clientId || user.id;
+      const brandId = sharedContext?.brandId || selectedBrand;
       // Insert new site for the brand
       const { data: createdSite, error } = await supabase.from('site_settings').insert({
-        id: selectedBrand, // Use brand_id as the site_settings ID to keep it 1:1
-        client_id: user.id, // Primary linking key for the owner
-        brand_id: selectedBrand,
-        owner_email: user.email,
+        id: brandId, // Use brand_id as the site_settings ID to keep it 1:1
+        client_id: ownerId, // Primary linking key for the owner
+        brand_id: brandId,
+        owner_email: user?.email || null,
         subdomain: `${subdomain.trim().toLowerCase()}.mecopay.space`,
         project_type: 'create',
         site_name: brands.find((b: any) => b.id === selectedBrand)?.name || 'My No-Code Site',
@@ -118,13 +165,13 @@ export default function WebsiteBuilderHub({ user }) {
         website_service_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         service_status: 'active'
       }).select('id').single();
-      
+
       if (error) throw error;
-      setSelectedSiteId(createdSite?.id || selectedBrand);
-      
+      setSelectedSiteId(createdSite?.id || brandId);
+
       showToast("Website backend initialized successfully!", "success");
       setActiveView('no_code');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving site_settings:", error);
       showToast(`Failed to initialize website creation: ${error.message || 'Unknown database error'}. Please check RLS policies.`, "error");
     } finally {
@@ -138,8 +185,8 @@ export default function WebsiteBuilderHub({ user }) {
 
   const toastEl = toast && (
     <div className={`fixed top-4 right-4 z-[9999] px-6 py-3 rounded-lg shadow-xl border font-medium flex items-center gap-2 transition-all animate-in fade-in slide-in-from-top-5 ${
-      toast.type === 'success' 
-        ? 'bg-emerald-500 border-emerald-400 text-white shadow-emerald-500/20' 
+      toast.type === 'success'
+        ? 'bg-emerald-500 border-emerald-400 text-white shadow-emerald-500/20'
         : 'bg-red-500 border-red-400 text-white shadow-red-500/20'
     }`}>
       <div className={`w-2 h-2 rounded-full bg-white animate-pulse`} />
@@ -151,7 +198,7 @@ export default function WebsiteBuilderHub({ user }) {
     return (
       <div className="h-[calc(100vh-100px)] overflow-y-auto w-full -mx-4 sm:mx-0 bg-slate-950 rounded-xl relative">
         {toastEl}
-        <MySiteApp builderUser={user} activeSiteId={selectedSiteId || selectedBrand} onNavigateUpload={() => setActiveView('upload')} onBackToHub={() => setActiveView('hub')} />
+        <MySiteApp builderUser={user} activeSiteId={selectedSiteId || selectedBrand} sharedContext={sharedContext} onNavigateUpload={() => setActiveView('upload')} onBackToHub={() => setActiveView('hub')} />
       </div>
     );
   }
@@ -196,7 +243,7 @@ export default function WebsiteBuilderHub({ user }) {
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-slate-300 mb-2">Subdomain</label>
                   <div className="flex items-center">
-                    <input 
+                    <input
                       type="text"
                       value={subdomain}
                       onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
@@ -239,7 +286,7 @@ export default function WebsiteBuilderHub({ user }) {
         <button onClick={() => setActiveView('hub')} className="text-slate-400 hover:text-white mb-6 flex items-center gap-2">
           &larr; Back to Options
         </button>
-        
+
         <div className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
@@ -248,7 +295,7 @@ export default function WebsiteBuilderHub({ user }) {
                   App Hosting & BaaS (MecoPay Cloud Infrastructure)
                 </h2>
                 <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                  Allow clients to upload their compiled frontend projects (React, Next.js, HTML/JS ZIP files). 
+                  Allow clients to upload their compiled frontend projects (React, Next.js, HTML/JS ZIP files).
                   They get a unique project ID to connect with your BaaS, and their uploaded files will be served via MecoPay Global Edge Network.
                 </p>
               </div>
@@ -263,12 +310,12 @@ export default function WebsiteBuilderHub({ user }) {
 
             {/* Empty State / Coming Soon Mockup */}
             <div className="grid lg:grid-cols-2 gap-6">
-              
+
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                   <FolderGit2 className="w-32 h-32 text-fuchsia-500" />
                 </div>
-                
+
                 <h3 className="text-lg font-bold text-white mb-2 relative z-10">Upload Compiled Frontend</h3>
                 <p className="text-sm text-slate-400 mb-6 relative z-10 max-w-sm">
                   Clients upload their `dist` or `out` folder as a ZIP file. The system stores it in Supabase Storage.
@@ -278,7 +325,7 @@ export default function WebsiteBuilderHub({ user }) {
                   <UploadCloud className="w-10 h-10 text-slate-400 mb-3 group-hover:text-fuchsia-400 transition-colors" />
                   <p className="text-sm font-medium text-slate-200">Drag & Drop project ZIP here</p>
                   <p className="text-xs text-slate-500 mt-1">or click to browse</p>
-                  
+
                   <button className="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition-colors">
                     Select ZIP File
                   </button>
@@ -287,7 +334,7 @@ export default function WebsiteBuilderHub({ user }) {
 
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col">
                 <h3 className="text-lg font-bold text-white mb-4">Hosted Projects</h3>
-                
+
                 <div className="flex-1 border border-slate-800 bg-slate-950/50 rounded-xl p-6 flex flex-col items-center justify-center text-center">
                   <Box className="w-12 h-12 text-slate-700 mb-3" />
                   <h4 className="text-slate-300 font-semibold text-sm">No projects hosted yet</h4>
@@ -298,7 +345,7 @@ export default function WebsiteBuilderHub({ user }) {
               </div>
 
             </div>
-            
+
             <div className="bg-fuchsia-950/30 border border-fuchsia-900/50 rounded-2xl p-5">
               <h4 className="text-sm font-bold text-fuchsia-300 mb-2">Supabase BaaS API (For Clients)</h4>
               <p className="text-xs text-fuchsia-200/70 mb-4">
@@ -336,7 +383,7 @@ await supabase.from('client_app_data').insert([
       </div>
       <div className="grid md:grid-cols-2 gap-6">
         {/* Option 1: No-Code */}
-        <div 
+        <div
           onClick={() => setActiveView('brand_selection')}
           className="bg-slate-900 border border-slate-800 p-8 rounded-2xl cursor-pointer hover:border-cyan-500/50 hover:shadow-[0_0_30px_-5px_rgba(6,182,212,0.15)] transition-all group"
         >
@@ -354,8 +401,8 @@ await supabase.from('client_app_data').insert([
           </div>
         </div>
 
-        {/* Option 2: Hosting + Cloud VPS */}
-        <div 
+        {/* Option 2: Hosting + Cloud VPS (normal merchant placeholder only) */}
+        {!isSharedMode && <div
           onClick={() => setShowHostingModal(true)}
           className="bg-slate-900 border border-slate-800 p-8 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.15)] transition-all group relative"
         >
@@ -374,7 +421,7 @@ await supabase.from('client_app_data').insert([
           <div className="flex items-center text-blue-400 font-medium group-hover:gap-2 transition-all text-sm">
             Deploy on Cloud VPS <ArrowRight className="w-4 h-4 ml-1" />
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Hosting + VPS Coming Soon Warning Modal */}

@@ -10,9 +10,13 @@ import AdminPanel from './components/AdminPanel';
 import LazyAuthModal from './components/LazyAuthModal';
 import Footer from './components/Footer';
 import CustomerPortal from './components/CustomerPortal';
+import type { SharedDashboardPageContext } from '../components/shared-dashboard/types';
 
-export default function App(props: { builderUser?: any, activeSiteId?: string, onNavigateUpload?: () => void, onBackToHub?: () => void } = {}) {
-  const { builderUser, activeSiteId, onNavigateUpload } = props;
+export default function App(props: { builderUser?: any, activeSiteId?: string, sharedContext?: SharedDashboardPageContext, onNavigateUpload?: () => void, onBackToHub?: () => void } = {}) {
+  const { builderUser, activeSiteId, sharedContext, onNavigateUpload } = props;
+  const isSharedMode = Boolean(sharedContext);
+  const dataOwnerId = sharedContext?.clientId || builderUser?.id;
+  const dataBrandId = sharedContext?.brandId;
 
   // If this site app is loaded on checkout subdomain or checkout path/session, render the CheckoutPage directly
   const isCheckoutRequest = 
@@ -51,8 +55,32 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
   // 5. Meta CAPI Tracking Hook
 
   // Check if current user is Admin
-  const isAdmin = (user && siteSettings?.client_id && user.id === siteSettings.client_id) || 
+  const isAdmin = isSharedMode || (user && siteSettings?.client_id && user.id === siteSettings.client_id) ||
                   (user && siteSettings?.owner_email && user.email === siteSettings.owner_email);
+
+  const verifySharedAccess = useCallback(async (action: 'view' | 'edit') => {
+    if (!sharedContext) return;
+    if (sharedContext.pageKey !== 'website_builder' && sharedContext.pageKey !== '*') {
+      throw new Error('This shared access grant is not valid for Website Builder.');
+    }
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'website_builder',
+      p_action: action,
+    });
+    if (error) throw error;
+    if (allowed !== true) throw new Error(`Active shared ${action} access for Website Builder was not verified.`);
+  }, [sharedContext]);
+
+  const verifySharedEditWithFeedback = useCallback(async () => {
+    try {
+      await verifySharedAccess('edit');
+    } catch (error: any) {
+      alert(`Save blocked: ${error?.message || 'Active shared edit access was not verified.'}`);
+      throw error;
+    }
+  }, [verifySharedAccess]);
 
   // Fetch initial session & setup auth listener
   useEffect(() => {
@@ -150,12 +178,25 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
   }, []);
 
   // Fetch categories & posts from Supabase (with fallback to local storage / initial data)
-        const fetchSupabaseData = useCallback(async () => {
+  const fetchSupabaseData = useCallback(async () => {
     try {
       let settingsData = null;
       let targetClientId = null;
+      let targetBrandId = dataBrandId || null;
 
-      if (activeSiteId) {
+      if (isSharedMode) {
+        await verifySharedAccess('view');
+        targetClientId = dataOwnerId;
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('*')
+          .eq('client_id', targetClientId)
+          .eq('brand_id', targetBrandId)
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        settingsData = data;
+      } else if (activeSiteId) {
          // Load by brand ID (which is the site_settings ID now)
          const { data, error } = await supabase
            .from('site_settings')
@@ -233,15 +274,18 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       }
 
       // Fetch categories
-      let targetBrandId = settingsData?.brand_id;
+      targetBrandId = settingsData?.brand_id || targetBrandId;
       let catQuery = supabase.from('categories').select('*').order('order_index', { ascending: true });
       if (targetClientId) {
          catQuery = catQuery.eq('client_id', targetClientId);
       }
-      if (targetBrandId) {
+      if (targetBrandId && !isSharedMode) {
          catQuery = catQuery.or(`brand_id.eq.${targetBrandId},brand_id.is.null`);
+      } else if (targetBrandId) {
+         catQuery = catQuery.eq('brand_id', targetBrandId);
       }
-      const { data: catData } = await catQuery;
+      const { data: catData, error: catError } = await catQuery;
+      if (catError) throw catError;
       
       if (catData) {
         setCategories(catData);
@@ -252,10 +296,13 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       if (targetClientId) {
          postQuery = postQuery.eq('client_id', targetClientId);
       }
-      if (targetBrandId) {
+      if (targetBrandId && !isSharedMode) {
          postQuery = postQuery.or(`brand_id.eq.${targetBrandId},brand_id.is.null`);
+      } else if (targetBrandId) {
+         postQuery = postQuery.eq('brand_id', targetBrandId);
       }
-      const { data: postData } = await postQuery;
+      const { data: postData, error: postError } = await postQuery;
+      if (postError) throw postError;
       
       if (postData) {
         setPosts(postData);
@@ -263,7 +310,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
     } catch (err) {
       console.warn('Error fetching from Supabase', err);
     }
-  }, []);
+  }, [activeSiteId, builderUser, dataBrandId, dataOwnerId, isSharedMode, verifySharedAccess]);
   useEffect(() => {
     fetchSupabaseData();
   }, [fetchSupabaseData]);
@@ -372,18 +419,19 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
     const validCatIds = categories.map((c) => c.id);
     const sanitizedCat: any = {
       id: cat.id || `cat_${Date.now()}`,
-      client_id: effectiveClientId,
+      client_id: dataOwnerId || effectiveClientId,
       name: (cat.name || '').trim() || 'General',
       slug: (cat.slug || '').trim() || `cat-${Date.now()}`,
       order_index: typeof cat.order_index === 'number' ? cat.order_index : 0,
       description: cat.description || null,
       icon_name: cat.icon_name || 'BookOpen',
       parent_id: (cat.parent_id && validCatIds.includes(cat.parent_id)) ? cat.parent_id : null,
-      brand_id: siteSettings?.brand_id || cat.brand_id || null,
+      brand_id: isSharedMode ? dataBrandId : siteSettings?.brand_id || cat.brand_id || null,
       created_at: cat.created_at || new Date().toISOString()
     };
 
     try {
+      await verifySharedEditWithFeedback();
       const { data, error } = await supabase.from('categories').upsert([sanitizedCat]).select();
       if (error) {
         console.error('Supabase save category error:', error.message);
@@ -414,7 +462,11 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
 
   const handleDeleteCategory = async (catId: string) => {
     try {
-      const { error } = await supabase.from('categories').delete().eq('id', catId);
+      await verifySharedEditWithFeedback();
+      let query = supabase.from('categories').delete().eq('id', catId);
+      if (dataOwnerId) query = query.eq('client_id', dataOwnerId);
+      if (isSharedMode) query = query.eq('brand_id', dataBrandId);
+      const { error } = await query;
       if (error) {
         console.error('Supabase delete category error:', error.message);
         alert(`Error deleting category: ${error.message}`);
@@ -460,7 +512,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       updated_at: new Date().toISOString(),
       product_type: post.product_type || 'physical',
       digital_settings: post.digital_settings || {},
-      brand_id: siteSettings?.brand_id || post.brand_id || null,
+      brand_id: isSharedMode ? dataBrandId : siteSettings?.brand_id || post.brand_id || null,
       meta_title: (post as any).meta_title || post.title || null,
       meta_description: (post as any).meta_description || post.summary || null,
       featured_image: (post as any).featured_image || post.thumbnail || null,
@@ -470,6 +522,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
     };
 
     try {
+      await verifySharedEditWithFeedback();
       const { data, error } = await supabase.from('posts').upsert([sanitizedPayload]).select();
       if (error) {
         console.error('Supabase save post error:', error.message);
@@ -514,19 +567,19 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       id: siteId,
       site_name: settings.site_name?.trim() || siteSettings?.site_name || 'My Site',
     };
-    if (effectiveClientId) {
-      sitePayload.client_id = effectiveClientId;
-    }
-    if (sitePayload.website_service_active === undefined) {
-      sitePayload.website_service_active = true;
-    }
-    if (!sitePayload.website_service_expires_at) {
+    if (dataOwnerId || effectiveClientId) sitePayload.client_id = dataOwnerId || effectiveClientId;
+    if (isSharedMode) sitePayload.brand_id = dataBrandId;
+    if (!isSharedMode && sitePayload.website_service_active === undefined) sitePayload.website_service_active = true;
+    if (!isSharedMode && !sitePayload.website_service_expires_at) {
       sitePayload.website_service_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     }
 
-    // Try to update first by id, or by client_id if available
+    await verifySharedEditWithFeedback();
+    // Update only the selected site row, brand-bound in shared mode.
     let updateQuery = supabase.from('site_settings').update(sitePayload);
-    if (sitePayload.id && sitePayload.id !== 'default') {
+    if (isSharedMode) {
+      updateQuery = updateQuery.eq('client_id', dataOwnerId).eq('brand_id', dataBrandId);
+    } else if (sitePayload.id && sitePayload.id !== 'default') {
       updateQuery = updateQuery.eq('id', sitePayload.id);
     } else if (effectiveClientId) {
       updateQuery = updateQuery.eq('client_id', effectiveClientId);
@@ -540,8 +593,11 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
       throw new Error(updateError.message);
     }
 
-    // If update affected 0 rows, insert
+    // A freelancer may manage an existing site but cannot initialize a new paid site.
     if (!updateData || updateData.length === 0) {
+      if (isSharedMode) {
+        throw new Error('The client must initialize this website in Website Builder before a freelancer can manage its settings.');
+      }
       const { error: insertError } = await supabase.from('site_settings').insert([sitePayload]).select();
       if (insertError) {
         console.error('Supabase settings insert error:', insertError);
@@ -557,7 +613,11 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, o
 
   const handleDeletePost = async (postId: string) => {
     try {
-      const { error } = await supabase.from('posts').delete().eq('id', postId);
+      await verifySharedEditWithFeedback();
+      let query = supabase.from('posts').delete().eq('id', postId);
+      if (dataOwnerId) query = query.eq('client_id', dataOwnerId);
+      if (isSharedMode) query = query.eq('brand_id', dataBrandId);
+      const { error } = await query;
       if (error) {
         console.error('Supabase delete post error:', error.message);
         alert(`Error deleting post: ${error.message}`);

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../lib/supabase';
 import InAppFileViewerModal from './InAppFileViewerModal';
+import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface IncomingEmail {
   id: string;
@@ -44,6 +45,7 @@ interface MecoPayWebmailInboxProps {
   brandName?: string;
   createdEmails: string[];
   isEmailServiceActive?: boolean;
+  sharedContext?: SharedDashboardPageContext;
 }
 
 export default function MecoPayWebmailInbox({
@@ -51,7 +53,8 @@ export default function MecoPayWebmailInbox({
   brandId,
   brandName,
   createdEmails,
-  isEmailServiceActive = true
+  isEmailServiceActive = true,
+  sharedContext
 }: MecoPayWebmailInboxProps) {
   const [emails, setEmails] = useState<IncomingEmail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +72,21 @@ export default function MecoPayWebmailInbox({
   const [composeStatus, setComposeStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [warningToast, setWarningToast] = useState<string | null>(null);
 
+  const verifySharedAccess = async () => {
+    if (!sharedContext) return;
+    if (!sharedContext.accessId || (sharedContext.pageKey !== 'email_service' && sharedContext.pageKey !== '*')) {
+      throw new Error('This shared access grant is not valid for Email Service.');
+    }
+    const { data: allowed, error } = await supabase.rpc('has_dashboard_page_access', {
+      p_client_id: sharedContext.clientId,
+      p_brand_id: sharedContext.brandId,
+      p_page_key: 'email_service',
+      p_action: 'view'
+    });
+    if (error) throw error;
+    if (allowed !== true) throw new Error('Active shared view access for Email Service was not verified.');
+  };
+
   // Update default compose from email
   useEffect(() => {
     if (createdEmails && createdEmails.length > 0) {
@@ -80,6 +98,10 @@ export default function MecoPayWebmailInbox({
 
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (sharedContext) {
+      setComposeStatus({ type: 'error', message: 'Shared outgoing email is disabled because the send function cannot verify this active grant.' });
+      return;
+    }
     setComposeStatus({ type: 'error', message: 'আউটগোয়িং ইমেইল সেন্ডিং ফিচারটি বর্তমানে ডেভেলপমেন্ট পর্যায়ে রয়েছে, খুব শীঘ্রই এটি যুক্ত হবে।' });
     return;
     if (!composeTo.trim() || !composeSubject.trim()) {
@@ -149,6 +171,7 @@ export default function MecoPayWebmailInbox({
     try {
       setLoading(true);
       setFetchError(null);
+      await verifySharedAccess();
       let query = supabase
         .from('incoming_emails')
         .select('*')
@@ -157,7 +180,10 @@ export default function MecoPayWebmailInbox({
 
       const hasSelectedMailbox = selectedMailbox && selectedMailbox !== 'all';
 
-      if (hasSelectedMailbox) {
+      if (sharedContext) {
+        query = query.eq('user_id', sharedContext.clientId).eq('brand_id', sharedContext.brandId);
+        if (hasSelectedMailbox) query = query.eq('recipient', selectedMailbox.trim());
+      } else if (hasSelectedMailbox) {
         query = query.eq('recipient', selectedMailbox.trim());
       } else if (brandId) {
         query = query.eq('brand_id', brandId);
@@ -207,12 +233,16 @@ export default function MecoPayWebmailInbox({
 
   useEffect(() => {
     loadEmails();
-  }, [activeDomain, brandId, selectedMailbox]);
+  }, [activeDomain, brandId, selectedMailbox, sharedContext]);
 
   // Realtime subscription for incoming emails
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
+
+    // Realtime payloads cannot revalidate the active shared grant per event.
+    // Shared mode therefore uses the explicitly scoped refresh query only.
+    if (sharedContext) return () => { cancelled = true; };
 
     const subscribeToScopedEmails = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -259,7 +289,7 @@ export default function MecoPayWebmailInbox({
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [activeDomain, brandId, selectedMailbox]);
+  }, [activeDomain, brandId, selectedMailbox, sharedContext]);
 
   // Filtered emails by search
   const filteredEmails = emails.filter((em) => {
