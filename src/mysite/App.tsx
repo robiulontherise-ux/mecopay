@@ -631,7 +631,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
   };
 
   return (
-    <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white ${siteSettings?.text_size === 'small' ? 'text-sm' : siteSettings?.text_size === 'large' ? 'text-lg' : 'text-base'}`}>
+    <div className={`${builderUser ? 'min-h-[650px]' : 'min-h-screen'} bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white ${siteSettings?.text_size === 'small' ? 'text-sm' : siteSettings?.text_size === 'large' ? 'text-lg' : 'text-base'}`}>
       
       {siteSettings?.primary_color && (
         <style dangerouslySetInnerHTML={{__html: `

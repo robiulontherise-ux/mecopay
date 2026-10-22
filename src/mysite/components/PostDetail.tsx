@@ -51,8 +51,11 @@ const PostDetail: React.FC<PostDetailProps> = ({
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
-      if (e.data && e.data.type === 'resize' && iframeRef.current) {
-        iframeRef.current.style.height = `${e.data.height}px`;
+      if (e.data && e.data.type === 'resize' && iframeRef.current && typeof e.data.height === 'number') {
+        const cur = parseFloat(iframeRef.current.style.height || '0');
+        if (Math.abs(cur - e.data.height) > 6) {
+          iframeRef.current.style.height = `${e.data.height}px`;
+        }
       }
     };
     window.addEventListener('message', handleMessage);
@@ -61,8 +64,13 @@ const PostDetail: React.FC<PostDetailProps> = ({
 
   const srcDocWithResize = post.content ? `${post.content}
 <script>
+  var lastH = 0;
   function sendHeight() {
-    window.parent.postMessage({ type: 'resize', height: document.documentElement.scrollHeight }, '*');
+    var h = document.documentElement.scrollHeight;
+    if (Math.abs(h - lastH) > 6) {
+      lastH = h;
+      window.parent.postMessage({ type: 'resize', height: h }, '*');
+    }
   }
   window.onload = sendHeight;
   if (window.ResizeObserver) {
@@ -80,7 +88,7 @@ const PostDetail: React.FC<PostDetailProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-20">
+    <div className="w-full bg-slate-950 pb-20 flex-1">
       {/* Sticky Header Action Bar */}
       <div className="sticky top-16 z-20 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">

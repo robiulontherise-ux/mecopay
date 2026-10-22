@@ -477,7 +477,7 @@ ${postContent}`
   };
 
   return (
-    <div className={isFullscreen ? "fixed inset-0 z-[99999] overflow-y-auto bg-slate-950" : "min-h-screen bg-slate-950 text-slate-100 pb-16"}>
+    <div className={isFullscreen ? "fixed inset-0 z-[99999] overflow-y-auto bg-slate-950" : "w-full bg-slate-950 text-slate-100 pb-16 flex-1"}>
       {/* Top Admin Header */}
       <div className="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-30 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between flex-wrap gap-3">

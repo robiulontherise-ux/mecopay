@@ -10,7 +10,9 @@ interface WebsiteBuilderHubProps {
   sharedContext?: SharedDashboardPageContext;
 }
 
-export default function WebsiteBuilderHub({ user, brands: suppliedBrands = [], sharedContext }: WebsiteBuilderHubProps) {
+const DEFAULT_EMPTY_BRANDS: any[] = [];
+
+export default function WebsiteBuilderHub({ user, brands: suppliedBrands = DEFAULT_EMPTY_BRANDS, sharedContext }: WebsiteBuilderHubProps) {
   const isSharedMode = Boolean(sharedContext);
   const [activeView, setActiveView] = useState('hub'); // 'hub', 'brand_selection', 'no_code', 'upload'
   const [brands, setBrands] = useState<any[]>(isSharedMode ? [sharedContext!.brand] : suppliedBrands);
@@ -129,7 +131,7 @@ export default function WebsiteBuilderHub({ user, brands: suppliedBrands = [], s
       };
       fetchBrands();
     }
-  }, [activeView, user?.id, isSharedMode, suppliedBrands, sharedContext?.brandId]);
+  }, [activeView, user?.id, isSharedMode, suppliedBrands.length, sharedContext?.brandId]);
 
   const handleConfirmCreate = async () => {
     if (isSharedMode) {
@@ -196,7 +198,7 @@ export default function WebsiteBuilderHub({ user, brands: suppliedBrands = [], s
 
   if (activeView === 'no_code') {
     return (
-      <div className="h-[calc(100vh-100px)] overflow-y-auto w-full -mx-4 sm:mx-0 bg-slate-950 rounded-xl relative">
+      <div className="w-full bg-slate-950 rounded-2xl relative shadow-2xl border border-slate-800/80 overflow-hidden">
         {toastEl}
         <MySiteApp builderUser={user} activeSiteId={selectedSiteId || selectedBrand} sharedContext={sharedContext} onNavigateUpload={() => setActiveView('upload')} onBackToHub={() => setActiveView('hub')} />
       </div>
