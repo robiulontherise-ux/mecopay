@@ -1079,6 +1079,15 @@ export default function DashboardShell() {
     };
   }, [user?.id]);
 
+  // If the last Tele Sales grant is revoked while the teammate is inside that tab,
+  // leave the removed route before its menu entry disappears.
+  useEffect(() => {
+    if (activeTab === 'teleSales' && !hasTeleSalesAccess) {
+      setActiveTab('brand');
+      setActiveSubMenu(isDashboardUnlocked ? 'Dashboard' : 'Profile');
+    }
+  }, [activeTab, hasTeleSalesAccess, isDashboardUnlocked]);
+
   
   const handleRegenerateHmac = () => {
     setShowRegenerateModal(true);
@@ -1156,6 +1165,7 @@ export default function DashboardShell() {
       }
     })
   };
+  const activeMenuData = menuData[activeTab as keyof typeof menuData] ?? menuData.brand;
 
   // Live Camera Controls
   const startLiveCamera = async (target: 'birth' | 'nid_front' | 'nid_back' | 'face') => {
@@ -4373,13 +4383,13 @@ export default function DashboardShell() {
                   </div>
                 </div>
              ) : (
-                <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{menuData[activeTab as keyof typeof menuData].title}</h2>
+                <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{activeMenuData.title}</h2>
              )}
           </div>
 
           {/* Sub-menu Items */}
           <div className="p-4 space-y-1">
-            {menuData[activeTab as keyof typeof menuData].items.map((item, idx) => {
+            {activeMenuData.items.map((item, idx) => {
               const isSubActive = activeSubMenu === item;
               return (
                 <button

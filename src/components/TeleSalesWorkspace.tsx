@@ -121,11 +121,20 @@ export default function TeleSalesWorkspace() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [accessActive, setAccessActive] = useState<boolean | null>(null);
 
-  const loadInvoices = useCallback(async () => {
-    setLoading(true);
+  const loadInvoices = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     setError('');
     try {
+      const { data: hasAccess, error: accessError } = await supabase.rpc('has_tele_sales_access');
+      if (accessError) throw accessError;
+      setAccessActive(hasAccess === true);
+      if (hasAccess !== true) {
+        setInvoices([]);
+        return;
+      }
+
       const { data, error: queryError } = await supabase.rpc('get_tele_sales_invoices');
       if (queryError) throw queryError;
       setInvoices((data || []).map((row: any) => row.invoice_data).filter(Boolean));
@@ -133,11 +142,22 @@ export default function TeleSalesWorkspace() {
       console.error('Could not load permitted Tele Sales invoices:', error);
       setError(error?.message || 'Could not load invoices.');
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { void loadInvoices(); }, [loadInvoices]);
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== 'hidden') void loadInvoices(true);
+    };
+    void loadInvoices();
+    window.addEventListener('focus', refreshIfVisible);
+    const timer = window.setInterval(refreshIfVisible, 15000);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshIfVisible);
+    };
+  }, [loadInvoices]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -147,7 +167,8 @@ export default function TeleSalesWorkspace() {
       </header>
       {error && <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">{error}. Run the supplied SQL migration and confirm your access is active.</div>}
       {loading && <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading assigned invoices…</div>}
-      {!loading && !error && invoices.length === 0 && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">No invoices are currently assigned to your Tele Sales access.</div>}
+      {!loading && !error && accessActive === false && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">Tele Sales access is no longer active.</div>}
+      {!loading && !error && accessActive !== false && invoices.length === 0 && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">No invoices are currently assigned to your Tele Sales access.</div>}
       <div className="space-y-4">{invoices.map(invoice => <TeleSalesInvoiceCard key={invoice.invoice_id} invoice={invoice} />)}</div>
     </div>
   );
