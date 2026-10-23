@@ -247,20 +247,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={async () => {
                   try {
-                    const { data, error } = await supabase.auth.signInWithOAuth({
+                    const { error } = await supabase.auth.signInWithOAuth({
                       provider: 'google',
                       options: {
-                        skipBrowserRedirect: true,
-                        redirectTo: window.location.origin,
+                        redirectTo: window.location.href,
                         queryParams: {
                           prompt: 'select_account'
                         }
                       },
                     });
                     if (error) throw error;
-                    if (data?.url) {
-                      window.open(data.url, 'oauth_popup', 'width=500,height=600');
-                    }
                   } catch (err) {
                     console.error('Google OAuth error:', err);
                   }
