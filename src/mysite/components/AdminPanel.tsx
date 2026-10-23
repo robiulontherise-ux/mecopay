@@ -78,6 +78,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [defaultHomeFormatType, setDefaultHomeFormatType] = useState(siteSettings?.default_home_format_type || 'standard');
   const [footerButtons, setFooterButtons] = useState<Array<{ label: string; url_or_page: string; is_external?: boolean }>>(siteSettings?.footer_buttons || []);
 
+  // Real-time synchronization of browser tab title and favicon in Admin CMS
+  useEffect(() => {
+    if (siteName?.trim()) {
+      document.title = siteName.trim();
+      try {
+        localStorage.setItem('mysite_cached_title', siteName.trim());
+      } catch (e) {}
+
+      let faviconUrl = siteLogo?.trim() || '';
+      if (!faviconUrl) {
+        const char = siteName.trim().charAt(0).toUpperCase() || 'S';
+        const color = primaryColor || '#6366f1';
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="${color}"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="36" font-weight="bold" fill="#ffffff">${char}</text></svg>`;
+        faviconUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+      }
+
+      let iconLink: HTMLLinkElement | null = document.querySelector("link[id='app-favicon'], link[rel*='icon']");
+      if (!iconLink) {
+        iconLink = document.createElement('link');
+        iconLink.id = 'app-favicon';
+        iconLink.rel = 'icon';
+        document.head.appendChild(iconLink);
+      }
+      iconLink.href = faviconUrl;
+
+      let appleIconLink: HTMLLinkElement | null = document.querySelector("link[id='app-apple-favicon'], link[rel='apple-touch-icon']");
+      if (!appleIconLink) {
+        appleIconLink = document.createElement('link');
+        appleIconLink.id = 'app-apple-favicon';
+        appleIconLink.rel = 'apple-touch-icon';
+        document.head.appendChild(appleIconLink);
+      }
+      appleIconLink.href = faviconUrl;
+
+      try {
+        localStorage.setItem('mysite_cached_logo', faviconUrl);
+      } catch (e) {}
+    }
+  }, [siteName, siteLogo, primaryColor]);
+
   // Form State for Post Creation / Edit
   const [postTitle, setPostTitle] = useState('');
   const [postSlug, setPostSlug] = useState('');
@@ -1570,45 +1610,77 @@ ${postContent}`
                       </span>
                     </div>
 
-                    {/* Simulated Google Search Result Card */}
-                    <div className="p-4 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-md flex-1 flex flex-col justify-center font-sans">
-                      {/* Favicon + Breadcrumb URL */}
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
-                          {siteLogo ? (
-                            <img src={siteLogo} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-[10px] font-bold text-indigo-600">M</span>
+                    {(() => {
+                      const effectiveBrandName = (siteName || siteSettings?.site_name || '').trim() || 'My Site';
+                      const brandInitial = effectiveBrandName.charAt(0).toUpperCase() || 'S';
+
+                      const previewBaseUrl = (() => {
+                        if (siteSettings?.domain?.trim()) {
+                          const d = siteSettings.domain.toLowerCase().trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+                          return `https://${d}`;
+                        }
+                        if (siteSettings?.subdomain?.trim()) {
+                          const s = siteSettings.subdomain.toLowerCase().trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+                          return `https://${s}.mecopay.space`;
+                        }
+                        if (siteName?.trim()) {
+                          const slug = siteName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                          return `https://${slug || 'site'}.mecopay.space`;
+                        }
+                        if (siteSettings?.site_name?.trim()) {
+                          const slug = siteSettings.site_name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                          return `https://${slug || 'site'}.mecopay.space`;
+                        }
+                        return 'https://mysite.mecopay.space';
+                      })();
+
+                      const effectivePostSlug = (postSlug || '').trim() || (postTitle ? postTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'your-post-slug');
+
+                      return (
+                        <div className="p-4 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-md flex-1 flex flex-col justify-center font-sans">
+                          {/* Favicon + Breadcrumb URL */}
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
+                              {siteLogo ? (
+                                <img src={siteLogo} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-[11px] font-bold text-indigo-600">{brandInitial}</span>
+                              )}
+                            </div>
+                            <div className="overflow-hidden text-[12px] leading-tight text-slate-700">
+                              <div className="font-medium text-slate-900 truncate">{effectiveBrandName}</div>
+                              <div className="text-[11px] text-slate-500 truncate flex items-center gap-1 font-mono">
+                                <span>{previewBaseUrl}</span>
+                                <span>›</span>
+                                <span>post</span>
+                                <span>›</span>
+                                <span>{effectivePostSlug}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Title */}
+                          <h4 className="text-base sm:text-lg font-medium text-[#1a0dab] hover:underline cursor-pointer line-clamp-1 leading-snug">
+                            {seoTitle.trim() || postTitle.trim() || "পোস্টের আকর্ষণীয় শিরোনাম এখানে দেখতে পাবেন"}
+                          </h4>
+
+                          {/* Snippet / Description */}
+                          <p className="text-xs text-[#4d5156] mt-1 line-clamp-2 leading-relaxed">
+                            {seoDescription.trim() || extractSnippet(postContent) || "এখানে আপনার পোস্ট বা প্রোডাক্টের সংক্ষিপ্ত বিবরণ দেখা যাবে, যা পড়ে গুগলের কাস্টমাররা লিংকে ক্লিক করবে..."}
+                          </p>
+
+                          {/* Simulated Rich Snippet for Product */}
+                          {productType && productType !== 'just_form' && (
+                            <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-3 text-[11px] text-emerald-700 font-medium">
+                              <span>✓ ইন স্টক (In stock)</span>
+                              <span>•</span>
+                              <span>দ্রুত হোম ডেলিভারি</span>
+                            </div>
                           )}
                         </div>
-                        <div className="overflow-hidden text-[12px] leading-tight text-slate-700">
-                          <div className="font-medium text-slate-900 truncate">{siteName || "MecoPay Store"}</div>
-                          <div className="text-[11px] text-slate-500 truncate">
-                            {window.location.origin}/post/{postSlug || "your-post-slug"}
-                          </div>
-                        </div>
-                      </div>
+                      );
+                    })()}
 
-                      {/* Title */}
-                      <h4 className="text-base sm:text-lg font-medium text-[#1a0dab] hover:underline cursor-pointer line-clamp-1 leading-snug">
-                        {seoTitle.trim() || postTitle.trim() || "পোস্টের আকর্ষণীয় শিরোনাম এখানে দেখতে পাবেন"}
-                      </h4>
-
-                      {/* Snippet / Description */}
-                      <p className="text-xs text-[#4d5156] mt-1 line-clamp-2 leading-relaxed">
-                        {seoDescription.trim() || extractSnippet(postContent) || "এখানে আপনার পোস্ট বা প্রোডাক্টের সংক্ষিপ্ত বিবরণ দেখা যাবে, যা পড়ে গুগলের কাস্টমাররা লিংকে ক্লিক করবে..."}
-                      </p>
-
-                      {/* Simulated Rich Snippet for Product */}
-                      {productType && productType !== 'just_form' && (
-                        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-3 text-[11px] text-emerald-700 font-medium">
-                          <span>✓ ইন স্টক (In stock)</span>
-                          <span>•</span>
-                          <span>দ্রুত হোম ডেলিভারি</span>
-                        </div>
-                      )}
-                    </div>
-                    
                     <p className="text-[11px] text-slate-400 mt-2 text-center">
                       💡 এটি ড্যাশবোর্ডের লাইভ প্রিভিউ। পোস্ট পাবলিশ হলে গুগলের সার্চ রেজাল্টেও মানুষ ঠিক এভাবেই দেখতে পাবে।
                     </p>

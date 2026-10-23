@@ -3,8 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MecoPay Store</title>
-    <meta name="description" content="Your dynamic MecoPay store" />
+    <title>Store</title>
+    <script>
+      (function() {
+        try {
+          var cachedName = localStorage.getItem('cached_site_name');
+          var cachedLogo = localStorage.getItem('cached_site_logo');
+          if (cachedName) document.title = cachedName;
+          if (cachedLogo) {
+            var links = document.querySelectorAll("link[rel*='icon'], link[rel='apple-touch-icon']");
+            links.forEach(function(l) { l.href = cachedLogo; });
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <meta name="description" content="Your dynamic online store" />
     <link rel="icon" type="image/jpeg" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
     <link rel="shortcut icon" type="image/jpeg" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
     <link rel="apple-touch-icon" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />

@@ -3,16 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MecoPay Space</title>
-    <meta name="description" content="Automated SMS Payment Gateway & Merchant Management System" />
-    <link rel="icon" type="image/jpeg" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
-    <link rel="shortcut icon" type="image/jpeg" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
-    <link rel="apple-touch-icon" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
-    <meta property="og:title" content="MecoPay Space" />
-    <meta property="og:description" content="Automated SMS Payment Gateway & Merchant Management System" />
-    <meta property="og:image" content="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:image" content="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
+    <title></title>
+    <link id="app-favicon" rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>" />
+    <link id="app-apple-favicon" rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>" />
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('mysite_cached_title');
+          var l = localStorage.getItem('mysite_cached_logo');
+          if (t && t.trim()) {
+            document.title = t.trim();
+          }
+          if (l && l.trim()) {
+            var f = document.getElementById('app-favicon');
+            if (f) f.href = l.trim();
+            var a = document.getElementById('app-apple-favicon');
+            if (a) a.href = l.trim();
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -6,6 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 dotenv.config();
 
@@ -21,7 +22,8 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://fwonuakvherzofqximno.supabase.co';
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3b251YWt2aGVyem9mcXhpbW5vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDgzMDkwMSwiZXhwIjoyMTAwNDA2OTAxfQ.BHVW2K2Hds315t2UC66Z-Z2pSi5FNT3Cs4IK8kakiKY';
@@ -55,6 +57,119 @@ async function startServer() {
       res.sendFile(jpgPath);
     } else {
       res.redirect('https://i.postimg.cc/cJk7YcMb/favicon.jpg');
+    }
+  });
+
+  // Cloudflare R2 Storage Status Endpoint
+  app.get('/api/r2-config-status', (req, res) => {
+    const hasAccountId = Boolean(process.env.R2_ACCOUNT_ID);
+    const hasAccessKey = Boolean(process.env.R2_ACCESS_KEY_ID);
+    const hasSecretKey = Boolean(process.env.R2_SECRET_ACCESS_KEY);
+    const bucketName = process.env.R2_BUCKET_NAME || null;
+    const publicDomain = process.env.R2_PUBLIC_DOMAIN || null;
+    const isConfigured = hasAccountId && hasAccessKey && hasSecretKey && Boolean(bucketName);
+
+    res.json({
+      isConfigured,
+      hasAccountId,
+      bucketName,
+      publicDomain,
+    });
+  });
+
+  // Cloudflare R2 Upload Endpoint
+  app.post('/api/upload-r2', async (req, res) => {
+    try {
+      const { fileData, fileName, folder = 'uploads', r2Config } = req.body || {};
+
+      if (!fileData) {
+        return res.status(400).json({ success: false, error: 'NO_FILE_DATA', message: 'No file data provided' });
+      }
+
+      // Determine R2 credentials: from request config or server environment
+      const accountId = (r2Config?.accountId || process.env.R2_ACCOUNT_ID || '').trim();
+      const accessKeyId = (r2Config?.accessKeyId || process.env.R2_ACCESS_KEY_ID || '').trim();
+      const secretAccessKey = (r2Config?.secretAccessKey || process.env.R2_SECRET_ACCESS_KEY || '').trim();
+      const bucketName = (r2Config?.bucketName || process.env.R2_BUCKET_NAME || '').trim();
+      let publicDomain = (r2Config?.publicDomain || process.env.R2_PUBLIC_DOMAIN || '').trim();
+
+      if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+        return res.status(400).json({
+          success: false,
+          error: 'MISSING_R2_CREDENTIALS',
+          message: 'Cloudflare R2 credentials (Account ID, Access Key ID, Secret Access Key, Bucket Name) are missing.'
+        });
+      }
+
+      // Parse base64 data and mime type
+      let mimeType = 'application/octet-stream';
+      let buffer: Buffer;
+
+      if (typeof fileData === 'string' && fileData.startsWith('data:')) {
+        const matches = fileData.match(/^data:([A-Za-z0-9-+\/.]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          mimeType = matches[1];
+          buffer = Buffer.from(matches[2], 'base64');
+        } else {
+          buffer = Buffer.from(fileData, 'base64');
+        }
+      } else {
+        buffer = Buffer.from(fileData, 'base64');
+      }
+
+      // Detect MIME from fileName if still octet-stream
+      const ext = path.extname(fileName || 'file.png').toLowerCase();
+      if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+      else if (ext === '.png') mimeType = 'image/png';
+      else if (ext === '.webp') mimeType = 'image/webp';
+      else if (ext === '.gif') mimeType = 'image/gif';
+      else if (ext === '.svg') mimeType = 'image/svg+xml';
+
+      const s3Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId,
+          secretAccessKey,
+        },
+      });
+
+      const cleanFileName = (fileName || 'image.png').replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uniqueSuffix = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      const objectKey = `${folder}/${uniqueSuffix}_${cleanFileName}`;
+
+      const uploadCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: objectKey,
+        Body: buffer,
+        ContentType: mimeType,
+      });
+
+      await s3Client.send(uploadCommand);
+
+      // Determine public URL
+      if (!publicDomain) {
+        publicDomain = `https://${bucketName}.${accountId}.r2.cloudflarestorage.com`;
+      } else if (!publicDomain.startsWith('http://') && !publicDomain.startsWith('https://')) {
+        publicDomain = `https://${publicDomain}`;
+      }
+      publicDomain = publicDomain.replace(/\/+$/, '');
+
+      const publicUrl = `${publicDomain}/${objectKey}`;
+
+      return res.json({
+        success: true,
+        url: publicUrl,
+        key: objectKey,
+        provider: 'cloudflare_r2',
+      });
+    } catch (err: any) {
+      console.error('[Cloudflare R2 Upload Error]', err);
+      return res.status(500).json({
+        success: false,
+        error: 'R2_UPLOAD_FAILED',
+        message: err.message || 'Failed to upload to Cloudflare R2'
+      });
     }
   });
 

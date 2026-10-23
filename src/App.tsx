@@ -11,6 +11,7 @@ import FeaturesPage from './components/FeaturesPage';
 import AuthPage from './components/AuthPages';
 import TimeSpentBeaconTracker from './components/analytics/TimeSpentBeaconTracker';
 import { LocaleProvider } from './lib/LocaleContext';
+import MySiteApp from './mysite/App';
 
 interface EBProps { children?: React.ReactNode; }
 interface EBState { hasError: boolean; error: any; }
@@ -38,7 +39,70 @@ class ErrorBoundary extends React.Component<EBProps, EBState> {
   }
 }
 
+function checkIsClientSite(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname.toLowerCase().trim();
+  const path = window.location.pathname.toLowerCase().trim();
+  const searchParams = new URLSearchParams(window.location.search);
+
+  // If user is intentionally navigating to central dashboard, login, public auth or checkout routes
+  if (
+    path.startsWith('/dashboard') ||
+    path === '/login' ||
+    path.startsWith('/auth/') ||
+    path.startsWith('/checkout') ||
+    path.startsWith('/pay') ||
+    path.startsWith('/access')
+  ) {
+    return false;
+  }
+
+  // Explicit query parameters (e.g. ?subdomain=watchshop or ?custom_domain=watch.com)
+  if (searchParams.has('subdomain') || searchParams.has('custom_domain')) {
+    return true;
+  }
+
+  // Check if host is a primary MecoPay platform domain
+  const isPlatformDomain =
+    host === 'mecopay.space' ||
+    host === 'www.mecopay.space' ||
+    host === 'mecopay.pages.dev' ||
+    host === 'localhost' ||
+    host === '127.0.0.1';
+
+  if (isPlatformDomain) {
+    return false;
+  }
+
+  // Subdomain of mecopay.space (e.g. mybrand.mecopay.space)
+  if (host.endsWith('.mecopay.space') && host !== 'mecopay.space' && host !== 'www.mecopay.space') {
+    return true;
+  }
+
+  // Subdomain of pages.dev (e.g. mybrand.pages.dev and not mecopay.pages.dev)
+  if (host.endsWith('.pages.dev') && host !== 'mecopay.pages.dev') {
+    return true;
+  }
+
+  // Custom external domain (e.g. mybrand.com)
+  if (!host.endsWith('.mecopay.space') && !host.endsWith('.pages.dev')) {
+    return true;
+  }
+
+  return false;
+}
+
 function App() {
+  const isClientSite = checkIsClientSite();
+
+  if (isClientSite) {
+    return (
+      <ErrorBoundary>
+        <MySiteApp />
+      </ErrorBoundary>
+    );
+  }
+
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const publicAuthPage = window.location.pathname === '/auth/home'
@@ -53,7 +117,7 @@ function App() {
     // Check for hash errors from OAuth
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     if (hashParams.has('error_description')) {
-      alert("Login Error: " + decodeURIComponent(hashParams.get('error_description') || ''));
+      console.warn("Login Error:", decodeURIComponent(hashParams.get('error_description') || ''));
     }
     
     if (window.opener && window.location.hash.includes('access_token')) {
@@ -63,7 +127,6 @@ function App() {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error("App getSession error:", error);
-        alert("Login Failed: " + (error.message || "Your account might be blocked or invalid."));
       }
       setSession(session);
       setLoading(false);

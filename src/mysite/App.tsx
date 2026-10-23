@@ -60,6 +60,67 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
     }
   }, [toast]);
 
+  // Dynamic Browser Tab Title & Favicon Synchronizer
+  const updateBrowserTabAndFavicon = useCallback((titleName?: string, logoUrl?: string, primaryColor?: string, postTitle?: string) => {
+    const effectiveName = titleName?.trim() || '';
+    if (!effectiveName) return;
+
+    // Set tab title: if user is viewing a post, show "Post Title | Site Name", otherwise "Site Name"
+    const cleanPostTitle = (postTitle && !['untitled', 'untitled post'].includes(postTitle.trim().toLowerCase()))
+      ? postTitle.trim()
+      : '';
+    const finalTitle = cleanPostTitle ? `${cleanPostTitle} | ${effectiveName}` : effectiveName;
+    document.title = finalTitle;
+
+    try {
+      localStorage.setItem('mysite_cached_title', effectiveName);
+    } catch (e) {}
+
+    // Determine Favicon (Logo or Letter Badge)
+    let faviconUrl = logoUrl?.trim() || '';
+    if (!faviconUrl) {
+      // Dynamic crisp SVG favicon badge with the first letter of the brand name
+      const char = effectiveName.charAt(0).toUpperCase();
+      const color = primaryColor?.trim() || '#6366f1';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="${color}"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="36" font-weight="bold" fill="#ffffff">${char}</text></svg>`;
+      faviconUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    }
+
+    try {
+      let iconLink: HTMLLinkElement | null = document.querySelector("link[id='app-favicon'], link[rel*='icon']");
+      if (!iconLink) {
+        iconLink = document.createElement('link');
+        iconLink.id = 'app-favicon';
+        iconLink.rel = 'icon';
+        document.head.appendChild(iconLink);
+      }
+      iconLink.href = faviconUrl;
+
+      let appleIconLink: HTMLLinkElement | null = document.querySelector("link[id='app-apple-favicon'], link[rel='apple-touch-icon']");
+      if (!appleIconLink) {
+        appleIconLink = document.createElement('link');
+        appleIconLink.id = 'app-apple-favicon';
+        appleIconLink.rel = 'apple-touch-icon';
+        document.head.appendChild(appleIconLink);
+      }
+      appleIconLink.href = faviconUrl;
+
+      localStorage.setItem('mysite_cached_logo', faviconUrl);
+    } catch (e) {}
+  }, []);
+
+  // Real-time tab title and favicon sync whenever siteSettings or activePost updates
+  useEffect(() => {
+    if (siteSettings?.site_name?.trim()) {
+      updateBrowserTabAndFavicon(
+        siteSettings.site_name,
+        siteSettings.site_logo,
+        siteSettings.primary_color,
+        activePost?.title
+      );
+    }
+  }, [siteSettings?.site_name, siteSettings?.site_logo, siteSettings?.primary_color, activePost?.title, updateBrowserTabAndFavicon]);
+
   // 5. Meta CAPI Tracking Hook
 
   // Check if current user is Admin
@@ -274,11 +335,14 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
         }
       }
       
-      // Set browser tab title to the client's custom site name
+      // Set browser tab title & favicon to the client's custom brand
       if (settingsData?.site_name?.trim()) {
-        document.title = settingsData.site_name.trim();
-      } else {
-        document.title = 'My Site';
+        updateBrowserTabAndFavicon(
+          settingsData.site_name,
+          settingsData.site_logo,
+          settingsData.primary_color,
+          activePost?.title
+        );
       }
 
       // Fetch categories
@@ -681,7 +745,12 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
 
     setSiteSettings(sitePayload);
     if (sitePayload.site_name) {
-      document.title = sitePayload.site_name.trim();
+      updateBrowserTabAndFavicon(
+        sitePayload.site_name,
+        sitePayload.site_logo,
+        sitePayload.primary_color,
+        activePost?.title
+      );
     }
   };
 
