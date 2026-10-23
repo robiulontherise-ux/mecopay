@@ -3,6 +3,7 @@ import { Category, Post, SiteSettings } from '../types';
 import { 
   BookOpen, ArrowRight, Filter, User
 } from 'lucide-react';
+import { AutoHeightIframe } from './AutoHeightIframe';
 
 interface HomeProps {
   categories: Category[];
@@ -123,49 +124,37 @@ const Home: React.FC<HomeProps> = ({
         ) : (
           <div className="space-y-8">
             {/* 1. Full-Width Direct / Landing Posts */}
-            {filteredPosts.filter(p => p.show_as_landing || (filteredPosts.length === 1 && p.format_type === 'code')).map((post) => (
-              <div key={post.id} className="w-full max-w-5xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                {post.title && (
-                  <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-white">{post.title}</h2>
-                    {post.show_share_btn !== false && (
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(window.location.origin + '/#post/' + post.slug);
-                        }}
-                        className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800"
-                      >
-                        Share
-                      </button>
-                    )}
-                  </div>
-                )}
-                {post.format_type === 'code' || post.content.startsWith('<!-- CODE:') ? (
-                  <iframe
-                    srcDoc={`${post.content.replace(/^<!--\s*CODE:[a-z_]*\s*-->/i, '')}<script>
-                      var lastH = 0;
-                      function sendHeight() {
-                        var h = document.documentElement.scrollHeight;
-                        if (Math.abs(h - lastH) > 6) {
-                          lastH = h;
-                          window.parent.postMessage({ type: 'resize', height: h }, '*');
-                        }
-                      }
-                      window.onload = sendHeight;
-                      if (window.ResizeObserver) {
-                        new ResizeObserver(sendHeight).observe(document.body);
-                      }
-                    </script>`}
-                    className="w-full border-none bg-transparent"
-                    style={{ minHeight: '600px', height: '100%' }}
-                    title={post.title || "Landing Content"}
-                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                  />
-                ) : (
-                  <div className="p-6 sm:p-8 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
-                )}
-              </div>
-            ))}
+            {filteredPosts.filter(p => p.show_as_landing || (filteredPosts.length === 1 && p.format_type === 'code')).map((post) => {
+              const hasValidTitle = post.title && !['untitled', 'untitled post'].includes(post.title.trim().toLowerCase());
+              return (
+                <div key={post.id} className="w-full max-w-5xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                  {hasValidTitle && (
+                    <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                      <h2 className="text-xl font-bold text-white">{post.title}</h2>
+                      {post.show_share_btn !== false && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(window.location.origin + '/#post/' + post.slug);
+                          }}
+                          className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800 transition-colors"
+                        >
+                          Share
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {post.format_type === 'code' || post.content.startsWith('<!-- CODE:') ? (
+                    <AutoHeightIframe
+                      content={post.content}
+                      title={hasValidTitle ? post.title : 'Interactive Content'}
+                      minHeight={350}
+                    />
+                  ) : (
+                    <div className="p-6 sm:p-8 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
+                  )}
+                </div>
+              );
+            })}
 
             {/* 2. Grid Feed for Standard Posts */}
             {(() => {
@@ -204,11 +193,11 @@ const Home: React.FC<HomeProps> = ({
                       )}
 
                       <div className="p-5 flex-1 flex flex-col">
-                        {post.title && (
+                        {post.title && !['untitled', 'untitled post'].includes(post.title.trim().toLowerCase()) ? (
                           <h3 className="text-lg font-bold text-slate-100 mb-2 line-clamp-2 group-hover:text-indigo-400 transition-colors">
                             {post.title}
                           </h3>
-                        )}
+                        ) : null}
                         
                         {post.show_full_post && (
                           <div className="prose prose-invert prose-sm max-w-none text-slate-300 mb-4 line-clamp-4">

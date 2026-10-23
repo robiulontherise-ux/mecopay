@@ -382,13 +382,14 @@ Write comprehensive lecture notes, problem sets, and key insights here.
 
   const handleEditPost = (p: Post) => {
     setEditingPost(p);
-    setPostTitle(p.title);
+    const cleanTitle = (p.title && !['untitled', 'untitled post'].includes(p.title.trim().toLowerCase())) ? p.title : '';
+    setPostTitle(cleanTitle);
     setPostSlug(p.slug);
     setPostCategory(p.category_id);
     setPostThumbnail(p.thumbnail);
     setPostContent(p.content);
     setIsCustomPage(p.is_custom_page ?? false);
-    setSeoTitle(p.title || '');
+    setSeoTitle(cleanTitle);
     setSeoDescription(p.summary || '');
     setSeoKeywords(Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || ''));
     setShowDetailsBtn(p.show_details_btn ?? true);
@@ -432,9 +433,11 @@ ${postContent}`
     const validCategory = categories.find((c) => c.id === postCategory)?.id 
       || (!isCustomPage && categories.length > 0 ? categories[0].id : null);
 
+    const cleanTitle = (!postTitle || ['untitled', 'untitled post'].includes(postTitle.trim().toLowerCase())) ? '' : postTitle.trim();
+
     const newOrUpdatedPost: Post = {
       id: editingPost?.id || `post_${Date.now()}`,
-      title: (postTitle.trim() || seoTitle.trim() || ''),
+      title: cleanTitle,
       slug: postSlug.trim() || `post-${Date.now()}`,
       content: finalContent,
       category_id: validCategory as any,
@@ -645,7 +648,13 @@ ${postContent}`
                           </span>
                         </div>
 
-                        <h3 className="text-sm sm:text-base font-bold text-white line-clamp-1">{post.title}</h3>
+                        <h3 className="text-sm sm:text-base font-bold text-white line-clamp-1">
+                          {post.title && !['untitled', 'untitled post'].includes(post.title.trim().toLowerCase()) ? (
+                            post.title
+                          ) : (
+                            <span className="text-slate-500 italic font-normal">No Title (Direct / Landing Page)</span>
+                          )}
+                        </h3>
                         
                       </div>
                     </div>
@@ -725,7 +734,13 @@ ${postContent}`
                         {new Date(post.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    <h3 className="text-sm sm:text-base font-bold text-white line-clamp-1">{post.title}</h3>
+                    <h3 className="text-sm sm:text-base font-bold text-white line-clamp-1">
+                      {post.title && !['untitled', 'untitled post'].includes(post.title.trim().toLowerCase()) ? (
+                        post.title
+                      ) : (
+                        <span className="text-slate-500 italic font-normal">No Title (Custom Page)</span>
+                      )}
+                    </h3>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 self-end md:self-center mt-4">
                     <button

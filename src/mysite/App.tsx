@@ -305,7 +305,12 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       if (postError) throw postError;
       
       if (postData) {
-        setPosts(postData);
+        // Strip any legacy 'Untitled Post' or 'Untitled' stored previously in the database
+        const cleanPosts = postData.map((p: any) => ({
+          ...p,
+          title: (p.title && ['untitled', 'untitled post'].includes(p.title.trim().toLowerCase())) ? '' : (p.title || '')
+        }));
+        setPosts(cleanPosts);
       }
     } catch (err) {
       console.warn('Error fetching from Supabase', err);
@@ -493,11 +498,14 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       ? post.category_id
       : null;
 
+    const isUntitlePlaceholder = post.title && ['untitled', 'untitled post'].includes(post.title.trim().toLowerCase());
+    const cleanTitle = isUntitlePlaceholder ? '' : (post.title || '').trim();
+
     // Build strictly valid payload matching database columns to prevent PostgREST column-not-found errors
     const sanitizedPayload: any = {
       id: post.id || `post_${Date.now()}`,
       client_id: effectiveClientId,
-      title: (post.title || '').trim(),
+      title: cleanTitle,
       slug: (post.slug || '').trim() || `post-${Date.now()}`,
       content: post.content || '',
       category_id: validCategoryId,
@@ -516,7 +524,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       product_type: post.product_type || 'physical',
       digital_settings: post.digital_settings || {},
       brand_id: isSharedMode ? dataBrandId : siteSettings?.brand_id || post.brand_id || null,
-      meta_title: (post as any).meta_title || post.title || null,
+      meta_title: (post as any).meta_title || cleanTitle || null,
       meta_description: (post as any).meta_description || post.summary || null,
       featured_image: (post as any).featured_image || post.thumbnail || null,
       price: typeof (post as any).price === 'number' ? (post as any).price : 0,

@@ -8,6 +8,7 @@ import {
   Calendar, 
   Eye
 } from 'lucide-react';
+import { AutoHeightIframe } from './AutoHeightIframe';
 import ReactMarkdown from 'react-markdown';
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -47,38 +48,6 @@ const PostDetail: React.FC<PostDetailProps> = ({
   onOpenAuthModal,
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => {
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data && e.data.type === 'resize' && iframeRef.current && typeof e.data.height === 'number') {
-        const cur = parseFloat(iframeRef.current.style.height || '0');
-        if (Math.abs(cur - e.data.height) > 6) {
-          iframeRef.current.style.height = `${e.data.height}px`;
-        }
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  const srcDocWithResize = post.content ? `${post.content}
-<script>
-  var lastH = 0;
-  function sendHeight() {
-    var h = document.documentElement.scrollHeight;
-    if (Math.abs(h - lastH) > 6) {
-      lastH = h;
-      window.parent.postMessage({ type: 'resize', height: h }, '*');
-    }
-  }
-  window.onload = sendHeight;
-  if (window.ResizeObserver) {
-    new ResizeObserver(sendHeight).observe(document.body);
-  } else {
-    new MutationObserver(sendHeight).observe(document.body, { childList: true, subtree: true, attributes: true });
-  }
-</script>` : '';
 
 
   const handleShare = () => {
@@ -121,23 +90,27 @@ const PostDetail: React.FC<PostDetailProps> = ({
           <main className="w-full space-y-8">
             
             {/* Meta Tags */}
-            {(category?.name || post.title) ? (
-              <div className="space-y-3">
-                {category?.name && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                      {category.name}
-                    </span>
-                  </div>
-                )}
+            {(() => {
+              const hasValidTitle = post.title && !['untitled', 'untitled post'].includes(post.title.trim().toLowerCase());
+              if (!category?.name && !hasValidTitle) return null;
+              return (
+                <div className="space-y-3">
+                  {category?.name && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                        {category.name}
+                      </span>
+                    </div>
+                  )}
 
-                {post.title ? (
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
-                    {post.title}
-                  </h1>
-                ) : null}
-              </div>
-            ) : null}
+                  {hasValidTitle ? (
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
+                      {post.title}
+                    </h1>
+                  ) : null}
+                </div>
+              );
+            })()}
 
             {post.product_type && (
               <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg mt-6 mb-8">
@@ -188,14 +161,10 @@ const PostDetail: React.FC<PostDetailProps> = ({
             {/* Body Content */}
             <article className="w-full text-slate-200 text-sm leading-relaxed max-w-none overflow-hidden">
               {(post.content && (post.content.startsWith('<!-- LIVE_CODE -->') || (post.content.startsWith('<!-- CODE:live_html') || post.content.startsWith('<!-- CODE: live_html')))) ? (
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={srcDocWithResize}
-                  className="w-full border-none bg-transparent rounded-xl overflow-hidden"
-                  style={{ minHeight: '300px' }}
+                <AutoHeightIframe
+                  content={post.content}
                   title={post.title || 'Interactive Content'}
-                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                  scrolling="no"
+                  minHeight={350}
                 />
               ) : post.content && post.content.startsWith('<!-- CODE:') ? (
                 <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shadow-xl">
