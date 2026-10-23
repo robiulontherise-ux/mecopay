@@ -64,7 +64,7 @@ const Home: React.FC<HomeProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+      <main className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 sm:space-y-10">
         
         {/* Optional Default Home / Hero Section */}
         {siteSettings?.show_default_home && !activeCategory && !searchQuery && (
@@ -127,10 +127,10 @@ const Home: React.FC<HomeProps> = ({
             {filteredPosts.filter(p => p.show_as_landing || (filteredPosts.length === 1 && p.format_type === 'code')).map((post) => {
               const hasValidTitle = post.title && !['untitled', 'untitled post'].includes(post.title.trim().toLowerCase());
               return (
-                <div key={post.id} className="w-full max-w-5xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div key={post.id} className="w-full max-w-full mx-auto bg-transparent border-0 rounded-none overflow-hidden shadow-none">
                   {hasValidTitle && (
-                    <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-                      <h2 className="text-xl font-bold text-white">{post.title}</h2>
+                    <div className="py-2.5 px-2 sm:px-4 mb-3 border-b border-slate-800/60 flex items-center justify-between">
+                      <h2 className="text-lg sm:text-2xl font-bold text-white">{post.title}</h2>
                       {post.show_share_btn !== false && (
                         <button
                           onClick={() => {
@@ -147,10 +147,10 @@ const Home: React.FC<HomeProps> = ({
                     <AutoHeightIframe
                       content={post.content}
                       title={hasValidTitle ? post.title : 'Interactive Content'}
-                      minHeight={350}
+                      minHeight={300}
                     />
                   ) : (
-                    <div className="p-6 sm:p-8 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
+                    <div className="p-4 sm:p-6 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
                   )}
                 </div>
               );

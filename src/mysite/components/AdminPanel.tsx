@@ -212,7 +212,7 @@ ${defaultHomeContent}`
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (disableExternalEffects) {
-      alert('Image uploads are disabled in shared mode because storage access is not covered by the active Website Builder grant. Paste an existing image URL instead.');
+      showNotice('Image uploads are disabled in shared mode. Paste an existing image URL instead.');
       return;
     }
     const file = e.target.files?.[0];
@@ -267,7 +267,7 @@ ${defaultHomeContent}`
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isContentImage = false) => {
     if (disableExternalEffects) {
-      alert('Image uploads are disabled in shared mode because storage access is not covered by the active Website Builder grant. Paste an existing image URL instead.');
+      showNotice('Image uploads are disabled in shared mode. Paste an existing image URL instead.');
       return;
     }
     const file = e.target.files?.[0];
@@ -285,7 +285,7 @@ ${defaultHomeContent}`
 
       if (uploadError) {
         if (uploadError.message.includes('row-level security policy')) {
-          alert("Supabase Storage Error: Your Supabase database is blocking image uploads because Row Level Security (RLS) is enabled.\n\nPlease go to your Supabase Dashboard -> SQL Editor and run this query:\n\nCREATE POLICY \"Allow public uploads\" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'post_img');");
+          showNotice("Storage Error: RLS policy blocking uploads on 'post_img' bucket.");
         }
         throw uploadError;
       }
@@ -326,7 +326,7 @@ ${defaultHomeContent}`
       }
     } catch (err: any) {
       console.error('Error uploading image:', err);
-      alert('Error uploading image: ' + err.message);
+      showNotice('Error uploading image: ' + err.message);
     } finally {
       setIsUploading(false);
     }
@@ -413,7 +413,7 @@ Write comprehensive lecture notes, problem sets, and key insights here.
   const handleSavePostForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!postContent.trim()) {
-      alert('Please provide content.');
+      showNotice('Please provide content before publishing.');
       return;
     }
 

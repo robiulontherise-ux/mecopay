@@ -23,24 +23,45 @@ export const AutoHeightIframe: React.FC<AutoHeightIframeProps> = ({
     .replace(/^<!--\s*LIVE_CODE\s*-->/i, '')
     .trim();
 
-  // Construct iframe HTML with auto-resize script and anti-scrollbar styles
+  // Construct iframe HTML with auto-resize script, transparent background, and fluid responsive styles
   const srcDoc = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
   <style>
-    /* Prevent internal scrollbars completely */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
     html, body {
       margin: 0;
       padding: 0;
       width: 100%;
-      overflow: hidden !important;
+      max-width: 100%;
+      background-color: transparent !important;
+      overflow-x: hidden !important;
+      -webkit-text-size-adjust: 100%;
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
     html::-webkit-scrollbar, body::-webkit-scrollbar {
       display: none;
+    }
+    img, video, canvas, svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+    table {
+      max-width: 100% !important;
+      border-collapse: collapse;
+    }
+    pre, code {
+      white-space: pre-wrap !important;
+      word-break: break-word !important;
+    }
+    /* Fluid containers on all devices */
+    [class*="container"], [class*="wrapper"] {
+      max-width: 100% !important;
     }
   </style>
 </head>
@@ -135,9 +156,11 @@ export const AutoHeightIframe: React.FC<AutoHeightIframeProps> = ({
       sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
       style={{
         width: '100%',
+        maxWidth: '100%',
         height: `${frameHeight}px`,
         minHeight: `${minHeight}px`,
         border: 'none',
+        backgroundColor: 'transparent',
         overflow: 'hidden',
         display: 'block',
       }}

@@ -47,10 +47,18 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
   const [currentView, setCurrentView] = useState<'home' | 'post-detail' | 'admin' | 'my-account'>('home');
   const [activePost, setActivePost] = useState<Post | null>(null);
 
-  // 4. Modal Triggers & Context
+  // 4. Modal Triggers, Notifications & Context
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalContext, setAuthModalContext] = useState<string>('navbar');
   const [pendingAction, setPendingAction] = useState<{ type: 'buy_volume' | 'take_exam' | 'telegram'; post: Post } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // 5. Meta CAPI Tracking Hook
 
@@ -77,7 +85,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
     try {
       await verifySharedAccess('edit');
     } catch (error: any) {
-      alert(`Save blocked: ${error?.message || 'Active shared edit access was not verified.'}`);
+      setToast({ message: `Save blocked: ${error?.message || 'Active shared edit access was not verified.'}`, type: 'error' });
       throw error;
     }
   }, [verifySharedAccess]);
@@ -306,10 +314,25 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       
       if (postData) {
         // Strip any legacy 'Untitled Post' or 'Untitled' stored previously in the database
-        const cleanPosts = postData.map((p: any) => ({
-          ...p,
-          title: (p.title && ['untitled', 'untitled post'].includes(p.title.trim().toLowerCase())) ? '' : (p.title || '')
-        }));
+        // and resolve custom display options from digital_settings json column if not direct columns
+        const cleanPosts = postData.map((p: any) => {
+          const ds = (typeof p.digital_settings === 'object' && p.digital_settings) ? p.digital_settings : {};
+          return {
+            ...p,
+            title: (p.title && ['untitled', 'untitled post'].includes(p.title.trim().toLowerCase())) ? '' : (p.title || ''),
+            format_type: p.format_type || ds.format_type || 'standard',
+            code_language: p.code_language || ds.code_language || null,
+            show_details_btn: p.show_details_btn !== undefined ? p.show_details_btn : (ds.show_details_btn ?? true),
+            show_share_btn: p.show_share_btn !== undefined ? p.show_share_btn : (ds.show_share_btn ?? true),
+            show_thumbnail: p.show_thumbnail !== undefined ? p.show_thumbnail : (ds.show_thumbnail ?? true),
+            show_full_post: p.show_full_post !== undefined ? p.show_full_post : (ds.show_full_post ?? false),
+            show_as_landing: p.show_as_landing !== undefined ? p.show_as_landing : (ds.show_as_landing ?? false),
+            is_custom_page: p.is_custom_page !== undefined ? p.is_custom_page : (ds.is_custom_page ?? false),
+            summary: p.summary || ds.summary || '',
+            tags: p.tags || ds.tags || [],
+            digital_settings: ds
+          };
+        });
         setPosts(cleanPosts);
       }
     } catch (err) {
@@ -501,16 +524,10 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
     const isUntitlePlaceholder = post.title && ['untitled', 'untitled post'].includes(post.title.trim().toLowerCase());
     const cleanTitle = isUntitlePlaceholder ? '' : (post.title || '').trim();
 
-    // Build strictly valid payload matching database columns to prevent PostgREST column-not-found errors
-    const sanitizedPayload: any = {
-      id: post.id || `post_${Date.now()}`,
-      client_id: effectiveClientId,
-      title: cleanTitle,
-      slug: (post.slug || '').trim() || `post-${Date.now()}`,
-      content: post.content || '',
-      category_id: validCategoryId,
-      thumbnail: post.thumbnail || null,
-      views_count: typeof post.views_count === 'number' ? post.views_count : 0,
+    // Custom display flags and properties packed safely into digital_settings json column
+    // This guarantees schema compatibility even when columns do not exist directly on Supabase 'posts' table
+    const digitalSettingsPayload: any = {
+      ...(post.digital_settings || {}),
       format_type: post.format_type || 'standard',
       code_language: post.code_language || null,
       show_details_btn: post.show_details_btn !== false,
@@ -519,25 +536,62 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       show_full_post: !!post.show_full_post,
       show_as_landing: !!post.show_as_landing,
       is_custom_page: !!post.is_custom_page,
+      summary: post.summary || null,
+      tags: post.tags || []
+    };
+
+    // Standard known columns for Supabase 'posts' table
+    let sanitizedPayload: any = {
+      id: post.id || `post_${Date.now()}`,
+      client_id: effectiveClientId,
+      title: cleanTitle,
+      slug: (post.slug || '').trim() || `post-${Date.now()}`,
+      content: post.content || '',
+      category_id: validCategoryId,
+      thumbnail: post.thumbnail || null,
+      views_count: typeof post.views_count === 'number' ? post.views_count : 0,
       created_at: post.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
       product_type: post.product_type || 'physical',
-      digital_settings: post.digital_settings || {},
+      digital_settings: digitalSettingsPayload,
       brand_id: isSharedMode ? dataBrandId : siteSettings?.brand_id || post.brand_id || null,
-      meta_title: (post as any).meta_title || cleanTitle || null,
-      meta_description: (post as any).meta_description || post.summary || null,
-      featured_image: (post as any).featured_image || post.thumbnail || null,
-      price: typeof (post as any).price === 'number' ? (post as any).price : 0,
-      currency: (post as any).currency || 'BDT',
-      in_stock: (post as any).in_stock !== false
     };
 
     try {
       await verifySharedEditWithFeedback();
-      const { data, error } = await supabase.from('posts').upsert([sanitizedPayload]).select();
-      if (error) {
-        console.error('Supabase save post error:', error.message);
-        alert(`Database Error: ${error.message}`);
+      
+      // Resilient upsert with auto-recovery:
+      // If Supabase reports any unknown column in schema cache, strip it, store in digital_settings, and retry!
+      let currentPayload = { ...sanitizedPayload };
+      let lastError: any = null;
+      let successData: any = null;
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data, error } = await supabase.from('posts').upsert([currentPayload]).select();
+        if (!error) {
+          successData = data;
+          lastError = null;
+          break;
+        }
+
+        lastError = error;
+        const missingColMatch = error.message?.match(/Could not find the '([^']+)' column of 'posts'/i);
+        if (missingColMatch && missingColMatch[1]) {
+          const missingCol = missingColMatch[1];
+          currentPayload.digital_settings = {
+            ...(currentPayload.digital_settings || {}),
+            [missingCol]: currentPayload[missingCol]
+          };
+          delete currentPayload[missingCol];
+          continue;
+        } else {
+          break;
+        }
+      }
+
+      if (lastError) {
+        console.error('Supabase save post error:', lastError.message);
+        setToast({ message: `Database Notice: ${lastError.message}`, type: 'error' });
         return;
       }
 
@@ -545,7 +599,15 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       const savedPost: Post = {
         ...post,
         ...sanitizedPayload,
-        ...(data && data[0] ? data[0] : {})
+        format_type: post.format_type || 'standard',
+        code_language: post.code_language || null,
+        show_as_landing: !!post.show_as_landing,
+        show_full_post: !!post.show_full_post,
+        show_details_btn: post.show_details_btn !== false,
+        show_share_btn: post.show_share_btn !== false,
+        show_thumbnail: post.show_thumbnail !== false,
+        is_custom_page: !!post.is_custom_page,
+        ...(successData && successData[0] ? successData[0] : {})
       };
 
       setPosts((prev) => {
@@ -558,9 +620,10 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
           return [savedPost, ...prev];
         }
       });
+      setToast({ message: 'Post saved and published successfully!', type: 'success' });
     } catch (err: any) {
       console.warn('Supabase posts error:', err);
-      alert(`Error saving post: ${err?.message || err}`);
+      setToast({ message: `Error saving post: ${err?.message || err}`, type: 'error' });
     }
   };
 
@@ -631,9 +694,10 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       const { error } = await query;
       if (error) {
         console.error('Supabase delete post error:', error.message);
-        alert(`Error deleting post: ${error.message}`);
+        setToast({ message: `Error deleting post: ${error.message}`, type: 'error' });
         return;
       }
+      setToast({ message: 'Post deleted successfully.', type: 'info' });
     } catch (err) {
       console.warn('Supabase delete post error:', err);
     }
@@ -759,13 +823,25 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
 
       {/* 4. Modals & Drawers */}
       
-      {/* Lazy Authentication Modal */}
-      <LazyAuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        contextAction={authModalContext}
-        onSuccessLogin={handleSuccessLogin}
-      />
+      {/* Toast Notification Banner (prevents native browser alerts displaying mecopay.pages.dev) */}
+      {toast && (
+        <div
+          className="fixed bottom-6 right-6 z-[100000] max-w-md flex items-center justify-between gap-3 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md border animate-in fade-in slide-in-from-bottom-3 duration-200"
+          style={{
+            backgroundColor: toast.type === 'error' ? 'rgba(153, 27, 27, 0.95)' : toast.type === 'success' ? 'rgba(6, 78, 59, 0.95)' : 'rgba(30, 41, 59, 0.95)',
+            borderColor: toast.type === 'error' ? '#ef4444' : toast.type === 'success' ? '#10b981' : '#64748b',
+            color: '#fff'
+          }}
+        >
+          <span className="text-xs sm:text-sm font-semibold">{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="text-xs text-white/70 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors ml-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
     </div>
   );
