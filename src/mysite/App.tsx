@@ -425,6 +425,8 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       order_index: typeof cat.order_index === 'number' ? cat.order_index : 0,
       description: cat.description || null,
       icon_name: cat.icon_name || 'BookOpen',
+      icon_image: cat.icon_image || null,
+      custom_badge: cat.custom_badge || null,
       parent_id: (cat.parent_id && validCatIds.includes(cat.parent_id)) ? cat.parent_id : null,
       brand_id: isSharedMode ? dataBrandId : siteSettings?.brand_id || cat.brand_id || null,
       created_at: cat.created_at || new Date().toISOString()
@@ -495,7 +497,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
     const sanitizedPayload: any = {
       id: post.id || `post_${Date.now()}`,
       client_id: effectiveClientId,
-      title: (post.title || '').trim() || 'Untitled',
+      title: (post.title || '').trim(),
       slug: (post.slug || '').trim() || `post-${Date.now()}`,
       content: post.content || '',
       category_id: validCategoryId,
@@ -507,6 +509,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       show_share_btn: post.show_share_btn !== false,
       show_thumbnail: post.show_thumbnail !== false,
       show_full_post: !!post.show_full_post,
+      show_as_landing: !!post.show_as_landing,
       is_custom_page: !!post.is_custom_page,
       created_at: post.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -744,7 +747,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       </div>
 
       {/* 3. Footer */}
-      <Footer />
+      <Footer siteSettings={siteSettings} />
 
       {/* 4. Modals & Drawers */}
       

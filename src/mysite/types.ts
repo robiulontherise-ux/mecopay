@@ -7,6 +7,8 @@ export interface Category {
   order_index: number;
   description?: string;
   icon_name?: string;
+  icon_image?: string;
+  custom_badge?: string;
   created_at?: string;
   parent_id?: string | null;
 }
@@ -31,6 +33,7 @@ export interface Post {
   show_share_btn?: boolean;
   show_thumbnail?: boolean;
   show_full_post?: boolean;
+  show_as_landing?: boolean;
   is_custom_page?: boolean;
   product_type?: 'physical' | 'digital' | 'just_form';
   digital_settings?: {
@@ -99,4 +102,9 @@ export interface SiteSettings {
   show_default_home: boolean;
   default_home_content: string;
   default_home_format_type?: 'standard' | 'code';
+  footer_buttons?: Array<{
+    label: string;
+    url_or_page: string;
+    is_external?: boolean;
+  }>;
 }

@@ -88,7 +88,7 @@ const PostDetail: React.FC<PostDetailProps> = ({
   };
 
   return (
-    <div className="w-full bg-slate-950 pb-20 flex-1">
+    <div className="min-h-screen bg-slate-950 pb-20">
       {/* Sticky Header Action Bar */}
       <div className="sticky top-16 z-20 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
@@ -121,19 +121,23 @@ const PostDetail: React.FC<PostDetailProps> = ({
           <main className="w-full space-y-8">
             
             {/* Meta Tags */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                  {category?.name || 'General Module'}
-                </span>
+            {(category?.name || post.title) ? (
+              <div className="space-y-3">
+                {category?.name && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                      {category.name}
+                    </span>
+                  </div>
+                )}
+
+                {post.title ? (
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
+                    {post.title}
+                  </h1>
+                ) : null}
               </div>
-
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
-                {post.title}
-              </h1>
-
-
-            </div>
+            ) : null}
 
             {post.product_type && (
               <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg mt-6 mb-8">

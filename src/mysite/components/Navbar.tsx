@@ -308,13 +308,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
-                    {cat.name}
+                    {cat.icon_image && (
+                      <img src={cat.icon_image} alt="" className="w-4 h-4 rounded object-cover shrink-0" />
+                    )}
+                    <span>{cat.name}</span>
+                    {cat.custom_badge && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {cat.custom_badge}
+                      </span>
+                    )}
                     {hasSub && <span className="text-[10px] opacity-60">▼</span>}
                   </span>
                 </button>
 
                 {hasSub && (
-                  <div className="absolute left-0 mt-1 w-40 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1.5 hidden group-hover:block z-50">
+                  <div className="absolute left-0 mt-1 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1.5 hidden group-hover:block z-50">
                     {subcategories.map(sub => (
                       <button
                         key={sub.id}
@@ -323,13 +331,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                           onNavigateHome();
                           onSelectCategory(sub.id);
                         }}
-                        className={`w-full text-left px-4 py-2 text-xs transition-colors ${
+                        className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center justify-between gap-2 ${
                           activeCategory === sub.id
                             ? 'text-indigo-400 bg-indigo-500/10 font-semibold'
                             : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                         }`}
                       >
-                        {sub.name}
+                        <span className="flex items-center gap-1.5">
+                          {sub.icon_image && (
+                            <img src={sub.icon_image} alt="" className="w-3.5 h-3.5 rounded object-cover shrink-0" />
+                          )}
+                          <span>{sub.name}</span>
+                        </span>
+                        {sub.custom_badge && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            {sub.custom_badge}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>

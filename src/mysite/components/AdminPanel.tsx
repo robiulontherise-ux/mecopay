@@ -76,6 +76,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showDefaultHome, setShowDefaultHome] = useState(siteSettings?.show_default_home || false);
   const [defaultHomeContent, setDefaultHomeContent] = useState(siteSettings?.default_home_content || '');
   const [defaultHomeFormatType, setDefaultHomeFormatType] = useState(siteSettings?.default_home_format_type || 'standard');
+  const [footerButtons, setFooterButtons] = useState<Array<{ label: string; url_or_page: string; is_external?: boolean }>>(siteSettings?.footer_buttons || []);
 
   // Form State for Post Creation / Edit
   const [postTitle, setPostTitle] = useState('');
@@ -89,6 +90,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showShareBtn, setShowShareBtn] = useState(true);
   const [showThumbnail, setShowThumbnail] = useState(true);
   const [showFullPost, setShowFullPost] = useState(false);
+  const [showAsLanding, setShowAsLanding] = useState(false);
   const [isCustomPage, setIsCustomPage] = useState(false);
   const [productType, setProductType] = useState<'physical' | 'digital' | 'just_form'>('physical');
   const [digitalSettings, setDigitalSettings] = useState<any>({ buttons: [] });
@@ -178,6 +180,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setSiteNameSize(siteSettings.site_name_size || 'normal');
       setShowDefaultHome(siteSettings.show_default_home || false);
       setDefaultHomeContent(siteSettings.default_home_content || '');
+      setFooterButtons(siteSettings.footer_buttons || []);
     }
   }, [siteSettings]);
   
@@ -198,7 +201,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ? `<!-- CODE:live_html -->
 ${defaultHomeContent}`
           : defaultHomeContent,
-        default_home_format_type: defaultHomeFormatType as 'standard' | 'code'
+        default_home_format_type: defaultHomeFormatType as 'standard' | 'code',
+        footer_buttons: footerButtons
       });
       showNotice('Site settings updated!');
     } catch (err: any) {
@@ -337,6 +341,8 @@ ${defaultHomeContent}`
   const [catOrder, setCatOrder] = useState(1);
   const [catDesc, setCatDesc] = useState('');
   const [catParentId, setCatParentId] = useState<string | null>(null);
+  const [catIconImage, setCatIconImage] = useState('');
+  const [catCustomBadge, setCatCustomBadge] = useState('');
 
   const showNotice = (msg: string) => {
     setStatusNotice(msg);
@@ -353,6 +359,7 @@ ${defaultHomeContent}`
     setShowShareBtn(true);
     setShowThumbnail(true);
     setShowFullPost(false);
+    setShowAsLanding(false);
     setIsCustomPage(isPage);
     setSeoTitle('');
     setSeoDescription('');
@@ -388,6 +395,7 @@ Write comprehensive lecture notes, problem sets, and key insights here.
     setShowShareBtn(p.show_share_btn ?? true);
     setShowThumbnail(p.show_thumbnail ?? true);
     setShowFullPost(p.show_full_post ?? false);
+    setShowAsLanding(p.show_as_landing ?? false);
     setProductType(p.product_type || 'physical');
     setDigitalSettings(p.digital_settings || { buttons: [] });
     setActiveTab('edit-post');
@@ -426,7 +434,7 @@ ${postContent}`
 
     const newOrUpdatedPost: Post = {
       id: editingPost?.id || `post_${Date.now()}`,
-      title: (postTitle.trim() || seoTitle.trim() || 'Untitled Post'),
+      title: (postTitle.trim() || seoTitle.trim() || ''),
       slug: postSlug.trim() || `post-${Date.now()}`,
       content: finalContent,
       category_id: validCategory as any,
@@ -443,6 +451,7 @@ ${postContent}`
       show_share_btn: showShareBtn,
       show_thumbnail: showThumbnail,
       show_full_post: showFullPost,
+      show_as_landing: showAsLanding,
       summary: effectiveSummary,
       tags: tagsArray,
     };
@@ -466,6 +475,9 @@ ${postContent}`
       order_index: Number(catOrder),
       description: catDesc.trim(),
       icon_name: 'BookOpen',
+      icon_image: catIconImage.trim() || undefined,
+      custom_badge: catCustomBadge.trim() || undefined,
+      parent_id: catParentId || null,
     };
 
     await onSaveCategory(newCat);
@@ -473,11 +485,13 @@ ${postContent}`
     setCatName('');
     setCatSlug('');
     setCatDesc('');
+    setCatIconImage('');
+    setCatCustomBadge('');
     showNotice('Navbar category updated successfully in Supabase!');
   };
 
   return (
-    <div className={isFullscreen ? "fixed inset-0 z-[99999] overflow-y-auto bg-slate-950" : "w-full bg-slate-950 text-slate-100 pb-16 flex-1"}>
+    <div className={isFullscreen ? "fixed inset-0 z-[99999] overflow-y-auto bg-slate-950" : "min-h-screen bg-slate-950 text-slate-100 pb-16"}>
       {/* Top Admin Header */}
       <div className="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-30 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between flex-wrap gap-3">
@@ -820,10 +834,37 @@ ${postContent}`
                 </div>
 
                 <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Category Icon or Image URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="e.g. https://.../baby-icon.png or dress-icon.svg"
+                    value={catIconImage}
+                    onChange={(e) => setCatIconImage(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">বাচ্চাদের বা মেয়েদের পোশাক ইত্যাদির ছোট আইকন/ছবি দেওয়ার জন্য</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Custom Badge or Sticker Tag (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. HOT, NEW, 50% OFF, বা স্পেশাল ব্যাজ"
+                    value={catCustomBadge}
+                    onChange={(e) => setCatCustomBadge(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">Description</label>
                   <textarea
                     rows={2}
-                    placeholder="Short description for student category cards..."
+                    placeholder="Short description for category..."
                     value={catDesc}
                     onChange={(e) => setCatDesc(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:ring-2 focus:ring-indigo-500"
@@ -839,6 +880,8 @@ ${postContent}`
                         setCatName('');
                         setCatSlug('');
                         setCatDesc('');
+                        setCatIconImage('');
+                        setCatCustomBadge('');
                       }}
                       className="w-1/3 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs hover:bg-slate-700"
                     >
@@ -868,17 +911,28 @@ ${postContent}`
                   key={cat.id}
                   className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3"
                 >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-5 h-5 rounded bg-indigo-500/20 text-indigo-300 text-xs font-bold flex items-center justify-center">
+                  <div className="flex items-center gap-3">
+                    {cat.icon_image ? (
+                      <img src={cat.icon_image} alt={cat.name} className="w-9 h-9 rounded-lg object-cover bg-slate-950 border border-slate-800 shrink-0" />
+                    ) : (
+                      <span className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-300 text-xs font-bold flex items-center justify-center shrink-0">
                         {cat.order_index}
                       </span>
-                      <h4 className="text-sm font-bold text-white">{cat.name}</h4>
-                      <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
-                        /{cat.slug}
-                      </span>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h4 className="text-sm font-bold text-white">{cat.name}</h4>
+                        {cat.custom_badge && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            {cat.custom_badge}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                          /{cat.slug}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400">{cat.description || 'No description provided.'}</p>
                     </div>
-                    <p className="text-xs text-slate-400">{cat.description || 'No description provided.'}</p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
@@ -890,6 +944,8 @@ ${postContent}`
                         setCatOrder(cat.order_index);
                         setCatDesc(cat.description || '');
                         setCatParentId(cat.parent_id || null);
+                        setCatIconImage(cat.icon_image || '');
+                        setCatCustomBadge(cat.custom_badge || '');
                       }}
                       className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs"
                       title="Edit Category"
@@ -1093,6 +1149,115 @@ ${postContent}`
                 </div>
               )}
             </div>
+
+            {/* Custom Footer Links & Policy Pages */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 lg:col-span-2 space-y-5 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Link className="w-4 h-4 text-cyan-400" />
+                    ফুটার বাটন ও পলিসি লিংক (Footer Buttons & Policy Links)
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    ওয়েবসাইটের নিচে Privacy Policy, Refund Policy, Terms, বা কাস্টম প্লেলিস্ট/লিংক বাটন যুক্ত করুন।
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFooterButtons(prev => [...prev, { label: 'Privacy Policy', url_or_page: '' }]);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ বাটন যুক্ত করুন</span>
+                </button>
+              </div>
+
+              {footerButtons.length === 0 ? (
+                <div className="p-6 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                  কোনো কাস্টম ফুটার লিংক যুক্ত করা হয়নি। উপরে <strong>"+ বাটন যুক্ত করুন"</strong> বাটনে ক্লিক করে Privacy Policy, Refund Policy বা কাস্টম লিংক যুক্ত করুন।
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {footerButtons.map((btn, idx) => (
+                    <div key={idx} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                      <div className="flex-1 w-full">
+                        <label className="text-[11px] font-bold text-slate-400 block mb-1">বাটনের নাম (Label)</label>
+                        <input
+                          type="text"
+                          value={btn.label}
+                          onChange={(e) => {
+                            const updated = [...footerButtons];
+                            updated[idx].label = e.target.value;
+                            setFooterButtons(updated);
+                          }}
+                          placeholder="যেমন: Privacy Policy বা Refund Policy"
+                          className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs focus:ring-1 focus:ring-cyan-500"
+                        />
+                      </div>
+
+                      <div className="flex-1 w-full">
+                        <label className="text-[11px] font-bold text-slate-400 block mb-1">লিংক বা কাস্টম পেজ</label>
+                        <div className="flex gap-2">
+                          <select
+                            value={btn.url_or_page.startsWith('#post/') ? btn.url_or_page : ''}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                const updated = [...footerButtons];
+                                updated[idx].url_or_page = e.target.value;
+                                setFooterButtons(updated);
+                              }
+                            }}
+                            className="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs focus:ring-1 focus:ring-cyan-500"
+                          >
+                            <option value="">কাস্টম পেজ থেকে বাছুন...</option>
+                            {posts.filter(p => p.is_custom_page).map(page => (
+                              <option key={page.id} value={`#post/${page.slug}`}>
+                                📄 {page.title || page.slug}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="text"
+                            placeholder="বা সরাসরি URL লিখুন"
+                            value={btn.url_or_page}
+                            onChange={(e) => {
+                              const updated = [...footerButtons];
+                              updated[idx].url_or_page = e.target.value;
+                              setFooterButtons(updated);
+                            }}
+                            className="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs focus:ring-1 focus:ring-cyan-500"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFooterButtons(prev => prev.filter((_, i) => i !== idx));
+                        }}
+                        className="sm:mt-5 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs transition-colors"
+                        title="Remove Button"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveSettingsSubmit}
+                  className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-md shadow-cyan-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>ফুটার সেটিংস সেভ করুন</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1226,7 +1391,14 @@ ${postContent}`
                       <input type="checkbox" checked={showFullPost} onChange={(e) => setShowFullPost(e.target.checked)} className="text-indigo-500 bg-slate-900 border-slate-700 rounded" />
                       <span className="text-xs text-slate-300">Show Full Content in List</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer sm:col-span-2 mt-2 p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                    <label className="flex items-center gap-2.5 cursor-pointer sm:col-span-2 p-2.5 bg-cyan-500/10 rounded-xl border border-cyan-500/20">
+                      <input type="checkbox" checked={showAsLanding} onChange={(e) => setShowAsLanding(e.target.checked)} className="text-cyan-500 bg-slate-900 border-slate-700 rounded w-4 h-4" />
+                      <div>
+                        <span className="text-xs font-bold text-cyan-300 block">সরাসরি ফুল পেজ / ল্যান্ডিং পেজ হিসেবে দেখাবে (Direct Full-Width Display)</span>
+                        <span className="text-[10px] text-slate-400">ছোট ৩-কলামের কার্ডে বন্দি না হয়ে সরাসরি পুরো পেজ জুড়ে লাইভ কোড বা কন্টেন্ট সেন্টারে বড় আকারে প্রদর্শিত হবে।</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer sm:col-span-2 mt-1 p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
                       <input type="checkbox" checked={isCustomPage} onChange={(e) => setIsCustomPage(e.target.checked)} className="text-indigo-500 bg-slate-900 border-slate-700 rounded" />
                       <div>
                         <span className="text-xs font-bold text-indigo-300 block">Make this a Custom Hidden Page</span>
@@ -1475,78 +1647,101 @@ ${postContent}`
                 </div>
               </div>
               {!isLiveCode ? (
+                <div className="bg-slate-100 rounded-xl overflow-hidden border border-slate-800 text-slate-900 shadow-xl">
+                  <div className="bg-slate-200 border-b border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 flex items-center justify-between">
+                    <span>Visual Rich Text Editor (সরাসরি কালার, ফন্ট ও ইমেজ দিয়ে ফরম্যাট করুন)</span>
+                    <span className="text-[11px] text-slate-500 font-normal">What You See Is What You Get</span>
+                  </div>
+                  <Editor
+                    value={postContent}
+                    onChange={(e) => setPostContent(e.target.value)}
+                    className="w-full p-5 font-sans text-sm leading-relaxed focus:outline-none min-h-[420px]"
+                    style={{ minHeight: '420px' }}
+                  >
+                    <Toolbar>
+                      <BtnBold />
+                      <BtnItalic />
+                      <BtnUnderline />
+                      <BtnStrikeThrough />
+                      <Separator />
+                      <input 
+                        type="color" 
+                        onChange={(e) => document.execCommand('foreColor', false, e.target.value)} 
+                        title="Text Color" 
+                        className="w-6 h-6 p-0 border-0 cursor-pointer bg-transparent" 
+                      />
+                      <Separator />
+                      <select 
+                        onChange={(e) => document.execCommand('fontSize', false, e.target.value)} 
+                        className="text-xs border border-slate-300 rounded px-1 bg-white text-slate-700 h-6"
+                        title="Text Size"
+                      >
+                        <option value="">Size</option>
+                        <option value="2">Small</option>
+                        <option value="3">Normal</option>
+                        <option value="4">Medium</option>
+                        <option value="5">Large</option>
+                        <option value="6">X-Large</option>
+                        <option value="7">Huge</option>
+                      </select>
+                      <Separator />
+                      <BtnNumberedList />
+                      <BtnBulletList />
+                      <BtnLink />
+                      <BtnClearFormatting />
+                      <BtnStyles />
+                    </Toolbar>
+                  </Editor>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-slate-800 p-3.5 rounded-lg border border-slate-700 space-y-1">
+                    <div className="text-xs font-bold text-indigo-300 flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                      All Languages Supported (Live Code Mode)
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      You can paste <strong>HTML, CSS, JS</strong> or any interactive web landing page code here. The live preview updates on the right automatically!
+                    </p>
+                  </div>
                   <div className="grid lg:grid-cols-2 gap-4">
-                    <div className="bg-slate-100 rounded-xl overflow-hidden border border-slate-800 text-slate-900">
-                      <div className="bg-slate-200 border-b border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Rich Text Editor</div>
-                      <Editor
+                    <div className="flex flex-col">
+                      <div className="bg-slate-800 px-3 py-1.5 text-[11px] font-bold text-slate-300 border border-b-0 border-slate-700 rounded-t-xl">
+                        Code Editor (HTML / CSS / JS)
+                      </div>
+                      <textarea
+                        id="code-editor-textarea"
+                        rows={18}
                         value={postContent}
                         onChange={(e) => setPostContent(e.target.value)}
-                        className="w-full p-4 font-sans text-sm leading-relaxed focus:outline-none"
-                        style={{ minHeight: '400px' }}
-                      >
-                        <Toolbar>
-                          <BtnBold />
-                          <BtnItalic />
-                          <BtnUnderline />
-                          <BtnStrikeThrough />
-                          <Separator />
-                          <input 
-                            type="color" 
-                            onChange={(e) => document.execCommand('foreColor', false, e.target.value)} 
-                            title="Text Color" 
-                            className="w-6 h-6 p-0 border-0 cursor-pointer bg-transparent" 
-                          />
-                          <Separator />
-                          <select 
-                            onChange={(e) => document.execCommand('fontSize', false, e.target.value)} 
-                            className="text-xs border border-slate-300 rounded px-1 bg-white text-slate-700 h-6"
-                            title="Text Size"
-                          >
-                            <option value="">Size</option>
-                            <option value="2">Small</option>
-                            <option value="3">Normal</option>
-                            <option value="4">Medium</option>
-                            <option value="5">Large</option>
-                            <option value="6">X-Large</option>
-                            <option value="7">Huge</option>
-                          </select>
-                          <Separator />
-                          <BtnNumberedList />
-                          <BtnBulletList />
-                          <BtnLink />
-                          <BtnClearFormatting />
-                          <BtnStyles />
-                        </Toolbar>
-                      </Editor>
+                        placeholder="Paste your HTML, JS, CSS, Python, C++ or any other raw code here..."
+                        className="w-full flex-1 p-4 rounded-b-xl bg-slate-900 border border-slate-800 text-slate-100 font-mono text-xs leading-relaxed focus:ring-2 focus:ring-indigo-500"
+                        style={{ minHeight: '420px' }}
+                      />
                     </div>
-                    <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800 flex flex-col">
-                      <div className="bg-slate-800/80 border-b border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300">Live Preview</div>
-                      <div className="p-4 prose prose-invert prose-headings:font-bold max-w-none overflow-y-auto h-[400px]">
-                        <ReactMarkdown>{postContent}</ReactMarkdown>
+                    <div className="flex flex-col bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-xl">
+                      <div className="bg-slate-800/80 border-b border-slate-700 px-3.5 py-1.5 text-xs font-bold text-slate-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                          লাইভ প্রিভিউ (Real-Time Live Rendering)
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
+                          Live Sandbox
+                        </span>
+                      </div>
+                      <div className="flex-1 bg-white relative overflow-hidden min-h-[420px]">
+                        <iframe
+                          srcDoc={postContent || '<div style="padding:40px;text-align:center;color:#888;font-family:sans-serif;">কন্টেন্ট বা কোড লিখলে এখানে রিয়েল-টাইম প্রিভিউ ভেসে উঠবে...</div>'}
+                          className="w-full h-full border-none"
+                          style={{ minHeight: '420px' }}
+                          title="Live Code Preview"
+                          sandbox="allow-scripts allow-same-origin allow-forms"
+                        />
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="bg-slate-800 p-3.5 rounded-lg border border-slate-700 space-y-1">
-                      <div className="text-xs font-bold text-indigo-300 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                        All Languages Supported
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        You don't need to select a specific language. You can use <strong>HTML, CSS, JS, Python, C++, Java, Node.js, PHP</strong> or any combination of code directly in this editor. It will render raw or interpret web codes automatically!
-                      </p>
-                    </div>
-                    <textarea
-                      id="code-editor-textarea"
-                      rows={16}
-                      value={postContent}
-                      onChange={(e) => setPostContent(e.target.value)}
-                      placeholder="Paste your HTML, JS, CSS, Python, C++ or any other raw code here..."
-                      className="w-full p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 font-mono text-xs leading-relaxed focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                )}
+                </div>
+              )}
             </div>
 
 
