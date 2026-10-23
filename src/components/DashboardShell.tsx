@@ -1033,8 +1033,8 @@ export default function DashboardShell() {
   }, [navigate]);
 
   // Role approval can happen in a separate admin session while this dashboard stays open.
-  // Re-read only the user's role flags on focus/visibility and while the page is active so
-  // the Freelancer/Influencer tabs appear without requiring a sign-out or hard reload.
+  // Re-read role/access flags on focus/visibility and while active so approved Freelancer,
+  // Influencer, and granted Tele Sales tabs appear without sign-out or hard reload.
   useEffect(() => {
     const profileId = user?.id;
     if (!profileId) return;
@@ -1042,20 +1042,26 @@ export default function DashboardShell() {
     let warned = false;
     const refreshWorkspaceRoles = async () => {
       if (document.visibilityState === 'hidden') return;
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_freelancer,is_influencer')
-        .eq('id', profileId)
-        .maybeSingle();
+      const [profileResult, teleSalesResult] = await Promise.all([
+        supabase.from('profiles')
+          .select('is_freelancer,is_influencer')
+          .eq('id', profileId)
+          .maybeSingle(),
+        supabase.rpc('has_tele_sales_access'),
+      ]);
       if (!isActive) return;
-      if (error) {
-        if (!warned) console.warn('Could not refresh workspace role flags:', error.message);
+      if (profileResult.error) {
+        if (!warned) console.warn('Could not refresh workspace role flags:', profileResult.error.message);
         warned = true;
-        return;
+      } else if (profileResult.data) {
+        setIsFreelancer(profileResult.data.is_freelancer === true);
+        setIsInfluencer(profileResult.data.is_influencer === true);
       }
-      if (data) {
-        setIsFreelancer(data.is_freelancer === true);
-        setIsInfluencer(data.is_influencer === true);
+      if (teleSalesResult.error) {
+        if (!warned) console.warn('Could not refresh Tele Sales access:', teleSalesResult.error.message);
+        warned = true;
+      } else {
+        setHasTeleSalesAccess(teleSalesResult.data === true);
       }
     };
     const onVisibilityChange = () => {
@@ -4379,7 +4385,7 @@ export default function DashboardShell() {
                 <button
                   key={idx}
                   onClick={() => {
-                    if (!isDashboardUnlocked && item !== 'Profile') {
+                    if (!isDashboardUnlocked && item !== 'Profile' && activeTab !== 'teleSales') {
                       showToast("ড্যাশবোর্ড সম্পূর্ণ আনলক করতে প্রোফাইলে তথ্য ও পরিচয়পত্র জমা দিন!", "error");
                       return;
                     }
@@ -4389,14 +4395,14 @@ export default function DashboardShell() {
                   className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
                     isSubActive
                       ? 'text-emerald-400 bg-emerald-500/10 font-bold'
-                      : !isDashboardUnlocked && item !== 'Profile'
+                      : !isDashboardUnlocked && item !== 'Profile' && activeTab !== 'teleSales'
                         ? 'text-slate-600 cursor-not-allowed opacity-50'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     {item}
-                    {!isDashboardUnlocked && item !== 'Profile' && <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />}
+                    {!isDashboardUnlocked && item !== 'Profile' && activeTab !== 'teleSales' && <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />}
                   </div>
                   {isSubActive && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />}
                 </button>

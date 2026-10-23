@@ -347,11 +347,10 @@ BEGIN
   SELECT p.id INTO v_member_id
   FROM public.profiles p
   WHERE lower(p.email) = lower(btrim(p_member_email))
-    AND p.verification_status = 'verified'
     AND p.id <> v_client_id
   LIMIT 1;
   IF v_member_id IS NULL THEN
-    RAISE EXCEPTION 'No verified teammate account matches that email';
+    RAISE EXCEPTION 'No logged-in teammate account matches that email. Ask the teammate to sign in first.';
   END IF;
   v_keys := ARRAY(SELECT DISTINCT field_key FROM unnest(COALESCE(p_field_keys, '{}')) AS input(field_key));
   IF cardinality(v_keys) = 0 OR EXISTS (

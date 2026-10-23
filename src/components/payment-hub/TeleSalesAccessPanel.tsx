@@ -133,7 +133,7 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
       await loadAccess();
     } catch (error: any) {
       console.error('Could not grant Tele Sales access:', error);
-      showToast(error?.message || 'Could not grant access. The teammate must have a verified account.', 'error');
+      showToast(error?.message || 'Could not grant access. Ask the teammate to sign in once with this email, then try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -168,7 +168,7 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
       <header className="flex items-center gap-3">
         <span className="flex items-center gap-3">
           <span className="rounded-xl bg-cyan-500/10 p-2.5 text-cyan-200"><ShieldCheck className="h-5 w-5" /></span>
-          <span><span className="block text-lg font-bold text-white">Tele Sales Access</span><span className="mt-1 block text-sm text-slate-400">Usage: select a verified teammate, choose the invoice fields they may use for sales calls, then review call outcomes and follow-ups here.</span></span>
+          <span><span className="block text-lg font-bold text-white">Tele Sales Access</span><span className="mt-1 block text-sm text-slate-400">Usage: enter a teammate's email after they have logged in once, choose the invoice fields they may use, then review call outcomes and follow-ups. Merchant verification is not required.</span></span>
         </span>
       </header>
 
