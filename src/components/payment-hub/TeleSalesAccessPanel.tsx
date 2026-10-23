@@ -11,11 +11,23 @@ const fields = [
   ['customer_phone', 'Customer phone'],
   ['customer_email', 'Customer email'],
   ['customer_address', 'Customer address'],
+  ['sender_number', 'Sender number'],
+  ['gateway_used', 'Payment gateway'],
+  ['trx_id', 'Transaction ID'],
   ['amount', 'Amount'],
   ['total_amount', 'Total amount'],
   ['product_price', 'Product price'],
   ['status', 'Invoice status'],
   ['created_at', 'Invoice date'],
+  ['is_full_cod', 'Full COD order'],
+  ['advance_amount', 'Advance amount'],
+  ['tele_sales_cod_status', 'COD confirmation status'],
+] as const;
+const actions = [
+  ['verify_manual', 'Manually verify payment'],
+  ['cancel_invoice', 'Cancel eligible order'],
+  ['mark_failed', 'Mark payment failed'],
+  ['confirm_full_cod', 'Confirm Full COD order'],
 ] as const;
 
 type AccessRow = {
@@ -27,16 +39,22 @@ type AccessRow = {
   access_status: string;
   granted_at: string | null;
 };
-type CallLogRow = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string };
+type ActionAccessRow = { access_id: string; member_id: string; member_name: string | null; member_email: string | null; action_key: string; access_status: string; granted_at: string | null };
+type CallLogRow = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string; called_phone: string | null };
 
 export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]; userId: string }) {
   const [brandId, setBrandId] = useState('');
   const [memberEmail, setMemberEmail] = useState('');
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [rows, setRows] = useState<AccessRow[]>([]);
+  const [actionRows, setActionRows] = useState<ActionAccessRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingActions, setLoadingActions] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingActions, setSavingActions] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [revokingActionId, setRevokingActionId] = useState<string | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
   const [invoices, setInvoices] = useState<any[]>([]);
   const [callLogs, setCallLogs] = useState<CallLogRow[]>([]);
@@ -65,23 +83,48 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
     return () => { cancelled = true; };
   }, [userId]);
 
-  const loadAccess = async () => {
+  const loadAccess = async (quiet = false) => {
     if (!brandId) { setRows([]); return; }
-    setLoading(true);
+    if (!quiet) setLoading(true);
     try {
       const { data, error } = await supabase.rpc('list_tele_sales_access', { p_brand_id: brandId });
       if (error) throw error;
       setRows((data || []) as AccessRow[]);
     } catch (error: any) {
       console.error('Could not load Tele Sales access:', error);
-      showToast(error?.message || 'Could not load Tele Sales access. Run the supplied access SQL first.', 'error');
+      if (!quiet) showToast(error?.message || 'Could not load Tele Sales access. Run the supplied access SQL first.', 'error');
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
+    }
+  };
+
+  const loadActions = async (quiet = false) => {
+    if (!brandId) { setActionRows([]); return; }
+    if (!quiet) setLoadingActions(true);
+    try {
+      const { data, error } = await supabase.rpc('list_tele_sales_invoice_actions', { p_brand_id: brandId });
+      if (error) throw error;
+      setActionRows((data || []) as ActionAccessRow[]);
+    } catch (error: any) {
+      console.error('Could not load Tele Sales action permissions:', error);
+      if (!quiet) showToast(error?.message || 'Could not load action permissions. Run the Tele Sales invoice-actions SQL first.', 'error');
+    } finally {
+      if (!quiet) setLoadingActions(false);
     }
   };
 
   useEffect(() => {
-    if (brandId) void loadAccess();
+    if (brandId) { void loadAccess(); void loadActions(); }
+  }, [brandId]);
+
+  useEffect(() => {
+    if (!brandId) return;
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== 'hidden') { void loadAccess(true); void loadActions(true); }
+    };
+    const timer = window.setInterval(refreshIfVisible, 20000);
+    window.addEventListener('focus', refreshIfVisible);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshIfVisible); };
   }, [brandId]);
 
   useEffect(() => {
@@ -91,23 +134,33 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
     }
   }, [invoices, brandId, selectedInvoiceId]);
 
-  const loadCallLogs = async () => {
+  const loadCallLogs = async (quiet = false) => {
     if (!selectedInvoiceId) { setCallLogs([]); return; }
-    setLoadingLogs(true);
+    if (!quiet) setLoadingLogs(true);
     try {
       const { data, error } = await supabase.rpc('list_tele_sales_call_logs', { p_invoice_id: selectedInvoiceId });
       if (error) throw error;
       setCallLogs((data || []) as CallLogRow[]);
     } catch (error: any) {
       console.error('Could not load client Tele Sales history:', error);
-      showToast(error?.message || 'Could not load Tele Sales call history.', 'error');
+      if (!quiet) showToast(error?.message || 'Could not load Tele Sales call history.', 'error');
     } finally {
-      setLoadingLogs(false);
+      if (!quiet) setLoadingLogs(false);
     }
   };
 
   useEffect(() => {
     if (selectedInvoiceId) void loadCallLogs();
+  }, [selectedInvoiceId]);
+
+  useEffect(() => {
+    if (!selectedInvoiceId) return;
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== 'hidden') void loadCallLogs(true);
+    };
+    const timer = window.setInterval(refreshIfVisible, 15000);
+    window.addEventListener('focus', refreshIfVisible);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshIfVisible); };
   }, [selectedInvoiceId]);
 
   const toggleField = (key: string) => setSelectedFields(current => current.includes(key)
@@ -154,13 +207,61 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
     }
   };
 
+  const grantActions = async () => {
+    if (!brandId || !memberEmail.trim() || !selectedActions.length) {
+      showToast('Enter the same logged-in teammate email and select at least one action.', 'error');
+      return;
+    }
+    setSavingActions(true);
+    try {
+      const { error } = await supabase.rpc('grant_tele_sales_invoice_actions', {
+        p_brand_id: brandId,
+        p_member_email: memberEmail.trim(),
+        p_action_keys: selectedActions,
+      });
+      if (error) throw error;
+      setMemberEmail('');
+      setSelectedActions([]);
+      showToast('Selected invoice actions are now available to this teammate.', 'success');
+      await loadActions();
+    } catch (error: any) {
+      console.error('Could not grant Tele Sales actions:', error);
+      showToast(error?.message || 'Grant at least one invoice field to this teammate before granting actions.', 'error');
+    } finally {
+      setSavingActions(false);
+    }
+  };
+
+  const revokeAction = async (accessId: string) => {
+    setRevokingActionId(accessId);
+    try {
+      const { error } = await supabase.rpc('revoke_tele_sales_invoice_action', { p_access_id: accessId });
+      if (error) throw error;
+      showToast('Invoice action permission revoked.', 'success');
+      await loadActions();
+    } catch (error: any) {
+      console.error('Could not revoke Tele Sales action:', error);
+      showToast(error?.message || 'Could not revoke the action permission.', 'error');
+    } finally {
+      setRevokingActionId(null);
+    }
+  };
+
   const fieldLabel = (key: string) => fields.find(([id]) => id === key)?.[1] || key;
+  const actionLabel = (key: string) => actions.find(([id]) => id === key)?.[1] || key;
   const activeRows = rows.filter(row => row.access_status === 'active');
   const grouped = new Map<string, { name: string; email: string; fields: AccessRow[] }>();
   for (const row of activeRows) {
     const group = grouped.get(row.member_id) || { name: row.member_name || 'Teammate', email: row.member_email || '', fields: [] };
     group.fields.push(row);
     grouped.set(row.member_id, group);
+  }
+  const activeActionRows = actionRows.filter(row => row.access_status === 'active');
+  const actionsGrouped = new Map<string, { name: string; email: string; actions: ActionAccessRow[] }>();
+  for (const row of activeActionRows) {
+    const group = actionsGrouped.get(row.member_id) || { name: row.member_name || 'Teammate', email: row.member_email || '', actions: [] };
+    group.actions.push(row);
+    actionsGrouped.set(row.member_id, group);
   }
 
   return (
@@ -189,9 +290,22 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {fields.map(([key, label]) => <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"><input type="checkbox" checked={selectedFields.includes(key)} onChange={() => toggleField(key)} className="accent-cyan-500" />{label}</label>)}
           </div>
-          <p className="mt-2 text-xs text-slate-500">Transaction IDs, gateway numbers, passcodes and raw metadata are never exposed by this view.</p>
+          <p className="mt-2 text-xs text-slate-500">Sensitive fields such as sender number, gateway and transaction ID are visible only when you explicitly select them. Raw metadata and passcodes are never exposed.</p>
         </div>
         <button type="button" onClick={() => void grant()} disabled={saving || !brands.length} className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-500 disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Grant selected fields</button>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <p className="font-semibold text-white">Invoice actions (separate permission)</p>
+          <p className="mt-1 text-xs text-slate-400">The teammate must already have at least one invoice-field grant for this brand. Each action is validated and logged by the database.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {actions.map(([key, label]) => <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-800 px-3 py-2 text-sm text-slate-300"><input type="checkbox" checked={selectedActions.includes(key)} onChange={() => setSelectedActions(current => current.includes(key) ? current.filter(item => item !== key) : [...current, key])} className="accent-amber-500" />{label}</label>)}
+          </div>
+          <button type="button" onClick={() => void grantActions()} disabled={savingActions || !brands.length} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-100 disabled:opacity-50">{savingActions ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Grant selected actions to email above</button>
+          <div className="mt-5 border-t border-slate-800 pt-4">
+            <div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-slate-200">Active invoice actions</p><p className="text-xs text-slate-500">Action permission can be revoked independently from field visibility.</p></div><button type="button" onClick={() => void loadActions()} disabled={loadingActions} className="rounded-lg border border-slate-700 p-2 text-slate-300"><RefreshCw className={`h-4 w-4 ${loadingActions ? 'animate-spin' : ''}`} /></button></div>
+            {loadingActions ? <p className="text-sm text-slate-400">Loading action permissions…</p> : actionsGrouped.size === 0 ? <p className="text-sm text-slate-500">No invoice actions granted for this brand.</p> : <div className="space-y-3">{Array.from(actionsGrouped.entries()).map(([memberId, member]) => <article key={memberId} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3"><p className="font-semibold text-white">{member.name}</p><p className="text-xs text-slate-500">{member.email}</p><div className="mt-2 flex flex-wrap gap-2">{member.actions.map(row => <span key={row.access_id} className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-3 py-1 text-xs text-amber-100">{actionLabel(row.action_key)}<button type="button" aria-label={`Revoke ${actionLabel(row.action_key)}`} onClick={() => void revokeAction(row.access_id)} disabled={revokingActionId === row.access_id} className="text-rose-300 hover:text-rose-200 disabled:opacity-50">{revokingActionId === row.access_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}</button></span>)}</div></article>)}</div>}
+          </div>
+        </div>
 
         <div className="border-t border-slate-800 pt-5">
           <div className="mb-3 flex items-center justify-between gap-3"><div><h3 className="font-bold text-white">Active Tele Sales Teammates</h3><p className="text-xs text-slate-500">Revoking a field takes effect immediately in the Tele Sales view.</p></div><button type="button" onClick={() => void loadAccess()} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh</button></div>
@@ -209,7 +323,7 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
             </label>
             <button type="button" onClick={() => void loadCallLogs()} disabled={loadingLogs || !selectedInvoiceId} className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2.5 text-sm font-semibold text-slate-300"><RefreshCw className={`h-4 w-4 ${loadingLogs ? 'animate-spin' : ''}`} />Refresh history</button>
           </div>
-          {loadingLogs ? <div className="mt-3 flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading call history…</div> : callLogs.length === 0 ? <p className="mt-3 text-sm text-slate-500">No call history for this invoice.</p> : <div className="mt-3 space-y-2">{callLogs.map(log => <article key={log.id} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3"><p className="text-sm font-semibold text-slate-200">{log.call_status.replaceAll('_', ' ')} <span className="font-normal text-slate-500">by {log.member_name || 'teammate'} · {new Date(log.called_at).toLocaleString()}</span></p>{log.call_note && <p className="mt-1 whitespace-pre-wrap text-sm text-slate-400">{log.call_note}</p>}{log.follow_up_at && <p className="mt-1 text-xs text-amber-200">Follow-up: {new Date(log.follow_up_at).toLocaleString()}</p>}</article>)}</div>}
+          {loadingLogs ? <div className="mt-3 flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading call history…</div> : callLogs.length === 0 ? <p className="mt-3 text-sm text-slate-500">No call history for this invoice.</p> : <div className="mt-3 space-y-2">{callLogs.map(log => <article key={log.id} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3"><p className="text-sm font-semibold text-slate-200">{log.call_status.replaceAll('_', ' ')} <span className="font-normal text-slate-500">by {log.member_name || 'teammate'} · {new Date(log.called_at).toLocaleString()}</span></p>{log.called_phone && <p className="mt-1 text-xs text-cyan-200">Called number: {log.called_phone}</p>}{log.call_note && <p className="mt-1 whitespace-pre-wrap text-sm text-slate-400">{log.call_note}</p>}{log.follow_up_at && <p className="mt-1 text-xs text-amber-200">Follow-up: {new Date(log.follow_up_at).toLocaleString()}</p>}</article>)}</div>}
         </div>
       </div>
     </section>

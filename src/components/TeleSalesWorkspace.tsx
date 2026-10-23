@@ -11,11 +11,18 @@ const labels: Record<string, string> = {
   customer_phone: 'Phone',
   customer_email: 'Email',
   customer_address: 'Address',
+  sender_number: 'Sender number',
+  gateway_used: 'Payment gateway',
+  trx_id: 'Transaction ID',
   amount: 'Amount',
   total_amount: 'Total amount',
   product_price: 'Product price',
   status: 'Invoice status',
   created_at: 'Invoice date',
+  is_full_cod: 'Full COD order',
+  advance_amount: 'Advance amount',
+  brand_name: 'Brand',
+  tele_sales_cod_status: 'COD confirmation status',
 };
 const fieldOrder = Object.keys(labels);
 const callStatuses = [
@@ -28,7 +35,14 @@ const callStatuses = [
   ['wrong_number', 'Wrong number'],
 ] as const;
 
-type CallLog = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string };
+type CallLog = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string; called_phone: string | null };
+type ActionPermission = { brand_id: string; action_key: string };
+const actionLabels: Record<string, string> = {
+  verify_manual: 'Verify payment',
+  cancel_invoice: 'Cancel order',
+  mark_failed: 'Mark failed',
+  confirm_full_cod: 'Confirm Full COD',
+};
 
 function formatValue(key: string, value: any) {
   if (key === 'created_at') return new Date(value).toLocaleString();
@@ -36,7 +50,7 @@ function formatValue(key: string, value: any) {
   return String(value ?? '');
 }
 
-function TeleSalesInvoiceCard({ invoice }: { invoice: any }) {
+function TeleSalesInvoiceCard({ invoice, permittedActions, onActionCompleted }: { invoice: any; permittedActions: string[]; onActionCompleted: () => void }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [logs, setLogs] = useState<CallLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
@@ -44,22 +58,31 @@ function TeleSalesInvoiceCard({ invoice }: { invoice: any }) {
   const [callStatus, setCallStatus] = useState('no_answer');
   const [callNote, setCallNote] = useState('');
   const [followUpAt, setFollowUpAt] = useState('');
+  const [actionNote, setActionNote] = useState('');
+  const [savingAction, setSavingAction] = useState(false);
 
-  const loadLogs = useCallback(async () => {
-    setLoadingLogs(true);
+  const loadLogs = useCallback(async (quiet = false) => {
+    if (!quiet) setLoadingLogs(true);
     try {
       const { data, error } = await supabase.rpc('list_tele_sales_call_logs', { p_invoice_id: invoice.invoice_id });
       if (error) throw error;
       setLogs((data || []) as CallLog[]);
     } catch (error: any) {
       console.error('Could not load call history:', error);
-      showToast(error?.message || 'Could not load call history.', 'error');
+      if (!quiet) showToast(error?.message || 'Could not load call history.', 'error');
     } finally {
-      setLoadingLogs(false);
+      if (!quiet) setLoadingLogs(false);
     }
   }, [invoice.invoice_id]);
 
-  useEffect(() => { if (historyOpen) void loadLogs(); }, [historyOpen, loadLogs]);
+  useEffect(() => {
+    if (!historyOpen) return;
+    void loadLogs();
+    const refreshIfVisible = () => { if (document.visibilityState !== 'hidden') void loadLogs(true); };
+    const timer = window.setInterval(refreshIfVisible, 15000);
+    window.addEventListener('focus', refreshIfVisible);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshIfVisible); };
+  }, [historyOpen, loadLogs]);
 
   const saveCall = async () => {
     setSaving(true);
@@ -69,6 +92,9 @@ function TeleSalesInvoiceCard({ invoice }: { invoice: any }) {
         p_call_status: callStatus,
         p_call_note: callNote.trim() || null,
         p_follow_up_at: followUpAt ? new Date(followUpAt).toISOString() : null,
+        p_contact_field: (invoice.permitted_fields || []).includes('customer_phone')
+          ? 'customer_phone'
+          : (invoice.permitted_fields || []).includes('sender_number') ? 'sender_number' : null,
       });
       if (error) throw error;
       showToast('Call outcome saved.', 'success');
@@ -84,17 +110,41 @@ function TeleSalesInvoiceCard({ invoice }: { invoice: any }) {
     }
   };
 
-  const visibleFields = fieldOrder.filter(key => invoice[key] !== undefined && invoice[key] !== null && invoice[key] !== '');
+  const performAction = async (actionKey: string) => {
+    const label = actionLabels[actionKey] || actionKey;
+    if (!window.confirm(`Confirm action: ${label}?`)) return;
+    setSavingAction(true);
+    try {
+      const { error } = await supabase.rpc('perform_tele_sales_invoice_action', {
+        p_invoice_id: invoice.invoice_id,
+        p_action_key: actionKey,
+        p_action_note: actionNote.trim() || null,
+      });
+      if (error) throw error;
+      showToast(`${label} completed and recorded.`, 'success');
+      setActionNote('');
+      onActionCompleted();
+    } catch (error: any) {
+      console.error('Could not perform Tele Sales invoice action:', error);
+      showToast(error?.message || `Could not ${label.toLowerCase()}.`, 'error');
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
+  const visibleFields = fieldOrder.filter(key => (invoice.permitted_fields || []).includes(key));
 
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleFields.map(key => <div key={key} className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{labels[key]}</p><p className="mt-1 break-words text-sm font-medium text-slate-100">{formatValue(key, invoice[key])}</p></div>)}
+          {visibleFields.map(key => <div key={key} className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{labels[key]}</p><p className="mt-1 break-words text-sm font-medium text-slate-100">{invoice[key] == null || invoice[key] === '' ? '—' : formatValue(key, invoice[key])}</p></div>)}
           {visibleFields.length === 0 && <p className="text-sm text-slate-400">No permitted invoice fields are currently available.</p>}
         </div>
         <button type="button" onClick={() => setHistoryOpen(value => !value)} className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800"><History className="h-4 w-4" />{historyOpen ? 'Hide call history' : 'Call history'}</button>
       </div>
+
+      {permittedActions.length > 0 && <section className="mt-5 border-t border-slate-800 pt-4"><h3 className="text-sm font-semibold text-white">Allowed invoice actions</h3><p className="mt-1 text-xs text-slate-500">Each operation is revalidated against the active grant and invoice status by the server.</p><input value={actionNote} onChange={event => setActionNote(event.target.value)} maxLength={1500} placeholder="Optional action note (for example, customer confirmed)" className="mt-3 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white" /><div className="mt-3 flex flex-wrap gap-2">{permittedActions.map(key => <button key={key} type="button" onClick={() => void performAction(key)} disabled={savingAction} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100 disabled:opacity-50">{savingAction ? 'Saving…' : actionLabels[key] || key}</button>)}</div></section>}
 
       <div className="mt-5 grid gap-3 border-t border-slate-800 pt-4 md:grid-cols-[1fr_1.5fr_1fr_auto] md:items-end">
         <label className="text-xs text-slate-400">Call outcome
@@ -111,7 +161,7 @@ function TeleSalesInvoiceCard({ invoice }: { invoice: any }) {
 
       {historyOpen && <div className="mt-5 border-t border-slate-800 pt-4">
         <div className="mb-3 flex items-center justify-between"><div><h3 className="font-semibold text-white">Call history</h3><p className="text-xs text-slate-500">Activity notes only; calls are not recorded.</p></div><button type="button" onClick={() => void loadLogs()} disabled={loadingLogs} className="rounded-lg border border-slate-700 p-2 text-slate-300"><RefreshCw className={`h-4 w-4 ${loadingLogs ? 'animate-spin' : ''}`} /></button></div>
-        {loadingLogs ? <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading history…</div> : logs.length === 0 ? <p className="text-sm text-slate-500">No calls logged yet.</p> : <div className="space-y-2">{logs.map(log => <div key={log.id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-3"><div className="flex flex-wrap items-center gap-2 text-sm"><Phone className="h-3.5 w-3.5 text-cyan-300" /><span className="font-semibold text-slate-200">{callStatuses.find(([key]) => key === log.call_status)?.[1] || log.call_status}</span><span className="text-xs text-slate-500">by {log.member_name || 'team member'} · {new Date(log.called_at).toLocaleString()}</span></div>{log.call_note && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{log.call_note}</p>}{log.follow_up_at && <p className="mt-2 flex items-center gap-1 text-xs text-amber-200"><Clock3 className="h-3.5 w-3.5" />Follow up: {new Date(log.follow_up_at).toLocaleString()}</p>}</div>)}</div>}
+        {loadingLogs ? <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading history…</div> : logs.length === 0 ? <p className="text-sm text-slate-500">No calls logged yet.</p> : <div className="space-y-2">{logs.map(log => <div key={log.id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-3"><div className="flex flex-wrap items-center gap-2 text-sm"><Phone className="h-3.5 w-3.5 text-cyan-300" /><span className="font-semibold text-slate-200">{callStatuses.find(([key]) => key === log.call_status)?.[1] || log.call_status}</span><span className="text-xs text-slate-500">by {log.member_name || 'team member'} · {new Date(log.called_at).toLocaleString()}</span></div>{log.called_phone && <p className="mt-1 text-xs text-cyan-200">Called number: {log.called_phone}</p>}{log.call_note && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{log.call_note}</p>}{log.follow_up_at && <p className="mt-2 flex items-center gap-1 text-xs text-amber-200"><Clock3 className="h-3.5 w-3.5" />Follow up: {new Date(log.follow_up_at).toLocaleString()}</p>}</div>)}</div>}
       </div>}
     </article>
   );
@@ -119,6 +169,7 @@ function TeleSalesInvoiceCard({ invoice }: { invoice: any }) {
 
 export default function TeleSalesWorkspace() {
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [actionPermissions, setActionPermissions] = useState<ActionPermission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [accessActive, setAccessActive] = useState<boolean | null>(null);
@@ -132,12 +183,20 @@ export default function TeleSalesWorkspace() {
       setAccessActive(hasAccess === true);
       if (hasAccess !== true) {
         setInvoices([]);
+        setActionPermissions([]);
         return;
       }
 
       const { data, error: queryError } = await supabase.rpc('get_tele_sales_invoices');
       if (queryError) throw queryError;
       setInvoices((data || []).map((row: any) => row.invoice_data).filter(Boolean));
+      const { data: actionData, error: actionError } = await supabase.rpc('get_my_tele_sales_invoice_actions');
+      if (actionError) {
+        console.error('Could not load Tele Sales action grants:', actionError);
+        setActionPermissions([]);
+      } else {
+        setActionPermissions((actionData || []) as ActionPermission[]);
+      }
     } catch (error: any) {
       console.error('Could not load permitted Tele Sales invoices:', error);
       setError(error?.message || 'Could not load invoices.');
@@ -169,7 +228,7 @@ export default function TeleSalesWorkspace() {
       {loading && <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading assigned invoices…</div>}
       {!loading && !error && accessActive === false && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">Tele Sales access is no longer active.</div>}
       {!loading && !error && accessActive !== false && invoices.length === 0 && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">No invoices are currently assigned to your Tele Sales access.</div>}
-      <div className="space-y-4">{invoices.map(invoice => <TeleSalesInvoiceCard key={invoice.invoice_id} invoice={invoice} />)}</div>
+      <div className="space-y-4">{invoices.map(invoice => <TeleSalesInvoiceCard key={invoice.invoice_id} invoice={invoice} permittedActions={actionPermissions.filter(item => String(item.brand_id) === String(invoice.brand_id)).map(item => item.action_key)} onActionCompleted={() => { void loadInvoices(true); }} />)}</div>
     </div>
   );
 }
