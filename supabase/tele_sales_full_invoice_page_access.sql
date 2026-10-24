@@ -91,4 +91,35 @@ REVOKE ALL ON FUNCTION public.revoke_tele_sales_invoice_page_access(uuid) FROM P
 GRANT EXECUTE ON FUNCTION public.grant_tele_sales_invoice_page_access(uuid, text, text[]) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.revoke_tele_sales_invoice_page_access(uuid) TO authenticated;
 
+-- A full Invoice page grant is an independent Tele Sales access type.
+-- Keep the existing invoice_field path unchanged; either grant is sufficient
+-- for the Tele Sales tab to appear.
+CREATE OR REPLACE FUNCTION public.has_tele_sales_access()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.client_resource_access a
+    WHERE a.member_id = auth.uid()
+      AND a.status = 'active'
+      AND (
+        a.resource_type = 'invoice_field'
+        OR (
+          a.resource_type = 'dashboard_page'
+          AND a.resource_key IN ('invoices', '*')
+          AND COALESCE(a.actions, '{}'::text[]) @> ARRAY['view']::text[]
+          AND (a.expires_at IS NULL OR a.expires_at > now())
+          AND a.revoked_at IS NULL
+        )
+      )
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.has_tele_sales_access() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.has_tele_sales_access() TO authenticated;
+
 COMMIT;

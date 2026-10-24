@@ -8,9 +8,10 @@ interface InvoicesProps {
   brands: any[];
   sharedContext?: SharedDashboardPageContext;
   readOnly?: boolean;
+  showAllColumns?: boolean;
 }
 
-export default function Invoices({ brands, sharedContext, readOnly = false }: InvoicesProps) {
+export default function Invoices({ brands, sharedContext, readOnly = false, showAllColumns = false }: InvoicesProps) {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -318,6 +319,13 @@ export default function Invoices({ brands, sharedContext, readOnly = false }: In
     return match;
   });
 
+  const allInvoiceColumns = Array.from(new Set(invoices.flatMap(invoice => Object.keys(invoice || {}))));
+  const formatAllColumnValue = (value: any) => {
+    if (value === null || value === undefined || value === '') return '—';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+
 
 
   const handleDownload = (inv: any) => {
@@ -572,6 +580,18 @@ export default function Invoices({ brands, sharedContext, readOnly = false }: In
           </table>
         </div>
       </div>
+
+      {showAllColumns && allInvoiceColumns.length > 0 && (
+        <section className="rounded-xl border border-violet-500/25 bg-violet-500/5 p-4">
+          <div className="mb-3"><h3 className="font-bold text-white">All Invoice Database Fields</h3><p className="mt-1 text-xs text-slate-400">Full page access includes every column returned by the invoices table, including fields not shown in the standard client table.</p></div>
+          <div className="overflow-auto rounded-lg border border-slate-800">
+            <table className="min-w-max w-full text-left text-xs text-slate-300">
+              <thead className="bg-slate-900 text-slate-300 uppercase"><tr>{allInvoiceColumns.map(column => <th key={column} className="px-3 py-3 whitespace-nowrap">{column}</th>)}</tr></thead>
+              <tbody className="divide-y divide-slate-800/70">{filteredInvoices.map(invoice => <tr key={`all-fields-${invoice.id}`} className="hover:bg-slate-800/20">{allInvoiceColumns.map(column => <td key={`${invoice.id}-${String(column)}`} className="max-w-[280px] px-3 py-3 align-top whitespace-pre-wrap break-words">{formatAllColumnValue(invoice[String(column)])}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {selectedInvoice && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
