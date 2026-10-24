@@ -11,6 +11,7 @@ import SocialCustomAgent from './mysite/SocialCustomAgent';
 import Marketplace from './Marketplace';
 import HeadlessOrchestrator from './admin/HeadlessOrchestrator';
 import FreelancerApplicationsAdmin from './admin/FreelancerApplicationsAdmin';
+import InfluencerMaintenance from './admin/InfluencerMaintenance';
 import FreelancerApplicationSection from './FreelancerApplicationSection';
 import FreelancerWorkspace from './FreelancerWorkspace';
 import InfluencerWorkspace from './InfluencerWorkspace';
@@ -1161,7 +1162,7 @@ export default function DashboardShell() {
     ...(isAdmin && {
       admin: {
         title: 'Admin Panel',
-        items: ['Overview', 'Users', 'Freelancer Applications', 'Sms Forwarder Settings', 'Headless Orchestrator', 'System Settings', 'Reports']
+        items: ['Overview', 'Users', 'Freelancer Applications', 'Influencer Maintenance', 'Sms Forwarder Settings', 'Headless Orchestrator', 'System Settings', 'Reports']
       }
     })
   };
@@ -3557,6 +3558,10 @@ export default function DashboardShell() {
 
     if (activeSubMenu === 'Freelancer Applications' && isAdmin) {
       return <FreelancerApplicationsAdmin />;
+    }
+
+    if (activeSubMenu === 'Influencer Maintenance' && isAdmin) {
+      return <InfluencerMaintenance />;
     }
 
     if (activeSubMenu === 'Users' && isAdmin) {

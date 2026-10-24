@@ -1,100 +1,65 @@
-import { useEffect, useState } from 'react';
-import { Loader2, Save, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { BarChart3, BadgePercent, CircleDollarSign, Loader2, WalletCards } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
 
-const parseList = (value: string) => value.split(/[\n,]/).map(item => item.trim()).filter(Boolean);
-const formatList = (value: string[] | null | undefined) => (value || []).join(', ');
+type Profile = { id: string; country: string | null; platform: string | null; profile_url: string | null; status: string; };
+type Coupon = { id: string; coupon_code: string; customer_discount_percent: number; commission_percent: number; status: string; };
+type Conversion = { order_amount: number; commission_amount: number; order_status: string; payout_status: string; };
+type Payout = { approved_amount: number; paid_amount: number; status: string; period_start: string; period_end: string; };
+
+const money = (value: number) => `৳${Number(value || 0).toLocaleString()}`;
 
 export default function InfluencerWorkspace({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [bio, setBio] = useState('');
-  const [niches, setNiches] = useState('');
-  const [languages, setLanguages] = useState('');
-  const [audienceCountries, setAudienceCountries] = useState('');
-  const [platformAccounts, setPlatformAccounts] = useState('[]');
-  const [audienceSummary, setAudienceSummary] = useState('');
-  const [rateCard, setRateCard] = useState('{}');
-  const [profileStatus, setProfileStatus] = useState<'active' | 'paused' | 'hidden'>('active');
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [conversions, setConversions] = useState<Conversion[]>([]);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from('influencer_profiles').select('*').eq('user_id', userId).maybeSingle();
-      if (error) {
-        console.error('Could not load influencer profile:', error);
-        showToast(error.message || 'Could not load influencer profile. Run the supplied SQL migration.', 'error');
-      } else if (data && !cancelled) {
-        setBio(data.bio || '');
-        setNiches(formatList(data.niches));
-        setLanguages(formatList(data.languages));
-        setAudienceCountries(formatList(data.audience_countries));
-        setPlatformAccounts(JSON.stringify(data.platform_accounts || [], null, 2));
-        setAudienceSummary(data.audience_summary || '');
-        setRateCard(JSON.stringify(data.rate_card || {}, null, 2));
-        setProfileStatus(data.profile_status || 'active');
+      const { data: profileData, error: profileError } = await supabase.from('influencer_profiles').select('id,country,platform,profile_url,status').eq('user_id', userId).maybeSingle();
+      if (profileError) showToast(profileError.message || 'Could not load influencer profile.', 'error');
+      if (!profileData) { if (!cancelled) setLoading(false); return; }
+      const [couponResult, conversionResult, payoutResult] = await Promise.all([
+        supabase.from('influencer_coupons').select('id,coupon_code,customer_discount_percent,commission_percent,status').eq('influencer_profile_id', profileData.id).order('created_at', { ascending: false }),
+        supabase.from('influencer_conversions').select('order_amount,commission_amount,order_status,payout_status').eq('influencer_profile_id', profileData.id).order('created_at', { ascending: false }),
+        supabase.from('influencer_payouts').select('approved_amount,paid_amount,status,period_start,period_end').eq('influencer_profile_id', profileData.id).order('period_end', { ascending: false }),
+      ]);
+      if (!cancelled) {
+        setProfile(profileData as Profile);
+        setCoupons((couponResult.data || []) as Coupon[]);
+        setConversions((conversionResult.data || []) as Conversion[]);
+        setPayouts((payoutResult.data || []) as Payout[]);
+        if (couponResult.error || conversionResult.error || payoutResult.error) showToast('Some influencer statistics could not be loaded.', 'error');
+        setLoading(false);
       }
-      if (!cancelled) setLoading(false);
     };
     void load();
     return () => { cancelled = true; };
   }, [userId]);
 
-  const save = async () => {
-    let accounts: any;
-    let rates: any;
-    try {
-      accounts = JSON.parse(platformAccounts || '[]');
-      rates = JSON.parse(rateCard || '{}');
-      if (!Array.isArray(accounts) || !rates || Array.isArray(rates) || typeof rates !== 'object') throw new Error('Platform accounts must be a JSON array and rate card must be a JSON object.');
-    } catch (error: any) {
-      showToast(error?.message || 'Platform and rate card JSON is invalid.', 'error');
-      return;
-    }
-    setSaving(true);
-    try {
-      const { error } = await supabase.from('influencer_profiles').upsert({
-        user_id: userId,
-        bio: bio.trim() || null,
-        niches: parseList(niches),
-        languages: parseList(languages),
-        audience_countries: parseList(audienceCountries),
-        platform_accounts: accounts,
-        audience_summary: audienceSummary.trim() || null,
-        rate_card: rates,
-        profile_status: profileStatus,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-      if (error) throw error;
-      showToast('Influencer profile saved.', 'success');
-    } catch (error: any) {
-      console.error('Could not save influencer profile:', error);
-      showToast(error?.message || 'Could not save influencer profile. Confirm influencer role and SQL policies.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const stats = useMemo(() => {
+    const successful = conversions.filter(row => row.order_status === 'paid');
+    const commission = successful.reduce((sum, row) => sum + Number(row.commission_amount || 0), 0);
+    const sales = successful.reduce((sum, row) => sum + Number(row.order_amount || 0), 0);
+    const paid = conversions.filter(row => row.payout_status === 'paid').reduce((sum, row) => sum + Number(row.commission_amount || 0), 0);
+    return { uses: conversions.length, orders: successful.length, sales, commission, paid, unpaid: Math.max(commission - paid, 0) };
+  }, [conversions]);
 
-  if (loading) return <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading influencer workspace…</div>;
+  if (loading) return <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading influencer dashboard…</div>;
+  if (!profile) return <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-sm text-amber-200">Your influencer access is enabled, but the profile assignment is not ready yet. Please contact the admin.</div>;
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-5">
-      <header><h2 className="flex items-center gap-2 text-2xl font-bold text-white"><Sparkles className="h-6 w-6 text-fuchsia-300" /> Influencer Workspace</h2><p className="mt-1 text-sm text-slate-400">Your influencer role is enabled by an admin. Maintain your public-facing profile and campaign information here.</p></header>
-      <section className="grid gap-4 rounded-2xl border border-fuchsia-500/20 bg-slate-950/60 p-5 sm:grid-cols-2 sm:p-6">
-        <label className="text-sm text-slate-300 sm:col-span-2">Bio
-          <textarea value={bio} onChange={event => setBio(event.target.value)} rows={4} maxLength={3000} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-white" placeholder="Introduce your content and audience." />
-        </label>
-        <label className="text-sm text-slate-300">Niches (comma-separated)<input value={niches} onChange={event => setNiches(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-white" placeholder="beauty, travel, technology" /></label>
-        <label className="text-sm text-slate-300">Languages (comma-separated)<input value={languages} onChange={event => setLanguages(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-white" placeholder="Bengali, English" /></label>
-        <label className="text-sm text-slate-300">Audience countries (comma-separated)<input value={audienceCountries} onChange={event => setAudienceCountries(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-white" placeholder="Bangladesh, India" /></label>
-        <label className="text-sm text-slate-300">Profile status<select value={profileStatus} onChange={event => setProfileStatus(event.target.value as any)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-white"><option value="active">Active</option><option value="paused">Paused</option><option value="hidden">Hidden</option></select></label>
-        <label className="text-sm text-slate-300 sm:col-span-2">Audience summary<textarea value={audienceSummary} onChange={event => setAudienceSummary(event.target.value)} rows={3} maxLength={2000} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-white" placeholder="Audience size, engagement, demographics (avoid private personal data)." /></label>
-        <label className="text-sm text-slate-300">Platform accounts (JSON array)<textarea value={platformAccounts} onChange={event => setPlatformAccounts(event.target.value)} rows={6} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 font-mono text-xs text-white" placeholder={'[{"platform":"Instagram","url":"https://...","followers":0}]'} /></label>
-        <label className="text-sm text-slate-300">Rate card (JSON object)<textarea value={rateCard} onChange={event => setRateCard(event.target.value)} rows={6} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 font-mono text-xs text-white" placeholder={'{"currency":"BDT","post":0,"story":0}'} /></label>
-        <div className="sm:col-span-2"><button type="button" onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-fuchsia-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-fuchsia-500 disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save influencer profile</button></div>
-      </section>
-    </div>
-  );
+  return <div className="mx-auto max-w-6xl space-y-6">
+    <header><h2 className="text-2xl font-bold text-white">Influencer Dashboard</h2><p className="mt-1 text-sm text-slate-400">Your assigned coupon performance and payout status.</p></header>
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {[[BarChart3, 'Coupon uses', stats.uses], [BadgePercent, 'Successful orders', stats.orders], [CircleDollarSign, 'Total sales', money(stats.sales)], [CircleDollarSign, 'Commission earned', money(stats.commission)], [WalletCards, 'Paid', money(stats.paid)], [WalletCards, 'Unpaid', money(stats.unpaid)]].map(([Icon, label, value]: any) => <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4"><Icon className="h-5 w-5 text-fuchsia-300" /><p className="mt-3 text-xs uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 text-2xl font-bold text-white">{value}</p></div>)}
+    </section>
+    <section className="rounded-2xl border border-fuchsia-500/20 bg-slate-950/60 p-5"><h3 className="font-semibold text-white">Assigned profile</h3><div className="mt-3 grid gap-3 text-sm text-slate-300 sm:grid-cols-3"><p>Country: <strong className="text-white">{profile.country || 'Not assigned'}</strong></p><p>Platform: <strong className="text-white">{profile.platform || 'Not assigned'}</strong></p><p>Status: <strong className="text-emerald-300">{profile.status}</strong></p></div>{profile.profile_url && <a className="mt-3 inline-block text-sm text-fuchsia-300" href={profile.profile_url} target="_blank" rel="noreferrer">View assigned profile</a>}</section>
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5"><h3 className="font-semibold text-white">Your coupon codes</h3>{coupons.length === 0 ? <p className="mt-3 text-sm text-slate-500">No coupon has been assigned yet.</p> : <div className="mt-3 grid gap-3 md:grid-cols-2">{coupons.map(coupon => <div key={coupon.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="flex items-center justify-between"><strong className="text-lg text-fuchsia-200">{coupon.coupon_code}</strong><span className="text-xs uppercase text-slate-500">{coupon.status}</span></div><p className="mt-2 text-sm text-slate-400">Customer discount: {coupon.customer_discount_percent}% · Your commission: {coupon.commission_percent}%</p></div>)}</div>}</section>
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5"><h3 className="font-semibold text-white">Payout history</h3>{payouts.length === 0 ? <p className="mt-3 text-sm text-slate-500">No payout has been recorded yet.</p> : <div className="mt-3 space-y-2">{payouts.map((payout, index) => <div key={`${payout.period_start}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/70 p-3 text-sm"><span className="text-slate-300">{payout.period_start} – {payout.period_end}</span><span className="text-emerald-300">{money(payout.paid_amount)} paid</span><span className="text-slate-400">{payout.status}</span></div>)}</div>}</section>
+  </div>;
 }
