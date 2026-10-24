@@ -277,6 +277,7 @@ export default function TeleSalesWorkspace() {
   }, []);
 
   const selectedInvoicePageContext = invoicePageContexts.find(item => item.accessId === selectedInvoicePage);
+  const hasFullInvoicePage = invoicePageContexts.length > 0;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -288,8 +289,8 @@ export default function TeleSalesWorkspace() {
       {invoicePageContexts.length > 0 && <section className="rounded-2xl border border-violet-500/25 bg-violet-500/5 p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h3 className="font-semibold text-white">Full Invoice Page Access</h3><p className="mt-1 text-xs text-slate-400">The complete client Invoice page plus every column returned by the invoices table is available for the granted brand.</p></div><label className="text-xs text-slate-300">Client brand<select value={selectedInvoicePage} onChange={event => setSelectedInvoicePage(event.target.value)} className="mt-1 block min-w-56 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white">{invoicePageContexts.map(context => <option key={context.accessId} value={context.accessId}>{context.grantLabel} · {context.actions.includes('edit') ? 'edit' : 'view only'}</option>)}</select></label></div>{selectedInvoicePageContext && <div className="mt-5"><Invoices brands={[selectedInvoicePageContext.brand]} sharedContext={selectedInvoicePageContext} readOnly={!selectedInvoicePageContext.actions.includes('edit')} showAllColumns /></div>}</section>}
       {loading && <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading assigned invoices…</div>}
       {!loading && !error && accessActive === false && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">Tele Sales access is no longer active.</div>}
-      {!loading && !error && accessActive !== false && invoices.length === 0 && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">No invoices are currently assigned to your Tele Sales access.</div>}
-      <div className="space-y-4">{invoices.map(invoice => <TeleSalesInvoiceCard key={invoice.invoice_id} invoice={invoice} permittedActions={actionPermissions.filter(item => String(item.brand_id) === String(invoice.brand_id)).map(item => item.action_key)} onActionCompleted={() => { void loadInvoices(true); }} />)}</div>
+      {!hasFullInvoicePage && !loading && !error && accessActive !== false && invoices.length === 0 && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">No invoices are currently assigned to your Tele Sales access.</div>}
+      {!hasFullInvoicePage && <div className="space-y-4">{invoices.map(invoice => <TeleSalesInvoiceCard key={invoice.invoice_id} invoice={invoice} permittedActions={actionPermissions.filter(item => String(item.brand_id) === String(invoice.brand_id)).map(item => item.action_key)} onActionCompleted={() => { void loadInvoices(true); }} />)}</div>}
     </div>
   );
 }

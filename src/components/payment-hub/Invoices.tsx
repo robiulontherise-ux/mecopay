@@ -321,7 +321,8 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
 
   const allInvoiceColumns = Array.from(new Set(invoices.flatMap(invoice => Object.keys(invoice || {}))));
   const standardInvoiceColumns = new Set(['sender_number', 'customer_email', 'product_name', 'product_type', 'brand', 'brand_name', 'gateway_used', 'trx_id', 'amount', 'status', 'created_at']);
-  const extraInvoiceColumns = showAllColumns ? allInvoiceColumns.filter(column => !standardInvoiceColumns.has(String(column))) : [];
+  const hiddenFullPageColumns = new Set(['id', 'brand_id', 'user_id']);
+  const extraInvoiceColumns = showAllColumns ? allInvoiceColumns.filter(column => !standardInvoiceColumns.has(String(column)) && !hiddenFullPageColumns.has(String(column))) : [];
   const formatAllColumnValue = (value: any) => {
     if (value === null || value === undefined || value === '') return '—';
     if (typeof value === 'object') return JSON.stringify(value);
