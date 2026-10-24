@@ -321,8 +321,12 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
 
   const allInvoiceColumns = Array.from(new Set(invoices.flatMap(invoice => Object.keys(invoice || {}))));
   const standardInvoiceColumns = new Set(['sender_number', 'customer_email', 'product_name', 'product_type', 'brand', 'brand_name', 'gateway_used', 'trx_id', 'amount', 'status', 'created_at']);
-  const hiddenFullPageColumns = new Set(['id', 'brand_id', 'user_id']);
-  const extraInvoiceColumns = showAllColumns ? allInvoiceColumns.filter(column => !standardInvoiceColumns.has(String(column)) && !hiddenFullPageColumns.has(String(column))) : [];
+  const hiddenFullPageColumns = new Set(['id', 'brand_id', 'user_id', 'customer_data']);
+  const extraColumnOrder = ['invoice_number', 'order_id', 'customer_name', 'customer_phone', 'customer_address', 'payment_link_id', 'redirect_link', 'product_type', 'product_price', 'total_amount', 'advance_amount', 'cod_due', 'gateway_number', 'transaction_id', 'tele_sales_cod_status', 'tele_sales_cod_confirmed_at', 'tele_sales_cod_confirmed_by', 'tele_sales_cod_note', 'paid_at', 'settlement_status', 'settles_at', 'courier_status', 'courier_name', 'consignment_id', 'courier_tracking_code', 'courier_tracking_url', 'tracking_url', 'courier_charge', 'scheduled_courier_at', 'success_url', 'is_accessed', 'metadata', 'fb_approved', 'fb_passcode'];
+  const extraInvoiceColumns = showAllColumns ? [
+    ...extraColumnOrder.filter(column => allInvoiceColumns.includes(column) && !standardInvoiceColumns.has(column) && !hiddenFullPageColumns.has(column)),
+    ...allInvoiceColumns.filter(column => !standardInvoiceColumns.has(String(column)) && !hiddenFullPageColumns.has(String(column)) && !extraColumnOrder.includes(String(column))),
+  ] : [];
   const formatAllColumnValue = (value: any) => {
     if (value === null || value === undefined || value === '') return '—';
     if (typeof value === 'object') return JSON.stringify(value);
@@ -466,7 +470,7 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
         </select>
       </div>
 
-      <div className="bg-slate-900/40 border border-slate-800 rounded-xl flex flex-col h-[calc(100vh-280px)] min-h-[400px] w-full">
+      <div className={`bg-slate-900/40 border border-slate-800 rounded-xl flex flex-col ${showAllColumns ? 'max-h-[calc(100vh-280px)] min-h-[220px]' : 'h-[calc(100vh-280px)] min-h-[400px]'} w-full`}>
         <div className="overflow-auto flex-1 relative">
           <table className="w-full text-left text-sm text-slate-400 min-w-[1000px]">
             <thead className="bg-slate-900 text-slate-300 uppercase font-bold text-xs sticky top-0 z-10">
