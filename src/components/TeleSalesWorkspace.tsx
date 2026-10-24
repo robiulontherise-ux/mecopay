@@ -36,6 +36,7 @@ const callStatuses = [
 ] as const;
 
 type CallLog = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string; called_phone: string | null };
+type ActionLog = { id: string; member_name: string | null; action_key: string; old_invoice_status: string | null; new_invoice_status: string | null; old_cod_status: string | null; new_cod_status: string | null; action_note: string | null; created_at: string };
 type ActionPermission = { brand_id: string; action_key: string };
 const actionLabels: Record<string, string> = {
   verify_manual: 'Verify payment',
@@ -53,6 +54,7 @@ function formatValue(key: string, value: any) {
 function TeleSalesInvoiceCard({ invoice, permittedActions, onActionCompleted }: { invoice: any; permittedActions: string[]; onActionCompleted: () => void }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [logs, setLogs] = useState<CallLog[]>([]);
+  const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [saving, setSaving] = useState(false);
   const [callStatus, setCallStatus] = useState('no_answer');
@@ -75,14 +77,24 @@ function TeleSalesInvoiceCard({ invoice, permittedActions, onActionCompleted }: 
     }
   }, [invoice.invoice_id]);
 
+  const loadActionLogs = useCallback(async () => {
+    const { data, error } = await supabase.rpc('list_tele_sales_invoice_action_logs', { p_invoice_id: invoice.invoice_id });
+    if (error) {
+      console.error('Could not load invoice action history:', error);
+      return;
+    }
+    setActionLogs((data || []) as ActionLog[]);
+  }, [invoice.invoice_id]);
+
   useEffect(() => {
     if (!historyOpen) return;
     void loadLogs();
+    void loadActionLogs();
     const refreshIfVisible = () => { if (document.visibilityState !== 'hidden') void loadLogs(true); };
     const timer = window.setInterval(refreshIfVisible, 15000);
     window.addEventListener('focus', refreshIfVisible);
     return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshIfVisible); };
-  }, [historyOpen, loadLogs]);
+  }, [historyOpen, loadLogs, loadActionLogs]);
 
   const saveCall = async () => {
     setSaving(true);
@@ -123,6 +135,7 @@ function TeleSalesInvoiceCard({ invoice, permittedActions, onActionCompleted }: 
       if (error) throw error;
       showToast(`${label} completed and recorded.`, 'success');
       setActionNote('');
+      await loadActionLogs();
       onActionCompleted();
     } catch (error: any) {
       console.error('Could not perform Tele Sales invoice action:', error);
@@ -145,6 +158,8 @@ function TeleSalesInvoiceCard({ invoice, permittedActions, onActionCompleted }: 
       </div>
 
       {permittedActions.length > 0 && <section className="mt-5 border-t border-slate-800 pt-4"><h3 className="text-sm font-semibold text-white">Allowed invoice actions</h3><p className="mt-1 text-xs text-slate-500">Each operation is revalidated against the active grant and invoice status by the server.</p><input value={actionNote} onChange={event => setActionNote(event.target.value)} maxLength={1500} placeholder="Optional action note (for example, customer confirmed)" className="mt-3 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white" /><div className="mt-3 flex flex-wrap gap-2">{permittedActions.map(key => <button key={key} type="button" onClick={() => void performAction(key)} disabled={savingAction} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100 disabled:opacity-50">{savingAction ? 'Saving…' : actionLabels[key] || key}</button>)}</div></section>}
+
+      {actionLogs.length > 0 && <section className="mt-5 border-t border-slate-800 pt-4"><div className="mb-3"><h3 className="font-semibold text-white">Invoice action history</h3><p className="text-xs text-slate-500">Verified actions and status changes recorded for this invoice.</p></div><div className="space-y-2">{actionLogs.map(log => <div key={log.id} className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold text-amber-100">{actionLabels[log.action_key] || log.action_key}</span><span className="text-xs text-slate-500">by {log.member_name || 'team member'} · {new Date(log.created_at).toLocaleString()}</span></div><p className="mt-1 text-xs text-slate-300">{log.old_invoice_status || '—'} → {log.new_invoice_status || '—'}{log.new_cod_status && log.new_cod_status !== log.old_cod_status ? ` · COD: ${log.old_cod_status || '—'} → ${log.new_cod_status}` : ''}</p>{log.action_note && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{log.action_note}</p>}</div>)}</div></section>}
 
       <div className="mt-5 grid gap-3 border-t border-slate-800 pt-4 md:grid-cols-[1fr_1.5fr_1fr_auto] md:items-end">
         <label className="text-xs text-slate-400">Call outcome
