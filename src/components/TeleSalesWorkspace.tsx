@@ -254,7 +254,17 @@ export default function TeleSalesWorkspace() {
         const { data, error: contextError } = await supabase.rpc('get_shared_dashboard_page_context', { p_access_id: grant.id, p_page_key: 'invoices' });
         if (contextError || !data) return null;
         const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-        return { ...parsed, grantLabel: parsed.brand?.name || parsed.brand_id } as InvoicePageContext;
+        return {
+          accessId: parsed.access_id,
+          clientId: parsed.client_id,
+          brandId: parsed.brand_id,
+          pageKey: parsed.page_key,
+          actions: parsed.actions || [],
+          expiresAt: parsed.expires_at || null,
+          user: { id: user.id, email: user.email || null },
+          brand: parsed.brand,
+          grantLabel: parsed.brand?.name || parsed.brand_id,
+        } as InvoicePageContext;
       }));
       const valid = contexts.filter(Boolean) as InvoicePageContext[];
       if (!cancelled) {
