@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { showToast } from '../../lib/toast';
 import { supabase } from '../../lib/supabase';
-import { Search, Filter, Trash2, Copy, Download, Eye, X, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Search, Filter, Trash2, Copy, Download, Eye, X, CheckCircle2, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
 import type { SharedDashboardPageContext } from '../shared-dashboard/types';
 
 interface InvoicesProps {
@@ -32,6 +32,8 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
   const [deleteInput, setDeleteInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [bulkError, setBulkError] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const invoiceRootRef = useRef<HTMLDivElement>(null);
   const isSharedReadOnly = Boolean(sharedContext && (readOnly || !sharedContext.actions.includes('edit')));
 
   const verifySharedAccess = async (action: 'view' | 'edit') => {
@@ -327,10 +329,32 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
     ...extraColumnOrder.filter(column => allInvoiceColumns.includes(column) && !standardInvoiceColumns.has(column) && !hiddenFullPageColumns.has(column)),
     ...allInvoiceColumns.filter(column => !standardInvoiceColumns.has(String(column)) && !hiddenFullPageColumns.has(String(column)) && !extraColumnOrder.includes(String(column))),
   ] : [];
+  const customerColumns = showAllColumns ? ['customer_name', 'customer_phone', 'customer_address'].filter(column => allInvoiceColumns.includes(column)) : [];
+  const amountColumns = showAllColumns ? ['product_price', 'total_amount', 'advance_amount', 'cod_due'].filter(column => allInvoiceColumns.includes(column)) : [];
+  const positionedColumns = new Set([...customerColumns, ...amountColumns]);
+  const actionExtraColumns = extraInvoiceColumns.filter(column => !positionedColumns.has(String(column)));
   const formatAllColumnValue = (value: any) => {
     if (value === null || value === undefined || value === '') return '—';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
+  };
+
+  useEffect(() => {
+    const syncFullscreenState = () => setIsFullscreen(document.fullscreenElement === invoiceRootRef.current);
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === invoiceRootRef.current) {
+        await document.exitFullscreen();
+      } else {
+        await invoiceRootRef.current?.requestFullscreen();
+      }
+    } catch {
+      showToast('Fullscreen is not available in this browser.', 'error');
+    }
   };
 
 
@@ -424,9 +448,13 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div>
+    <div ref={invoiceRootRef} className={`max-w-6xl mx-auto space-y-6 ${isFullscreen ? 'min-h-screen max-w-none overflow-auto bg-slate-950 p-4 sm:p-6' : ''}`}>
+      <div className="flex items-center justify-between gap-3">
         <h2 className="text-2xl font-bold text-white mb-2">Invoice Management</h2>
+        <button type="button" onClick={() => void toggleFullscreen()} className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-cyan-400 hover:text-white" title={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'}>
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          <span className="hidden sm:inline">{isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</span>
+        </button>
       </div>
 
       {errorMessage && (
@@ -472,7 +500,7 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
 
       <div className={`bg-slate-900/40 border border-slate-800 rounded-xl flex flex-col ${showAllColumns ? 'max-h-[calc(100vh-280px)] min-h-[220px]' : 'h-[calc(100vh-280px)] min-h-[400px]'} w-full`}>
         <div className="overflow-auto flex-1 relative">
-          <table className="w-full text-left text-sm text-slate-400 min-w-[1000px]">
+          <table className={`w-full text-left text-sm text-slate-400 min-w-[1000px] ${showAllColumns ? '[&>tbody>tr>td]:!py-2 [&>thead>tr>th]:!py-2' : ''}`}>
             <thead className="bg-slate-900 text-slate-300 uppercase font-bold text-xs sticky top-0 z-10">
               <tr>
                 <th className="px-4 py-4 w-10">
@@ -484,6 +512,7 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
                   />
                 </th>
                 <th className="px-4 py-4">Sender No</th>
+                {customerColumns.map(column => <th key={`customer-head-${column}`} className="px-4 py-4 whitespace-nowrap">{column.replaceAll('_', ' ')}</th>)}
                 <th className="px-4 py-4">Customer Email</th>
                 <th className="px-4 py-4">Product Name</th>
                 <th className="px-4 py-4">Type</th>
@@ -491,10 +520,11 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
                 <th className="px-4 py-4">Method</th>
                 <th className="px-4 py-4">Txn ID</th>
                 <th className="px-4 py-4">Amount</th>
+                {amountColumns.map(column => <th key={`amount-head-${column}`} className="px-4 py-4 whitespace-nowrap">{column.replaceAll('_', ' ')}</th>)}
                 <th className="px-4 py-4">Status</th>
                 <th className="px-4 py-4">Date</th>
                 <th className="px-4 py-4">Action</th>
-                {extraInvoiceColumns.map(column => <th key={`extra-head-${String(column)}`} className="px-4 py-4 whitespace-nowrap">{String(column)}</th>)}
+                {actionExtraColumns.map(column => <th key={`extra-head-${String(column)}`} className="px-4 py-4 whitespace-nowrap">{String(column).replaceAll('_', ' ')}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
@@ -518,6 +548,7 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
                       />
                     </td>
                     <td className="px-4 py-4 text-white font-medium">{inv.sender_number || 'N/A'}</td>
+                    {customerColumns.map(column => <td key={`${inv.id}-${column}`} className="max-w-[220px] px-4 py-4 align-top whitespace-pre-wrap break-words">{formatAllColumnValue(inv[column])}</td>)}
                     <td className="px-4 py-4">
                       <div>{inv.customer_email || inv.customer_name || 'N/A'}</div>
                     </td>
@@ -545,6 +576,7 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
                     <td className="px-4 py-4 font-bold uppercase text-slate-300">{inv.gateway_used || '-'}</td>
                     <td className="px-4 py-4 font-mono text-xs">{inv.trx_id || '-'}</td>
                     <td className="px-4 py-4 font-bold text-white">৳{inv.amount}</td>
+                    {amountColumns.map(column => <td key={`${inv.id}-${column}`} className="max-w-[220px] px-4 py-4 align-top whitespace-pre-wrap break-words">{formatAllColumnValue(inv[column])}</td>)}
                     <td className="px-4 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center w-fit gap-1 ${
                         inv.status?.toLowerCase() === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
@@ -581,7 +613,7 @@ export default function Invoices({ brands, sharedContext, readOnly = false, show
 
                       </div>
                     </td>
-                    {extraInvoiceColumns.map(column => <td key={`${inv.id}-extra-${String(column)}`} className="max-w-[280px] px-4 py-4 align-top whitespace-pre-wrap break-words">{formatAllColumnValue(inv[String(column)])}</td>)}
+                    {actionExtraColumns.map(column => <td key={`${inv.id}-extra-${String(column)}`} className="max-w-[280px] px-4 py-4 align-top whitespace-pre-wrap break-words">{formatAllColumnValue(inv[String(column)])}</td>)}
                   </tr>
                 ))
               )}
