@@ -407,7 +407,10 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
             code_language: p.code_language || ds.code_language || null,
             show_details_btn: p.show_details_btn !== undefined ? p.show_details_btn : (ds.show_details_btn ?? true),
             show_share_btn: p.show_share_btn !== undefined ? p.show_share_btn : (ds.show_share_btn ?? true),
-            show_thumbnail: p.show_thumbnail !== undefined ? p.show_thumbnail : (ds.show_thumbnail ?? true),
+            // The CMS stores display flags in digital_settings for schema compatibility.
+            // Prefer that persisted value when the legacy/direct column is null or absent;
+            // otherwise a nullable direct column can make a checked checkbox reload unchecked.
+            show_thumbnail: ds.show_thumbnail ?? (p.show_thumbnail ?? true),
             show_full_post: p.show_full_post !== undefined ? p.show_full_post : (ds.show_full_post ?? false),
             show_as_landing: p.show_as_landing !== undefined ? p.show_as_landing : (ds.show_as_landing ?? false),
             is_custom_page: p.is_custom_page !== undefined ? p.is_custom_page : (ds.is_custom_page ?? false),
