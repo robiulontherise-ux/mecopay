@@ -63,7 +63,7 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
   // Dynamic Browser Tab Title & Favicon Synchronizer
   const updateBrowserTabAndFavicon = useCallback((titleName?: string, logoUrl?: string, primaryColor?: string, postTitle?: string) => {
     const effectiveName = titleName?.trim() || '';
-    if (!effectiveName) return;
+    if (!effectiveName || effectiveName === 'Store' || effectiveName === 'MecoPay Store') return;
 
     // Set tab title: if user is viewing a post, show "Post Title | Site Name", otherwise "Site Name"
     const cleanPostTitle = (postTitle && !['untitled', 'untitled post'].includes(postTitle.trim().toLowerCase()))
@@ -73,11 +73,12 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
     document.title = finalTitle;
 
     try {
+      localStorage.setItem('cached_site_name', effectiveName);
       localStorage.setItem('mysite_cached_title', effectiveName);
     } catch (e) {}
 
-    // Determine Favicon (Logo or Letter Badge)
-    let faviconUrl = logoUrl?.trim() || '';
+    // Determine Favicon (Custom client logo or Dynamic letter badge - never mother site logo)
+    let faviconUrl = (logoUrl && !logoUrl.includes('cJk7YcMb')) ? logoUrl.trim() : '';
     if (!faviconUrl) {
       // Dynamic crisp SVG favicon badge with the first letter of the brand name
       const char = effectiveName.charAt(0).toUpperCase();
@@ -87,24 +88,29 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
     }
 
     try {
-      let iconLink: HTMLLinkElement | null = document.querySelector("link[id='app-favicon'], link[rel*='icon']");
-      if (!iconLink) {
-        iconLink = document.createElement('link');
+      const iconLinks = document.querySelectorAll<HTMLLinkElement>("link[id='mysite-favicon'], link[id='app-favicon'], link[rel*='icon']");
+      if (iconLinks.length > 0) {
+        iconLinks.forEach(l => { l.href = faviconUrl; });
+      } else {
+        const iconLink = document.createElement('link');
         iconLink.id = 'app-favicon';
         iconLink.rel = 'icon';
+        iconLink.href = faviconUrl;
         document.head.appendChild(iconLink);
       }
-      iconLink.href = faviconUrl;
 
-      let appleIconLink: HTMLLinkElement | null = document.querySelector("link[id='app-apple-favicon'], link[rel='apple-touch-icon']");
-      if (!appleIconLink) {
-        appleIconLink = document.createElement('link');
+      const appleIconLinks = document.querySelectorAll<HTMLLinkElement>("link[id='mysite-apple-favicon'], link[id='app-apple-favicon'], link[rel='apple-touch-icon']");
+      if (appleIconLinks.length > 0) {
+        appleIconLinks.forEach(l => { l.href = faviconUrl; });
+      } else {
+        const appleIconLink = document.createElement('link');
         appleIconLink.id = 'app-apple-favicon';
         appleIconLink.rel = 'apple-touch-icon';
+        appleIconLink.href = faviconUrl;
         document.head.appendChild(appleIconLink);
       }
-      appleIconLink.href = faviconUrl;
 
+      localStorage.setItem('cached_site_logo', faviconUrl);
       localStorage.setItem('mysite_cached_logo', faviconUrl);
     } catch (e) {}
   }, []);
@@ -317,6 +323,19 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
          if (!error && data) {
            settingsData = data;
            targetClientId = data.client_id;
+         } else {
+           // Fallback for development / preview environments so client site always resolves
+           const { data: fallbackSite } = await supabase
+             .from('site_settings')
+             .select('*')
+             .order('created_at', { ascending: false })
+             .limit(1)
+             .maybeSingle();
+
+           if (fallbackSite) {
+             settingsData = fallbackSite;
+             targetClientId = fallbackSite.client_id;
+           }
          }
       }
       

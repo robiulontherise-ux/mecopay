@@ -62,34 +62,35 @@ function checkIsClientSite(): boolean {
     return true;
   }
 
-  // Check if host is a primary MecoPay platform domain
+  // Check if host is a primary official production or development platform domain (Mother site)
   const isPlatformDomain =
     host === 'mecopay.space' ||
     host === 'www.mecopay.space' ||
     host === 'mecopay.pages.dev' ||
-    host === 'localhost' ||
-    host === '127.0.0.1';
+    host.includes('localhost') ||
+    host === '127.0.0.1' ||
+    host.includes('.run.app');
 
   if (isPlatformDomain) {
+    // If on mother site, but explicit /mysite path is visited, allow viewing client site
+    if (path.startsWith('/mysite')) {
+      return true;
+    }
     return false;
   }
 
   // Subdomain of mecopay.space (e.g. mybrand.mecopay.space)
-  if (host.endsWith('.mecopay.space') && host !== 'mecopay.space' && host !== 'www.mecopay.space') {
+  if (host.endsWith('.mecopay.space') && host !== 'mecopay.space' && host !== 'www.mecopay.space' && !host.startsWith('api.') && !host.startsWith('checkout.')) {
     return true;
   }
 
-  // Subdomain of pages.dev (e.g. mybrand.pages.dev and not mecopay.pages.dev)
-  if (host.endsWith('.pages.dev') && host !== 'mecopay.pages.dev') {
+  // Client Subdomain of pages.dev (e.g. mybrand.pages.dev and not mecopay.pages.dev)
+  if (host.endsWith('.pages.dev') && host !== 'mecopay.pages.dev' && !host.startsWith('mecopay')) {
     return true;
   }
 
-  // Custom external domain (e.g. mybrand.com)
-  if (!host.endsWith('.mecopay.space') && !host.endsWith('.pages.dev')) {
-    return true;
-  }
-
-  return false;
+  // Custom external domain
+  return true;
 }
 
 function App() {
@@ -114,6 +115,22 @@ function App() {
         : null;
 
   useEffect(() => {
+    // Ensure Mother Site title and favicon are properly set when on Mother Site
+    document.title = 'MecoPay Space';
+    const motherFavicon = 'https://i.postimg.cc/cJk7YcMb/favicon.jpg';
+    const iconLinks = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon'], link[rel='apple-touch-icon']");
+    iconLinks.forEach(link => {
+      link.href = motherFavicon;
+    });
+
+    // Clear any client site cache stored in localStorage so mother site is never polluted
+    try {
+      localStorage.removeItem('cached_site_name');
+      localStorage.removeItem('mysite_cached_title');
+      localStorage.removeItem('cached_site_logo');
+      localStorage.removeItem('mysite_cached_logo');
+    } catch (e) {}
+
     // Check for hash errors from OAuth
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     if (hashParams.has('error_description')) {

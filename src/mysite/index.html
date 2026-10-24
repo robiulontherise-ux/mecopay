@@ -3,26 +3,84 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Store</title>
+    <title></title>
+    <link id="mysite-favicon" rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>" />
+    <link id="mysite-apple-favicon" rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>" />
     <script>
       (function() {
         try {
-          var cachedName = localStorage.getItem('cached_site_name');
-          var cachedLogo = localStorage.getItem('cached_site_logo');
-          if (cachedName) document.title = cachedName;
-          if (cachedLogo) {
-            var links = document.querySelectorAll("link[rel*='icon'], link[rel='apple-touch-icon']");
-            links.forEach(function(l) { l.href = cachedLogo; });
+          var host = window.location.hostname.toLowerCase();
+          var detectedName = '';
+
+          // 1. Purge any stale legacy 'Store' or mother site logo from client cache
+          var cachedName = localStorage.getItem('cached_site_name') || localStorage.getItem('mysite_cached_title');
+          var cachedLogo = localStorage.getItem('cached_site_logo') || localStorage.getItem('mysite_cached_logo');
+
+          if (cachedName === 'Store' || cachedName === 'MecoPay Store' || cachedName === 'MecoPay Space') {
+            try {
+              localStorage.removeItem('cached_site_name');
+              localStorage.removeItem('mysite_cached_title');
+            } catch (e) {}
+            cachedName = null;
+          }
+          if (cachedLogo && cachedLogo.includes('cJk7YcMb')) {
+            try {
+              localStorage.removeItem('cached_site_logo');
+              localStorage.removeItem('mysite_cached_logo');
+            } catch (e) {}
+            cachedLogo = null;
+          }
+
+          if (cachedName && cachedName.trim()) {
+            detectedName = cachedName.trim();
+          } else {
+            // 2. Immediate Domain / Subdomain Detection before network loads
+            var parts = host.split('.');
+            if (host.endsWith('.mecopay.space') && parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'dev') {
+              // Client Subdomain e.g. sneakers.mecopay.space -> Sneakers
+              detectedName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+            } else if (!host.includes('mecopay') && !host.includes('run.app') && !host.includes('localhost') && host.includes('.')) {
+              // Custom Domain e.g. brandshop.com -> Brandshop
+              var brandPart = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+              detectedName = brandPart.charAt(0).toUpperCase() + brandPart.slice(1);
+            } else {
+              // Check URL query parameters (?subdomain=xyz or ?custom_domain=xyz.com)
+              try {
+                var sp = new URLSearchParams(window.location.search);
+                var qSub = sp.get('subdomain');
+                var qDom = sp.get('custom_domain');
+                if (qSub && qSub.trim()) {
+                  detectedName = qSub.trim().charAt(0).toUpperCase() + qSub.trim().slice(1);
+                } else if (qDom && qDom.trim()) {
+                  var dp = qDom.trim().split('.')[0];
+                  detectedName = dp.charAt(0).toUpperCase() + dp.slice(1);
+                }
+              } catch (e) {}
+            }
+          }
+
+          if (detectedName) {
+            document.title = detectedName;
+          }
+
+          // 3. Pre-load Favicon: Use cached logo, or dynamic SVG badge of first letter
+          var faviconUrl = (cachedLogo && cachedLogo.trim()) ? cachedLogo.trim() : '';
+          if (!faviconUrl && detectedName) {
+            var char = detectedName.charAt(0).toUpperCase();
+            var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%236366f1'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-family='system-ui,sans-serif' font-size='36' font-weight='bold' fill='%23ffffff'>" + char + "</text></svg>";
+            faviconUrl = "data:image/svg+xml;utf8," + svg;
+          }
+
+          if (faviconUrl) {
+            var f = document.getElementById('mysite-favicon');
+            if (f) f.href = faviconUrl;
+            var a = document.getElementById('mysite-apple-favicon');
+            if (a) a.href = faviconUrl;
           }
         } catch(e) {}
       })();
     </script>
-    <meta name="description" content="Your dynamic online store" />
-    <link rel="icon" type="image/jpeg" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
-    <link rel="shortcut icon" type="image/jpeg" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
-    <link rel="apple-touch-icon" href="https://i.postimg.cc/cJk7YcMb/favicon.jpg" />
-    <meta property="og:title" content="MecoPay Store" />
-    <meta property="og:type" content="website" />
+    <meta name="description" content="Online Store" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">

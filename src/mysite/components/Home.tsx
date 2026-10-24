@@ -124,10 +124,10 @@ const Home: React.FC<HomeProps> = ({
         ) : (
           <div className="space-y-8">
             {/* 1. Full-Width Direct / Landing Posts */}
-            {filteredPosts.filter(p => p.show_as_landing || (filteredPosts.length === 1 && p.format_type === 'code')).map((post) => {
+            {filteredPosts.filter(p => p.show_as_landing).map((post) => {
               const hasValidTitle = post.title && !['untitled', 'untitled post'].includes(post.title.trim().toLowerCase());
               return (
-                <div key={post.id} className="w-full max-w-full mx-auto bg-transparent border-0 rounded-none overflow-hidden shadow-none">
+                <div key={post.id} className="w-full max-w-5xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl p-4 sm:p-6">
                   {hasValidTitle && (
                     <div className="py-2.5 px-2 sm:px-4 mb-3 border-b border-slate-800/60 flex items-center justify-between">
                       <h2 className="text-lg sm:text-2xl font-bold text-white">{post.title}</h2>
@@ -158,7 +158,7 @@ const Home: React.FC<HomeProps> = ({
 
             {/* 2. Grid Feed for Standard Posts */}
             {(() => {
-              const standardPosts = filteredPosts.filter(p => !p.show_as_landing && !(filteredPosts.length === 1 && p.format_type === 'code'));
+              const standardPosts = filteredPosts.filter(p => !p.show_as_landing);
               if (standardPosts.length === 0) return null;
 
               const gridClasses = standardPosts.length === 1 
