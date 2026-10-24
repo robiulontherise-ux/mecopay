@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Clock3, Loader2, Phone, RefreshCw, Save, History } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { showToast } from '../lib/toast';
+import Invoices from './payment-hub/Invoices';
+import type { SharedDashboardPageContext } from './shared-dashboard/types';
 
 const labels: Record<string, string> = {
   invoice_number: 'Invoice number',
@@ -38,6 +40,7 @@ const callStatuses = [
 type CallLog = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string; called_phone: string | null };
 type ActionLog = { id: string; member_name: string | null; action_key: string; old_invoice_status: string | null; new_invoice_status: string | null; old_cod_status: string | null; new_cod_status: string | null; action_note: string | null; created_at: string };
 type ActionPermission = { brand_id: string; action_key: string };
+type InvoicePageContext = SharedDashboardPageContext & { grantLabel: string };
 const actionLabels: Record<string, string> = {
   verify_manual: 'Verify payment',
   cancel_invoice: 'Cancel order',
@@ -188,6 +191,8 @@ export default function TeleSalesWorkspace() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [accessActive, setAccessActive] = useState<boolean | null>(null);
+  const [invoicePageContexts, setInvoicePageContexts] = useState<InvoicePageContext[]>([]);
+  const [selectedInvoicePage, setSelectedInvoicePage] = useState('');
 
   const loadInvoices = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -233,6 +238,36 @@ export default function TeleSalesWorkspace() {
     };
   }, [loadInvoices]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadFullInvoicePages = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: grants, error: grantsError } = await supabase.from('client_resource_access')
+        .select('id,client_id,brand_id,resource_key,actions,expires_at')
+        .eq('member_id', user.id)
+        .eq('resource_type', 'dashboard_page')
+        .in('resource_key', ['*', 'invoices'])
+        .eq('status', 'active');
+      if (grantsError) { console.error('Could not load full Invoice page access:', grantsError); return; }
+      const contexts = await Promise.all((grants || []).map(async (grant: any) => {
+        const { data, error: contextError } = await supabase.rpc('get_shared_dashboard_page_context', { p_access_id: grant.id, p_page_key: 'invoices' });
+        if (contextError || !data) return null;
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+        return { ...parsed, grantLabel: parsed.brand?.name || parsed.brand_id } as InvoicePageContext;
+      }));
+      const valid = contexts.filter(Boolean) as InvoicePageContext[];
+      if (!cancelled) {
+        setInvoicePageContexts(valid);
+        setSelectedInvoicePage(current => valid.some(item => item.accessId === current) ? current : (valid[0]?.accessId || ''));
+      }
+    };
+    void loadFullInvoicePages();
+    return () => { cancelled = true; };
+  }, []);
+
+  const selectedInvoicePageContext = invoicePageContexts.find(item => item.accessId === selectedInvoicePage);
+
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -240,6 +275,7 @@ export default function TeleSalesWorkspace() {
         <button type="button" onClick={() => void loadInvoices()} disabled={loading} className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Refresh</button>
       </header>
       {error && <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">{error}. Run the supplied SQL migration and confirm your access is active.</div>}
+      {invoicePageContexts.length > 0 && <section className="rounded-2xl border border-violet-500/25 bg-violet-500/5 p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h3 className="font-semibold text-white">Full Invoice Page Access</h3><p className="mt-1 text-xs text-slate-400">The complete client Invoice page is available for the granted brand.</p></div><label className="text-xs text-slate-300">Client brand<select value={selectedInvoicePage} onChange={event => setSelectedInvoicePage(event.target.value)} className="mt-1 block min-w-56 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white">{invoicePageContexts.map(context => <option key={context.accessId} value={context.accessId}>{context.grantLabel} · {context.actions.includes('edit') ? 'edit' : 'view only'}</option>)}</select></label></div>{selectedInvoicePageContext && <div className="mt-5"><Invoices brands={[selectedInvoicePageContext.brand]} sharedContext={selectedInvoicePageContext} readOnly={!selectedInvoicePageContext.actions.includes('edit')} /></div>}</section>}
       {loading && <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading assigned invoices…</div>}
       {!loading && !error && accessActive === false && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">Tele Sales access is no longer active.</div>}
       {!loading && !error && accessActive !== false && invoices.length === 0 && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">No invoices are currently assigned to your Tele Sales access.</div>}

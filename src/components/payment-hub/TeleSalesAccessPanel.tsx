@@ -41,6 +41,7 @@ type AccessRow = {
 };
 type ActionAccessRow = { access_id: string; member_id: string; member_name: string | null; member_email: string | null; action_key: string; access_status: string; granted_at: string | null };
 type CallLogRow = { id: string; member_name: string | null; call_status: string; call_note: string | null; follow_up_at: string | null; called_at: string; called_phone: string | null };
+type PageAccessRow = { id: string; member_id: string; resource_key: string; actions: string[]; status: string; requested_at: string };
 
 export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]; userId: string }) {
   const [brandId, setBrandId] = useState('');
@@ -59,6 +60,10 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
   const [invoices, setInvoices] = useState<any[]>([]);
   const [callLogs, setCallLogs] = useState<CallLogRow[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [pageAccessRows, setPageAccessRows] = useState<PageAccessRow[]>([]);
+  const [pageAccessMode, setPageAccessMode] = useState<'view' | 'edit'>('view');
+  const [savingPageAccess, setSavingPageAccess] = useState(false);
+  const [revokingPageAccessId, setRevokingPageAccessId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!brandId && brands.length) setBrandId(String(brands[0].id));
@@ -113,14 +118,24 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
     }
   };
 
+  const loadPageAccess = async () => {
+    if (!brandId) { setPageAccessRows([]); return; }
+    const { data, error } = await supabase.from('client_resource_access')
+      .select('id,member_id,resource_key,actions,status,requested_at')
+      .eq('client_id', userId).eq('brand_id', brandId).eq('resource_type', 'dashboard_page')
+      .in('resource_key', ['*', 'invoices']).order('requested_at', { ascending: false });
+    if (error) { console.error('Could not load full Invoice page access:', error); return; }
+    setPageAccessRows((data || []) as PageAccessRow[]);
+  };
+
   useEffect(() => {
-    if (brandId) { void loadAccess(); void loadActions(); }
+    if (brandId) { void loadAccess(); void loadActions(); void loadPageAccess(); }
   }, [brandId]);
 
   useEffect(() => {
     if (!brandId) return;
     const refreshIfVisible = () => {
-      if (document.visibilityState !== 'hidden') { void loadAccess(true); void loadActions(true); }
+      if (document.visibilityState !== 'hidden') { void loadAccess(true); void loadActions(true); void loadPageAccess(); }
     };
     const timer = window.setInterval(refreshIfVisible, 20000);
     window.addEventListener('focus', refreshIfVisible);
@@ -247,6 +262,45 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
     }
   };
 
+  const grantPageAccess = async () => {
+    if (!brandId || !memberEmail.trim()) {
+      showToast('Choose a brand and enter the teammate account email.', 'error');
+      return;
+    }
+    setSavingPageAccess(true);
+    try {
+      const { error } = await supabase.rpc('grant_tele_sales_invoice_page_access', {
+        p_brand_id: brandId,
+        p_member_email: memberEmail.trim(),
+        p_actions: pageAccessMode === 'edit' ? ['view', 'edit'] : ['view'],
+      });
+      if (error) throw error;
+      setMemberEmail('');
+      showToast('Full Invoice page access is now available to this teammate.', 'success');
+      await loadPageAccess();
+    } catch (error: any) {
+      console.error('Could not grant full Invoice page access:', error);
+      showToast(error?.message || 'Could not grant full Invoice page access. Run the supplied SQL first.', 'error');
+    } finally {
+      setSavingPageAccess(false);
+    }
+  };
+
+  const revokePageAccess = async (accessId: string) => {
+    setRevokingPageAccessId(accessId);
+    try {
+      const { error } = await supabase.rpc('revoke_tele_sales_invoice_page_access', { p_access_id: accessId });
+      if (error) throw error;
+      showToast('Full Invoice page access revoked.', 'success');
+      await loadPageAccess();
+    } catch (error: any) {
+      console.error('Could not revoke full Invoice page access:', error);
+      showToast(error?.message || 'Could not revoke full Invoice page access.', 'error');
+    } finally {
+      setRevokingPageAccessId(null);
+    }
+  };
+
   const fieldLabel = (key: string) => fields.find(([id]) => id === key)?.[1] || key;
   const actionLabel = (key: string) => actions.find(([id]) => id === key)?.[1] || key;
   const activeRows = rows.filter(row => row.access_status === 'active');
@@ -305,6 +359,16 @@ export default function TeleSalesAccessPanel({ brands, userId }: { brands: any[]
             <div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-slate-200">Active invoice actions</p><p className="text-xs text-slate-500">Action permission can be revoked independently from field visibility.</p></div><button type="button" onClick={() => void loadActions()} disabled={loadingActions} className="rounded-lg border border-slate-700 p-2 text-slate-300"><RefreshCw className={`h-4 w-4 ${loadingActions ? 'animate-spin' : ''}`} /></button></div>
             {loadingActions ? <p className="text-sm text-slate-400">Loading action permissions…</p> : actionsGrouped.size === 0 ? <p className="text-sm text-slate-500">No invoice actions granted for this brand.</p> : <div className="space-y-3">{Array.from(actionsGrouped.entries()).map(([memberId, member]) => <article key={memberId} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3"><p className="font-semibold text-white">{member.name}</p><p className="text-xs text-slate-500">{member.email}</p><div className="mt-2 flex flex-wrap gap-2">{member.actions.map(row => <span key={row.access_id} className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-3 py-1 text-xs text-amber-100">{actionLabel(row.action_key)}<button type="button" aria-label={`Revoke ${actionLabel(row.action_key)}`} onClick={() => void revokeAction(row.access_id)} disabled={revokingActionId === row.access_id} className="text-rose-300 hover:text-rose-200 disabled:opacity-50">{revokingActionId === row.access_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}</button></span>)}</div></article>)}</div>}
           </div>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+          <p className="font-semibold text-white">Full Invoice Page Access</p>
+          <p className="mt-1 text-xs text-slate-400">Give this teammate the complete client Invoice page. This does not replace the existing column or action grants.</p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="flex-1 text-sm text-slate-300">Access level<select value={pageAccessMode} onChange={event => setPageAccessMode(event.target.value as 'view' | 'edit')} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-white"><option value="view">View full Invoice page</option><option value="edit">View + edit full Invoice page</option></select></label>
+            <button type="button" onClick={() => void grantPageAccess()} disabled={savingPageAccess || !brands.length} className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-bold text-violet-100 disabled:opacity-50">{savingPageAccess ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Grant full page</button>
+          </div>
+          <div className="mt-4 space-y-2">{pageAccessRows.filter(row => row.status === 'active').map(row => <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-sm"><span className="text-slate-200">Teammate: {row.member_id}</span><span className="text-violet-200">{row.actions.includes('edit') ? 'View + edit' : 'View only'}</span><button type="button" onClick={() => void revokePageAccess(row.id)} disabled={revokingPageAccessId === row.id} className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 px-2.5 py-1.5 text-xs font-semibold text-rose-200 disabled:opacity-50">{revokingPageAccessId === row.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />} Revoke</button></div>)}</div>
         </div>
 
         <div className="border-t border-slate-800 pt-5">
