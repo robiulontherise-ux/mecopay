@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, ShieldCheck, Zap, Rocket, Globe, ArrowRight, Menu, Wallet, Crown, Link as LinkIcon, PlayCircle } from 'lucide-react';
 import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
@@ -40,6 +39,7 @@ const textChunks = [
 export default function Login() {
   const [isYearly, setIsYearly] = useState(false);
   const [showIframeWarning, setShowIframeWarning] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
   const { continent, country: selectedCountry, language, countries, isDetecting: isDetectingContinent, countryData: selectedCountryData, languageOptions: countryLanguageOptions, setCountry: setSelectedCountry, setLanguage } = useLocale();
@@ -60,22 +60,23 @@ export default function Login() {
     return () => clearTimeout(timeout);
   }, [currentChunk, pricingLanguage]);
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
+    setAuthError(null);
     if (window.self !== window.top) {
       setShowIframeWarning(true);
       return;
     }
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-        queryParams: {
-          prompt: 'select_account'
-        }
-      }
-    });
-    if (error) console.error("Error logging in:", error.message);
+    if (window.location.hostname === 'www.mecopay.space') {
+      window.location.assign('https://mecopay.space/api/auth/google/start');
+      return;
+    }
+    if (window.location.hostname !== 'mecopay.space') {
+      setAuthError('Google sign-in can only be started from the official MecoPay site.');
+      return;
+    }
+
+    window.location.assign('/api/auth/google/start');
   };
 
   const pricingCatalog = {
@@ -253,6 +254,7 @@ export default function Login() {
           </a>
 
         </div>
+        {authError && <p role="alert" aria-live="polite" className="mt-3 max-w-xl text-center text-sm text-rose-300">{authError}</p>}
       </section>
 
       {/* Build Your Own Plan */}

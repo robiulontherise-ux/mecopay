@@ -18,6 +18,7 @@ import InfluencerWorkspace from './InfluencerWorkspace';
 import TeleSalesWorkspace from './TeleSalesWorkspace';
 import TeleSalesAccessPanel from './payment-hub/TeleSalesAccessPanel';
 import { supabase } from '../lib/supabase';
+import { getAuthWorkerSession, signOutAuthWorker } from '../lib/authWorker';
 import { showToast } from '../lib/toast';
 import { showConfirm } from '../lib/confirm';
 import LocaleSwitcher from './LocaleSwitcher';
@@ -801,15 +802,16 @@ export default function DashboardShell() {
 
   useEffect(() => {
     let isMounted = true;
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
+    getAuthWorkerSession().then((authState) => {
       if (!isMounted) return;
-      if (error || !user) {
-        console.error('Auth verification failed:', error);
+      const user = authState?.user;
+      if (!user) {
+        console.error('Auth Worker session missing.');
         // Do not force redirect here, let App.tsx routing handle it based on session state
         // Removing the aggressive localstorage clear and window.location.href
         return;
       }
-      setUser(user);
+      setUser(user as any);
       setIsFreelancer(false);
       setIsInfluencer(false);
       setHasTeleSalesAccess(false);
@@ -1026,6 +1028,8 @@ export default function DashboardShell() {
       const isVerified = verificationStatus === 'verified';
       setIsIdentityLocked(isVerified);
       
+    }).catch((error) => {
+      console.error('Auth Worker session check failed:', error);
     });
     
     return () => {
@@ -1113,8 +1117,13 @@ export default function DashboardShell() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+    try {
+      await signOutAuthWorker();
+      window.location.assign('/login');
+    } catch (error) {
+      console.error('Auth Worker logout failed:', error);
+      showToast('Could not log out. Please try again.', 'error');
+    }
   };
 
 

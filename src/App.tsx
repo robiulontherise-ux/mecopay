@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { supabase } from './lib/supabase';
+import { getAuthWorkerSession } from './lib/authWorker';
 import Login from './components/Login';
 import MfaVerification from './components/MfaVerification';
 import DashboardRoute from './components/DashboardRoute';
@@ -137,30 +137,26 @@ function App() {
       console.warn("Login Error:", decodeURIComponent(hashParams.get('error_description') || ''));
     }
     
-    if (window.opener && window.location.hash.includes('access_token')) {
-      setTimeout(() => window.close(), 500);
-    }
+    let isMounted = true;
+    void getAuthWorkerSession()
+      .then((authState) => {
+        if (isMounted) setSession(authState);
+      })
+      .catch((error) => {
+        console.error('Auth Worker session check failed:', error);
+        if (isMounted) setSession(null);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
 
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error("App getSession error:", error);
-      }
-      setSession(session);
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth event:", event, session ? "Session exists" : "No session");
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // MecoPay Auth legal/identity pages are intentionally public and must not
-  // wait for Supabase or redirect through the login flow.
+  // wait for the Auth Worker or redirect through the login flow.
   if (publicAuthPage) {
     return (
       <ErrorBoundary>
