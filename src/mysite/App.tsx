@@ -10,6 +10,7 @@ import AdminPanel from './components/AdminPanel';
 import LazyAuthModal from './components/LazyAuthModal';
 import Footer from './components/Footer';
 import CustomerPortal from './components/CustomerPortal';
+import { getNoCodeAuthSession } from './lib/authWorker';
 import type { SharedDashboardPageContext } from '../components/shared-dashboard/types';
 
 export default function App(props: { builderUser?: any, activeSiteId?: string, sharedContext?: SharedDashboardPageContext, onNavigateUpload?: () => void, onBackToHub?: () => void } = {}) {
@@ -157,100 +158,36 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
     }
   }, [verifySharedAccess]);
 
-  // Fetch initial session & setup auth listener
+  // Resolve the no-code site's first-party Auth Worker session.
   useEffect(() => {
     if (builderUser) {
       setUser(builderUser);
       setAuthLoading(false);
       return;
     }
+    let active = true;
+    getNoCodeAuthSession()
+      .then((authSession) => {
+        if (!active) return;
+        const authUser = authSession?.user;
+        setUser(authUser ? {
+          ...authUser,
+          user_metadata: {
+            full_name: authUser.name,
+            avatar_url: authUser.image || null,
+          },
+        } : null);
+      })
+      .catch((error) => {
+        console.error('Auth Worker session check failed:', error);
+        if (active) setUser(null);
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false);
+      });
+
+    return () => { active = false; };
   }, [builderUser]);
-
-  useEffect(() => {
-    if (builderUser) return;
-    // Check real Supabase session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        if (window.opener && window.location.hash.includes('access_token')) {
-          setTimeout(() => window.close(), 500);
-        }
-      } else {
-        // Check simulated test user for quick preview evaluations
-        const simEmail = localStorage.getItem('simulated_user_email');
-        if (simEmail) {
-          setUser({
-            id: 'sim_user_' + simEmail,
-            email: simEmail,
-            user_metadata: {
-              full_name: 'Simulated User',
-            },
-          });
-        }
-      }
-      setAuthLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        if (window.opener && window.location.hash.includes('access_token')) {
-          setTimeout(() => window.close(), 500);
-        }
-        // Redirect to admin panel ONLY IF the user is the Admin
-        if (_event === 'SIGNED_IN') {
-           const params = new URLSearchParams(window.location.search);
-           const paramSubdomain = params.get('subdomain');
-           const paramCustomDomain = params.get('custom_domain');
-           let currentDomain = window.location.hostname;
-           
-           let query = supabase.from('site_settings').select('client_id, owner_email');
-           
-           if (paramSubdomain) {
-             query = query.eq('subdomain', paramSubdomain);
-           } else if (paramCustomDomain) {
-             query = query.eq('domain', paramCustomDomain);
-           } else {
-             let rawSubdomain = currentDomain.endsWith('.mecopay.space') ? currentDomain.replace('.mecopay.space', '') : null;
-             if (rawSubdomain && rawSubdomain !== 'www' && rawSubdomain !== 'mecopay.space') {
-               query = query.eq('subdomain', rawSubdomain);
-             } else {
-               query = query.or(`client_id.eq.${session.user.id},owner_email.eq.${session.user.email},domain.eq.${currentDomain},subdomain.eq.${currentDomain}`);
-             }
-           }
-
-           query.limit(1).maybeSingle().then(({data}) => {
-             const isClient = data && (data.client_id === session.user.id || data.owner_email === session.user.email);
-             if (isClient) {
-               setCurrentView('admin');
-               window.location.hash = 'admin';
-             } else {
-               // Non-admin customer logged in => go to their portal
-               setCurrentView('my-account');
-               window.location.hash = 'my-account';
-             }
-           });
-        }
-      } else {
-        const simEmail = localStorage.getItem('simulated_user_email');
-        if (simEmail) {
-          setUser({
-            id: 'sim_user_' + simEmail,
-            email: simEmail,
-            user_metadata: {
-              full_name: 'Simulated User',
-            },
-          });
-        } else {
-          setUser(null);
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // Fetch categories & posts from Supabase (with fallback to local storage / initial data)
   const fetchSupabaseData = useCallback(async () => {
@@ -497,20 +434,6 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
   // --- LAZY AUTH TRIGGERS ---
 
 
-
-  // Handle successful login in Lazy Auth Modal
-  const handleSuccessLogin = (email: string) => {
-    const newUser = {
-      id: 'usr_' + Date.now(),
-      email: email,
-      user_metadata: {
-        full_name: email.split('@')[0],
-      },
-    };
-    setUser(newUser);
-
-
-  };
 
   // --- ADMIN CMS ACTIONS ---
 
@@ -913,6 +836,11 @@ export default function App(props: { builderUser?: any, activeSiteId?: string, s
       <Footer siteSettings={siteSettings} />
 
       {/* 4. Modals & Drawers */}
+      <LazyAuthModal
+        isOpen={authModalOpen}
+        contextAction={authModalContext}
+        onClose={() => setAuthModalOpen(false)}
+      />
       
       {/* Toast Notification Banner (prevents native browser alerts displaying mecopay.pages.dev) */}
       {toast && (

@@ -1,14 +1,9 @@
 import React, { useState } from 'react';
-import { supabase, ADMIN_EMAIL } from '../lib/supabaseClient';
+import { startNoCodeGoogleLogin } from '../lib/authWorker';
 import { 
   X, 
   Sparkles, 
   CheckCircle2, 
-  Lock, 
-  Zap, 
-  Mail, 
-  ArrowRight,
-  ShieldCheck
 } from 'lucide-react';
 
 interface LazyAuthModalProps {
@@ -16,7 +11,6 @@ interface LazyAuthModalProps {
   onClose: () => void;
   contextAction?: string; // 'buy_volume' | 'take_exam' | 'telegram' | 'navbar' | string
   postTitle?: string;
-  onSuccessLogin?: (email: string) => void;
 }
 
 export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
@@ -24,14 +18,9 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
   onClose,
   contextAction = 'navbar',
   postTitle,
-  onSuccessLogin,
 }) => {
-  const [emailInput, setEmailInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [isEmailMode, setIsEmailMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [infoMsg, setInfoMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -85,84 +74,18 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
 
   const contextInfo = getContextDescription();
 
-  // 1. Real Google OAuth via Supabase
-  const handleGoogleSignIn = async () => {
+  // Start the tenant OAuth broker with a top-level navigation. The Gateway
+  // validates this no-code host and forwards the request to the Auth Worker.
+  const handleGoogleSignIn = () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            
-          redirectTo: window.location.href,
-          queryParams: {
-            prompt: 'select_account'
-          }
-        },
-      });
-      if (error) throw error;
+      startNoCodeGoogleLogin();
     } catch (err: any) {
       console.error('Google OAuth error:', err);
-      setErrorMsg(err.message || 'Failed to initiate Google OAuth. You can use direct login below.');
+      setErrorMsg(err.message || 'Could not start Google sign-in. Please try again.');
       setLoading(false);
     }
-  };
-
-  // 2. Email Magic Link or Password Login
-  const handleEmailSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput) return;
-    setLoading(true);
-    setErrorMsg(null);
-    setInfoMsg(null);
-
-    try {
-      if (passwordInput) {
-        // Attempt sign in with password
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: emailInput.trim(),
-          password: passwordInput,
-        });
-        if (error) {
-          // If user doesn't exist, attempt sign up
-          const { error: signUpErr } = await supabase.auth.signUp({
-            email: emailInput.trim(),
-            password: passwordInput,
-          });
-          if (signUpErr) throw signUpErr;
-          setInfoMsg('Account created & logged in successfully!');
-        }
-        if (data?.user) {
-          onSuccessLogin?.(data.user.email || emailInput);
-          onClose();
-        }
-      } else {
-        // Send OTP / Magic link
-        const { error } = await supabase.auth.signInWithOtp({
-          email: emailInput.trim(),
-          options: {
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        setInfoMsg(`Magic login link sent to ${emailInput}. Please check your inbox!`);
-      }
-    } catch (err: any) {
-      console.error('Email sign in error:', err);
-      // Fast fallback simulation for testing if Supabase Auth has email rate limits or requires confirmation
-      localStorage.setItem('simulated_user_email', emailInput.trim());
-      onSuccessLogin?.(emailInput.trim());
-      onClose();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 3. Fast Demo Sign-In (For instant live evaluation of Admin & Student features)
-  const handleFastSimulate = (email: string) => {
-    localStorage.setItem('simulated_user_email', email);
-    onSuccessLogin?.(email);
-    onClose();
   };
 
   return (
@@ -217,12 +140,6 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
           {errorMsg && (
             <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300">
               {errorMsg}
-            </div>
-          )}
-
-          {infoMsg && (
-            <div className="mb-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300">
-              {infoMsg}
             </div>
           )}
 
