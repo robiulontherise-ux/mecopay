@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { supabase, ADMIN_EMAIL } from '../lib/supabaseClient';
+import { ADMIN_EMAIL } from '../lib/supabaseClient';
+import { signOutNoCodeAuth, startNoCodeGoogleLogin } from '../lib/authWorker';
 import { Category, SiteSettings } from '../types';
 import { 
   Sparkles, 
@@ -56,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOutNoCodeAuth();
       localStorage.removeItem('simulated_user_email');
       window.location.reload();
     } catch (err) {
@@ -245,18 +246,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             ) : disableAuthActions ? null : (
               <button
-                onClick={async () => {
+                onClick={() => {
                   try {
-                    const { error } = await supabase.auth.signInWithOAuth({
-                      provider: 'google',
-                      options: {
-                        redirectTo: window.location.href,
-                        queryParams: {
-                          prompt: 'select_account'
-                        }
-                      },
-                    });
-                    if (error) throw error;
+                    startNoCodeGoogleLogin();
                   } catch (err) {
                     console.error('Google OAuth error:', err);
                   }
