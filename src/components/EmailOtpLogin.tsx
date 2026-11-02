@@ -129,11 +129,10 @@ export default function EmailOtpLogin() {
           <span>MecoPay Authentication</span>
         </div>
 
-        <p className="email-login-eyebrow">Email sign-in</p>
         <h1 id="email-login-title">{step === 'email' ? 'Sign in with email' : 'Enter your code'}</h1>
         <p className="email-login-description">
           {step === 'email'
-            ? 'We will email you a one-time code. No password needed.'
+            ? 'For your security, we’ll send a one-time sign-in code to your email. This email sign-in method doesn’t use a password.'
             : <>Enter the 6-digit code sent to <strong>{email}</strong>. It expires in 5 minutes.</>}
         </p>
 

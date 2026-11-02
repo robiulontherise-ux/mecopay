@@ -81,15 +81,6 @@
   box-shadow: 0 0 28px rgba(55, 211, 224, 0.16);
 }
 
-.email-login-eyebrow {
-  margin: 1.3rem 0 0.55rem;
-  color: #83e9e9;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
 .email-login-card h1 {
   margin: 0;
   color: #f6fbff;
