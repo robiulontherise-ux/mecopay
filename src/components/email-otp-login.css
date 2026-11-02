@@ -71,15 +71,13 @@
   font-weight: 750;
 }
 
-.email-login-brand-mark {
-  display: grid;
-  width: 2rem;
+.email-login-brand-logo {
+  display: block;
+  width: auto;
+  max-width: 3.5rem;
   height: 2rem;
-  place-items: center;
-  border: 1px solid rgba(127, 229, 239, 0.38);
   border-radius: 0.7rem;
-  color: #8cf3f1;
-  background: linear-gradient(145deg, rgba(47, 204, 219, 0.22), rgba(76, 91, 255, 0.25));
+  object-fit: contain;
   box-shadow: 0 0 28px rgba(55, 211, 224, 0.16);
 }
 

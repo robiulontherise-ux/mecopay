@@ -120,7 +120,12 @@ export default function EmailOtpLogin() {
         </button>
 
         <div className="email-login-brand" aria-label="MecoPay Authentication">
-          <span className="email-login-brand-mark" aria-hidden="true">M</span>
+          <img
+            className="email-login-brand-logo"
+            src="https://i.postimg.cc/gX1nxKHH/logo.png"
+            alt=""
+            onError={(event) => { event.currentTarget.src = "https://i.postimg.cc/Zn53D792/Meco-Pay-Logo.png"; }}
+          />
           <span>MecoPay Authentication</span>
         </div>
 
