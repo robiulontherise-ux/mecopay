@@ -81,17 +81,6 @@
   box-shadow: 0 0 28px rgba(55, 211, 224, 0.16);
 }
 
-.email-login-icon {
-  display: grid;
-  width: 3.4rem;
-  height: 3.4rem;
-  place-items: center;
-  border: 1px solid rgba(131, 233, 233, 0.25);
-  border-radius: 1.1rem;
-  color: #83e9e9;
-  background: rgba(35, 190, 201, 0.1);
-}
-
 .email-login-eyebrow {
   margin: 1.3rem 0 0.55rem;
   color: #83e9e9;

@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './email-otp-login.css';
 
@@ -129,9 +129,6 @@ export default function EmailOtpLogin() {
           <span>MecoPay Authentication</span>
         </div>
 
-        <div className="email-login-icon" aria-hidden="true">
-          {step === 'email' ? <Mail size={27} /> : <CheckCircle2 size={27} />}
-        </div>
         <p className="email-login-eyebrow">Email sign-in</p>
         <h1 id="email-login-title">{step === 'email' ? 'Sign in with email' : 'Enter your code'}</h1>
         <p className="email-login-description">
