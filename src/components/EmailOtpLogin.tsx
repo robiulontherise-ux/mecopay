@@ -119,9 +119,9 @@ export default function EmailOtpLogin() {
           Back to login options
         </button>
 
-        <div className="email-login-brand" aria-label="MecoPay">
+        <div className="email-login-brand" aria-label="MecoPay Authentication">
           <span className="email-login-brand-mark" aria-hidden="true">M</span>
-          <span>MecoPay</span>
+          <span>MecoPay Authentication</span>
         </div>
 
         <div className="email-login-icon" aria-hidden="true">
