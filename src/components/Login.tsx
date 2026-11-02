@@ -175,10 +175,10 @@ export default function Login() {
           <div className="flex items-center gap-2 sm:gap-3" aria-label="Choose a sign-in provider">
             <span className="text-[10px] font-semibold text-neutral-400 sm:text-xs">Login with</span>
             <button type="button" onClick={handleEmailLogin} aria-label="Login with Email" title="Login with Email" className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-700 bg-neutral-900 text-neutral-100 shadow-sm transition hover:border-cyan-400 hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
-              <Mail className="h-4 w-4" aria-hidden="true" />
+              <Mail className="h-5 w-5" aria-hidden="true" />
             </button>
             <button type="button" onClick={handleGoogleLogin} aria-label="Login with Google" title="Login with Google" className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-700 bg-white shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
-              <GoogleMark className="h-5 w-5" />
+              <GoogleMark className="h-[18px] w-[18px]" />
             </button>
           </div>
         </div>
@@ -244,13 +244,13 @@ export default function Login() {
           <div className="flex items-start justify-center gap-8 sm:gap-10">
             <button type="button" onClick={handleEmailLogin} className="group flex min-w-20 flex-col items-center gap-2.5 text-sm font-semibold text-neutral-200 transition hover:text-white" aria-label="Login with Email">
               <span className="flex h-16 w-16 items-center justify-center rounded-full border border-neutral-700 bg-neutral-900 text-cyan-300 shadow-lg shadow-cyan-950/20 transition group-hover:scale-105 group-hover:border-cyan-400 group-hover:bg-neutral-800 group-focus-visible:ring-2 group-focus-visible:ring-cyan-400 sm:h-[4.5rem] sm:w-[4.5rem]">
-                <Mail className="h-7 w-7" aria-hidden="true" />
+                <Mail className="h-8 w-8" aria-hidden="true" />
               </span>
               <span>Email</span>
             </button>
             <button type="button" onClick={handleGoogleLogin} className="group flex min-w-20 flex-col items-center gap-2.5 text-sm font-semibold text-neutral-200 transition hover:text-white" aria-label="Login with Google">
               <span className="flex h-16 w-16 items-center justify-center rounded-full border border-neutral-700 bg-white shadow-lg shadow-blue-950/20 transition group-hover:scale-105 group-hover:border-cyan-400 group-focus-visible:ring-2 group-focus-visible:ring-cyan-400 sm:h-[4.5rem] sm:w-[4.5rem]">
-                <GoogleMark className="h-8 w-8" />
+                <GoogleMark className="h-7 w-7" />
               </span>
               <span>Google</span>
             </button>
