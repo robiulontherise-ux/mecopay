@@ -133,12 +133,6 @@ function App() {
       localStorage.removeItem('mysite_cached_logo');
     } catch (e) {}
 
-    // Check for hash errors from OAuth
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    if (hashParams.has('error_description')) {
-      console.warn("Login Error:", decodeURIComponent(hashParams.get('error_description') || ''));
-    }
-    
     let isMounted = true;
     void getAuthWorkerSession()
       .then((authState) => {
