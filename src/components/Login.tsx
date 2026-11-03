@@ -354,11 +354,11 @@ export default function Login() {
           <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl max-w-md w-full shadow-xl relative overflow-hidden">
             <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-blue-400" />
-              <span id="login-warning-title">{warningType === 'google-limit' ? 'Google লগইনের সীমা শেষ' : 'Security Notice'}</span>
+              <span id="login-warning-title">{warningType === 'google-limit' ? 'Google sign-in limit reached' : 'Security Notice'}</span>
             </h3>
         <p className="text-neutral-300 text-sm leading-relaxed mb-6">
           {warningType === 'google-limit'
-            ? 'এই Google অ্যাকাউন্ট দিয়ে ৫ মিনিটের মধ্যে সর্বোচ্চ ২ বার সফলভাবে লগইন করা যাবে। পাঁচ মিনিটের সীমা শেষ হলে আবার চেষ্টা করুন।'
+            ? 'This Google account can sign in successfully no more than twice within five minutes. Please try again after the five-minute limit resets.'
             : <>Google Login is blocked inside preview frames for your security (Clickjacking protection).<br/><br/>Click the button below to open MecoPay in a new tab and complete your login safely.</>}
         </p>
         <div className="flex gap-3">
@@ -367,7 +367,7 @@ export default function Login() {
               onClick={() => setShowIframeWarning(false)}
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition-colors shadow-sm"
             >
-              ঠিক আছে
+              OK
             </button>
           ) : (
             <>
