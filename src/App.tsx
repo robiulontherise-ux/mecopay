@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { getAuthWorkerSession } from './lib/authWorker';
 import Login from './components/Login';
 import EmailOtpLogin from './components/EmailOtpLogin';
+import GoogleAuthPopupComplete from './components/GoogleAuthPopupComplete';
 import MfaVerification from './components/MfaVerification';
 import DashboardRoute from './components/DashboardRoute';
 import CheckoutPage from './components/checkout/CheckoutPage';
@@ -179,6 +180,7 @@ function App() {
           <Route path="/auth/home" element={<AuthPage kind="home" />} />
           <Route path="/auth/privacy" element={<AuthPage kind="privacy" />} />
           <Route path="/auth/terms" element={<AuthPage kind="terms" />} />
+          <Route path="/auth/google/complete" element={<GoogleAuthPopupComplete />} />
 
           {/* Authentication */}
           <Route

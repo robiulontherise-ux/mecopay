@@ -103,16 +103,51 @@ export default function Login() {
       return;
     }
 
-    if (window.location.hostname === 'www.mecopay.space') {
-      window.location.assign('https://mecopay.space/api/auth/google/start?returnTo=%2Flogin');
-      return;
-    }
-    if (window.location.hostname !== 'mecopay.space') {
+    const host = window.location.hostname.toLowerCase();
+    if (host !== 'mecopay.space' && host !== 'www.mecopay.space') {
       setAuthError('Google sign-in can only be started from the official MecoPay site.');
       return;
     }
 
-    window.location.assign('/api/auth/google/start?returnTo=%2Flogin');
+    const authOrigin = 'https://mecopay.space';
+    const callbackURL = new URL('/auth/google/complete', authOrigin);
+    callbackURL.searchParams.set('parentOrigin', window.location.origin);
+    const startURL = new URL('/api/auth/google/start', authOrigin);
+    startURL.searchParams.set('returnTo', `${callbackURL.pathname}${callbackURL.search}`);
+    const popupWidth = 520;
+    const popupHeight = 700;
+    const left = Math.max(0, window.screenX + (window.outerWidth - popupWidth) / 2);
+    const top = Math.max(0, window.screenY + (window.outerHeight - popupHeight) / 2);
+    const popup = window.open(
+      startURL.href,
+      'mecopay-google-login',
+      `popup=yes,width=${popupWidth},height=${popupHeight},left=${left},top=${top}`,
+    );
+
+    if (!popup) {
+      setAuthError('Google sign-in popup was blocked. Allow pop-ups for MecoPay and try again.');
+      return;
+    }
+
+    popup.focus();
+    const handlePopupMessage = (event: MessageEvent) => {
+      if (
+        event.source !== popup ||
+        event.origin !== authOrigin ||
+        event.data?.type !== 'MECOPAY_GOOGLE_AUTH_COMPLETE'
+      ) return;
+
+      window.removeEventListener('message', handlePopupMessage);
+      window.clearInterval(closeCheck);
+      window.location.assign('/dashboard');
+    };
+    window.addEventListener('message', handlePopupMessage);
+    const closeCheck = window.setInterval(() => {
+      if (popup.closed) {
+        window.clearInterval(closeCheck);
+        window.removeEventListener('message', handlePopupMessage);
+      }
+    }, 500);
   };
 
   const handleEmailLogin = () => {
