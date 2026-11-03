@@ -52,46 +52,12 @@ export default function Login() {
   const [isYearly, setIsYearly] = useState(false);
   const [showIframeWarning, setShowIframeWarning] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [showGoogleLimitModal, setShowGoogleLimitModal] = useState(false);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
   const { continent, country: selectedCountry, language, countries, isDetecting: isDetectingContinent, countryData: selectedCountryData, languageOptions: countryLanguageOptions, setCountry: setSelectedCountry, setLanguage } = useLocale();
   const pricingLanguage = pricingUnavailableTextLanguages.has(language) ? 'en' : language;
   const pricingLanguageOptions = countryLanguageOptions.filter((option) => !pricingUnavailableTextLanguages.has(option.value));
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
-  useEffect(() => {
-    const currentUrl = new URL(window.location.href);
-    const hashParams = new URLSearchParams(currentUrl.hash.replace(/^#/, ''));
-    const oauthError = [
-      currentUrl.searchParams.get('error'),
-      currentUrl.searchParams.get('error_description'),
-      currentUrl.searchParams.get('message'),
-      hashParams.get('error'),
-      hashParams.get('error_description'),
-      hashParams.get('message'),
-    ].filter(Boolean).join(' ');
-
-    // Google callback থেকে আসা rate-limit error চিনে MecoPay-এর modal দেখাই।
-    if (!/too[_\s-]?many|rate.?limit|limit.{0,60}(five|5)|five.?minute|5.?minute|two sign.?ins/i.test(oauthError)) return;
-
-    setShowGoogleLimitModal(true);
-    currentUrl.searchParams.delete('error');
-    currentUrl.searchParams.delete('error_description');
-    currentUrl.searchParams.delete('error_code');
-    currentUrl.searchParams.delete('message');
-    if (hashParams.has('error') || hashParams.has('error_description')) currentUrl.hash = '';
-    window.history.replaceState(window.history.state, document.title, currentUrl.toString());
-  }, []);
-
-  useEffect(() => {
-    if (!showGoogleLimitModal) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowGoogleLimitModal(false);
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [showGoogleLimitModal]);
-
   useEffect(() => {
     // Calculate total time needed for the current chunk to finish its animation
     // Duration is 2.0s, delay is 0.5 + lineIndex * 2.0
@@ -194,55 +160,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans selection:bg-blue-500/30 overflow-x-hidden relative">
-      <AnimatePresence>
-        {showGoogleLimitModal && (
-          <motion.div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setShowGoogleLimitModal(false);
-            }}
-          >
-            <motion.section
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="google-limit-title"
-              aria-describedby="google-limit-description"
-              className="relative w-full max-w-md rounded-2xl border border-blue-400/25 bg-neutral-950 p-6 shadow-2xl shadow-blue-950/40 sm:p-7"
-              initial={{ opacity: 0, y: 18, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.98 }}
-              transition={{ duration: 0.18 }}
-            >
-              <button
-                type="button"
-                autoFocus
-                onClick={() => setShowGoogleLimitModal(false)}
-                aria-label="Close message"
-                className="absolute right-4 top-4 rounded-lg p-2 text-neutral-400 transition hover:bg-neutral-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
-              >
-                <span aria-hidden="true" className="text-xl leading-none">×</span>
-              </button>
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/10 text-amber-200">
-                <ShieldCheck className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <h2 id="google-limit-title" className="pr-8 text-xl font-bold text-white sm:text-2xl">Google sign-in limit reached</h2>
-              <p id="google-limit-description" className="mt-3 text-sm leading-6 text-neutral-300">
-                This Google account can sign in at most twice in a five-minute window. Please try again after the limit resets.
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowGoogleLimitModal(false)}
-                className="mt-6 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
-              >
-                Got it
-              </button>
-            </motion.section>
-          </motion.div>
-        )}
-      </AnimatePresence>
       
       {/* Subtle Background */}
       <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-blue-900/10 to-neutral-950 pointer-events-none"></div>
