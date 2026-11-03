@@ -51,6 +51,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [isYearly, setIsYearly] = useState(false);
   const [showIframeWarning, setShowIframeWarning] = useState(false);
+  const [warningType, setWarningType] = useState<'iframe' | 'google-limit'>('iframe');
   const [authError, setAuthError] = useState<string | null>(null);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [pricingMode, setPricingMode] = useState<'nocode' | 'custom'>('nocode');
@@ -58,6 +59,28 @@ export default function Login() {
   const pricingLanguage = pricingUnavailableTextLanguages.has(language) ? 'en' : language;
   const pricingLanguageOptions = countryLanguageOptions.filter((option) => !pricingUnavailableTextLanguages.has(option.value));
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>(['no-code-website']);
+  useEffect(() => {
+    const callbackUrl = new URL(window.location.href);
+    const hashParams = new URLSearchParams(callbackUrl.hash.replace(/^#/, ''));
+    const errorText = [
+      callbackUrl.searchParams.get('error'),
+      callbackUrl.searchParams.get('error_description'),
+      hashParams.get('error'),
+      hashParams.get('error_description'),
+    ].filter(Boolean).join(' ');
+
+    // Google login limit error এলে আগের MecoPay warning modal দেখাই।
+    if (!/too[_\s-]?many|rate.?limit|two sign.?ins|limit.{0,80}(five|5)|five.?minute|5.?minute/i.test(errorText)) return;
+
+    setWarningType('google-limit');
+    setShowIframeWarning(true);
+    callbackUrl.searchParams.delete('error');
+    callbackUrl.searchParams.delete('error_description');
+    callbackUrl.searchParams.delete('error_code');
+    if (hashParams.has('error') || hashParams.has('error_description')) callbackUrl.hash = '';
+    window.history.replaceState(window.history.state, document.title, callbackUrl.toString());
+  }, []);
+
   useEffect(() => {
     // Calculate total time needed for the current chunk to finish its animation
     // Duration is 2.0s, delay is 0.5 + lineIndex * 2.0
@@ -75,6 +98,7 @@ export default function Login() {
   const handleGoogleLogin = () => {
     setAuthError(null);
     if (window.self !== window.top) {
+      setWarningType('iframe');
       setShowIframeWarning(true);
       return;
     }
@@ -324,35 +348,46 @@ export default function Login() {
         <p className="text-sm text-neutral-600">© {new Date().getFullYear()} MecoPay Framework. All rights reserved.</p>
       </footer>
 
-      {/* Iframe Warning Modal */}
+      {/* Google ও iframe লগইনের warning modal */}
       {showIframeWarning && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="login-warning-title">
           <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl max-w-md w-full shadow-xl relative overflow-hidden">
             <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-blue-400" />
-              Security Notice
+              <span id="login-warning-title">{warningType === 'google-limit' ? 'Google লগইনের সীমা শেষ' : 'Security Notice'}</span>
             </h3>
         <p className="text-neutral-300 text-sm leading-relaxed mb-6">
-          Google Login is blocked inside preview frames for your security (Clickjacking protection). 
-          <br/><br/>
-          Click the button below to open MecoPay in a new tab and complete your login safely.
+          {warningType === 'google-limit'
+            ? 'এই Google অ্যাকাউন্ট দিয়ে ৫ মিনিটের মধ্যে সর্বোচ্চ ২ বার সফলভাবে লগইন করা যাবে। পাঁচ মিনিটের সীমা শেষ হলে আবার চেষ্টা করুন।'
+            : <>Google Login is blocked inside preview frames for your security (Clickjacking protection).<br/><br/>Click the button below to open MecoPay in a new tab and complete your login safely.</>}
         </p>
         <div className="flex gap-3">
-          <button 
-            onClick={() => setShowIframeWarning(false)}
-            className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-medium py-2.5 rounded-lg transition-colors border border-neutral-700"
-          >
-            Close
-          </button>
-          <a 
-            href={window.location.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => setShowIframeWarning(false)}
-            className="flex-1 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition-colors shadow-sm"
-          >
-            Open in New Tab
-          </a>
+          {warningType === 'google-limit' ? (
+            <button
+              onClick={() => setShowIframeWarning(false)}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition-colors shadow-sm"
+            >
+              ঠিক আছে
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => setShowIframeWarning(false)}
+                className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-medium py-2.5 rounded-lg transition-colors border border-neutral-700"
+              >
+                Close
+              </button>
+              <a
+                href={window.location.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowIframeWarning(false)}
+                className="flex-1 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition-colors shadow-sm"
+              >
+                Open in New Tab
+              </a>
+            </>
+          )}
         </div>
           </div>
         </div>

@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { getAuthWorkerSession } from './lib/authWorker';
 import Login from './components/Login';
 import EmailOtpLogin from './components/EmailOtpLogin';
-import GoogleLoginLimitPage from './components/GoogleLoginLimitPage';
 import MfaVerification from './components/MfaVerification';
 import DashboardRoute from './components/DashboardRoute';
 import CheckoutPage from './components/checkout/CheckoutPage';
@@ -51,7 +50,6 @@ function checkIsClientSite(): boolean {
   if (
     path.startsWith('/dashboard') ||
     path === '/login' ||
-    path === '/login/limit-reached' ||
     path === '/email-login' ||
     path.startsWith('/auth/') ||
     path.startsWith('/checkout') ||
@@ -183,7 +181,6 @@ function App() {
           <Route path="/auth/terms" element={<AuthPage kind="terms" />} />
 
           {/* Authentication */}
-          <Route path="/login/limit-reached" element={<GoogleLoginLimitPage />} />
           <Route
             path="/login"
             element={!session ? <Login /> : <Navigate to="/dashboard" />}
