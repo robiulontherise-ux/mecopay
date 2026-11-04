@@ -1,0 +1,66 @@
+.telegram-login-card {
+  position: relative;
+}
+
+.telegram-login-heading-icon {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  margin: 0 0 1rem;
+  place-items: center;
+  border: 1px solid rgba(70, 190, 240, 0.28);
+  border-radius: 0.9rem;
+  color: #8bdfff;
+  background: rgba(48, 160, 220, 0.12);
+  box-shadow: 0 0 28px rgba(55, 180, 235, 0.1);
+}
+
+.telegram-login-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.telegram-login-open {
+  display: inline-flex;
+  min-height: 3.15rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(97, 187, 244, 0.34);
+  border-radius: 0.8rem;
+  color: #eaf8ff;
+  background: linear-gradient(100deg, rgba(27, 120, 185, 0.72), rgba(42, 158, 207, 0.72));
+  font-size: 0.95rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+.telegram-login-open:hover:not(.is-disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.telegram-login-open.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+.telegram-login-expiry {
+  margin: 0.1rem 0;
+  color: #99aec1;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.telegram-login-secondary-actions {
+  align-items: center;
+  color: #8ea3b8;
+  font-size: 0.76rem;
+}
+
+.telegram-login-secondary-actions span {
+  text-align: right;
+}

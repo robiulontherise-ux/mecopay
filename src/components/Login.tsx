@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, ShieldCheck, Zap, Rocket, Globe, ArrowRight, Menu, Wallet, Crown, Link as LinkIcon, PlayCircle, Mail } from 'lucide-react';
 import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
 import { useLocale } from '../lib/LocaleContext';
+import TelegramMark from './TelegramMark';
 
 const pricingUnavailableTextLanguages = new Set(['khi', 'nzs', 'zib']);
 
@@ -118,6 +119,11 @@ export default function Login() {
   const handleEmailLogin = () => {
     setAuthError(null);
     navigate('/email-login');
+  };
+
+  const handleTelegramLogin = () => {
+    setAuthError(null);
+    navigate('/telegram-login');
   };
 
   const pricingCatalog = {
@@ -273,6 +279,10 @@ export default function Login() {
             <button type="button" onClick={handleGoogleLogin} className="group flex min-w-20 flex-col items-center gap-2.5 text-sm font-semibold text-neutral-200 transition hover:text-white" aria-label="Login with Google">
               <GoogleMark className="h-8 w-8 transition group-hover:scale-105" />
               <span>Google</span>
+            </button>
+            <button type="button" onClick={handleTelegramLogin} className="group flex min-w-20 flex-col items-center gap-2.5 text-sm font-semibold text-neutral-200 transition hover:text-white" aria-label="Login with Telegram">
+              <TelegramMark className="h-8 w-8 transition group-hover:scale-105" />
+              <span>Telegram</span>
             </button>
           </div>
           <p className="text-xs text-neutral-500">Choose your preferred sign-in method</p>

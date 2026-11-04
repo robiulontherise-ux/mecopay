@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { getAuthWorkerSession } from './lib/authWorker';
 import Login from './components/Login';
 import EmailOtpLogin from './components/EmailOtpLogin';
+import TelegramLogin from './components/TelegramLogin';
 import MfaVerification from './components/MfaVerification';
 import DashboardRoute from './components/DashboardRoute';
 import CheckoutPage from './components/checkout/CheckoutPage';
@@ -51,6 +52,7 @@ function checkIsClientSite(): boolean {
     path.startsWith('/dashboard') ||
     path === '/login' ||
     path === '/email-login' ||
+    path === '/telegram-login' ||
     path.startsWith('/auth/') ||
     path.startsWith('/checkout') ||
     path.startsWith('/pay') ||
@@ -188,6 +190,10 @@ function App() {
           <Route
             path="/email-login"
             element={!session ? <EmailOtpLogin /> : <Navigate to="/dashboard" />}
+          />
+          <Route
+            path="/telegram-login"
+            element={!session ? <TelegramLogin /> : <Navigate to="/dashboard" />}
           />
           
           {/* Public Checkout */}
