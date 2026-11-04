@@ -185,9 +185,6 @@ export default function TelegramLogin() {
           <span>MecoPay Authentication</span>
         </div>
 
-        <div className="telegram-login-heading-icon" aria-hidden="true">
-          <TelegramMark className="h-6 w-6" />
-        </div>
         <h1 id="telegram-login-title">Sign in with Telegram</h1>
         <p className="email-login-description">
           Create a secure, one-time login link, open Telegram, and press <strong>Start</strong>. Return to this page and verify within five minutes.

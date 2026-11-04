@@ -210,6 +210,9 @@ export default function Login() {
             <button type="button" onClick={handleGoogleLogin} aria-label="Login with Google" title="Login with Google" className="flex h-10 w-10 items-center justify-center rounded-lg transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
               <GoogleMark className="h-5 w-5" />
             </button>
+            <button type="button" onClick={handleTelegramLogin} aria-label="Login with Telegram" title="Login with Telegram" className="flex h-10 w-10 items-center justify-center rounded-lg transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
+              <TelegramMark className="h-5 w-5" />
+            </button>
           </div>
         </div>
         

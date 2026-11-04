@@ -2,19 +2,6 @@
   position: relative;
 }
 
-.telegram-login-heading-icon {
-  display: grid;
-  width: 2.8rem;
-  height: 2.8rem;
-  margin: 0 0 1rem;
-  place-items: center;
-  border: 1px solid rgba(70, 190, 240, 0.28);
-  border-radius: 0.9rem;
-  color: #8bdfff;
-  background: rgba(48, 160, 220, 0.12);
-  box-shadow: 0 0 28px rgba(55, 180, 235, 0.1);
-}
-
 .telegram-login-actions {
   display: grid;
   gap: 0.75rem;
