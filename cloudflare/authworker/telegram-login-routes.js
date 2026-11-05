@@ -229,6 +229,7 @@ async function tgLoginRequestLink(context) {
       confirmed: false,
       telegramUserId: null,
       telegramName: null,
+      telegramChatId: null,
     };
     await storage.set(tgLoginChallengeKey(challengeId), JSON.stringify(challenge), TG_LOGIN_TTL_SECONDS);
     await storage.set(tgLoginStartKey(startHash), challengeId, TG_LOGIN_TTL_SECONDS);
@@ -262,7 +263,15 @@ async function tgLoginWebhook(context) {
 
   const update = await context.req.json().catch(() => null);
   const message = update?.message;
-  if (!message || message.chat?.type !== 'private' || !message.from?.id || typeof message.text !== 'string') {
+  if (
+    !message
+    || message.chat?.type !== 'private'
+    || !Number.isSafeInteger(message.chat.id)
+    || message.chat.id <= 0
+    || !Number.isSafeInteger(message.from?.id)
+    || message.from.id <= 0
+    || typeof message.text !== 'string'
+  ) {
     return tgLoginNoStore(context, { ok: true });
   }
   const match = message.text.trim().match(/^\/start(?:@[A-Za-z0-9_]+)?(?:\s+([A-Za-z0-9_-]{32,64}))?$/);
@@ -314,6 +323,7 @@ async function tgLoginWebhook(context) {
       ...challenge,
       confirmed: true,
       telegramUserId,
+      telegramChatId: String(chatId),
       telegramName: [message.from.first_name, message.from.last_name].filter(Boolean).join(' ').slice(0, 120)
         || (typeof message.from.username === 'string' ? message.from.username.slice(0, 120) : `Telegram user ${telegramUserId}`),
       confirmedAt: Date.now(),
@@ -327,7 +337,71 @@ async function tgLoginWebhook(context) {
   }
 }
 
-async function tgLoginIssueAuthSession(context, telegramUserId, telegramName) {
+async function tgLoginPersistChatId(env, userId, telegramUserId, telegramChatId) {
+  if (!telegramChatId || !/^\d+$/.test(telegramChatId)) {
+    throw new Error('TELEGRAM_CHAT_ID_MISSING');
+  }
+
+  const sql = getSql(env);
+  try {
+    await sql.begin(async (tx) => {
+      const existingTelegram = await tx`
+        select "userId"
+        from mecopay_auth.account
+        where "providerId" = 'telegram' and "accountId" = ${telegramUserId}
+        limit 1
+        for update
+      `;
+      if (existingTelegram[0] && existingTelegram[0].userId !== userId) {
+        throw new Error('TELEGRAM_ACCOUNT_USER_MISMATCH');
+      }
+
+      const existingForUser = await tx`
+        select "accountId"
+        from mecopay_auth.account
+        where "providerId" = 'telegram' and "userId" = ${userId}
+        limit 1
+        for update
+      `;
+      if (existingForUser[0] && existingForUser[0].accountId !== telegramUserId) {
+        throw new Error('USER_HAS_DIFFERENT_TELEGRAM_ACCOUNT');
+      }
+
+      if (!existingTelegram[0]) {
+        await tx`
+          insert into mecopay_auth.account
+            (id, "accountId", "providerId", "userId", "telegramChatId")
+          values
+            (${crypto.randomUUID()}, ${telegramUserId}, 'telegram', ${userId}, ${telegramChatId})
+          on conflict ("providerId", "accountId") do nothing
+        `;
+      }
+
+      const confirmed = await tx`
+        select "userId"
+        from mecopay_auth.account
+        where "providerId" = 'telegram' and "accountId" = ${telegramUserId}
+        limit 1
+      `;
+      if (!confirmed[0] || confirmed[0].userId !== userId) {
+        throw new Error('TELEGRAM_ACCOUNT_USER_MISMATCH');
+      }
+
+      // সফল Telegram verification-এর chat ID একই account row-তে স্থায়ীভাবে রাখুন।
+      await tx`
+        update mecopay_auth.account
+        set "telegramChatId" = ${telegramChatId}, "updatedAt" = now()
+        where "providerId" = 'telegram'
+          and "accountId" = ${telegramUserId}
+          and "userId" = ${userId}
+      `;
+    });
+  } finally {
+    await sql.end({ timeout: 2 }).catch(() => {});
+  }
+}
+
+async function tgLoginIssueAuthSession(context, telegramUserId, telegramName, telegramChatId) {
   const env = context.env;
   const requestUrl = new URL(context.req.url);
   const email = `telegram-${telegramUserId}@users.invalid`;
@@ -365,6 +439,7 @@ async function tgLoginIssueAuthSession(context, telegramUserId, telegramName) {
   const user = authPayload?.user;
   if (!user?.id || !user?.email) throw new Error('TELEGRAM_SESSION_USER_MISSING');
 
+  await tgLoginPersistChatId(env, user.id, telegramUserId, telegramChatId);
   await provisionForRequest(env, context.req.raw, user, 'telegram');
   const cookies = tgLoginExtractSetCookies(signinResponse);
   const cookieHeader = tgLoginCookiePairs(cookies);
@@ -432,7 +507,12 @@ async function tgLoginVerify(context) {
     const active = tgLoginParseChallenge(await storage.get(tgLoginActiveKey(sessionId)));
     if (active?.challengeId === challengeId) await storage.delete(tgLoginActiveKey(sessionId));
 
-    return await tgLoginIssueAuthSession(context, consumed.telegramUserId, consumed.telegramName);
+    return await tgLoginIssueAuthSession(
+      context,
+      consumed.telegramUserId,
+      consumed.telegramName,
+      consumed.telegramChatId
+    );
   } catch (error) {
     console.error('[telegram-login] Verify failed', error instanceof Error ? error.message : 'unknown');
     return tgLoginNoStore(context, { error: 'TELEGRAM_LOGIN_VERIFY_FAILED', message: 'The sign-in could not be completed. Request another link and try again.' }, 503);

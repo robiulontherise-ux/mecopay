@@ -27,6 +27,7 @@ from pathlib import Path
 
 SCRIPT_NAME = "authworker"
 ROUTE_ANCHOR = 'app.get("/api/auth/google/start", async (c2) => {'
+TELEGRAM_FRAGMENT_MARKER = "// Telegram login routes for the existing MecoPay Auth Worker."
 TELEGRAM_USERNAME = "MecoPay_Authentication_bot"
 TELEGRAM_WEBHOOK_PATH = "/api/auth/telegram/webhook"
 
@@ -205,14 +206,27 @@ def main() -> int:
     source = extract_worker_source(api_base, token)
 
     source_text = source.decode("utf-8")
-    if "app.post('/api/auth/telegram/request-link', tgLoginRequestLink);" in source_text:
-        print("Telegram login routes are already present; no duplicate patch will be created.")
-        patched = source
+    telegram_route = "app.post('/api/auth/telegram/request-link', tgLoginRequestLink);"
+    if source_text.count(ROUTE_ANCHOR) != 1:
+        raise RuntimeError("Could not identify one unique insertion point in the current Worker source.")
+
+    if TELEGRAM_FRAGMENT_MARKER in source_text:
+        if source_text.count(TELEGRAM_FRAGMENT_MARKER) != 1:
+            raise RuntimeError("The current Worker contains duplicate Telegram fragment markers.")
+        start = source_text.index(TELEGRAM_FRAGMENT_MARKER)
+        end = source_text.index(ROUTE_ANCHOR, start)
+        existing_fragment = source_text[start:end]
+        if telegram_route not in existing_fragment:
+            raise RuntimeError("The marked Telegram fragment is incomplete; refusing to replace it.")
+        patched_text = source_text[:start] + fragment.decode("utf-8").rstrip() + "\n" + source_text[end:]
+        patched = patched_text.encode()
+        print("Updated the existing marked Telegram login fragment.")
+    elif telegram_route in source_text:
+        raise RuntimeError("Telegram routes exist without the expected marker; refusing an unsafe patch.")
     else:
-        if source_text.count(ROUTE_ANCHOR) != 1:
-            raise RuntimeError("Could not identify one unique insertion point in the current Worker source.")
         patched_text = source_text.replace(ROUTE_ANCHOR, fragment.decode("utf-8") + "\n" + ROUTE_ANCHOR, 1)
         patched = patched_text.encode()
+        print("Inserted the Telegram login fragment into the existing Auth Worker.")
 
     metadata = safe_settings_metadata(settings)
     body, content_type = multipart_body(metadata, patched)
