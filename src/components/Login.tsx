@@ -276,7 +276,7 @@ export default function Login() {
           <span className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-400">Login with</span>
           <div className="flex items-start justify-center gap-8 sm:gap-10">
             <button type="button" onClick={handleEmailLogin} className="group flex min-w-20 flex-col items-center gap-2.5 text-sm font-semibold text-neutral-200 transition hover:text-white" aria-label="Login with Email">
-              <Mail className="h-8 w-8 text-cyan-300 transition group-hover:scale-105 group-hover:text-white" aria-hidden="true" />
+              <Mail className="h-8 w-8 text-neutral-100 transition group-hover:scale-105 group-hover:text-white" aria-hidden="true" />
               <span>Email</span>
             </button>
             <button type="button" onClick={handleGoogleLogin} className="group flex min-w-20 flex-col items-center gap-2.5 text-sm font-semibold text-neutral-200 transition hover:text-white" aria-label="Login with Google">
