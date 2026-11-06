@@ -5,6 +5,7 @@ import { CheckCircle2, ShieldCheck, Zap, Rocket, Globe, ArrowRight, Menu, Wallet
 import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
 import { useLocale } from '../lib/LocaleContext';
 import TelegramMark from './TelegramMark';
+import './login-provider-water.css';
 
 const pricingUnavailableTextLanguages = new Set(['khi', 'nzs', 'zib']);
 
@@ -205,13 +206,22 @@ export default function Login() {
           <div className="flex items-center gap-2 sm:gap-3" aria-label="Choose a sign-in provider">
             <span className="text-[10px] font-semibold text-neutral-400 sm:text-xs">Login with</span>
             <button type="button" onClick={handleEmailLogin} aria-label="Login with Email" title="Login with Email" className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-100 transition hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
-              <Mail className="h-5 w-5" aria-hidden="true" />
+              <span className="login-provider-water login-provider-water--email" aria-hidden="true">
+                <span className="login-provider-water__drops"><i /><i /><i /><i /><i /></span>
+                <Mail className="h-5 w-5" />
+              </span>
             </button>
             <button type="button" onClick={handleGoogleLogin} aria-label="Login with Google" title="Login with Google" className="flex h-10 w-10 items-center justify-center rounded-lg transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
-              <GoogleMark className="h-5 w-5" />
+              <span className="login-provider-water login-provider-water--google" aria-hidden="true">
+                <span className="login-provider-water__drops"><i /><i /><i /><i /><i /></span>
+                <GoogleMark className="h-5 w-5" />
+              </span>
             </button>
             <button type="button" onClick={handleTelegramLogin} aria-label="Login with Telegram" title="Login with Telegram" className="flex h-10 w-10 items-center justify-center rounded-lg transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
-              <TelegramMark className="h-5 w-5" />
+              <span className="login-provider-water login-provider-water--telegram" aria-hidden="true">
+                <span className="login-provider-water__drops"><i /><i /><i /><i /><i /></span>
+                <TelegramMark className="h-5 w-5" />
+              </span>
             </button>
           </div>
         </div>

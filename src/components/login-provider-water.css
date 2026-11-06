@@ -1,0 +1,86 @@
+.login-provider-water {
+  position: relative;
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+}
+
+.login-provider-water__drops {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.login-provider-water__drops i {
+  --drop-x: 0px;
+  --drop-y: -12px;
+  --drop-tilt: 0deg;
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  width: 3px;
+  height: 4px;
+  border-radius: 70% 30% 65% 35%;
+  background: var(--water-color);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.25);
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--water-color), transparent 35%));
+  animation: provider-water-splash 3.6s cubic-bezier(0.2, 0.65, 0.3, 1) infinite;
+  animation-delay: var(--provider-delay, 0s);
+}
+
+.login-provider-water__drops i:nth-child(1) { --drop-x: -8px; --drop-y: -8px; --drop-tilt: -35deg; }
+.login-provider-water__drops i:nth-child(2) { --drop-x: -4px; --drop-y: -13px; --drop-tilt: -12deg; }
+.login-provider-water__drops i:nth-child(3) { --drop-x: 2px; --drop-y: -15px; --drop-tilt: 10deg; }
+.login-provider-water__drops i:nth-child(4) { --drop-x: 8px; --drop-y: -9px; --drop-tilt: 35deg; }
+.login-provider-water__drops i:nth-child(5) { --drop-x: 0px; --drop-y: 8px; --drop-tilt: 80deg; width: 2px; height: 3px; }
+
+.login-provider-water--email {
+  --water-color: #67e8f9;
+  --provider-delay: 0s;
+}
+
+.login-provider-water--google {
+  --water-color: #60a5fa;
+  --provider-delay: 1.2s;
+}
+
+.login-provider-water--google .login-provider-water__drops i:nth-child(2),
+.login-provider-water--google .login-provider-water__drops i:nth-child(5) { --water-color: #fbbf24; }
+.login-provider-water--google .login-provider-water__drops i:nth-child(3) { --water-color: #f87171; }
+.login-provider-water--google .login-provider-water__drops i:nth-child(4) { --water-color: #4ade80; }
+
+.login-provider-water--telegram {
+  --water-color: #7dd3fc;
+  --provider-delay: 2.4s;
+}
+
+@keyframes provider-water-splash {
+  0%, 5% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+  12% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  38% {
+    opacity: 0.72;
+    transform: translate(calc(-50% + var(--drop-x)), calc(-50% + var(--drop-y))) rotate(var(--drop-tilt)) scale(1);
+  }
+  55%, 100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--drop-x)), calc(-50% + var(--drop-y))) rotate(var(--drop-tilt)) scale(0.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-provider-water__drops i {
+    animation: none;
+    opacity: 0;
+  }
+}
