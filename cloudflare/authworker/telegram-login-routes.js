@@ -406,7 +406,7 @@ async function tgLoginIssueAuthSession(context, telegramUserId, telegramName, te
   const requestUrl = new URL(context.req.url);
   const email = `telegram-${telegramUserId}@users.invalid`;
   const password = `${await tgLoginHmac(env.BETTER_AUTH_SECRET, `mecopay-telegram-account:v1:${telegramUserId}`)}A1!`;
-  const auth = createAuth(env);
+  const auth = createAuth(env, { skipLoginProvision: true });
   const commonHeaders = new Headers({
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -435,48 +435,36 @@ async function tgLoginIssueAuthSession(context, telegramUserId, telegramName, te
     console.error('[telegram-login] Better Auth session creation failed', signinResponse.status);
     throw new Error('TELEGRAM_SESSION_CREATION_FAILED');
   }
-  const authPayload = await signinResponse.clone().json().catch(() => null);
-  const user = authPayload?.user;
-  if (!user?.id || !user?.email) throw new Error('TELEGRAM_SESSION_USER_MISSING');
-
-  await tgLoginPersistChatId(env, user.id, telegramUserId, telegramChatId);
-  await provisionForRequest(env, context.req.raw, user, 'telegram');
   const cookies = tgLoginExtractSetCookies(signinResponse);
   const cookieHeader = tgLoginCookiePairs(cookies);
   if (!cookieHeader) throw new Error('TELEGRAM_SESSION_COOKIE_MISSING');
+  const session = await auth.api.getSession({ headers: new Headers({ Cookie: cookieHeader }) });
+  const user = session?.user;
+  if (!user?.id || !user?.email) throw new Error('TELEGRAM_SESSION_USER_MISSING');
+  await tgLoginPersistChatId(env, user.id, telegramUserId, telegramChatId);
 
-  const tokenRequest = new Request(new URL(TOKEN_PATH, requestUrl.origin), {
-    method: 'POST',
-    headers: new Headers({
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Origin: requestUrl.origin,
-      Cookie: cookieHeader,
-      ...(context.req.header('User-Agent') ? { 'User-Agent': context.req.header('User-Agent') } : {}),
-    }),
-    body: '{}',
-  });
-  const tokenResponse = await app.fetch(tokenRequest, env, context.executionCtx);
-  const tokenPayload = await tokenResponse.json().catch(() => null);
-  if (!tokenResponse.ok || typeof tokenPayload?.token !== 'string') {
-    console.error('[telegram-login] Existing session JWT issuance failed', tokenResponse.status);
+  const loginTokenState = {};
+  await provisionForRequest(env, context.req.raw, user, 'telegram', session.session, loginTokenState);
+  if (typeof loginTokenState.token !== 'string' || !loginTokenState.token) {
+    console.error('[telegram-login] Pre-signed login JWT was not produced');
     const failure = new Response(JSON.stringify({ status: 'verified', error: 'JWT_ISSUANCE_FAILED', message: 'Sign-in was verified, but the session token could not be issued. Please retry.' }), {
       status: 502,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, max-age=0', Pragma: 'no-cache' },
     });
     return tgLoginSetCookies(failure, cookies);
   }
-
   const response = new Response(JSON.stringify({
     status: 'verified',
-    token: tokenPayload.token,
-    token_type: tokenPayload.token_type || 'Bearer',
-    expires_in: tokenPayload.expires_in,
+    token: loginTokenState.token,
+    token_type: 'Bearer',
+    expires_in: loginTokenState.expiresIn || JWT_TTL_SECONDS,
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, max-age=0', Pragma: 'no-cache' },
   });
-  return tgLoginSetCookies(response, cookies);
+  const responseWithSession = tgLoginSetCookies(response, cookies);
+  responseWithSession.headers.append('Set-Cookie', `__Host-mecopay_jwt=${loginTokenState.token}; Max-Age=${loginTokenState.expiresIn || JWT_TTL_SECONDS}; Path=/; Secure; HttpOnly; SameSite=Lax`);
+  return responseWithSession;
 }
 
 async function tgLoginVerify(context) {

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Patch the existing Cloudflare authworker with the Telegram login fragment.
+"""Patch the existing Cloudflare authworker with the single-event login pipeline and Telegram flow.
 
 Requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in the environment.
 The script preserves existing bindings/settings, never prints binding values,
-and only changes the Telegram webhook when --set-webhook is explicitly passed.
+uses anchor-checked source transformations, and only changes the Telegram webhook
+when --set-webhook is explicitly passed.
 """
 from __future__ import annotations
 
@@ -24,6 +25,8 @@ import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
+
+from login_pipeline_patch import patch_auth_worker_source
 
 SCRIPT_NAME = "authworker"
 ROUTE_ANCHOR = 'app.get("/api/auth/google/start", async (c2) => {'
@@ -206,6 +209,7 @@ def main() -> int:
     source = extract_worker_source(api_base, token)
 
     source_text = source.decode("utf-8")
+    source_text = patch_auth_worker_source(source_text)
     telegram_route = "app.post('/api/auth/telegram/request-link', tgLoginRequestLink);"
     if source_text.count(ROUTE_ANCHOR) != 1:
         raise RuntimeError("Could not identify one unique insertion point in the current Worker source.")

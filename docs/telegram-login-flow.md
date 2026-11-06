@@ -6,7 +6,13 @@
 2. Worker bot-এর `t.me` deep link তৈরি করে। Browser সেটি নতুন tab-এ খোলে; ব্যবহারকারী `MecoPay_Authentication_bot`-এ **Start** চাপেন।
 3. Telegram webhook `POST /api/auth/telegram/webhook`-এ update পাঠায়। Worker derived webhook secret যাচাই করে, one-time start payload consume করে এবং challenge-এ Telegram user ID-এর confirmation 5 মিনিটের বাকি TTL-সহ রাখে। Bot ব্যবহারকারীকে browser-এ ফিরে **Verify and sign in** চাপতে বলে।
 4. Browser-এর Verify button `POST /api/auth/telegram/verify` করে। Worker challenge, browser flow-cookie এবং expiry মিলিয়ে দেখে; confirmation না এলে `pending` ফেরত দেয়—কোনো polling হয় না।
-5. Confirmation মিললে Worker challenge একবার consume করে Better Auth session তৈরি করে, existing profile provisioning-এ `telegram` provider ব্যবহার করে এবং বর্তমান `/api/auth/session-token` route দিয়ে পাঁচ মিনিটের ES256 JWT browser-কে ফেরত দেয়। Dashboard-এর মূল session HttpOnly cookie-তে থাকে; বর্তমান app কোনো JavaScript-readable storage-এ bearer JWT সংরক্ষণ করে না।
+5. Confirmation মিললে Worker challenge একবার consume করে Better Auth session তৈরি করে। Telegram-এর internal email sign-in session/cookie তৈরির জন্যই থাকে; তার session hook provisioning event পাঠায় না। Worker verified Telegram identity persist করে, একবার login payload তৈরি করে এবং একই সময়ে পাঁচ মিনিটের ES256 JWT sign করে। তারপর Sub-Worker/Queue-তে payload একবার পাঠায়। Queue accepted হওয়ার পর একই pre-signed JWT JSON response ও Secure, HttpOnly cookie-তে browser-কে ফেরত যায়; এই flow `/api/auth/session-token`-এ আরেকটি provisioning event পাঠায় না। Dashboard-এর Better Auth session cookie-ই মূল session।
+
+## Google ও Email-এর single-event handoff
+
+- Google callback এবং Email OTP/password verification সফল হয়ে Better Auth session তৈরি হলে session-create hook একবারই common login-provision function চালায়। ভুল/মেয়াদোত্তীর্ণ OTP বা ব্যর্থ OAuth callback-এ payload বা JWT তৈরি/পাঠানো হয় না।
+- Worker Queue পাঠানোর আগেই event payload ও JWT claims তৈরি করে এবং JWT sign করে। Sub-Worker accepted না বললে browser-কে সফল login response দেওয়া হয় না; accepted হলে একই JWT `__Host-mecopay_jwt` Secure, HttpOnly, SameSite=Lax cookie-তে ফেরত যায়। Google callback redirect হলেও token URL-এ যায় না।
+- `/api/auth/session-token` compatibility token response দিতে পারে, কিন্তু Queue event পাঠায় না। পুরোনো manual `/api/auth/provision` route duplicate event ঠেকাতে retired (`410`).
 
 ## Limits and security
 
