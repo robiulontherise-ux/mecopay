@@ -17,30 +17,30 @@
 
 .login-provider-water__drops i {
   --drop-x: 0px;
-  --drop-y: -11px;
+  --drop-y: -20px;
   --drop-tilt: 0deg;
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 3px;
-  height: 4px;
+  width: 4px;
+  height: 6px;
   border-radius: 70% 30% 65% 35%;
   background: var(--water-color);
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.15);
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--water-color), transparent 32%));
-  animation: provider-water-splash 3.6s cubic-bezier(0.22, 0.68, 0.24, 1) infinite;
+  transform: translate(-50%, -50%) scale(0.08);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--water-color), transparent 18%));
+  animation: provider-water-splash 3.6s linear infinite;
   animation-delay: var(--provider-delay, 0s);
 }
 
-.login-provider-water__drops i:nth-child(1) { --drop-x: 0px; --drop-y: -11px; --drop-tilt: 0deg; }
-.login-provider-water__drops i:nth-child(2) { --drop-x: 8px; --drop-y: -8px; --drop-tilt: 32deg; }
-.login-provider-water__drops i:nth-child(3) { --drop-x: 11px; --drop-y: 0px; --drop-tilt: 70deg; }
-.login-provider-water__drops i:nth-child(4) { --drop-x: 8px; --drop-y: 8px; --drop-tilt: 115deg; }
-.login-provider-water__drops i:nth-child(5) { --drop-x: 0px; --drop-y: 11px; --drop-tilt: 180deg; }
-.login-provider-water__drops i:nth-child(6) { --drop-x: -8px; --drop-y: 8px; --drop-tilt: 225deg; }
-.login-provider-water__drops i:nth-child(7) { --drop-x: -11px; --drop-y: 0px; --drop-tilt: 270deg; }
-.login-provider-water__drops i:nth-child(8) { --drop-x: -8px; --drop-y: -8px; --drop-tilt: 315deg; }
+.login-provider-water__drops i:nth-child(1) { --drop-x: 0px; --drop-y: -20px; --drop-tilt: 0deg; }
+.login-provider-water__drops i:nth-child(2) { --drop-x: 14px; --drop-y: -14px; --drop-tilt: 32deg; }
+.login-provider-water__drops i:nth-child(3) { --drop-x: 20px; --drop-y: 0px; --drop-tilt: 70deg; }
+.login-provider-water__drops i:nth-child(4) { --drop-x: 14px; --drop-y: 14px; --drop-tilt: 115deg; }
+.login-provider-water__drops i:nth-child(5) { --drop-x: 0px; --drop-y: 20px; --drop-tilt: 180deg; }
+.login-provider-water__drops i:nth-child(6) { --drop-x: -14px; --drop-y: 14px; --drop-tilt: 225deg; }
+.login-provider-water__drops i:nth-child(7) { --drop-x: -20px; --drop-y: 0px; --drop-tilt: 270deg; }
+.login-provider-water__drops i:nth-child(8) { --drop-x: -14px; --drop-y: -14px; --drop-tilt: 315deg; }
 
 .login-provider-water--email {
   --water-color: #26a5e4;
@@ -65,29 +65,29 @@
 }
 
 @keyframes provider-water-splash {
-  0%, 4% {
+  0%, 3% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.15);
+    transform: translate(-50%, -50%) scale(0.08);
   }
-  12% {
+  6% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.75);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--drop-x)), calc(-50% + var(--drop-y))) rotate(var(--drop-tilt)) scale(1.25);
+  }
+  22% {
     opacity: 0.95;
-    transform: translate(-50%, -50%) scale(0.8);
-  }
-  38% {
-    opacity: 0.9;
     transform: translate(calc(-50% + var(--drop-x)), calc(-50% + var(--drop-y))) rotate(var(--drop-tilt)) scale(1);
   }
-  56% {
-    opacity: 0.78;
-    transform: translate(calc(-50% + var(--drop-x)), calc(-50% + var(--drop-y))) rotate(var(--drop-tilt)) scale(0.78);
+  28% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) rotate(var(--drop-tilt)) scale(0.65);
   }
-  78% {
-    opacity: 0.62;
-    transform: translate(-50%, -50%) rotate(var(--drop-tilt)) scale(0.45);
-  }
-  92%, 100% {
+  33%, 100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.12);
+    transform: translate(-50%, -50%) scale(0.08);
   }
 }
 
