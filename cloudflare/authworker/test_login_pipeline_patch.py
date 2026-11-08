@@ -61,10 +61,11 @@ def main() -> None:
     assert 'sub: `${loginProvider}:${providerAccountId}`' in result
     assert 'PROVISIONING_HANDLED_AT_SESSION_CREATE' in result
     assert 'skipLoginProvision: true' in result
-    assert 'surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():null' in result
+    assert "surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():(context3.surface==='mother'?'mecopay.space':null)" in result
     assert "mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):null" in result
     assert 'handoff_id:eventId' in result
     assert module.DOMAIN_MARKER in result
+    assert module.DOMAIN_FALLBACK_MARKER in result
     assert 'TOKEN_PATH' not in result
     assert result.index('if(beforeSend)await beforeSend') < result.index("const service=env['SUB_WORKER_")
     provision = result[result.index('async function provisionForRequest'):result.index('__name(provisionForRequest')]
@@ -72,11 +73,16 @@ def main() -> None:
     assert 'preparedToken = token;' in provision
     assert provision.index('await enqueueLoginProvision') < provision.index('tokenState.token = preparedToken;')
     assert result.index('if(beforeSend)await beforeSend') < result.index('const resp=await service.fetch')
-    legacy_v1 = result.replace(module.DOMAIN_MARKER + '\n', '')
-    legacy_v1 = legacy_v1.replace('surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface===\'mother\'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():\'mecopay.space\'):null', "domain:context3.surface==='no_code'&&context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):''")
+    legacy_v1 = result.replace(module.DOMAIN_MARKER + '\n', '').replace(module.DOMAIN_FALLBACK_MARKER, '')
+    legacy_v1 = legacy_v1.replace("surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():(context3.surface==='mother'?'mecopay.space':null),mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):null", "domain:context3.surface==='no_code'&&context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):''")
     upgraded_v1 = module.patch_auth_worker_source(legacy_v1)
     assert module.DOMAIN_MARKER in upgraded_v1
+    assert module.DOMAIN_FALLBACK_MARKER in upgraded_v1
     assert 'surface:context3.surface,domain:context3.origin?' in upgraded_v1
+    legacy_v2 = result.replace(module.DOMAIN_FALLBACK_MARKER, '').replace("(context3.surface==='mother'?'mecopay.space':null)", 'null')
+    upgraded_v2 = module.patch_auth_worker_source(legacy_v2)
+    assert module.DOMAIN_FALLBACK_MARKER in upgraded_v2
+    assert "(context3.surface==='mother'?'mecopay.space':null)" in upgraded_v2
     Path('/tmp/auth-worker-patched-fixture.js').write_text(result, encoding='utf-8')
     print('auth login-pipeline transformer tests passed')
 

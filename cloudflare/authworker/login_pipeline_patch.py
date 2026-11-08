@@ -9,6 +9,18 @@ import re
 
 MARKER = "// AUTH_LOGIN_PIPELINE_V1"
 DOMAIN_MARKER = "// AUTH_DOMAIN_SURFACE_V2"
+DOMAIN_FALLBACK_MARKER = "// AUTH_DOMAIN_FALLBACK_V3"
+
+
+def _patch_domain_fallback(source: str) -> str:
+    if DOMAIN_FALLBACK_MARKER in source:
+        return source
+    old = "domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():null"
+    new = "domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():(context3.surface==='mother'?'mecopay.space':null)"
+    source = _replace_once(source, old, new, "Mother domain fallback")
+    if DOMAIN_MARKER not in source:
+        raise ValueError("Cannot version the Mother fallback without the surface marker.")
+    return source.replace(DOMAIN_MARKER, DOMAIN_MARKER + "\n" + DOMAIN_FALLBACK_MARKER, 1)
 
 
 def _patch_domain_surface(source: str) -> str:
@@ -48,10 +60,12 @@ def _replace_function(source: str, start: str, end: str, new: str, label: str) -
 
 def patch_auth_worker_source(source: str) -> str:
     """Patch an Auth Worker source bundle once; fail closed on unexpected source."""
-    if DOMAIN_MARKER in source:
+    if DOMAIN_FALLBACK_MARKER in source:
         return source
+    if DOMAIN_MARKER in source:
+        return _patch_domain_fallback(source)
     if MARKER in source:
-        return _patch_domain_surface(source)
+        return _patch_domain_fallback(_patch_domain_surface(source))
 
     source = _replace_once(
         source,
@@ -254,7 +268,7 @@ __name(provisionForRequest, "provisionForRequest");'''
         'var JWT_TTL_SECONDS = 5 * 60;\n' + MARKER,
         1,
     )
-    return _patch_domain_surface(source)
+    return _patch_domain_fallback(_patch_domain_surface(source))
 
 
 def main() -> int:
