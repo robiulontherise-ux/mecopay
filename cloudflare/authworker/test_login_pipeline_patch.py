@@ -9,7 +9,7 @@ module = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
 spec.loader.exec_module(module)
 
-FIXTURE = r'''async function enqueueLoginProvision(env,sql3,context3,session2,requestedProvider){const provider=requestedProvider;const packet={jwt_expires_at:session2.session?.expiresAt?new Date(session2.session.expiresAt).toISOString():new Date(Date.now()+1800000).toISOString()};const service=env['SUB_WORKER_'+String(shard).padStart(2,'0')];const resp=await service.fetch(new Request('https://example'));return {eventId,providerAccountId}}
+FIXTURE = r'''async function enqueueLoginProvision(env,sql3,context3,session2,requestedProvider){const provider=requestedProvider;const packet={jwt_expires_at:session2.session?.expiresAt?new Date(session2.session.expiresAt).toISOString():new Date(Date.now()+1800000).toISOString(),image:user.image||null,domain:context3.surface==='no_code'&&context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):'',handoff_id:eventId,return_to:'/',last_login_origin:context3.origin||null};const service=env['SUB_WORKER_'+String(shard).padStart(2,'0')];const resp=await service.fetch(new Request('https://example'));return {eventId,providerAccountId}}
 __name(enqueueLoginProvision, "enqueueLoginProvision");
 async function provisionForRequest(env2, request, user2, provider = "email") { if (!request) return; const sql3 = getSql(env2); try { const context3 = await resolveLoginContext(sql3, request); await enqueueLoginProvision(env2, sql3, context3, { user: user2, session: null }, provider); } finally { await sql3.end({ timeout: 2 }).catch(() => {}); } }
 __name(provisionForRequest, "provisionForRequest");
@@ -61,6 +61,10 @@ def main() -> None:
     assert 'sub: `${loginProvider}:${providerAccountId}`' in result
     assert 'PROVISIONING_HANDLED_AT_SESSION_CREATE' in result
     assert 'skipLoginProvision: true' in result
+    assert 'surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():null' in result
+    assert "mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):null" in result
+    assert 'handoff_id:eventId' in result
+    assert module.DOMAIN_MARKER in result
     assert 'TOKEN_PATH' not in result
     assert result.index('if(beforeSend)await beforeSend') < result.index("const service=env['SUB_WORKER_")
     provision = result[result.index('async function provisionForRequest'):result.index('__name(provisionForRequest')]
@@ -68,6 +72,11 @@ def main() -> None:
     assert 'preparedToken = token;' in provision
     assert provision.index('await enqueueLoginProvision') < provision.index('tokenState.token = preparedToken;')
     assert result.index('if(beforeSend)await beforeSend') < result.index('const resp=await service.fetch')
+    legacy_v1 = result.replace(module.DOMAIN_MARKER + '\n', '')
+    legacy_v1 = legacy_v1.replace('surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface===\'mother\'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():\'mecopay.space\'):null', "domain:context3.surface==='no_code'&&context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):''")
+    upgraded_v1 = module.patch_auth_worker_source(legacy_v1)
+    assert module.DOMAIN_MARKER in upgraded_v1
+    assert 'surface:context3.surface,domain:context3.origin?' in upgraded_v1
     Path('/tmp/auth-worker-patched-fixture.js').write_text(result, encoding='utf-8')
     print('auth login-pipeline transformer tests passed')
 

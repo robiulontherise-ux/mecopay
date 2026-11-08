@@ -8,6 +8,25 @@ from __future__ import annotations
 import re
 
 MARKER = "// AUTH_LOGIN_PIPELINE_V1"
+DOMAIN_MARKER = "// AUTH_DOMAIN_SURFACE_V2"
+
+
+def _patch_domain_surface(source: str) -> str:
+    if DOMAIN_MARKER in source:
+        return source
+    old = "domain:context3.surface==='no_code'&&context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):''"
+    new = "surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):null"
+    if old in source:
+        source = _replace_once(source, old, new, "surface-aware login domain payload")
+    else:
+        anchor = "image:user.image||null,"
+        if source.count(anchor) != 1:
+            raise ValueError("Could not identify the unique login payload image anchor.")
+        fields = "surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):null,handoff_id:eventId,return_to:'/',"
+        source = _replace_once(source, anchor, anchor + fields, "login domain payload insertion")
+    if MARKER not in source:
+        raise ValueError("Cannot version the domain patch without the login pipeline marker.")
+    return source.replace(MARKER, MARKER + "\n" + DOMAIN_MARKER, 1)
 
 
 def _replace_once(source: str, old: str, new: str, label: str) -> str:
@@ -29,8 +48,10 @@ def _replace_function(source: str, start: str, end: str, new: str, label: str) -
 
 def patch_auth_worker_source(source: str) -> str:
     """Patch an Auth Worker source bundle once; fail closed on unexpected source."""
-    if MARKER in source:
+    if DOMAIN_MARKER in source:
         return source
+    if MARKER in source:
+        return _patch_domain_surface(source)
 
     source = _replace_once(
         source,
@@ -233,7 +254,7 @@ __name(provisionForRequest, "provisionForRequest");'''
         'var JWT_TTL_SECONDS = 5 * 60;\n' + MARKER,
         1,
     )
-    return source
+    return _patch_domain_surface(source)
 
 
 def main() -> int:
