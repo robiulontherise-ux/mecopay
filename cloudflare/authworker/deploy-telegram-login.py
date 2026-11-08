@@ -31,6 +31,7 @@ from login_pipeline_patch import patch_auth_worker_source
 SCRIPT_NAME = "authworker"
 ROUTE_ANCHOR = 'app.get("/api/auth/google/start", async (c2) => {'
 TELEGRAM_FRAGMENT_MARKER = "// Telegram login routes for the existing MecoPay Auth Worker."
+NO_CODE_FRAGMENT_MARKER = "// No-code tenant authentication routes. Mother-site routes remain unchanged."
 TELEGRAM_USERNAME = "MecoPay_Authentication_bot"
 TELEGRAM_WEBHOOK_PATH = "/api/auth/telegram/webhook"
 
@@ -203,6 +204,8 @@ def main() -> int:
     root = Path(__file__).resolve().parent
     fragment_path = root / "telegram-login-routes.js"
     fragment = fragment_path.read_bytes()
+    no_code_fragment_path = root / "no-code-tenant-routes.js"
+    no_code_fragment = no_code_fragment_path.read_bytes()
     api_base = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/workers/scripts/{SCRIPT_NAME}"
     settings_payload = cloudflare_json(api_base + "/settings", token)
     settings = settings_payload.get("result") or {}
@@ -231,6 +234,20 @@ def main() -> int:
         patched_text = source_text.replace(ROUTE_ANCHOR, fragment.decode("utf-8") + "\n" + ROUTE_ANCHOR, 1)
         patched = patched_text.encode()
         print("Inserted the Telegram login fragment into the existing Auth Worker.")
+
+    patched_text = patched.decode("utf-8")
+    if NO_CODE_FRAGMENT_MARKER in patched_text:
+        if patched_text.count(NO_CODE_FRAGMENT_MARKER) != 1:
+            raise RuntimeError("The current Worker contains duplicate no-code tenant fragments.")
+        start = patched_text.index(NO_CODE_FRAGMENT_MARKER)
+        end = patched_text.index(ROUTE_ANCHOR, start)
+        patched_text = patched_text[:start] + no_code_fragment.decode("utf-8").rstrip() + "\n" + patched_text[end:]
+        patched = patched_text.encode()
+        print("Updated the existing marked no-code tenant login fragment.")
+    else:
+        patched_text = patched_text.replace(ROUTE_ANCHOR, no_code_fragment.decode("utf-8") + "\n" + ROUTE_ANCHOR, 1)
+        patched = patched_text.encode()
+        print("Inserted the no-code tenant login fragment into the existing Auth Worker.")
 
     metadata = safe_settings_metadata(settings)
     body, content_type = multipart_body(metadata, patched)

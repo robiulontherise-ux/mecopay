@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { startNoCodeGoogleLogin } from '../lib/authWorker';
+import {
+  requestNoCodeEmailOtp,
+  requestNoCodeTelegramLink,
+  startNoCodeGoogleLogin,
+  verifyNoCodeEmailOtp,
+  verifyNoCodeTelegram,
+} from '../lib/authWorker';
 import { 
   X, 
   Sparkles, 
@@ -21,6 +27,11 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [emailFlowId, setEmailFlowId] = useState<string | null>(null);
+  const [otp, setOtp] = useState('');
+  const [telegramChallengeId, setTelegramChallengeId] = useState<string | null>(null);
+  const [telegramUrl, setTelegramUrl] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -86,6 +97,36 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
       setErrorMsg(err.message || 'Could not start Google sign-in. Please try again.');
       setLoading(false);
     }
+  };
+
+  const handleEmailStart = async () => {
+    setLoading(true); setErrorMsg(null);
+    try { const result = await requestNoCodeEmailOtp(email); setEmailFlowId(result.flowId); }
+    catch (err: any) { setErrorMsg(err.message || 'Could not send the sign-in code.'); }
+    finally { setLoading(false); }
+  };
+
+  const handleEmailVerify = async () => {
+    if (!emailFlowId) return;
+    setLoading(true); setErrorMsg(null);
+    try { await verifyNoCodeEmailOtp(emailFlowId, otp); window.location.reload(); }
+    catch (err: any) { setErrorMsg(err.message || 'The sign-in code was rejected.'); }
+    finally { setLoading(false); }
+  };
+
+  const handleTelegramStart = async () => {
+    setLoading(true); setErrorMsg(null);
+    try { const result = await requestNoCodeTelegramLink(); setTelegramChallengeId(result.challengeId); setTelegramUrl(result.loginUrl); }
+    catch (err: any) { setErrorMsg(err.message || 'Could not create the Telegram login link.'); }
+    finally { setLoading(false); }
+  };
+
+  const handleTelegramVerify = async () => {
+    if (!telegramChallengeId) return;
+    setLoading(true); setErrorMsg(null);
+    try { if (await verifyNoCodeTelegram(telegramChallengeId)) window.location.reload(); else setErrorMsg('Open the Telegram link, press Start, then verify again.'); }
+    catch (err: any) { setErrorMsg(err.message || 'Telegram verification failed.'); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -169,6 +210,23 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
             </svg>
             <span>{loading ? 'Connecting to Google...' : 'Continue with Google'}</span>
           </button>
+
+          <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-widest text-slate-500"><span className="h-px flex-1 bg-slate-800" />or<span className="h-px flex-1 bg-slate-800" /></div>
+
+          {!emailFlowId ? (
+            <div className="flex gap-2">
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email address" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-indigo-500" />
+              <button onClick={handleEmailStart} disabled={loading || !email} className="rounded-xl bg-indigo-600 px-3 text-xs font-semibold text-white disabled:opacity-50">Email code</button>
+            </div>
+          ) : (
+            <div className="flex gap-2"><input value={otp} onChange={(e) => setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder="6-digit code" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-indigo-500" /><button onClick={handleEmailVerify} disabled={loading || otp.length !== 6} className="rounded-xl bg-indigo-600 px-3 text-xs font-semibold text-white disabled:opacity-50">Verify</button></div>
+          )}
+
+          {!telegramChallengeId ? (
+            <button onClick={handleTelegramStart} disabled={loading} className="mt-3 w-full rounded-xl border border-sky-500/40 bg-sky-500/10 py-3 text-sm font-semibold text-sky-200 disabled:opacity-50">Continue with Telegram</button>
+          ) : (
+            <div className="mt-3 space-y-2"><a href={telegramUrl || '#'} target="_blank" rel="noreferrer" className="block w-full rounded-xl border border-sky-500/40 bg-sky-500/10 py-3 text-center text-sm font-semibold text-sky-200">Open Telegram and press Start</a><button onClick={handleTelegramVerify} disabled={loading} className="w-full rounded-xl border border-slate-700 py-2.5 text-xs font-semibold text-slate-200 disabled:opacity-50">Verify Telegram</button></div>
+          )}
 
           <p className="mt-5 text-[11px] text-center text-slate-400">
             By signing in, you agree to {getDomainName()} Terms of Service & Privacy Policy.
