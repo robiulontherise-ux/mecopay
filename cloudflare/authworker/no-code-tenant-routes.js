@@ -7,6 +7,7 @@ function ncB64(bytes) { let s = ''; for (const b of bytes) s += String.fromCharC
 function ncUnb64(value) { const s = value.replace(/-/g, '+').replace(/_/g, '/'); const padded = s + '='.repeat((4 - s.length % 4) % 4); const raw = atob(padded); return Uint8Array.from(raw, c => c.charCodeAt(0)); }
 function ncRandom() { const b = new Uint8Array(32); crypto.getRandomValues(b); return ncB64(b); }
 async function ncHash(value) { return ncB64(new Uint8Array(await crypto.subtle.digest('SHA-256', ncEncoder.encode(value)))); }
+function ncOtp() { const bytes = new Uint32Array(1); crypto.getRandomValues(bytes); return String(100000 + (bytes[0] % 900000)); }
 function ncJson(c, payload, status = 200) { const r = c.json(payload, status); r.headers.set('Cache-Control', 'no-store, max-age=0'); r.headers.set('Pragma', 'no-cache'); return r; }
 function ncHost(request) { return new URL(request.url).hostname.toLowerCase(); }
 function ncReturnTo(value) { if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/'; return value; }
@@ -76,7 +77,7 @@ async function ncGoogleStart(c) {
   const state = ncRandom(), verifier = ncRandom(), nonce = ncRandom(), domain = ncHost(c.req.raw);
   const storage = createOtpSecondaryStorage(c.env.OTP_STORE);
   const returnTo = ncReturnTo(c.req.query('returnTo') || '/');
-  await storage.set(`no-code:google:${state}`, JSON.stringify({ state, verifier, nonce, domain, returnTo, createdAt: Date.now() }), NC_TTL);
+  await storage.set(`no-code:google:${state}`, JSON.stringify({ state, verifier, nonce, domain, returnTo, createdAt: Date.now(), expiresAt: Date.now() + NC_TTL * 1000 }), NC_TTL);
   const digest = await crypto.subtle.digest('SHA-256', ncEncoder.encode(verifier));
   const challenge = ncB64(new Uint8Array(digest));
   const callback = `${c.env.BETTER_AUTH_URL.replace(/\/$/, '')}/api/auth/tenant/callback/google`;
@@ -105,7 +106,7 @@ async function ncEmailStart(c) {
   if (!ncNoCodeOrigin(c.req.raw) || !c.env.EMAIL_OTP_SENDER || !c.env.OTP_STORE) return ncJson(c, { error: 'EMAIL_LOGIN_NOT_CONFIGURED' }, 503);
   const body = await c.req.json().catch(() => ({})); const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 254) return ncJson(c, { error: 'INVALID_EMAIL' }, 400);
-  const otp = String(Math.floor(100000 + Math.random() * 900000)); const flowId = crypto.randomUUID(); const storage = createOtpSecondaryStorage(c.env.OTP_STORE);
+  const otp = ncOtp(); const flowId = crypto.randomUUID(); const storage = createOtpSecondaryStorage(c.env.OTP_STORE);
   await storage.set(`no-code:email:${flowId}`, JSON.stringify({ flowId, email, otpHash: await ncHash(`no-code-email:${flowId}:${otp}`), domain: ncHost(c.req.raw), returnTo: ncReturnTo(body.returnTo || '/'), expiresAt: Date.now() + NC_TTL * 1000 }), NC_TTL);
   await c.env.EMAIL_OTP_SENDER.send({ to: email, subject: 'MecoPay no-code sign-in code', text: `Your MecoPay sign-in code is ${otp}. It expires in five minutes.` });
   return ncJson(c, { ok: true, flowId, expiresIn: NC_TTL });
