@@ -108,7 +108,7 @@ async function ncEmailStart(c) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 254) return ncJson(c, { error: 'INVALID_EMAIL' }, 400);
   const otp = ncOtp(); const flowId = crypto.randomUUID(); const storage = createOtpSecondaryStorage(c.env.OTP_STORE);
   await storage.set(`no-code:email:${flowId}`, JSON.stringify({ flowId, email, otpHash: await ncHash(`no-code-email:${flowId}:${otp}`), domain: ncHost(c.req.raw), returnTo: ncReturnTo(body.returnTo || '/'), expiresAt: Date.now() + NC_TTL * 1000 }), NC_TTL);
-  await c.env.EMAIL_OTP_SENDER.send({ to: email, subject: 'MecoPay no-code sign-in code', text: `Your MecoPay sign-in code is ${otp}. It expires in five minutes.` });
+  await c.env.EMAIL_OTP_SENDER.send({ to: email, from: { email: 'auth@mecopay.space', name: 'MecoPay Authentication' }, subject: 'MecoPay no-code sign-in code', text: `Your MecoPay sign-in code is ${otp}. It expires in five minutes.` });
   return ncJson(c, { ok: true, flowId, expiresIn: NC_TTL });
 }
 async function ncEmailVerify(c) {

@@ -231,7 +231,7 @@ export const LazyAuthModal: React.FC<LazyAuthModalProps> = ({
                 <>
                   <label htmlFor="no-code-login-otp" className="block text-xs font-medium text-slate-300">Enter the 6-digit code</label>
                   <div className="flex gap-2">
-                    <input id="no-code-login-otp" value={otp} onChange={(e) => setOtp(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="6-digit code" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-indigo-500" />
+                    <input id="no-code-login-otp" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" maxLength={6} placeholder="6-digit code" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-indigo-500" />
                     <button type="button" onClick={handleEmailVerify} disabled={loading || otp.length !== 6} className="rounded-xl bg-indigo-600 px-3 text-xs font-semibold text-white disabled:opacity-50">{loading ? 'Verifying…' : 'Verify'}</button>
                   </div>
                 </>
