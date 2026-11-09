@@ -87,7 +87,7 @@ export async function verifyNoCodeTelegram(challengeId: string): Promise<boolean
 }
 
 export async function signOutNoCodeAuth(): Promise<void> {
-  const response = await fetch("/api/auth/sign-out", {
+  const response = await fetch("/api/auth/tenant/sign-out", {
     method: "POST",
     credentials: "same-origin",
     cache: "no-store",

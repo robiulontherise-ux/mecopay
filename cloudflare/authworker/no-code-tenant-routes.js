@@ -117,7 +117,16 @@ async function ncEmailVerify(c) {
   const storage = createOtpSecondaryStorage(c.env.OTP_STORE); const raw = await storage.get(`no-code:email:${flowId}`); let flow; try { flow = raw ? JSON.parse(raw) : null; } catch { flow = null; }
   if (!flow || flow.expiresAt <= Date.now() || !(await ncHash(`no-code-email:${flowId}:${otp}`) === flow.otpHash)) return ncJson(c, { error: 'INVALID_OR_EXPIRED_OTP' }, 401);
   const consumed = await storage.getAndDelete(`no-code:email:${flowId}`); if (!consumed) return ncJson(c, { error: 'OTP_ALREADY_USED' }, 410);
-  try { const handoff = await ncEnqueue(c.env, { provider: 'email', providerAccountId: flow.email, email: flow.email, emailVerified: true, name: flow.email.split('@')[0], domain: flow.domain, origin: `https://${flow.domain}`, returnTo: flow.returnTo }); const response = ncJson(c, { ok: true, status: 'verified' }); return ncSetJwt(response, handoff.token); } catch (e) { console.error('[no-code-email]', e instanceof Error ? e.message : 'unknown'); return ncJson(c, { error: 'QUEUE_ENQUEUE_FAILED' }, 503); }
+  try { const handoff = await ncEnqueue(c.env, { provider: 'email', providerAccountId: flow.email, email: flow.email, emailVerified: true, name: flow.email.split('@')[0], domain: flow.domain, origin: `https://${flow.domain}`, returnTo: flow.returnTo }); const response = ncJson(c, { ok: true, status: 'verified', token: handoff.token, token_type: 'Bearer', expires_in: NC_TTL }); return ncSetJwt(response, handoff.token); } catch (e) { console.error('[no-code-email]', e instanceof Error ? e.message : 'unknown'); return ncJson(c, { error: 'QUEUE_ENQUEUE_FAILED' }, 503); }
+}
+
+function ncSignOut(c) {
+  if (!ncNoCodeOrigin(c.req.raw)) return ncJson(c, { error: 'NO_CODE_ORIGIN_REQUIRED' }, 403);
+  const response = ncJson(c, { ok: true, status: 'signed_out' });
+  for (const name of ['__Host-mecopay_jwt', '__Host-mecopay_no_code_flow', '__Host-mecopay_tg_flow']) {
+    response.headers.append('Set-Cookie', `${name}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax`);
+  }
+  return response;
 }
 
 async function ncTelegramRequest(c) {
@@ -138,6 +147,7 @@ app.get('/api/auth/tenant/start', ncGoogleStart);
 app.get('/api/auth/tenant/callback/google', ncGoogleCallback);
 app.get('/api/auth/tenant/consume', ncConsumeHandoff);
 app.get('/api/auth/tenant/session', c => { const claims = ncDecodeJwt(ncCookie(c.req.raw, '__Host-mecopay_jwt')); if (!claims || claims.exp <= Math.floor(Date.now() / 1000) || claims.surface !== 'no-code' || claims.domain !== ncHost(c.req.raw)) return ncJson(c, null, 200); return ncJson(c, { session: { id: claims.jti, expiresAt: new Date(claims.exp * 1000).toISOString() }, user: { id: claims.sub, name: claims.name || 'MecoPay User', email: claims.email || '', emailVerified: true, image: claims.image || null } }); });
+app.post('/api/auth/tenant/sign-out', ncSignOut);
 app.post('/api/auth/tenant/email/start', ncEmailStart);
 app.post('/api/auth/tenant/email/verify', ncEmailVerify);
 app.post('/api/auth/tenant/telegram/request-link', ncTelegramRequest);
