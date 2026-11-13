@@ -5,10 +5,9 @@ export async function onRequest({ request, next }) {
   const isBrandDomain = url.hostname === "mecopay.space" || url.hostname === "www.mecopay.space";
 
   if (isBrandDomain) {
-    // Public payment flow routes: checkout, payment link, and post-payment access.
+    // Only the actual checkout and pay routes may be embedded.
     // Keep this aligned with the React routes in src/App.tsx.
-    const isPaymentRoute = /^\/(?:checkout|pay)(?:\/[^/]+)?\/?$/.test(url.pathname)
-      || /^\/access\/[^/]+\/?$/.test(url.pathname);
+    const isPaymentRoute = /^\/(?:checkout|pay)(?:\/[^/]+)?\/?$/.test(url.pathname);
 
     if (isPaymentRoute) {
       headers.delete("X-Frame-Options");
