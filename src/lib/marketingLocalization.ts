@@ -21,14 +21,14 @@ export const defaultLanguage: Record<Continent, MarketingLanguage> = {
 
 const hero: Partial<Record<MarketingLanguage, string[][]>> = {
   en: [
-    ['MecoPay is a complete e-commerce solution—', 'with powerful payment gateways', 'and a no-code website builder.'],
+    ['MecoPay is a complete e-commerce solution—', 'with a powerful payment automation system', 'and a no-code website builder.'],
     ['Use your custom website or', 'our no-code website with APIs and links', 'and accept payments through social media payment links.'],
     ['Create a website in a few clicks,', 'add a custom domain,', 'and build your digital identity.'],
     ['Receive automated orders from social media', 'with an AI Agent Chatbot', '(for no-code website users).'],
     ['Add a courier API to our platform,', 'confirm orders in one click,', 'and send them directly to the courier.']
   ],
   bn: [
-    ['MecoPay একটি পূর্ণাঙ্গ ই-কমার্স সলিউশন—', 'শক্তিশালী পেমেন্ট গেটওয়ে', 'এবং নো-কোড ওয়েবসাইট বিল্ডারসহ।'],
+    ['MecoPay একটি পূর্ণাঙ্গ ই-কমার্স সলিউশন—', 'শক্তিশালী পেমেন্ট অটোমেশন সিস্টেম', 'এবং নো-কোড ওয়েবসাইট বিল্ডারসহ।'],
     ['নিজস্ব Custom Website অথবা', 'আমাদের No-Code ওয়েবসাইটে API ও Link ব্যবহার করে', 'সোশ্যাল মিডিয়া Payment Link দিয়েও পেমেন্ট নিন।'],
     ['কয়েক ক্লিকেই ওয়েবসাইট তৈরি করুন,', 'Custom Domain যোগ করুন,', 'এবং নিজের ডিজিটাল আইডেন্টিটি তৈরি করুন।'],
     ['AI Agent Chatbot-এর মাধ্যমে', 'সোশ্যাল মিডিয়া থেকে স্বয়ংক্রিয় অর্ডার নিন', '(No-Code Website ব্যবহারকারীদের জন্য)।'],
