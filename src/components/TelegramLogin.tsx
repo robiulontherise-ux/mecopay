@@ -16,6 +16,7 @@ type TelegramChallenge = {
 type WorkerResponse = {
   status?: string;
   token?: string;
+  deepLink?: string;
   token_type?: string;
   expires_in?: number;
   error?: string;
@@ -130,7 +131,11 @@ export default function TelegramLogin() {
     setError('');
     setNotice('Checking Telegram confirmation…');
     try {
-      const { response, result } = await postWorkerJson('/api/auth/telegram/verify', {
+      const mobileState = new URLSearchParams(window.location.search).get('mobileState');
+      const verifyPath = mobileState
+        ? `/api/auth/mobile/telegram/verify?state=${encodeURIComponent(mobileState)}`
+        : '/api/auth/telegram/verify';
+      const { response, result } = await postWorkerJson(verifyPath, {
         challengeId: challenge.challengeId,
       });
       if (result?.status === 'pending') {
@@ -140,6 +145,11 @@ export default function TelegramLogin() {
       if (response.status === 410 || result?.status === 'expired') {
         setSecondsLeft(0);
         setError('This login link has expired. Request another link if one remains in your five-minute limit.');
+        return;
+      }
+
+      if (mobileState && result?.deepLink) {
+        window.location.assign(result.deepLink);
         return;
       }
 

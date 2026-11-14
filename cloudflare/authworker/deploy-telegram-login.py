@@ -32,6 +32,7 @@ SCRIPT_NAME = "authworker"
 ROUTE_ANCHOR = 'app.get("/api/auth/google/start", async (c2) => {'
 TELEGRAM_FRAGMENT_MARKER = "// Telegram login routes for the existing MecoPay Auth Worker."
 NO_CODE_FRAGMENT_MARKER = "// No-code tenant authentication routes. Mother-site routes remain unchanged."
+MOBILE_FRAGMENT_MARKER = "// Mobile app auth bridge. The app's native login UI stays in the Android app."
 TELEGRAM_USERNAME = "MecoPay_Authentication_bot"
 TELEGRAM_WEBHOOK_PATH = "/api/auth/telegram/webhook"
 
@@ -206,6 +207,8 @@ def main() -> int:
     fragment = fragment_path.read_bytes()
     no_code_fragment_path = root / "no-code-tenant-routes.js"
     no_code_fragment = no_code_fragment_path.read_bytes()
+    mobile_fragment_path = root / "mobile-app-routes.js"
+    mobile_fragment = mobile_fragment_path.read_bytes()
     api_base = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/workers/scripts/{SCRIPT_NAME}"
     settings_payload = cloudflare_json(api_base + "/settings", token)
     settings = settings_payload.get("result") or {}
@@ -249,11 +252,39 @@ def main() -> int:
         patched = patched_text.encode()
         print("Inserted the no-code tenant login fragment into the existing Auth Worker.")
 
+    patched_text = patched.decode("utf-8")
+    mobile_route = "app.get('/api/auth/mobile/start', mobileStart);"
+    mobile_required_routes = [
+        "app.get('/api/auth/mobile/start', mobileStart);",
+        "app.get('/api/auth/mobile/callback', mobileGoogleCallback);",
+        "app.post('/api/auth/mobile/email/verify', mobileEmailVerify);",
+        "app.post('/api/auth/mobile/telegram/verify', mobileTelegramVerify);",
+        "app.post('/api/auth/mobile/exchange', mobileExchange);",
+        "app.get('/api/auth/mobile/config', mobileConfig);",
+    ]
+    if MOBILE_FRAGMENT_MARKER in patched_text:
+        if patched_text.count(MOBILE_FRAGMENT_MARKER) != 1:
+            raise RuntimeError("The current Worker contains duplicate mobile app fragment markers.")
+        start = patched_text.index(MOBILE_FRAGMENT_MARKER)
+        end = patched_text.index(ROUTE_ANCHOR, start)
+        existing_fragment = patched_text[start:end]
+        if not all(route in existing_fragment for route in mobile_required_routes):
+            raise RuntimeError("The marked mobile app fragment is incomplete; refusing to replace it.")
+        patched_text = patched_text[:start] + mobile_fragment.decode("utf-8").rstrip() + "\n" + patched_text[end:]
+        patched = patched_text.encode()
+        print("Updated the existing marked mobile app authentication fragment.")
+    elif mobile_route in patched_text:
+        raise RuntimeError("Mobile app routes exist without the expected marker; refusing an unsafe patch.")
+    else:
+        patched_text = patched_text.replace(ROUTE_ANCHOR, mobile_fragment.decode("utf-8") + "\n" + ROUTE_ANCHOR, 1)
+        patched = patched_text.encode()
+        print("Inserted the mobile app authentication routes into the existing Auth Worker.")
+
     metadata = safe_settings_metadata(settings)
     body, content_type = multipart_body(metadata, patched)
-    preview_path = Path("/tmp/mecopay-authworker-telegram-preview.js")
+    preview_path = Path("/tmp/mecopay-authworker-mobile-preview.js")
     preview_path.write_bytes(patched)
-    print(f"Prepared Worker source: {len(patched)} bytes; Telegram routes present: {patched.count(b'/api/auth/telegram/') // 1}; preview: {preview_path}")
+    print(f"Prepared Worker source: {len(patched)} bytes; mobile routes present: {all(route.encode() in patched for route in mobile_required_routes)}; preview: {preview_path}")
     binding_summary = ", ".join(
         f"{item.get('name')}:{item.get('type')}"
         for item in metadata.get("bindings", []) if isinstance(item, dict)

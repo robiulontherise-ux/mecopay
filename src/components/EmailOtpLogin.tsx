@@ -9,6 +9,7 @@ type AuthError = {
   code?: string;
   error?: string;
   message?: string;
+  deepLink?: string;
 };
 
 async function postAuthJson(path: string, payload: Record<string, string>) {
@@ -79,11 +80,17 @@ export default function EmailOtpLogin() {
     setBusy(true);
 
     try {
+      const mobileState = new URLSearchParams(window.location.search).get('mobileState');
       // Better Auth কোড যাচাই করে session cookie তৈরি করলে app-এ ফিরে যাই।
-      await postAuthJson('/api/auth/sign-in/email-otp', {
+      const result = await postAuthJson(mobileState ? '/api/auth/mobile/email/verify' : '/api/auth/sign-in/email-otp', {
         email,
         otp: otp.trim(),
+        ...(mobileState ? { mobileState } : {}),
       });
+      if (result?.deepLink) {
+        window.location.assign(result.deepLink);
+        return;
+      }
       window.location.assign('/dashboard');
     } catch (verificationError) {
       setError(readableError(verificationError));

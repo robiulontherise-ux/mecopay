@@ -102,7 +102,7 @@ function AppLoginBridge() {
   useEffect(() => {
     const source = new URL(window.location.href);
     const mode = source.searchParams.get('mode');
-    const provider = source.searchParams.get('provider');
+    const provider = source.searchParams.get('provider') || 'google';
     const query = new URLSearchParams();
     if (mode === 'merchant' || mode === 'personal') query.set('mode', mode);
     if (provider === 'google' || provider === 'email' || provider === 'telegram') query.set('provider', provider);
@@ -204,11 +204,11 @@ function App() {
           <Route path="/app-login" element={<AppLoginBridge />} />
           <Route
             path="/email-login"
-            element={!session ? <EmailOtpLogin /> : <Navigate to="/dashboard" />}
+            element={new URLSearchParams(window.location.search).has('mobileState') || !session ? <EmailOtpLogin /> : <Navigate to="/dashboard" />}
           />
           <Route
             path="/telegram-login"
-            element={!session ? <TelegramLogin /> : <Navigate to="/dashboard" />}
+            element={new URLSearchParams(window.location.search).has('mobileState') || !session ? <TelegramLogin /> : <Navigate to="/dashboard" />}
           />
           
           {/* Public Checkout */}
