@@ -98,6 +98,19 @@ function checkIsClientSite(): boolean {
   return true;
 }
 
+function AppLoginBridge() {
+  useEffect(() => {
+    const source = new URL(window.location.href);
+    const mode = source.searchParams.get('mode');
+    const provider = source.searchParams.get('provider');
+    const query = new URLSearchParams();
+    if (mode === 'merchant' || mode === 'personal') query.set('mode', mode);
+    if (provider === 'google' || provider === 'email' || provider === 'telegram') query.set('provider', provider);
+    window.location.replace(`/api/auth/mobile/start${query.size ? `?${query.toString()}` : ''}`);
+  }, []);
+  return null;
+}
+
 function App() {
   const isClientSite = checkIsClientSite();
 
@@ -188,7 +201,7 @@ function App() {
             path="/login"
             element={!session ? <Login /> : <Navigate to="/dashboard" />}
           />
-          <Route path="/app-login" element={<Login />} />
+          <Route path="/app-login" element={<AppLoginBridge />} />
           <Route
             path="/email-login"
             element={!session ? <EmailOtpLogin /> : <Navigate to="/dashboard" />}
