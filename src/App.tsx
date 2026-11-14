@@ -51,6 +51,7 @@ function checkIsClientSite(): boolean {
   if (
     path.startsWith('/dashboard') ||
     path === '/login' ||
+    path === '/app-login' ||
     path === '/email-login' ||
     path === '/telegram-login' ||
     path.startsWith('/auth/') ||
@@ -187,6 +188,7 @@ function App() {
             path="/login"
             element={!session ? <Login /> : <Navigate to="/dashboard" />}
           />
+          <Route path="/app-login" element={<Login />} />
           <Route
             path="/email-login"
             element={!session ? <EmailOtpLogin /> : <Navigate to="/dashboard" />}
