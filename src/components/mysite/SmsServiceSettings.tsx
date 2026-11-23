@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, Save, CheckCircle2, ShieldCheck, Zap, Info, RefreshCw, Smartphone, Key, Globe, Send, AlertTriangle, Copy, Check, Radio, Truck, Download, Mail, Lock, Code, Eye, ExternalLink, PackageCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../lib/toast';
+import { getSenderBrandStatuses, SenderBrandStatus } from '../../lib/authWorker';
 
 interface SmsServiceSettingsProps {
   user: any;
@@ -42,6 +43,8 @@ export default function SmsServiceSettings({ user, brands = [] }: SmsServiceSett
   const [paymentNumbers, setPaymentNumbers] = useState<any[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [selectedSimNumber, setSelectedSimNumber] = useState<string>('');
+  const [senderStatuses, setSenderStatuses] = useState<SenderBrandStatus[]>([]);
+  const selectedSenderStatus = senderStatuses.find((item) => item.brand_id === selectedBrandId) || null;
 
   // Supabase Permission Fix State
   const [permissionDeniedDetected, setPermissionDeniedDetected] = useState<boolean>(false);
@@ -152,6 +155,13 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
     }
     return '';
   };
+
+  useEffect(() => {
+    if (!selectedBrandId) { setSenderStatuses([]); return; }
+    let cancelled = false;
+    getSenderBrandStatuses().then((rows) => { if (!cancelled) setSenderStatuses(rows); }).catch(() => { if (!cancelled) setSenderStatuses([]); });
+    return () => { cancelled = true; };
+  }, [selectedBrandId, user?.id]);
 
   // Load Real Device Status & Payment Numbers
   useEffect(() => {
@@ -825,94 +835,20 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
           </div>
 
           {/* ======================================================== */}
-          {/* SECTION 1.1: DOMESTIC SMS (SHOP ANDROID PHONE SIM ONLY)  */}
+          {/* ======================================================== */}
+          {/* SECTION 1.1: READ-ONLY SMS SENDER STATUS                  */}
           {/* ======================================================== */}
           {localSmsEnabled && (
             <div className="bg-slate-950/90 border border-purple-500/30 rounded-2xl p-5 space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-purple-400" />
-                  3. Domestic SMS Engine (Bangladesh Local Phone SIM)
-                </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Sends automated SMS to Bangladeshi numbers (+880) via your shop's connected Android phone SIM card (Free local bundle SMS).
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs text-slate-400 block mb-1">Select Outgoing SIM Number / Connected Phone:</span>
-                  <select
-                    value={selectedSimNumber}
-                    onChange={(e) => {
-                      const num = e.target.value;
-                      setSelectedSimNumber(num);
-                      const cleanSelected = normalizePhone(num);
-                      const matched = paymentNumbers.find(p => normalizePhone(p.number) === cleanSelected || p.number === num);
-                      const extractedDev = getDeviceFromRecord(matched);
-                      if (extractedDev) {
-                        setSelectedDeviceId(extractedDev);
-                      } else if (realDevices.length > 0 && !selectedDeviceId) {
-                        setSelectedDeviceId(realDevices[0].device_id);
-                      }
-                    }}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500"
-                  >
-                    <option value="">Select phone / device</option>
-                    {/* Direct connected real devices */}
-                    {realDevices.map(d => (
-                      <option key={d.id} value={d.phone_number || d.device_id}>
-                        📱 Phone Device: {d.device_id} ({d.connected ? 'Online' : 'Offline'}) {d.phone_number ? `- ${d.phone_number}` : ''}
-                      </option>
-                    ))}
-                    {/* Payment numbers */}
-                    {paymentNumbers.map(p => {
-                      const devName = getDeviceFromRecord(p) || (realDevices.length > 0 ? realDevices[0].device_id : '');
-                      return (
-                        <option key={p.id} value={p.number}>
-                          {p.provider ? p.provider.toUpperCase() : 'SIM'}: {p.number} (Device: {devName ? devName : 'Primary App'})
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-400">Target Android Device ID:</span>
-                    {realDevices.length > 0 && (
-                      <span className="text-[10px] text-purple-400">Available: {realDevices.map(d => d.device_id).filter(Boolean).join(', ')}</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={selectedDeviceId}
-                      onChange={(e) => setSelectedDeviceId(e.target.value)}
-                      placeholder="e.g. tzy25"
-                      className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-purple-500"
-                    />
-                    {realDevices.length > 0 && (
-                      <select
-                        value={selectedDeviceId}
-                        onChange={(e) => setSelectedDeviceId(e.target.value)}
-                        className="bg-slate-900 border border-slate-800 text-slate-300 text-xs px-2.5 py-2 rounded-xl focus:outline-none"
-                        title="Quick pick device"
-                      >
-                        <option value="">Pick Device</option>
-                        {realDevices.map(d => (
-                          <option key={d.id} value={d.device_id}>
-                            {d.device_id} ({d.connected ? 'Online' : 'Offline'})
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                </div>
+              <div><h4 className="text-sm font-bold text-white flex items-center gap-2"><Smartphone className="w-4 h-4 text-purple-400" />3. SMS Send Android App Status</h4><p className="text-xs text-slate-400 mt-0.5">Read-only status. SIM selection and registration are managed in the SMS Send Android app.</p></div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"><span className="block text-slate-500">Connection</span><strong className={selectedSenderStatus?.is_connected ? 'text-emerald-400' : 'text-amber-400'}>{selectedSenderStatus?.is_connected ? 'Connected' : 'Not connected'}</strong></div>
+                <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"><span className="block text-slate-500">SIM slot</span><strong className="text-slate-200">{selectedSenderStatus?.sim_slot === 1 ? 'SIM 1' : selectedSenderStatus?.sim_slot === 2 ? 'SIM 2' : '—'}</strong></div>
+                <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"><span className="block text-slate-500">Country code</span><strong className="text-slate-200">{selectedSenderStatus?.sms_country_code || '—'}</strong></div>
+                <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"><span className="block text-slate-500">Local prefix</span><strong className="text-slate-200">{selectedSenderStatus?.sms_local_prefix || '—'}</strong></div>
               </div>
             </div>
           )}
-
           {/* ======================================================== */}
           {/* SECTION 1.2: GLOBAL SMS (3-FIELD UNIVERSAL CLOUD API)    */}
           {/* ======================================================== */}
