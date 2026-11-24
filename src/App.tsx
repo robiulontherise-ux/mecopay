@@ -107,7 +107,10 @@ function AppLoginBridge() {
     const query = new URLSearchParams();
     if (mode === 'merchant' || mode === 'personal') query.set('mode', mode);
     if (provider === 'google' || provider === 'email' || provider === 'telegram') query.set('provider', provider);
-    if (requestedApp === 'sms_sender') query.set('app', 'sms_sender');
+    if (requestedApp === 'sms_sender') {
+      query.set('app', 'sms_sender');
+      if (!query.has('mode')) query.set('mode', 'personal');
+    }
     window.location.replace(`/api/auth/mobile/start${query.size ? `?${query.toString()}` : ''}`);
   }, []);
   return null;
