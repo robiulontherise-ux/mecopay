@@ -845,7 +845,6 @@ CREATE POLICY "notification_templates_all" ON public.notification_templates FOR 
                 <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"><span className="block text-slate-500">Connection</span><strong className={selectedSenderStatus?.is_connected ? 'text-emerald-400' : 'text-amber-400'}>{selectedSenderStatus?.is_connected ? 'Connected' : 'Not connected'}</strong></div>
                 <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"><span className="block text-slate-500">SIM slot</span><strong className="text-slate-200">{selectedSenderStatus?.sim_slot === 1 ? 'SIM 1' : selectedSenderStatus?.sim_slot === 2 ? 'SIM 2' : '—'}</strong></div>
                 <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"><span className="block text-slate-500">Country code</span><strong className="text-slate-200">{selectedSenderStatus?.sms_country_code || '—'}</strong></div>
-                <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"><span className="block text-slate-500">Local prefix</span><strong className="text-slate-200">{selectedSenderStatus?.sms_local_prefix || '—'}</strong></div>
               </div>
             </div>
           )}

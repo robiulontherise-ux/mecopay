@@ -247,13 +247,13 @@ async function mobileSenderBrands(c) {
       SELECT ${context.userId}::text AS client_id,
         b.id::text AS brand_id,
         b.name AS brand_name,
-        COALESCE(gw.fallback_to_sms, false) AS sms_enabled,
+        COALESCE(gw.sms_enabled, false) AS sms_enabled,
         st.sms_country_code,
         st.sim_slot,
         (st.id IS NOT NULL AND NULLIF(BTRIM(st.fcm_token), '') IS NOT NULL) AS is_connected
       FROM mecopay_heart.brands b
       LEFT JOIN mecopay_heart.whatsapp_gateway_settings gw
-        ON gw.brand_id = b.id AND gw.user_id = b.user_id
+        ON gw.brand_id = b.id::text AND gw.user_id = b.user_id
       LEFT JOIN mecopay_heart.sms_sender_tokens st
         ON st.brand_id = b.id AND st.user_id = b.user_id
       WHERE b.user_id = ${context.userId}
@@ -364,8 +364,8 @@ async function mobileSenderAck(c) {
       UPDATE mecopay_heart.notification_logs
       SET status = ${status},
           payload = COALESCE(payload, '{}'::jsonb) || jsonb_build_object('ack_error', ${errorText}, 'acknowledged_at', NOW())
-      WHERE brand_id::text = ${brandId} AND sms_id::text = ${smsId}
-      RETURNING sms_id::text AS sms_id
+      WHERE id::text = ${smsId} AND brand_id::text = ${brandId} AND channel = 'sms'
+      RETURNING id::text AS sms_id
     `;
     if (!updated.length) return mobileNoStore(c, { error: 'SMS_LOG_NOT_FOUND' }, 404);
     return mobileNoStore(c, { ok: true, sms_id: updated[0].sms_id, status });

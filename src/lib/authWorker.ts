@@ -41,7 +41,7 @@ export async function signOutAuthWorker(): Promise<void> {
   if (!response.ok) throw new Error('Could not sign out from the Auth Worker. Please try again.');
 }
 
-export interface SenderBrandStatus { client_id: string; brand_id: string; brand_name: string; sms_enabled: boolean; sms_country_code: string | null; sms_local_prefix: string | null; sim_slot: number | null; is_connected: boolean; }
+export interface SenderBrandStatus { client_id: string; brand_id: string; brand_name: string; sms_enabled: boolean; sms_country_code: string | null; sim_slot: number | null; is_connected: boolean; }
 export async function getSenderBrandStatuses(): Promise<SenderBrandStatus[]> {
   const tokenResponse = await fetch('/api/auth/session-token', { method: 'POST', credentials: 'same-origin', headers: { Origin: window.location.origin, Accept: 'application/json', 'Content-Type': 'application/json' }, body: '{}' });
   const token = await tokenResponse.json().catch(() => ({}));
