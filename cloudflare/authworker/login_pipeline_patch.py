@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import re
 
+from weekly_jwt_refresh_patch import WEEKLY_REFRESH_MARKER, patch_weekly_website_jwt
+
 MARKER = "// AUTH_LOGIN_PIPELINE_V1"
 DOMAIN_MARKER = "// AUTH_DOMAIN_SURFACE_V2"
 DOMAIN_FALLBACK_MARKER = "// AUTH_DOMAIN_FALLBACK_V3"
@@ -60,6 +62,8 @@ def _replace_function(source: str, start: str, end: str, new: str, label: str) -
 
 def patch_auth_worker_source(source: str) -> str:
     """Patch an Auth Worker source bundle once; fail closed on unexpected source."""
+    if WEEKLY_REFRESH_MARKER not in source and 'async function ncEnqueue(env, identity) {' in source:
+        source = patch_weekly_website_jwt(source)
     if DOMAIN_FALLBACK_MARKER in source:
         return source
     if DOMAIN_MARKER in source:

@@ -51,6 +51,26 @@ async function telegramIssue(env,context,signinResponse,requestUrl){
 }
 '''
 
+WEEKLY_INTEGRATION_FIXTURE = r'''var JWT_TTL_SECONDS = 7 * 24 * 60 * 60;
+var NC_TTL = 5 * 60;
+var TOKEN_PATH = "/api/auth/session-token";
+async function ncEnqueue(env, identity) {
+  const now = Math.floor(Date.now() / 1000);
+  const claims = { iss: env.BETTER_AUTH_URL, sub: `${identity.provider}:${identity.providerAccountId}`, aud: identity.surface === 'mother' ? 'mother-dashboard' : 'client-site', iat: now, exp: now + NC_TTL, jti: crypto.randomUUID(), surface: identity.surface === 'mother' ? 'mother' : 'no-code', domain: identity.domain };
+  return { token: await signAuthJwt(env.JWT_PRIVATE_KEY, claims) };
+}
+async function ncStoreHandoff(env, handoff) { return handoff; }
+app.post(TOKEN_PATH, async (c2) => {
+  const origin = parseOrigin(c2.req.raw);
+  const env2 = c2.env;
+  if (!env2.JWT_PRIVATE_KEY) return c2.json({}, 503);
+  if (!env2.BETTER_AUTH_URL) return c2.json({}, 503);
+  const auth = createAuth(c2.env);
+  return auth.api.getSession({ headers: c2.req.raw.headers });
+});
+// AUTH_DOMAIN_FALLBACK_V3
+'''
+
 
 def main() -> None:
     result = module.patch_auth_worker_source(FIXTURE)
@@ -73,6 +93,15 @@ def main() -> None:
     assert 'preparedToken = token;' in provision
     assert provision.index('await enqueueLoginProvision') < provision.index('tokenState.token = preparedToken;')
     assert result.index('if(beforeSend)await beforeSend') < result.index('const resp=await service.fetch')
+    weekly = module.patch_auth_worker_source(WEEKLY_INTEGRATION_FIXTURE)
+    assert module.WEEKLY_REFRESH_MARKER in weekly
+    assert 'exp: now + JWT_TTL_SECONDS' in weekly
+    assert 'exp: now + NC_TTL' not in weekly
+    assert 'var NC_TTL = 5 * 60;' in weekly
+    assert 'mobileVerifyJwt(currentCookie, env2)' in weekly
+    assert 'current.aud !== "mother-dashboard"' in weekly
+    assert 'Max-Age=${JWT_TTL_SECONDS}; Path=/; Secure; HttpOnly; SameSite=Lax' in weekly
+    assert 'const auth = createAuth(c2.env);' in weekly
     legacy_v1 = result.replace(module.DOMAIN_MARKER + '\n', '').replace(module.DOMAIN_FALLBACK_MARKER, '')
     legacy_v1 = legacy_v1.replace("surface:context3.surface,domain:context3.origin?new URL(context3.origin).hostname.toLowerCase():(context3.surface==='mother'?'mecopay.space':null),mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):null", "domain:context3.surface==='no_code'&&context3.origin?new URL(context3.origin).hostname.toLowerCase():null,mother_domain:context3.surface==='mother'?(context3.origin?new URL(context3.origin).hostname.toLowerCase():'mecopay.space'):''")
     upgraded_v1 = module.patch_auth_worker_source(legacy_v1)

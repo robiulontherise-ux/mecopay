@@ -54,7 +54,12 @@ export async function refreshAuthWorkerSession(options: { retryOnFailure?: boole
       headers: { Origin: window.location.origin, Accept: 'application/json', 'Content-Type': 'application/json' },
       body: '{}',
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      if (options.retryOnFailure && response.status >= 500) {
+        throw new Error(`AUTH_REFRESH_${response.status}`);
+      }
+      return null;
+    }
     const payload = await response.json().catch(() => ({}));
     if (typeof payload?.token !== 'string') return null;
     const session = await fetchMotherSession();
@@ -87,7 +92,7 @@ export async function getAuthWorkerSession(): Promise<AuthWorkerSession | null> 
     console.warn('Auth Worker session check failed; attempting refresh:', error);
   }
 
-  const refreshed = await refreshAuthWorkerSession();
+  const refreshed = await refreshAuthWorkerSession({ retryOnFailure: true });
   if (refreshed) return refreshed;
   return null;
 }

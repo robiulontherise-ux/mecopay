@@ -50,7 +50,12 @@ export async function refreshNoCodeAuthSession(options: { retryOnFailure?: boole
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: "{}",
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      if (options.retryOnFailure && response.status >= 500) {
+        throw new Error(`AUTH_REFRESH_${response.status}`);
+      }
+      return null;
+    }
     const payload = await response.json().catch(() => ({}));
     if (typeof payload?.token !== "string") return null;
     const session = await fetchNoCodeSession();
@@ -74,7 +79,7 @@ export async function getNoCodeAuthSession(): Promise<NoCodeAuthSession | null> 
   } catch (error) {
     console.warn("No-code Auth Worker session check failed; attempting refresh:", error);
   }
-  return refreshNoCodeAuthSession();
+  return refreshNoCodeAuthSession({ retryOnFailure: true });
 }
 
 export function startNoCodeGoogleLogin(): void {
