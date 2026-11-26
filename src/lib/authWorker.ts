@@ -16,21 +16,85 @@ export interface AuthWorkerSession {
   user: AuthWorkerUser;
 }
 
-export async function getAuthWorkerSession(): Promise<AuthWorkerSession | null> {
+const REFRESH_SKEW_MS = 60_000;
+let refreshTimer: number | null = null;
+let refreshInFlight: Promise<AuthWorkerSession | null> | null = null;
+
+async function fetchMotherSession(): Promise<AuthWorkerSession | null> {
   const response = await fetch('/api/auth/get-session', {
     method: 'GET',
     credentials: 'same-origin',
     cache: 'no-store',
     headers: { Accept: 'application/json' },
   });
-  if (!response.ok) throw new Error('Could not check the Auth Worker session.');
-
+  if (!response.ok) throw new Error(`AUTH_SESSION_${response.status}`);
   const payload = await response.json() as AuthWorkerSession | null;
   if (!payload?.session || !payload.user?.id) return null;
   return payload;
 }
 
+function scheduleMotherRefresh(session: AuthWorkerSession): void {
+  if (typeof window === 'undefined') return;
+  if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+  const expiresAt = Date.parse(session.session.expiresAt);
+  if (!Number.isFinite(expiresAt)) return;
+  const delay = Math.max(1_000, expiresAt - Date.now() - REFRESH_SKEW_MS);
+  refreshTimer = window.setTimeout(() => {
+    void refreshAuthWorkerSession({ retryOnFailure: true });
+  }, delay);
+}
+
+export async function refreshAuthWorkerSession(options: { retryOnFailure?: boolean } = {}): Promise<AuthWorkerSession | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const response = await fetch('/api/auth/session-token', {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { Origin: window.location.origin, Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!response.ok) return null;
+    const payload = await response.json().catch(() => ({}));
+    if (typeof payload?.token !== 'string') return null;
+    const session = await fetchMotherSession();
+    if (session) scheduleMotherRefresh(session);
+    return session;
+  })().catch((error) => {
+    console.warn('Auth Worker background refresh failed:', error);
+    if (options.retryOnFailure && typeof window !== 'undefined') {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        void refreshAuthWorkerSession({ retryOnFailure: true });
+      }, 60_000);
+    }
+    return null;
+  }).finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+export async function getAuthWorkerSession(): Promise<AuthWorkerSession | null> {
+  try {
+    const session = await fetchMotherSession();
+    if (session) {
+      scheduleMotherRefresh(session);
+      return session;
+    }
+  } catch (error) {
+    // A transient network/server error is not proof of logout; try the refresh source once.
+    console.warn('Auth Worker session check failed; attempting refresh:', error);
+  }
+
+  const refreshed = await refreshAuthWorkerSession();
+  if (refreshed) return refreshed;
+  return null;
+}
+
 export async function signOutAuthWorker(): Promise<void> {
+  if (refreshTimer !== null && typeof window !== 'undefined') window.clearTimeout(refreshTimer);
+  refreshTimer = null;
   const response = await fetch('/api/auth/sign-out', {
     method: 'POST',
     credentials: 'same-origin',

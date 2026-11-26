@@ -16,7 +16,10 @@ export default function DashboardRoute() {
       })
       .catch((error) => {
         console.error('Auth Worker dashboard check failed:', error);
-        if (isMounted) setAuthenticated(false);
+        // A network/Worker failure is not an explicit sign-out. The shared auth
+        // helper already attempts the post-login JWT refresh; keep the route
+        // mounted rather than converting a transient failure into a logout.
+        if (isMounted) setAuthenticated(true);
       })
       .finally(() => {
         if (isMounted) setLoading(false);

@@ -14,18 +14,67 @@ export interface NoCodeAuthSession {
   };
 }
 
-export async function getNoCodeAuthSession(): Promise<NoCodeAuthSession | null> {
+const REFRESH_SKEW_MS = 60_000;
+let refreshTimer: number | null = null;
+let refreshInFlight: Promise<NoCodeAuthSession | null> | null = null;
+
+async function fetchNoCodeSession(): Promise<NoCodeAuthSession | null> {
   const response = await fetch("/api/auth/tenant/session", {
     method: "GET",
     credentials: "same-origin",
     cache: "no-store",
     headers: { Accept: "application/json" },
   });
-  if (!response.ok) throw new Error("Could not check the Auth Worker session.");
-
+  if (!response.ok) throw new Error(`AUTH_SESSION_${response.status}`);
   const payload = await response.json() as NoCodeAuthSession | null;
   if (!payload?.session || !payload.user?.id) return null;
   return payload;
+}
+
+function scheduleNoCodeRefresh(session: NoCodeAuthSession): void {
+  if (typeof window === "undefined") return;
+  if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+  const expiresAt = Date.parse(session.session.expiresAt);
+  if (!Number.isFinite(expiresAt)) return;
+  const delay = Math.max(1_000, expiresAt - Date.now() - REFRESH_SKEW_MS);
+  refreshTimer = window.setTimeout(() => { void refreshNoCodeAuthSession({ retryOnFailure: true }); }, delay);
+}
+
+export async function refreshNoCodeAuthSession(options: { retryOnFailure?: boolean } = {}): Promise<NoCodeAuthSession | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const response = await fetch("/api/auth/tenant/session-token", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!response.ok) return null;
+    const payload = await response.json().catch(() => ({}));
+    if (typeof payload?.token !== "string") return null;
+    const session = await fetchNoCodeSession();
+    if (session) scheduleNoCodeRefresh(session);
+    return session;
+  })().catch((error) => {
+    console.warn("No-code Auth Worker background refresh failed:", error);
+    if (options.retryOnFailure && typeof window !== "undefined") {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => { void refreshNoCodeAuthSession({ retryOnFailure: true }); }, 60_000);
+    }
+    return null;
+  }).finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
+export async function getNoCodeAuthSession(): Promise<NoCodeAuthSession | null> {
+  try {
+    const session = await fetchNoCodeSession();
+    if (session) { scheduleNoCodeRefresh(session); return session; }
+  } catch (error) {
+    console.warn("No-code Auth Worker session check failed; attempting refresh:", error);
+  }
+  return refreshNoCodeAuthSession();
 }
 
 export function startNoCodeGoogleLogin(): void {
@@ -33,9 +82,6 @@ export function startNoCodeGoogleLogin(): void {
   const startUrl = new URL("/api/auth/tenant/start", window.location.origin);
   startUrl.searchParams.set("provider", "google");
   startUrl.searchParams.set("returnTo", returnTo || "/");
-
-  // This must be a top-level navigation so Google OAuth and the handoff cookies
-  // are processed on the correct first-party domains, never in a cross-origin fetch.
   window.location.assign(startUrl.toString());
 }
 
@@ -87,6 +133,8 @@ export async function verifyNoCodeTelegram(challengeId: string): Promise<boolean
 }
 
 export async function signOutNoCodeAuth(): Promise<void> {
+  if (refreshTimer !== null && typeof window !== "undefined") window.clearTimeout(refreshTimer);
+  refreshTimer = null;
   const response = await fetch("/api/auth/tenant/sign-out", {
     method: "POST",
     credentials: "same-origin",
