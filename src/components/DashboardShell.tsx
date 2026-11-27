@@ -38,11 +38,18 @@ import { useLocale } from '../lib/LocaleContext';
 import { getProfileCopy } from '../lib/profileLocalization';
 import { ASIA_COUNTRIES, AFRICA_COUNTRIES } from '../lib/countries';
 
+function displayLoginIdentifier(email?: string | null): string {
+  if (!email) return '';
+  const telegramMatch = email.match(/^telegram[-+](\d+)@users(?:\.mecopay)?\.invalid$/i);
+  return telegramMatch ? `telegram-${telegramMatch[1]}` : email;
+}
+
 export default function DashboardShell() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [hmacSecret, setHmacSecret] = useState<string>('');
+  const displayedLoginIdentifier = displayLoginIdentifier(user?.email);
   const isAdmin = Boolean(user?.email && (user.email === 'robiulontherise@gmail.com' || ((import.meta as any).env.VITE_ADMIN_EMAIL && user.email === (import.meta as any).env.VITE_ADMIN_EMAIL)));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'brand' | 'payments' | 'site' | 'freelancer' | 'influencer' | 'teleSales' | 'admin'>('brand');
@@ -1955,7 +1962,7 @@ export default function DashboardShell() {
                 </div>
               </div>
               
-              <p className="text-sm font-medium text-slate-400 mb-1">{user?.email}</p>
+              <p className="text-sm font-medium text-slate-400 mb-1">{displayedLoginIdentifier}</p>
               <LocaleSwitcher variant="dark" className="mt-3 w-full max-w-xl justify-center" />
               <div className="mt-1">
                 {verificationStatus === 'verified' ? (
@@ -1987,7 +1994,7 @@ export default function DashboardShell() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-2">Email Address (Read-Only)</label>
-                <input type="email" value={user?.email || ''} readOnly className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-500 cursor-not-allowed focus:outline-none transition-colors" />
+                <input type="text" value={displayedLoginIdentifier} readOnly className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-500 cursor-not-allowed focus:outline-none transition-colors" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -4241,7 +4248,7 @@ export default function DashboardShell() {
               </span>
             )}
             <span className="hidden md:block text-sm font-medium text-slate-400">
-              {user?.email}
+              {displayedLoginIdentifier}
             </span>
             <button
               onClick={handleLogout}
@@ -4378,7 +4385,7 @@ export default function DashboardShell() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-white truncate">{profileName || user?.user_metadata?.full_name || 'My Profile'}</p>
-                    <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                    <p className="text-xs text-slate-500 truncate">{displayedLoginIdentifier}</p>
                     <div className="mt-1">
                       {verificationStatus === 'verified' ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
