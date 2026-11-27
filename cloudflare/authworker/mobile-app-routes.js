@@ -1,7 +1,6 @@
 // Mobile app auth bridge. The app's native login UI stays in the Android app.
 // The web frontend only routes /app-login to /api/auth/mobile/start.
 const MOBILE_CODE_TTL = 90;
-const MOBILE_APP_TOKEN_TTL = 60 * 60 * 24 * 30;
 const MOBILE_STATE_COOKIE = '__Host-mecopay_mobile_state';
 
 function mobileNoStore(c, payload, status = 200) {
@@ -29,7 +28,7 @@ function mobileDeepLink(code, app = null) {
   const scheme = app === 'sms_sender' ? 'mecopaysender' : 'mecopay';
   return `${scheme}://auth?code=${encodeURIComponent(code)}`;
 }
-async function mobileVerifyJwt(token, env) {
+async function mobileVerifyJwt(token, env, options = {}) {
   if (typeof token !== 'string' || token.length > 8192 || !env.JWT_PRIVATE_KEY) throw new Error('INVALID_TOKEN');
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('INVALID_TOKEN');
@@ -41,7 +40,19 @@ async function mobileVerifyJwt(token, env) {
   const valid = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, publicKey, ncUnb64(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
   if (!valid) throw new Error('INVALID_TOKEN_SIGNATURE');
   const claims = JSON.parse(new TextDecoder().decode(ncUnb64(parts[1])));
-  if (!claims || typeof claims.exp !== 'number' || claims.exp <= Math.floor(Date.now() / 1000)) throw new Error('TOKEN_EXPIRED');
+  if (!claims) throw new Error('INVALID_TOKEN_CLAIMS');
+  const now = Math.floor(Date.now() / 1000);
+  if (claims.aud === 'mecopay-mobile') {
+    if (claims.exp !== undefined && (typeof claims.exp !== 'number' || (!options.allowExpired && claims.exp <= now))) throw new Error('TOKEN_EXPIRED');
+    if (typeof claims.jti !== 'string' || !claims.jti) throw new Error('INVALID_TOKEN_ID');
+    if (!options.allowRevoked) {
+      if (!env.OTP_STORE) throw new Error('MOBILE_REVOCATION_STORE_UNAVAILABLE');
+      const revoked = await createOtpSecondaryStorage(env.OTP_STORE).get('mobile:revoked:' + claims.jti);
+      if (revoked) throw new Error('TOKEN_REVOKED');
+    }
+  } else if (typeof claims.exp !== 'number' || claims.exp <= now) {
+    throw new Error('TOKEN_EXPIRED');
+  }
   return claims;
 }
 async function mobileCreateHandoff(env, state, motherToken, expectedProvider) {
@@ -63,7 +74,6 @@ async function mobileCreateHandoff(env, state, motherToken, expectedProvider) {
     domain: 'mecopay.space',
     mode: flow.mode,
     iat: now,
-    exp: now + MOBILE_APP_TOKEN_TTL,
     jti: crypto.randomUUID(),
     email: motherClaims.email || null,
     name: motherClaims.name || 'MecoPay User',
@@ -71,7 +81,7 @@ async function mobileCreateHandoff(env, state, motherToken, expectedProvider) {
     app: flow.app || null
   });
   const code = ncRandom();
-  await storage.set(`mobile:code:${await ncHash(code)}`, JSON.stringify({ token: appToken, mode: flow.mode, expiresIn: MOBILE_APP_TOKEN_TTL, expiresAt: Date.now() + MOBILE_CODE_TTL * 1000 }), MOBILE_CODE_TTL);
+  await storage.set(`mobile:code:${await ncHash(code)}`, JSON.stringify({ token: appToken, mode: flow.mode, expiresIn: null, expiresAt: Date.now() + MOBILE_CODE_TTL * 1000 }), MOBILE_CODE_TTL);
   return { code, mode: flow.mode, app: flow.app || null };
 }
 async function mobileStart(c) {
@@ -177,8 +187,39 @@ async function mobileExchange(c) {
   const raw = await storage.getAndDelete(`mobile:code:${await ncHash(code)}`);
   let record; try { record = raw ? JSON.parse(raw) : null; } catch { record = null; }
   if (!record || record.expiresAt <= Date.now()) return mobileNoStore(c, { error: 'CODE_EXPIRED_OR_USED' }, 410);
-  return mobileNoStore(c, { token: record.token, token_type: 'Bearer', expires_in: record.expiresIn, mode: record.mode });
+  return mobileNoStore(c, { token: record.token, token_type: 'Bearer', expires_in: null, mode: record.mode });
 }
+async function mobileSignOut(c) {
+  const header = (c.req.header('Authorization') || '').trim();
+  const separator = header.indexOf(' ');
+  const token = separator >= 0 ? header.slice(separator + 1).trim() : '';
+  if (separator < 0 || header.slice(0, separator).toLowerCase() !== 'bearer' || !token) return mobileNoStore(c, { error: 'UNAUTHORIZED' }, 401);
+  let claims;
+  try {
+    claims = await mobileVerifyJwt(token, c.env, { allowExpired: true, allowRevoked: true });
+  } catch {
+    return mobileNoStore(c, { error: 'UNAUTHORIZED' }, 401);
+  }
+  const validAppToken = claims.iss === c.env.BETTER_AUTH_URL &&
+    claims.aud === 'mecopay-mobile' &&
+    claims.surface === 'mother' &&
+    claims.domain === 'mecopay.space' &&
+    typeof claims.sub === 'string' &&
+    typeof claims.jti === 'string' &&
+    ['merchant', 'personal'].includes(claims.mode) &&
+    (claims.app == null || claims.app === 'sms_sender');
+  if (!validAppToken) return mobileNoStore(c, { error: 'INVALID_APP_TOKEN' }, 401);
+  try {
+    await createOtpSecondaryStorage(c.env.OTP_STORE).set(
+      'mobile:revoked:' + claims.jti,
+      JSON.stringify({ revokedAt: Date.now(), app: claims.app === 'sms_sender' ? 'sender' : 'gateway' })
+    );
+  } catch {
+    return mobileNoStore(c, { error: 'MOBILE_SIGNOUT_FAILED', retryable: true }, 503);
+  }
+  return mobileNoStore(c, { ok: true, status: 'signed_out', app: claims.app === 'sms_sender' ? 'sender' : 'gateway' });
+}
+
 async function mobileSenderContext(c) {
   const authorization = c.req.header('Authorization') || '';
   const match = /^Bearer\s+(.+)$/i.exec(authorization);
@@ -448,6 +489,7 @@ app.get('/api/auth/mobile/callback', mobileGoogleCallback);
 app.post('/api/auth/mobile/email/verify', mobileEmailVerify);
 app.post('/api/auth/mobile/telegram/verify', mobileTelegramVerify);
 app.post('/api/auth/mobile/exchange', mobileExchange);
+app.post('/api/auth/mobile/sign-out', mobileSignOut);
 app.get('/api/auth/mobile/config', mobileConfig);
 app.get('/api/auth/mobile/sender-brands', mobileSenderBrands);
 app.post('/api/auth/mobile/sender-register', mobileSenderRegister);
