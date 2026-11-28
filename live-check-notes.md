@@ -24,6 +24,14 @@
 - `GET /api/mother-write` → HTTP 200; unauthenticated `GET /api/mother-write/session` → HTTP 401 (`INVALID_TOKEN`).
 - No authenticated profile save/KYC upload or JWT refresh-continuity test was run; no production profile data was written.
 
+## Clarified save/cache contract and follow-up deployment (2026-11-28 10:17 UTC)
+
+- The login JWT's 5-minute validity is separate from the Worker profile-context cache. Form text/files/object keys exist in request-local Worker memory while that request uploads to R2 and executes its one Neon statement; that request-local data does not use a five-minute cache timer.
+- The separate isolate-local `Map` caches resolved profile context only for `/session` and `/media` reads, with a 5-minute entry lifetime and 500-entry capacity. These values are cache freshness/capacity controls, not JWT rules; cache misses fall back to Neon.
+- First successful profile save adds the canonical existing user/profile row ID as the JWT `client_id` claim, signs with the existing Worker private-key binding, and returns the token only in the HttpOnly cookie. It does not put `client_id` in save JSON. The JWT's incoming `exp` is preserved, not extended by MotherWrite.
+- Subsequent saves require the existing client_id to match the account→user mapping, update the same profile row, accept partial text/image updates, and do not sign a new JWT or set a new cookie. Profile image may be replaced; NID/selfie object keys remain immutable.
+- Follow-up version `ff0852ca-40b3-4c15-99f8-cf10fa86809f` (version 13) is active at 100%. Live health is HTTP 200, unauthenticated session is HTTP 401, JWT_PRIVATE_KEY/HYPERDRIVE/KYC_BUCKET remain bound, and no KV binding is present. Authenticated write behavior still has not been production-tested.
+
 ## Latest local validation and deployment status
 
 - Worker strict TypeScript check passed.
@@ -35,8 +43,8 @@
 
 ## Corrected implementation summary
 
-- Context cache is Worker-isolate memory only: 5-minute TTL, 500-entry bound, LRU-style insertion-order eviction. Neon remains canonical on cache miss/new isolates. Cached `/session` and `/media` identity/profile resolution avoids repeat Neon reads; private media bytes still come from R2.
+- Context cache is Worker-isolate memory only: 5-minute cache-entry TTL, 500-entry bound, LRU-style insertion-order eviction. This is not the login JWT's validity window. Form fields/files are request-local until the profile save's R2 upload and Neon statement complete.
 - Profile save verifies JWT before parsing payload, uploads supplied files to private R2, then uses one parameterized Neon statement to map account → user → profile ID and atomically upsert profile fields plus R2 keys. NID/selfie keys remain immutable once set; profile image is replaceable.
-- Successful POST returns `{ ok, client_id, profile }` and sets refreshed `__Host-mecopay_jwt` HttpOnly cookie. Dashboard validates returned `client_id === profile.id` and keeps it in in-memory UI state; JWT is never stored in browser storage.
-- Deployment is active at version `5b421dbf-f957-47bd-b308-434652be20ae`, 100%. Live health is 200 and unauthenticated session is 401. No authenticated production write was attempted.
+- First successful POST returns `{ ok, profile }` and sets `__Host-mecopay_jwt` with the client_id claim; later updates do not return the ID in JSON or mint/set another token. JWT is never stored in browser storage.
+- Deployment is active at version `ff0852ca-40b3-4c15-99f8-cf10fa86809f`, 100%. Live health is 200 and unauthenticated session is 401. No authenticated production write was attempted.
 - Correction is pushed to GitHub `main` at commit `a2219ddd9644a5205e46cf3704ed9333aed8c85c`; generated `cloudflare/motherwrite/dist/index.js` is included in the commit.

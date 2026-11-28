@@ -1341,8 +1341,6 @@ export default function DashboardShell() {
         nid_back: nidBackImage.startsWith('data:') ? await dataUrlToBlob(nidBackImage) : null,
         selfie: faceImage.startsWith('data:') ? await dataUrlToBlob(faceImage) : null
       });
-      if (!result.client_id || String(result.client_id) !== String(result.profile?.id)) throw new Error('MotherWrite did not return the saved client ID');
-      setUser((previous: any) => previous ? { ...previous, client_id: result.client_id } : previous);
       if (nidFrontImage.startsWith('data:')) setNidFrontImage(motherWriteMedia('nid_front'));
       if (nidBackImage.startsWith('data:')) setNidBackImage(motherWriteMedia('nid_back'));
       if (faceImage.startsWith('data:')) setFaceImage(motherWriteMedia('selfie'));

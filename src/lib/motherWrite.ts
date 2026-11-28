@@ -16,7 +16,6 @@ export type MotherWriteProfileInput = {
 
 export type MotherWriteResponse = {
   ok: boolean;
-  client_id: string;
   profile: Record<string, any>;
 };
 

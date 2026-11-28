@@ -24,11 +24,13 @@ type Profile = Record<string, unknown> & { id: string; nid_front_key?: string | 
 type Identity = { userId: string; email: string | null; profile: Profile | null };
 type CachedContext = { userId: string; profile: Profile | null; expiresAt: number };
 const contextCache = new Map<string, CachedContext>();
-const CONTEXT_CACHE_TTL_MS = 5 * 60 * 1000;
-const CONTEXT_CACHE_MAX_ENTRIES = 500;
+// Independent Worker-isolate profile/context cache; this is not an Auth JWT lifetime.
+const PROFILE_CONTEXT_CACHE_TTL_MS = 5 * 60 * 1000;
+const PROFILE_CONTEXT_CACHE_MAX_ENTRIES = 500;
 
 function json(body: unknown, status = 200, extra: HeadersInit = {}) {
-  const headers = new Headers({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra });
+  const headers = new Headers({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+  new Headers(extra).forEach((value, key) => headers.set(key, value));
   return new Response(JSON.stringify(body), { status, headers });
 }
 function b64uBytes(value: string) {
@@ -131,11 +133,11 @@ function readCachedContext(sub: string): CachedContext | null {
   return value;
 }
 function writeCachedContext(sub: string, userId: string, profile: Profile | null) {
-  if (contextCache.size >= CONTEXT_CACHE_MAX_ENTRIES && !contextCache.has(sub)) {
+  if (contextCache.size >= PROFILE_CONTEXT_CACHE_MAX_ENTRIES && !contextCache.has(sub)) {
     const oldest = contextCache.keys().next().value;
     if (oldest) contextCache.delete(oldest);
   }
-  contextCache.set(sub, { userId, profile, expiresAt: Date.now() + CONTEXT_CACHE_TTL_MS });
+  contextCache.set(sub, { userId, profile, expiresAt: Date.now() + PROFILE_CONTEXT_CACHE_TTL_MS });
 }
 async function saveProfile(request: Request, env: Env, claims: Claims) {
   const form = await request.formData();
@@ -148,10 +150,17 @@ async function saveProfile(request: Request, env: Env, claims: Claims) {
   const socialInsta = text(form, 'social_insta') || null;
   const socialLi = text(form, 'social_li') || null;
   const socialYt = text(form, 'social_yt') || null;
-  if (!name || name.length > 160) throw new Error('NAME_REQUIRED');
-  if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new Error('PHONE_COUNTRY_CODE_REQUIRED');
-  if (!['whatsapp', 'telegram', 'both'].includes(phoneType)) throw new Error('PHONE_TYPE_INVALID');
-  if (!/^\d{6,20}$/.test(nidNumber.replace(/ /g, ''))) throw new Error('NID_NUMBER_INVALID');
+  if (!claims.client_id) {
+    if (!name || name.length > 160) throw new Error('NAME_REQUIRED');
+    if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new Error('PHONE_COUNTRY_CODE_REQUIRED');
+    if (!['whatsapp', 'telegram', 'both'].includes(phoneType)) throw new Error('PHONE_TYPE_INVALID');
+    if (!/^\d{6,20}$/.test(nidNumber.replace(/ /g, ''))) throw new Error('NID_NUMBER_INVALID');
+  } else {
+    if (name && name.length > 160) throw new Error('NAME_INVALID');
+    if (phone && !/^\+[1-9]\d{7,14}$/.test(phone)) throw new Error('PHONE_INVALID');
+    if (phoneType && !['whatsapp', 'telegram', 'both'].includes(phoneType)) throw new Error('PHONE_TYPE_INVALID');
+    if (nidNumber && !/^\d{6,20}$/.test(nidNumber.replace(/ /g, ''))) throw new Error('NID_NUMBER_INVALID');
+  }
 
   const files = Object.fromEntries(IMAGE_FIELDS.map(field => [field, image(form, field)])) as Record<ImageField, File | null>;
   for (const field of IMAGE_FIELDS) validateImage(files[field], field);
@@ -174,9 +183,14 @@ async function saveProfile(request: Request, env: Env, claims: Claims) {
       uploaded.push(key);
     }
 
+    // The login JWT is short-lived. Do not silently extend its lifetime in MotherWrite.
+    if (claims.exp <= Math.floor(Date.now() / 1000)) throw new Error('TOKEN_EXPIRED');
     const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
     const rows = await sql`with identity_row as (
         select u.id as user_id, u.email as email,
+          p.name as old_name, p.phone as old_phone, p.phone_type as old_phone_type, p.nid_number as old_nid_number,
+          p.website_url as old_website_url, p.social_fb as old_social_fb, p.social_insta as old_social_insta,
+          p.social_li as old_social_li, p.social_yt as old_social_yt,
           p.nid_front_key as old_nid_front_key, p.nid_back_key as old_nid_back_key,
           p.selfie_key as old_selfie_key, p.profile_image_key as old_profile_image_key
         from mecopay_auth.account a
@@ -185,14 +199,24 @@ async function saveProfile(request: Request, env: Env, claims: Claims) {
         where a."providerId" = ${provider} and a."accountId" = ${accountId} limit 1
       ), duplicate_nid as (
         select 1 from mecopay_heart.profiles p, identity_row i
-        where p.nid_number = ${nidNumber} and p.id <> i.user_id limit 1
+        where p.nid_number = coalesce(nullif(${nidNumber}, ''), i.old_nid_number)
+          and coalesce(nullif(${nidNumber}, ''), i.old_nid_number) is not null
+          and p.id <> i.user_id limit 1
       ), saved as (
         insert into mecopay_heart.profiles
           (id, name, email, phone, phone_type, nid_number, nid_front_key, nid_back_key, selfie_key, profile_image_key,
            website_url, social_fb, social_insta, social_li, social_yt, verification_status, rejection_reason, updated_at)
-        select i.user_id, ${name}, i.email, ${phone}, ${phoneType}, ${nidNumber},
-          ${keys.nid_front || null}, ${keys.nid_back || null}, ${keys.selfie || null}, ${keys.profile_image || null},
-          ${websiteUrl}, ${socialFb}, ${socialInsta}, ${socialLi}, ${socialYt}, 'pending', null, now()
+        select i.user_id, coalesce(nullif(${name}, ''), i.old_name), i.email,
+          coalesce(nullif(${phone}, ''), i.old_phone), coalesce(nullif(${phoneType}, ''), i.old_phone_type),
+          coalesce(nullif(${nidNumber}, ''), i.old_nid_number),
+          coalesce(${keys.nid_front || null}, i.old_nid_front_key), coalesce(${keys.nid_back || null}, i.old_nid_back_key),
+          coalesce(${keys.selfie || null}, i.old_selfie_key), coalesce(${keys.profile_image || null}, i.old_profile_image_key),
+          case when ${form.has('website_url')} then nullif(${websiteUrl || ''}, '') else i.old_website_url end,
+          case when ${form.has('social_fb')} then nullif(${socialFb || ''}, '') else i.old_social_fb end,
+          case when ${form.has('social_insta')} then nullif(${socialInsta || ''}, '') else i.old_social_insta end,
+          case when ${form.has('social_li')} then nullif(${socialLi || ''}, '') else i.old_social_li end,
+          case when ${form.has('social_yt')} then nullif(${socialYt || ''}, '') else i.old_social_yt end,
+          'pending', null, now()
         from identity_row i
         where not exists (select 1 from duplicate_nid)
           and (${claims.client_id ? String(claims.client_id) : null}::text is null
@@ -251,9 +275,10 @@ async function saveProfile(request: Request, env: Env, claims: Claims) {
     if (oldProfileImage && profile.profile_image_key && String(profile.profile_image_key) !== oldProfileImage) {
       await env.KYC_BUCKET.delete(oldProfileImage).catch(error => console.warn('[motherwrite] old profile image cleanup failed', error));
     }
-    const now = Math.floor(Date.now() / 1000);
-    const refreshed = await signJwt({ ...claims, sub: claims.sub, client_id: profile.id, iat: now, exp: now + 7 * 24 * 60 * 60, jti: crypto.randomUUID() }, env);
-    return { profile, token: refreshed };
+    // Only the first successful profile save adds the canonical profile/user ID to JWT.
+    // Existing client_id is validated by the SQL identity mapping above and left untouched.
+    const token = claims.client_id ? null : await signJwt({ ...claims, sub: claims.sub, client_id: profile.id }, env);
+    return { profile, token };
   } catch (error) {
     if (!committed) await Promise.all(uploaded.map(key => env.KYC_BUCKET.delete(key).catch(() => undefined)));
     throw error;
@@ -264,7 +289,7 @@ async function media(request: Request, env: Env, claims: Claims) {
   if (!context) {
     const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
     const identity = await readIdentityAndProfile(sql, claims);
-    context = { userId: identity.userId, profile: identity.profile, expiresAt: Date.now() + CONTEXT_CACHE_TTL_MS };
+    context = { userId: identity.userId, profile: identity.profile, expiresAt: Date.now() + PROFILE_CONTEXT_CACHE_TTL_MS };
     writeCachedContext(claims.sub, context.userId, context.profile);
   }
   if (claims.client_id && String(claims.client_id) !== context.userId) return json({ error: 'FORBIDDEN' }, 403);
@@ -283,7 +308,7 @@ async function session(request: Request, env: Env, claims: Claims) {
   if (!context) {
     const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
     const identity = await readIdentityAndProfile(sql, claims);
-    context = { userId: identity.userId, profile: identity.profile, expiresAt: Date.now() + CONTEXT_CACHE_TTL_MS };
+    context = { userId: identity.userId, profile: identity.profile, expiresAt: Date.now() + PROFILE_CONTEXT_CACHE_TTL_MS };
     writeCachedContext(claims.sub, context.userId, context.profile);
   }
   if (claims.client_id && String(claims.client_id) !== context.userId) return json({ error: 'FORBIDDEN' }, 403, originHeaders(request, env));
@@ -305,12 +330,15 @@ export default {
       if (url.pathname === '/api/mother-write' && request.method === 'POST') {
         if (request.headers.get('origin') && request.headers.get('origin') !== (env.ALLOWED_ORIGIN || new URL(request.url).origin)) return json({ error: 'ORIGIN_NOT_ALLOWED' }, 403, headers);
         const result = await saveProfile(request, env, claims);
-        return json({ ok: true, client_id: result.profile.id, profile: result.profile }, 200, { ...headers, 'set-cookie': cookieHeader(result.token, 7 * 24 * 60 * 60) });
+        const { id: _profileId, ...profileForBrowser } = result.profile;
+        const responseHeaders = new Headers(headers);
+        if (result.token) responseHeaders.set('set-cookie', cookieHeader(result.token, Math.max(0, claims.exp - Math.floor(Date.now() / 1000))));
+        return json({ ok: true, profile: profileForBrowser }, 200, responseHeaders);
       }
       return json({ error: 'METHOD_NOT_ALLOWED' }, 405, headers);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'MOTHER_WRITE_FAILED';
-      const status = /REQUIRED|INVALID|ALREADY_USED|LOCKED/.test(message) ? 400 : message === 'FORBIDDEN' ? 403 : 500;
+      const status = /REQUIRED|INVALID|ALREADY_USED|LOCKED/.test(message) ? 400 : message === 'FORBIDDEN' ? 403 : message === 'TOKEN_EXPIRED' ? 401 : 500;
       console.error('[motherwrite]', message);
       return json({ error: message }, status, headers);
     }
