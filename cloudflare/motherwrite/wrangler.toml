@@ -1,7 +1,14 @@
 name = "motherwrite"
 main = "index.ts"
-compatibility_date = "2025-11-01"
+compatibility_date = "2026-10-30"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = false
+preview_urls = false
+routes = [{ pattern = "mecopay.space/api/mother-write*", zone_name = "mecopay.space" }]
+
+[[kv_namespaces]]
+binding = "CONTEXT_CACHE"
+id = "8b82bdd5739f49c4bb563bb1535932c1"
 
 [vars]
 BETTER_AUTH_URL = "https://mecopay.space"
@@ -15,7 +22,6 @@ bucket_name = "mecopay-kyc"
 binding = "HYPERDRIVE"
 id = "aa216e60610b4ecd8695f95a8e8a566b"
 
-# Set with `wrangler secret put JWT_PRIVATE_KEY`.
-# Optional: set `wrangler secret put JWT_PUBLIC_KEY_PEM` to verify with the
-# Auth Worker's SPKI public key directly. Without it, the Worker derives only
-# the public JWK from JWT_PRIVATE_KEY for signature verification.
+# JWT_PRIVATE_KEY is an existing secret binding used only to sign the refreshed
+# Mother JWT. Verification uses the canonical Auth Worker public key embedded
+# in index.ts and sourced from the live Mother read Worker.
