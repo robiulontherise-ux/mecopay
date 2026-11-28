@@ -1,0 +1,17 @@
+{
+  "name": "mecopay-motherwrite",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251125.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.50.0"
+  }
+}

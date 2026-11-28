@@ -36,6 +36,7 @@ import { Box, FolderGit2, UploadCloud, Lock, Search, LogOut, Upload, ShieldCheck
 import { getFeatureCopy, getHeroChunks, getSectionCopy, getTickerCopy } from '../lib/marketingLocalization';
 import { useLocale } from '../lib/LocaleContext';
 import { getProfileCopy } from '../lib/profileLocalization';
+import { motherWriteMedia, motherWriteProfile, dataUrlToBlob } from '../lib/motherWrite';
 import { ASIA_COUNTRIES, AFRICA_COUNTRIES } from '../lib/countries';
 
 function displayLoginIdentifier(email?: string | null): string {
@@ -265,15 +266,12 @@ export default function DashboardShell() {
               : p.verification_status === 'pending'
               ? 'Pending'
               : 'Unverified',
-            verification_status: p.verification_status || (p.nid_number || p.birth_number || p.nid_front_url || p.birth_cert_url ? 'pending' : 'unverified'),
+            verification_status: p.verification_status || (p.nid_number || p.nid_front_key || p.selfie_key ? 'pending' : 'unverified'),
             rejection_reason: p.rejection_reason,
-            age_group: p.age_group,
             nid_number: p.nid_number,
-            nid_front_url: p.nid_front_url,
-            nid_back_url: p.nid_back_url,
-            birth_number: p.birth_number,
-            birth_cert_url: p.birth_cert_url,
-            face_image_url: p.face_image_url,
+            nid_front_url: p.nid_front_url || (p.nid_front_key ? motherWriteMedia('nid_front') : null),
+            nid_back_url: p.nid_back_url || (p.nid_back_key ? motherWriteMedia('nid_back') : null),
+            face_image_url: p.face_image_url || (p.selfie_key ? motherWriteMedia('selfie') : null),
             website_url: p.website_url,
             social_fb: p.social_fb,
             social_insta: p.social_insta,
@@ -345,14 +343,10 @@ export default function DashboardShell() {
   const [profileName, setProfileName] = useState<string>('');
   const [profilePhone, setProfilePhone] = useState<string>('');
   const [phoneType, setPhoneType] = useState<'whatsapp' | 'telegram' | 'both'>('whatsapp');
-  const [ageGroup, setAgeGroup] = useState<'18_plus' | 'under_18'>('18_plus');
   const [nidNumber, setNidNumber] = useState<string>('');
   const [nidFrontImage, setNidFrontImage] = useState<string>('');
   const [nidBackImage, setNidBackImage] = useState<string>('');
-  const [birthNumber, setBirthNumber] = useState<string>('');
-  const [birthImage, setBirthImage] = useState<string>('');
   const [faceImage, setFaceImage] = useState<string>('');
-  const [isBirthLocked, setIsBirthLocked] = useState(false);
   const [isNidLocked, setIsNidLocked] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [socialFb, setSocialFb] = useState<string>('');
@@ -371,7 +365,7 @@ export default function DashboardShell() {
 
   // Live Camera Capture States
   const [cameraOpen, setCameraOpen] = useState(false);
-  const [cameraTarget, setCameraTarget] = useState<'birth' | 'nid_front' | 'nid_back' | 'face' | null>(null);
+  const [cameraTarget, setCameraTarget] = useState<'nid_front' | 'nid_back' | 'face' | null>(null);
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraLoading, setCameraLoading] = useState(false);
@@ -859,71 +853,43 @@ export default function DashboardShell() {
       };
       fetchHmac();
         
-      // Load user profile from Supabase profiles table
+      // Load profile through the authenticated MotherWrite read path only.
       const fetchUserProfile = async () => {
         try {
-          const { data: dbProf } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
-
+          const sessionResponse = await fetch('/api/mother-write/session', { credentials: 'include' });
+          const dbProf = sessionResponse.ok ? await sessionResponse.json() : null;
           if (dbProf && isMounted) {
             setProfileName(dbProf.name || user.user_metadata?.full_name || '');
             setProfilePhone(dbProf.phone || user.user_metadata?.phone || '');
-            setPhoneType((user.user_metadata?.phone_type as any) || dbProf.phone_type || 'whatsapp');
-            setAgeGroup(dbProf.age_group || user.user_metadata?.age_group || '18_plus');
-            setNidNumber(dbProf.nid_number || user.user_metadata?.nid_number || '');
-            setNidFrontImage(dbProf.nid_front_url || user.user_metadata?.nid_front_image || '');
-            setNidBackImage(dbProf.nid_back_url || user.user_metadata?.nid_back_image || '');
-            setBirthNumber(dbProf.birth_number || user.user_metadata?.birth_number || '');
-            setBirthImage(dbProf.birth_cert_url || user.user_metadata?.birth_image || '');
-            setFaceImage(dbProf.face_image_url || user.user_metadata?.face_image || '');
-            setWebsiteUrl(dbProf.website_url || user.user_metadata?.website_url || '');
-            setSocialFb(dbProf.social_fb || user.user_metadata?.social_fb || '');
-            setSocialInsta(dbProf.social_insta || user.user_metadata?.social_insta || '');
-            setSocialLi(dbProf.social_li || user.user_metadata?.social_li || '');
-            setSocialYt(dbProf.social_yt || user.user_metadata?.social_yt || '');
-            const hasSubmittedDocs = !!(dbProf.nid_number || dbProf.birth_number || dbProf.nid_front_url || dbProf.birth_cert_url || dbProf.face_image_url);
-            let vStatus: 'unverified' | 'pending' | 'verified' | 'rejected' = 'unverified';
-            if (dbProf.verification_status === 'verified') vStatus = 'verified';
-            else if (dbProf.verification_status === 'rejected') vStatus = 'rejected';
-            else if (hasSubmittedDocs) vStatus = 'pending';
-            else vStatus = 'unverified';
+            setPhoneType((dbProf.phone_type || user.user_metadata?.phone_type || 'whatsapp') as any);
+            setNidNumber(dbProf.nid_number || '');
+            setNidFrontImage(dbProf.nid_front_key ? motherWriteMedia('nid_front') : '');
+            setNidBackImage(dbProf.nid_back_key ? motherWriteMedia('nid_back') : '');
+            setFaceImage(dbProf.selfie_key ? motherWriteMedia('selfie') : '');
+            setWebsiteUrl(dbProf.website_url || '');
+            setSocialFb(dbProf.social_fb || '');
+            setSocialInsta(dbProf.social_insta || '');
+            setSocialLi(dbProf.social_li || '');
+            setSocialYt(dbProf.social_yt || '');
+            const hasSubmittedDocs = !!(dbProf.nid_number || dbProf.nid_front_key || dbProf.selfie_key);
+            const vStatus = dbProf.verification_status === 'verified' ? 'verified' : dbProf.verification_status === 'rejected' ? 'rejected' : hasSubmittedDocs ? 'pending' : 'unverified';
             setVerificationStatus(vStatus as any);
             setIsFreelancer(Boolean(dbProf.is_freelancer));
             setIsInfluencer(Boolean(dbProf.is_influencer));
             setRejectionReason(dbProf.rejection_reason || '');
-
-            const isLocked = vStatus === 'verified';
-            setIsIdentityLocked(isLocked);
-            setIsBirthLocked(!!dbProf.birth_number);
+            setIsIdentityLocked(vStatus === 'verified');
             setIsNidLocked(!!dbProf.nid_number);
-
-            // If user already submitted documents / verified / pending, unlock into Dashboard
-            if (vStatus === 'verified' || vStatus === 'pending') {
-              setActiveTab('brand');
-              setActiveSubMenu('Dashboard');
-            }
+            if (vStatus === 'verified' || vStatus === 'pending') { setActiveTab('brand'); setActiveSubMenu('Dashboard'); }
             return;
           }
-        } catch (e) {
-          console.warn("Could not load db profile", e);
-        }
-
+        } catch (e) { console.warn('Could not load MotherWrite profile', e); }
         if (isMounted) {
-          setIsFreelancer(false);
-          setIsInfluencer(false);
+          setIsFreelancer(false); setIsInfluencer(false);
           setProfileName(user.user_metadata?.full_name || '');
           setProfilePhone(user.user_metadata?.phone || '');
-          setAgeGroup(user.user_metadata?.age_group || '18_plus');
-          setNidNumber(user.user_metadata?.nid_number || '');
-          setBirthNumber(user.user_metadata?.birth_number || '');
-          setWebsiteUrl(user.user_metadata?.website_url || '');
-          setSocialFb(user.user_metadata?.social_fb || '');
-          setSocialInsta(user.user_metadata?.social_insta || '');
-          setSocialLi(user.user_metadata?.social_li || '');
-          setSocialYt(user.user_metadata?.social_yt || '');
+          setNidNumber(''); setWebsiteUrl(user.user_metadata?.website_url || '');
+          setSocialFb(user.user_metadata?.social_fb || ''); setSocialInsta(user.user_metadata?.social_insta || '');
+          setSocialLi(user.user_metadata?.social_li || ''); setSocialYt(user.user_metadata?.social_yt || '');
         }
       };
       fetchUserProfile();
@@ -1185,7 +1151,7 @@ export default function DashboardShell() {
   const activeMenuData = menuData[activeTab as keyof typeof menuData] ?? menuData.brand;
 
   // Live Camera Controls
-  const startLiveCamera = async (target: 'birth' | 'nid_front' | 'nid_back' | 'face') => {
+  const startLiveCamera = async (target: 'nid_front' | 'nid_back' | 'face') => {
     setCameraTarget(target);
     const facing: 'user' | 'environment' = target === 'face' ? 'user' : 'environment';
     setCameraFacing(facing);
@@ -1316,8 +1282,7 @@ export default function DashboardShell() {
     // Compress to WebP (~150-250 KB)
     const dataUrl = canvas.toDataURL('image/webp', 0.82);
 
-    if (cameraTarget === 'birth') setBirthImage(dataUrl);
-    else if (cameraTarget === 'nid_front') setNidFrontImage(dataUrl);
+    if (cameraTarget === 'nid_front') setNidFrontImage(dataUrl);
     else if (cameraTarget === 'nid_back') setNidBackImage(dataUrl);
     else if (cameraTarget === 'face') setFaceImage(dataUrl);
 
@@ -1362,342 +1327,32 @@ export default function DashboardShell() {
     reader.readAsDataURL(file);
   };
 
-  // Upload image to Supabase kyc_documents Bucket
-  const uploadKycImage = async (dataOrUrl: string, prefix: string): Promise<string> => {
-    if (!dataOrUrl) return '';
-    // If it's already an uploaded http/https URL, keep it
-    if (dataOrUrl.startsWith('http://') || dataOrUrl.startsWith('https://')) {
-      return dataOrUrl;
-    }
-    try {
-      const res = await fetch(dataOrUrl);
-      const blob = await res.blob();
-      const filePath = `${user.id}/${prefix}_${Date.now()}.webp`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('kyc_documents')
-        .upload(filePath, blob, {
-          contentType: 'image/webp',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error("Storage upload error for " + prefix, uploadError);
-        throw uploadError;
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from('kyc_documents')
-        .getPublicUrl(filePath);
-
-      return publicUrlData.publicUrl;
-    } catch (err: any) {
-      console.error("Failed to upload KYC image", err);
-      throw new Error(`${prefix} ছবি আপলোড করা যায়নি: ${err.message || ''}`);
-    }
-  };
-
-  const handleResetProfile = async () => {
-    if (!isAdmin) return;
-    if (!(await showConfirm("Admin Action: Are you sure you want to completely reset your profile data to test again?"))) return;
-    
-    setIsSavingProfile(true);
-    setProfileMessage('');
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: { 
-          full_name: '', 
-          phone: '',
-          identity_type: 'nid',
-          identity_number: '',
-          face_image: '',
-          doc_front_image: '',
-          doc_back_image: '',
-          website_url: '',
-          social_fb: '',
-          social_insta: '',
-          social_li: '',
-          social_yt: ''
-        }
-      });
-      if (error) throw error;
-
-      await supabase.from('profiles').update({
-        name: '',
-        phone: '',
-        nid_number: null,
-        nid_front_url: null,
-        nid_back_url: null,
-        birth_number: null,
-        birth_cert_url: null,
-        face_image_url: null,
-        website_url: null,
-        social_fb: null,
-        social_insta: null,
-        social_li: null,
-        social_yt: null,
-        verification_status: 'pending',
-        rejection_reason: null
-      }).eq('id', user.id);
-      
-      setProfileName('');
-      setProfilePhone('');
-      setAgeGroup('18_plus');
-      setNidNumber('');
-      setNidFrontImage('');
-      setNidBackImage('');
-      setBirthNumber('');
-      setBirthImage('');
-      setFaceImage('');
-      setWebsiteUrl('');
-      setSocialFb('');
-      setSocialInsta('');
-      setSocialLi('');
-      setSocialYt('');
-      setVerificationStatus('pending');
-      setRejectionReason('');
-      setIsIdentityLocked(false);
-      setIsBirthLocked(false);
-      setIsNidLocked(false);
-      
-      setProfileMessage('Profile has been completely reset for testing.');
-      showToast('Profile reset successfully', 'success');
-      setTimeout(() => setProfileMessage(''), 3000);
-    } catch (err: any) {
-      setProfileMessage('Error: ' + err.message);
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
   const handleSaveProfile = async () => {
-    setIsSavingProfile(true);
-    setProfileMessage('');
-
+    setIsSavingProfile(true); setProfileMessage('');
     try {
-      // 1. Mandatory Text Validation
-      if (!profileName.trim()) {
-        showToast(profileUiText("অনুগ্রহ করে আপনার পূর্ণ নাম প্রদান করুন", "Please provide your full name"), "error");
-        setIsSavingProfile(false);
-        return;
-      }
-      if (!profilePhone.trim()) {
-        showToast(profileUiText("অনুগ্রহ করে যোগাযোগের নম্বর প্রদান করুন", "Please provide a contact number"), "error");
-        setIsSavingProfile(false);
-        return;
-      }
-
-      // If already verified, allow updating Website, Social Profiles & Contact anytime without re-uploading documents
-      if (verificationStatus === 'verified') {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            name: profileName.trim(),
-            phone: profilePhone.trim(),
-            website_url: websiteUrl.trim() || null,
-            social_fb: socialFb.trim() || null,
-            social_insta: socialInsta.trim() || null,
-            social_li: socialLi.trim() || null,
-            social_yt: socialYt.trim() || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id);
-
-        if (updateError) throw updateError;
-
-        await supabase.auth.updateUser({
-          data: {
-            full_name: profileName.trim(),
-            phone: profilePhone.trim(),
-            phone_type: phoneType,
-            website_url: websiteUrl.trim() || null,
-            social_fb: socialFb.trim() || null,
-            social_insta: socialInsta.trim() || null,
-            social_li: socialLi.trim() || null,
-            social_yt: socialYt.trim() || null
-          }
-        });
-
-        showToast(profileUiText("ওয়েবসাইট ও সোশ্যাল লিঙ্ক সফলভাবে আপডেট হয়েছে!", "Website and social links updated successfully!"), "success");
-        setProfileMessage(profileUiText("আপনার যোগাযোগের নম্বর, ওয়েবসাইট ও সোশ্যাল মিডিয়া লিঙ্ক সফলভাবে সংরক্ষণ করা হয়েছে।", "Your contact number, website, and social media links were saved successfully."));
-        setTimeout(() => setProfileMessage(''), 4000);
-        setIsSavingProfile(false);
-        return;
-      }
-
-      // 2. Identity Document Mandatory Validation
-      if (ageGroup === '18_plus') {
-        if (!nidNumber.trim()) {
-          showToast(profileUiText("১৮ বছরের বেশি বয়সীদের ক্ষেত্রে NID নম্বর বাধ্যতামূলক!", "NID number is required for applicants above 18."), "error");
-          setIsSavingProfile(false);
-          return;
-        }
-        if (!birthNumber.trim()) {
-          showToast(profileUiText("জন্মনিবন্ধন নম্বর প্রদান করুন!", "Please provide the birth certificate number."), "error");
-          setIsSavingProfile(false);
-          return;
-        }
-        if (!nidFrontImage || !nidBackImage) {
-          showToast(profileUiText("NID কার্ডের সম্মুখভাগ ও পেছনের ভাগের ছবি আবশ্যক!", "Both front and back images of the NID card are required."), "error");
-          setIsSavingProfile(false);
-          return;
-        }
-        if (!birthImage) {
-          showToast(profileUiText("জন্মনিবন্ধন সনদের ছবি আবশ্যক!", "A birth certificate image is required."), "error");
-          setIsSavingProfile(false);
-          return;
-        }
-      } else {
-        if (!birthNumber.trim()) {
-          showToast(profileUiText("জন্মনিবন্ধন নম্বর প্রদান করা বাধ্যতামূলক!", "Birth certificate number is required."), "error");
-          setIsSavingProfile(false);
-          return;
-        }
-        if (!birthImage) {
-          showToast(profileUiText("জন্মনিবন্ধন সনদের ছবি আবশ্যক!", "A birth certificate image is required."), "error");
-          setIsSavingProfile(false);
-          return;
-        }
-      }
-
-      if (!faceImage) {
-        showToast(profileUiText("লাইভ ফেস ফটো সেলফি আবশ্যক!", "A live face selfie is required."), "error");
-        setIsSavingProfile(false);
-        return;
-      }
-
-      // 3. Unique Check: Check if NID already used by another user
-      if (nidNumber.trim()) {
-        const { data: existingNid } = await supabase
-          .from('profiles')
-          .select('id, name, email')
-          .eq('nid_number', nidNumber.trim())
-          .neq('id', user.id)
-          .maybeSingle();
-
-        if (existingNid) {
-          showToast(`ত্রুটি: এই NID নম্বরটি (${nidNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট ভেরিফাই করা হয়েছে!`, "error");
-          setProfileMessage(`ত্রুটি: এই NID নম্বরটি (${nidNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট রেজিস্টার্ড রয়েছে!`);
-          setIsSavingProfile(false);
-          return;
-        }
-      }
-
-      // 4. Unique Check: Check if Birth Certificate number already used by another user
-      if (birthNumber.trim()) {
-        const { data: existingBirth } = await supabase
-          .from('profiles')
-          .select('id, name, email')
-          .eq('birth_number', birthNumber.trim())
-          .neq('id', user.id)
-          .maybeSingle();
-
-        if (existingBirth) {
-          showToast(`ত্রুটি: এই জন্মনিবন্ধন নম্বরটি (${birthNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট ভেরিফাই করা হয়েছে!`, "error");
-          setProfileMessage(`ত্রুটি: এই জন্মনিবন্ধন নম্বরটি (${birthNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট রেজিস্টার্ড রয়েছে!`);
-          setIsSavingProfile(false);
-          return;
-        }
-      }
-
-      // 5. Upload Compressed Images to Supabase Storage Bucket 'kyc_documents'
-      let upNidFront = nidFrontImage;
-      let upNidBack = nidBackImage;
-      let upBirth = birthImage;
-      let upFace = faceImage;
-
-      if (nidFrontImage && nidFrontImage.startsWith('data:')) {
-        upNidFront = await uploadKycImage(nidFrontImage, 'nid_front');
-        setNidFrontImage(upNidFront);
-      }
-      if (nidBackImage && nidBackImage.startsWith('data:')) {
-        upNidBack = await uploadKycImage(nidBackImage, 'nid_back');
-        setNidBackImage(upNidBack);
-      }
-      if (birthImage && birthImage.startsWith('data:')) {
-        upBirth = await uploadKycImage(birthImage, 'birth_cert');
-        setBirthImage(upBirth);
-      }
-      if (faceImage && faceImage.startsWith('data:')) {
-        upFace = await uploadKycImage(faceImage, 'face');
-        setFaceImage(upFace);
-      }
-
-      // 6. Save directly to public.profiles table
-      const statusToSave = 'pending';
-      const { error: profError } = await supabase
-        .from('profiles')
-        .update({
-          name: profileName.trim(),
-          phone: profilePhone.trim(),
-          age_group: ageGroup,
-          nid_number: nidNumber.trim() || null,
-          nid_front_url: upNidFront || null,
-          nid_back_url: upNidBack || null,
-          birth_number: birthNumber.trim() || null,
-          birth_cert_url: upBirth || null,
-          face_image_url: upFace || null,
-          website_url: websiteUrl.trim() || null,
-          social_fb: socialFb.trim() || null,
-          social_insta: socialInsta.trim() || null,
-          social_li: socialLi.trim() || null,
-          social_yt: socialYt.trim() || null,
-          verification_status: statusToSave,
-          rejection_reason: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-
-      if (profError) {
-        console.error("Profiles table update error:", profError);
-        if (profError.message?.includes('duplicate key') || profError.code === '23505' || profError.message?.includes('unique constraint') || (profError as any).details?.includes('already exists')) {
-          if (profError.message?.includes('nid_number') || (profError as any).details?.includes('nid_number')) {
-            throw new Error(`এই NID নম্বরটি (${nidNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একজন ক্লায়েন্টের অ্যাকাউন্ট ভেরিফাই করা হয়েছে!`);
-          }
-          if (profError.message?.includes('birth_number') || (profError as any).details?.includes('birth_number')) {
-            throw new Error(`এই জন্মনিবন্ধন নম্বরটি (${birthNumber.trim()}) দিয়ে ইতিমধ্যে অন্য একজন ক্লায়েন্টের অ্যাকাউন্ট ভেরিফাই করা হয়েছে!`);
-          }
-          throw new Error('এই NID বা জন্মনিবন্ধন নম্বর দিয়ে ইতিমধ্যে অন্য একটি অ্যাকাউন্ট বিদ্যমান রয়েছে!');
-        }
-        throw profError;
-      }
-
-      // 7. Sync with Supabase Auth Metadata
-      await supabase.auth.updateUser({
-        data: { 
-          full_name: profileName, 
-          phone: profilePhone,
-          phone_type: phoneType,
-          age_group: ageGroup,
-          nid_number: nidNumber,
-          birth_number: birthNumber,
-          website_url: websiteUrl,
-          social_fb: socialFb,
-          social_insta: socialInsta,
-          social_li: socialLi,
-          social_yt: socialYt
-        }
+      if (!profileName.trim()) throw new Error(profileUiText('অনুগ্রহ করে আপনার পূর্ণ নাম প্রদান করুন', 'Please provide your full name'));
+      if (!/^\+[1-9]\d{7,14}$/.test(profilePhone.trim())) throw new Error(profileUiText('দেশের কোডসহ ফোন নম্বর দিন, যেমন +8801XXXXXXXXX', 'Use a phone number with country code, e.g. +8801XXXXXXXXX'));
+      if (!nidNumber.trim()) throw new Error(profileUiText('NID নম্বর বাধ্যতামূলক।', 'NID number is required.'));
+      if (!nidFrontImage || !nidBackImage || !faceImage) throw new Error(profileUiText('NID-এর দুই পাশ এবং লাইভ সেলফি আবশ্যক।', 'NID front, NID back, and live selfie are required.'));
+      const result = await motherWriteProfile({
+        name: profileName.trim(), phone: profilePhone.trim(), phone_type: phoneType, nid_number: nidNumber.trim(),
+        website_url: websiteUrl.trim(), social_fb: socialFb.trim(), social_insta: socialInsta.trim(), social_li: socialLi.trim(), social_yt: socialYt.trim(),
+        nid_front: nidFrontImage.startsWith('data:') ? await dataUrlToBlob(nidFrontImage) : null,
+        nid_back: nidBackImage.startsWith('data:') ? await dataUrlToBlob(nidBackImage) : null,
+        selfie: faceImage.startsWith('data:') ? await dataUrlToBlob(faceImage) : null
       });
-
-      if (birthNumber) setIsBirthLocked(true);
-      if (nidNumber) setIsNidLocked(true);
-      setVerificationStatus('pending');
+      if (nidFrontImage.startsWith('data:')) setNidFrontImage(motherWriteMedia('nid_front'));
+      if (nidBackImage.startsWith('data:')) setNidBackImage(motherWriteMedia('nid_back'));
+      if (faceImage.startsWith('data:')) setFaceImage(motherWriteMedia('selfie'));
+      setNidNumber(nidNumber.trim()); setIsNidLocked(true); setVerificationStatus(result.profile?.verification_status === 'verified' ? 'verified' : 'pending');
       setIsIdentityLocked(false);
-      
-      showToast(profileUiText('প্রোফাইল ও পরিচয়পত্র সফলভাবে সাবমিট হয়েছে!', 'Profile and identity documents submitted successfully!'), 'success');
-      setProfileMessage(profileUiText('প্রোফাইল ও পরিচয়পত্র সফলভাবে জমা হয়েছে। অ্যাডমিন রিভিউয়ের পর ভেরিফাই হবে।', 'Profile and identity documents submitted successfully. Verification will follow admin review.'));
+      showToast(profileUiText('প্রোফাইল MotherWrite-এ সফলভাবে সংরক্ষিত হয়েছে!', 'Profile saved successfully through MotherWrite!'), 'success');
+      setProfileMessage(profileUiText('প্রোফাইল ও পরিচয়পত্র জমা হয়েছে।', 'Profile and identity documents were submitted for review.'));
       setTimeout(() => setProfileMessage(''), 4000);
-
-      // Instantly unlock and navigate to Dashboard in Your MecoPay
-      setActiveTab('brand');
-      setActiveSubMenu('Dashboard');
+      setActiveTab('brand'); setActiveSubMenu('Dashboard');
     } catch (err: any) {
-      console.error(err);
-      showToast('Error: ' + err.message, 'error');
-      setProfileMessage('Error: ' + err.message);
-    } finally {
-      setIsSavingProfile(false);
-    }
+      console.error(err); showToast('Error: ' + (err.message || 'Profile save failed'), 'error'); setProfileMessage('Error: ' + (err.message || 'Profile save failed'));
+    } finally { setIsSavingProfile(false); }
   };
 
   // Admin KYC Actions
@@ -2093,76 +1748,14 @@ export default function DashboardShell() {
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex flex-col sm:flex-row sm:space-x-6 space-y-4 sm:space-y-0 mb-6">
-                    <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300 font-bold bg-slate-950 px-4 py-3 rounded-lg border ${ageGroup === '18_plus' ? 'border-emerald-500' : 'border-slate-800'}`}>
-                      <input type="radio" value="18_plus" checked={ageGroup === '18_plus'} onChange={(e) => setAgeGroup('18_plus')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
-                      <span>{profileCopy.age18}</span>
-                    </label>
-                    <label className={`flex items-center space-x-2 ${isIdentityLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} text-slate-300 font-bold bg-slate-950 px-4 py-3 rounded-lg border ${ageGroup === 'under_18' ? 'border-emerald-500' : 'border-slate-800'}`}>
-                      <input type="radio" value="under_18" checked={ageGroup === 'under_18'} onChange={(e) => setAgeGroup('under_18')} disabled={isIdentityLocked} className="accent-emerald-500 w-4 h-4" />
-                      <span>{profileCopy.under18}</span>
-                    </label>
-                  </div>
-                  
                   <div className="grid grid-cols-1 gap-6 mb-6">
-                    {/* Birth Certificate Section */}
-                    <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-                      <div>
-                        <h4 className="text-white font-medium mb-3 flex items-center gap-2 text-sm border-b border-slate-800 pb-2">
-                          <FileText className="w-4 h-4 text-emerald-500" />
-                          {profileCopy.birthCertificate} <span className="text-red-400 text-xs ml-auto">*Mandatory</span>
-                        </h4>
-                        <div className="mb-3">
-                          <label className="block text-xs font-medium text-slate-400 mb-1">{profileCopy.birthNumber}</label>
-                          <input type="text" placeholder={profileCopy.birthPlaceholder} value={birthNumber} onChange={(e) => setBirthNumber(e.target.value)} disabled={isBirthLocked} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-mono" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1.5">Certificate Photo</label>
-                        <div className="border border-slate-800 rounded-xl p-3 bg-slate-900/40 text-center">
-                          {birthImage ? (
-                            <div className="relative mb-2 mx-auto w-full max-w-xs aspect-[4/3] rounded-lg overflow-hidden bg-slate-950 border border-slate-800">
-                              <img src={birthImage} alt="Birth Certificate" className="w-full h-full object-contain p-2" />
-                              <button
-                                type="button"
-                                onClick={() => setPreviewZoomImage(birthImage)}
-                                className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded-lg text-xs"
-                                title={profileCopy.zoom}
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="mx-auto w-full max-w-xs aspect-[4/3] rounded-lg border-2 border-dashed border-slate-800 flex flex-col items-center justify-center p-4 mb-2 text-slate-500">
-                              <Upload className="w-6 h-6 text-slate-600 mb-1" />
-                              <span className="text-xs">{profileCopy.notUploaded}</span>
-                            </div>
-                          )}
-
-                          <div className="flex flex-col gap-2">
-                            {!isBirthLocked && (
-                              <label className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors">
-                                <Upload className="w-3.5 h-3.5 text-blue-400" />
-                                <span>{profileCopy.uploadGallery}</span>
-                                <input type="file" accept="image/*" onChange={(e) => handleCompressedImageUpload(e, setBirthImage)} className="hidden" />
-                              </label>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* NID Section */}
                     <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
                       <div>
                         <h4 className="text-white font-medium mb-3 flex items-start gap-2 border-b border-slate-800 pb-2">
                           <CreditCard className="w-4 h-4 text-blue-500 mt-0.5" />
                           <span className="text-sm">{profileCopy.nidCard}</span>
-                          <span className={`text-xs ml-auto ${ageGroup === '18_plus' ? 'text-red-400' : 'text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded'}`}>
-                            {ageGroup === '18_plus' ? '*Mandatory' : 'Optional for Under 18'}
-                          </span>
+                          <span className="text-xs ml-auto text-red-400">*Mandatory</span>
                         </h4>
                         <div className="mb-3">
                           <label className="block text-xs font-medium text-slate-400 mb-1">{profileCopy.nidNumber}</label>
@@ -2318,8 +1911,7 @@ export default function DashboardShell() {
                           if (ctx) {
                             ctx.drawImage(img, 0, 0, width, height);
                             const compressedDataUrl = canvas.toDataURL('image/webp', 0.82);
-                            if (cameraTarget === 'birth') setBirthImage(compressedDataUrl);
-                            else if (cameraTarget === 'nid_front') setNidFrontImage(compressedDataUrl);
+                            if (cameraTarget === 'nid_front') setNidFrontImage(compressedDataUrl);
                             else if (cameraTarget === 'nid_back') setNidBackImage(compressedDataUrl);
                             else if (cameraTarget === 'face') setFaceImage(compressedDataUrl);
 
@@ -2381,15 +1973,6 @@ export default function DashboardShell() {
                     <span>Save & Submit For Verification</span>
                   )}
                 </button>
-                {isAdmin && (
-                  <button 
-                    onClick={handleResetProfile}
-                    disabled={isSavingProfile}
-                    className="sm:w-auto bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-500/30 px-6 py-3 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
-                  >
-                    Reset Profile (Test Mode)
-                  </button>
-                )}
               </div>
 
               <MfaSettings />
@@ -3670,7 +3253,7 @@ export default function DashboardShell() {
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
                             <ShieldAlert className="w-3.5 h-3.5 text-red-400" /> Rejected
                           </span>
-                        ) : (client.verification_status === 'pending' || client.nid_number || client.birth_number || client.face_image_url) ? (
+                        ) : (client.verification_status === 'pending' || client.nid_number || client.face_image_url) ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
                             <Clock className="w-3.5 h-3.5 text-amber-400" /> রিকোয়েস্ট এসেছে
                           </span>
@@ -3706,19 +3289,6 @@ export default function DashboardShell() {
                             </button>
                           ) : (
                             <span className="text-[10px] text-slate-600 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">NID ব্যাক নেই</span>
-                          )}
-
-                          {client.birth_cert_url ? (
-                            <button
-                              type="button"
-                              onClick={() => setPreviewZoomImage(client.birth_cert_url)}
-                              className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 flex items-center gap-1"
-                              title="জন্মনিবন্ধন সনদ বড় করে দেখুন"
-                            >
-                              📜 জন্মনিবন্ধন
-                            </button>
-                          ) : (
-                            <span className="text-[10px] text-slate-600 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">জন্মনিবন্ধন নেই</span>
                           )}
 
                           {client.face_image_url ? (
@@ -4963,7 +4533,6 @@ export default function DashboardShell() {
               <div className="flex items-center gap-2">
                 <Camera className="w-5 h-5 text-emerald-400" />
                 <h3 className="text-white font-bold text-sm">
-                  {cameraTarget === 'birth' && 'জন্মনিবন্ধন লাইভ ক্যামেরা ক্যাপচার'}
                   {cameraTarget === 'nid_front' && `NID ${profileCopy.front} লাইভ ক্যাপচার`}
                   {cameraTarget === 'nid_back' && `NID ${profileCopy.back} লাইভ ক্যাপচার`}
                   {cameraTarget === 'face' && 'লাইভ ফেস সেলফি ক্যাপচার'}
@@ -5098,25 +4667,16 @@ export default function DashboardShell() {
                   </span>
                 </div>
                 <div className="text-xs text-slate-400">
-                  Age Group: <span className="text-white font-medium">{kycModalUser.age_group === 'under_18' ? '১৮ বছরের নিচে (Under 18)' : '১৮ বছরের উপরে (18+)'}</span>
-                </div>
-                <div className="text-xs text-slate-400">
                   Phone: <span className="text-white font-medium">{kycModalUser.phone || 'N/A'}</span>
                 </div>
               </div>
 
-              {/* NID and Birth numbers */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* NID number */}
+              <div className="grid grid-cols-1 gap-4">
                 <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl">
                   <span className="text-xs text-slate-400 block mb-1">National ID (NID) Number</span>
                   <span className="text-sm font-mono font-bold text-white select-all">
                     {kycModalUser.nid_number || 'জমা দেওয়া হয়নি'}
-                  </span>
-                </div>
-                <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl">
-                  <span className="text-xs text-slate-400 block mb-1">Birth Certificate Number</span>
-                  <span className="text-sm font-mono font-bold text-white select-all">
-                    {kycModalUser.birth_number || 'জমা দেওয়া হয়নি'}
                   </span>
                 </div>
               </div>
@@ -5126,7 +4686,7 @@ export default function DashboardShell() {
                 <h4 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
                   <ImageIcon className="w-4 h-4 text-emerald-400" /> সাবমিট করা পরিচয়পত্রের ছবিসমূহ (বড় করে দেখতে ক্লিক করুন)
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* NID Front */}
                   <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
                     <span className="text-[11px] text-slate-400 font-medium block mb-1.5">NID Front Side</span>
@@ -5151,21 +4711,6 @@ export default function DashboardShell() {
                     >
                       {kycModalUser.nid_back_url ? (
                         <img src={kycModalUser.nid_back_url} alt="NID Back" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-xs text-slate-600">ছবি নেই</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Birth Certificate */}
-                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
-                    <span className="text-[11px] text-slate-400 font-medium block mb-1.5">Birth Certificate</span>
-                    <div
-                      onClick={() => kycModalUser.birth_cert_url && setPreviewZoomImage(kycModalUser.birth_cert_url)}
-                      className="aspect-video bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer border border-slate-800 hover:border-emerald-500/50 transition-colors"
-                    >
-                      {kycModalUser.birth_cert_url ? (
-                        <img src={kycModalUser.birth_cert_url} alt="Birth Cert" className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-xs text-slate-600">ছবি নেই</span>
                       )}
