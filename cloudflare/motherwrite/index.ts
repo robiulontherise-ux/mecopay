@@ -3,7 +3,6 @@ import { neon } from '@neondatabase/serverless';
 interface Env {
   HYPERDRIVE: { connectionString: string };
   KYC_BUCKET: R2Bucket;
-  CONTEXT_CACHE: KVNamespace;
   JWT_PRIVATE_KEY: string;
   BETTER_AUTH_URL?: string;
   ALLOWED_ORIGIN?: string;
@@ -23,7 +22,10 @@ llaQbGmGcXZNqIkLJyYNqEPkWCy6RJULJXjZMUNDQVuRtbNbDF1szdItKA==
 type ImageField = typeof IMAGE_FIELDS[number];
 type Profile = Record<string, unknown> & { id: string; nid_front_key?: string | null; nid_back_key?: string | null; selfie_key?: string | null; profile_image_key?: string | null; nid_number?: string | null; verification_status?: string | null };
 type Identity = { userId: string; email: string | null; profile: Profile | null };
-type CachedContext = { client_id: string; profile_complete: boolean; brand_ids: string[]; updated_at: number };
+type CachedContext = { userId: string; profile: Profile | null; expiresAt: number };
+const contextCache = new Map<string, CachedContext>();
+const CONTEXT_CACHE_TTL_MS = 5 * 60 * 1000;
+const CONTEXT_CACHE_MAX_ENTRIES = 500;
 
 function json(body: unknown, status = 200, extra: HeadersInit = {}) {
   const headers = new Headers({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra });
@@ -117,30 +119,23 @@ async function readIdentityAndProfile(sql: Sql, claims: Claims): Promise<Identit
   } : null;
   return { userId: String(row.user_id), email: row.user_email || null, profile };
 }
-async function loadProfile(sql: Sql, clientId: string) {
-  const rows = await sql`select id, name, email, phone, phone_type, verification_status, rejection_reason,
-      nid_number, nid_front_key, nid_back_key, selfie_key, profile_image_key, website_url,
-      social_fb, social_insta, social_li, social_yt
-    from mecopay_heart.profiles where id = ${clientId} limit 1`;
-  return (rows[0] as Profile | undefined) || null;
+function readCachedContext(sub: string): CachedContext | null {
+  const value = contextCache.get(sub);
+  if (!value) return null;
+  if (value.expiresAt <= Date.now()) {
+    contextCache.delete(sub);
+    return null;
+  }
+  contextCache.delete(sub);
+  contextCache.set(sub, value);
+  return value;
 }
-async function contextKey(sub: string) {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sub)));
-  return `sub:${Array.from(digest, b => b.toString(16).padStart(2, '0')).join('')}`;
-}
-async function readCachedContext(env: Env, sub: string): Promise<CachedContext | null> {
-  try {
-    const value = await env.CONTEXT_CACHE.get<CachedContext>(await contextKey(sub), 'json');
-    if (value && typeof value.client_id === 'string' && typeof value.profile_complete === 'boolean') return value;
-  } catch (error) { console.warn('[motherwrite] context cache read failed', error); }
-  return null;
-}
-async function writeCachedContext(env: Env, sub: string, context: CachedContext) {
-  try { await env.CONTEXT_CACHE.put(await contextKey(sub), JSON.stringify(context), { expirationTtl: 3600 }); }
-  catch (error) { console.warn('[motherwrite] context cache write failed', error); }
-}
-function profileComplete(profile: Profile | null) {
-  return Boolean(profile?.name && profile.phone && profile.phone_type && profile.nid_number && profile.nid_front_key && profile.nid_back_key && profile.selfie_key);
+function writeCachedContext(sub: string, userId: string, profile: Profile | null) {
+  if (contextCache.size >= CONTEXT_CACHE_MAX_ENTRIES && !contextCache.has(sub)) {
+    const oldest = contextCache.keys().next().value;
+    if (oldest) contextCache.delete(oldest);
+  }
+  contextCache.set(sub, { userId, profile, expiresAt: Date.now() + CONTEXT_CACHE_TTL_MS });
 }
 async function saveProfile(request: Request, env: Env, claims: Claims) {
   const form = await request.formData();
@@ -160,43 +155,33 @@ async function saveProfile(request: Request, env: Env, claims: Claims) {
 
   const files = Object.fromEntries(IMAGE_FIELDS.map(field => [field, image(form, field)])) as Record<ImageField, File | null>;
   for (const field of IMAGE_FIELDS) validateImage(files[field], field);
-  // New profiles must include every required KYC image before any database or storage operation.
   if (!claims.client_id) {
     for (const field of IMMUTABLE_IMAGE_FIELDS) if (!files[field]) throw new Error(`${field.toUpperCase()}_REQUIRED`);
   }
 
-  const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
-  const identity = await readIdentityAndProfile(sql, claims);
-  if (claims.client_id && String(claims.client_id) !== identity.userId) throw new Error('FORBIDDEN');
-  const existing = identity.profile;
+  const { provider, accountId } = parseSubject(claims.sub);
   const keys: Partial<Record<ImageField, string>> = {};
   const uploaded: string[] = [];
   let committed = false;
-  const oldProfileImage = existing?.profile_image_key ? String(existing.profile_image_key) : null;
   try {
+    // R2 keys use the JWT's account identity; Neon resolves the canonical user/profile ID below.
     for (const field of IMAGE_FIELDS) {
-      const oldKey = existing?.[field === 'nid_front' ? 'nid_front_key' : field === 'nid_back' ? 'nid_back_key' : field === 'selfie' ? 'selfie_key' : 'profile_image_key'];
-      if (IMMUTABLE_IMAGE_FIELDS.includes(field as typeof IMMUTABLE_IMAGE_FIELDS[number]) && oldKey) {
-        keys[field] = String(oldKey);
-        continue;
-      }
       const file = files[field];
-      if (!file) {
-        if (IMMUTABLE_IMAGE_FIELDS.includes(field as typeof IMMUTABLE_IMAGE_FIELDS[number])) throw new Error(`${field.toUpperCase()}_REQUIRED`);
-        keys[field] = oldKey ? String(oldKey) : '';
-        continue;
-      }
-      const key = `kyc/${safePart(identity.userId)}/${field}-${crypto.randomUUID()}.${extension(file.type)}`;
-      await env.KYC_BUCKET.put(key, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { owner: identity.userId, field } });
+      if (!file) continue;
+      const key = `kyc/${safePart(provider)}/${safePart(accountId)}/${field}-${crypto.randomUUID()}.${extension(file.type)}`;
+      await env.KYC_BUCKET.put(key, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { account: accountId, field } });
       keys[field] = key;
       uploaded.push(key);
     }
 
-    const { provider, accountId } = parseSubject(claims.sub);
+    const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
     const rows = await sql`with identity_row as (
-        select u.id as user_id, u.email as email
+        select u.id as user_id, u.email as email,
+          p.nid_front_key as old_nid_front_key, p.nid_back_key as old_nid_back_key,
+          p.selfie_key as old_selfie_key, p.profile_image_key as old_profile_image_key
         from mecopay_auth.account a
         join mecopay_auth."user" u on u.id = a."userId"
+        left join mecopay_heart.profiles p on p.id = u.id
         where a."providerId" = ${provider} and a."accountId" = ${accountId} limit 1
       ), duplicate_nid as (
         select 1 from mecopay_heart.profiles p, identity_row i
@@ -206,11 +191,15 @@ async function saveProfile(request: Request, env: Env, claims: Claims) {
           (id, name, email, phone, phone_type, nid_number, nid_front_key, nid_back_key, selfie_key, profile_image_key,
            website_url, social_fb, social_insta, social_li, social_yt, verification_status, rejection_reason, updated_at)
         select i.user_id, ${name}, i.email, ${phone}, ${phoneType}, ${nidNumber},
-          ${keys.nid_front || existing?.nid_front_key || null}, ${keys.nid_back || existing?.nid_back_key || null},
-          ${keys.selfie || existing?.selfie_key || null}, ${keys.profile_image || null},
+          ${keys.nid_front || null}, ${keys.nid_back || null}, ${keys.selfie || null}, ${keys.profile_image || null},
           ${websiteUrl}, ${socialFb}, ${socialInsta}, ${socialLi}, ${socialYt}, 'pending', null, now()
         from identity_row i
         where not exists (select 1 from duplicate_nid)
+          and (${claims.client_id ? String(claims.client_id) : null}::text is null
+            or i.user_id::text = ${claims.client_id ? String(claims.client_id) : null}::text)
+          and coalesce(i.old_nid_front_key, ${keys.nid_front || null}) is not null
+          and coalesce(i.old_nid_back_key, ${keys.nid_back || null}) is not null
+          and coalesce(i.old_selfie_key, ${keys.selfie || null}) is not null
         on conflict (id) do update set
           name=excluded.name, email=excluded.email, phone=excluded.phone, phone_type=excluded.phone_type,
           nid_number=excluded.nid_number,
@@ -222,35 +211,65 @@ async function saveProfile(request: Request, env: Env, claims: Claims) {
           social_li=excluded.social_li, social_yt=excluded.social_yt,
           verification_status=case when mecopay_heart.profiles.verification_status = 'verified' then 'verified' else 'pending' end,
           rejection_reason=null, updated_at=now()
-        returning id, verification_status
+        returning id, name, email, phone, phone_type, verification_status, rejection_reason, nid_number,
+          nid_front_key, nid_back_key, selfie_key, profile_image_key, website_url, social_fb, social_insta, social_li, social_yt
       )
-      select i.user_id, s.id, s.verification_status, exists(select 1 from duplicate_nid) as duplicate
+      select i.user_id, i.email as user_email, i.old_profile_image_key,
+        (${claims.client_id ? String(claims.client_id) : null}::text is null
+          or i.user_id::text = ${claims.client_id ? String(claims.client_id) : null}::text) as client_match,
+        s.id, s.name, s.email, s.phone, s.phone_type, s.verification_status, s.rejection_reason, s.nid_number,
+        s.nid_front_key, s.nid_back_key, s.selfie_key, s.profile_image_key, s.website_url,
+        s.social_fb, s.social_insta, s.social_li, s.social_yt, exists(select 1 from duplicate_nid) as duplicate
       from identity_row i left join saved s on true`;
     if (!rows[0]?.user_id) throw new Error('IDENTITY_MAPPING_NOT_FOUND');
     if (rows[0].duplicate) throw new Error('NID_ALREADY_USED');
-    if (!rows[0].id) throw new Error('MOTHER_WRITE_FAILED');
+    if (!rows[0].client_match) throw new Error('FORBIDDEN');
+    if (!rows[0].id) {
+      if (!rows[0].old_nid_front_key && !keys.nid_front) throw new Error('NID_FRONT_REQUIRED');
+      if (!rows[0].old_nid_back_key && !keys.nid_back) throw new Error('NID_BACK_REQUIRED');
+      if (!rows[0].old_selfie_key && !keys.selfie) throw new Error('SELFIE_REQUIRED');
+      throw new Error('MOTHER_WRITE_FAILED');
+    }
+    if (claims.client_id && String(claims.client_id) !== String(rows[0].user_id)) throw new Error('FORBIDDEN');
     committed = true;
-    const profile = { id: String(rows[0].id), verification_status: String(rows[0].verification_status || 'pending') };
-    await writeCachedContext(env, claims.sub, { client_id: profile.id, profile_complete: true, brand_ids: [], updated_at: Date.now() });
-    if (oldProfileImage && keys.profile_image && keys.profile_image !== oldProfileImage) {
-      try { await env.KYC_BUCKET.delete(oldProfileImage); } catch (error) { console.warn('[motherwrite] old profile image cleanup failed', error); }
+    const row = rows[0];
+    const profile = {
+      id: String(row.id), name: row.name, email: row.email, phone: row.phone, phone_type: row.phone_type,
+      verification_status: row.verification_status, rejection_reason: row.rejection_reason, nid_number: row.nid_number,
+      nid_front_key: row.nid_front_key, nid_back_key: row.nid_back_key, selfie_key: row.selfie_key,
+      profile_image_key: row.profile_image_key, website_url: row.website_url, social_fb: row.social_fb,
+      social_insta: row.social_insta, social_li: row.social_li, social_yt: row.social_yt
+    } as Profile;
+    writeCachedContext(claims.sub, profile.id, profile);
+    const storedKeys: Partial<Record<ImageField, string | null>> = {
+      nid_front: profile.nid_front_key || null, nid_back: profile.nid_back_key || null,
+      selfie: profile.selfie_key || null, profile_image: profile.profile_image_key || null
+    };
+    const redundant = uploaded.filter(key => !Object.values(storedKeys).includes(key));
+    await Promise.all(redundant.map(key => env.KYC_BUCKET.delete(key).catch(error => console.warn('[motherwrite] unused upload cleanup failed', error))));
+    const oldProfileImage = row.old_profile_image_key ? String(row.old_profile_image_key) : null;
+    if (oldProfileImage && profile.profile_image_key && String(profile.profile_image_key) !== oldProfileImage) {
+      await env.KYC_BUCKET.delete(oldProfileImage).catch(error => console.warn('[motherwrite] old profile image cleanup failed', error));
     }
     const now = Math.floor(Date.now() / 1000);
     const refreshed = await signJwt({ ...claims, sub: claims.sub, client_id: profile.id, iat: now, exp: now + 7 * 24 * 60 * 60, jti: crypto.randomUUID() }, env);
     return { profile, token: refreshed };
   } catch (error) {
-    if (!committed) await Promise.all(uploaded.map(key => env.KYC_BUCKET.delete(key)));
+    if (!committed) await Promise.all(uploaded.map(key => env.KYC_BUCKET.delete(key).catch(() => undefined)));
     throw error;
   }
 }
 async function media(request: Request, env: Env, claims: Claims) {
-  const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
-  const cached = await readCachedContext(env, claims.sub);
-  const identity = cached?.client_id ? { userId: cached.client_id, email: null, profile: null } : await readIdentityAndProfile(sql, claims);
-  if (!cached) await writeCachedContext(env, claims.sub, { client_id: identity.userId, profile_complete: profileComplete(identity.profile), brand_ids: [], updated_at: Date.now() });
-  if (claims.client_id && String(claims.client_id) !== identity.userId) return json({ error: 'FORBIDDEN' }, 403);
-  const profile = await loadProfile(sql, identity.userId);
-  if (!profile || String(profile.id) !== identity.userId) return json({ error: 'FORBIDDEN' }, 403);
+  let context = readCachedContext(claims.sub);
+  if (!context) {
+    const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
+    const identity = await readIdentityAndProfile(sql, claims);
+    context = { userId: identity.userId, profile: identity.profile, expiresAt: Date.now() + CONTEXT_CACHE_TTL_MS };
+    writeCachedContext(claims.sub, context.userId, context.profile);
+  }
+  if (claims.client_id && String(claims.client_id) !== context.userId) return json({ error: 'FORBIDDEN' }, 403);
+  const profile = context.profile;
+  if (!profile || String(profile.id) !== context.userId) return new Response('Not found', { status: 404 });
   const kind = new URL(request.url).searchParams.get('kind');
   const key = kind === 'nid_front' ? profile.nid_front_key : kind === 'nid_back' ? profile.nid_back_key : kind === 'selfie' ? profile.selfie_key : kind === 'profile_image' ? profile.profile_image_key : null;
   if (!key) return new Response('Not found', { status: 404 });
@@ -260,16 +279,15 @@ async function media(request: Request, env: Env, claims: Claims) {
   return new Response(object.body, { headers });
 }
 async function session(request: Request, env: Env, claims: Claims) {
-  const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
-  const cached = await readCachedContext(env, claims.sub);
-  if (cached) {
-    if (claims.client_id && String(claims.client_id) !== cached.client_id) return json({ error: 'FORBIDDEN' }, 403);
-    return json(await loadProfile(sql, cached.client_id), 200, originHeaders(request, env));
+  let context = readCachedContext(claims.sub);
+  if (!context) {
+    const sql = neon(env.HYPERDRIVE.connectionString) as unknown as Sql;
+    const identity = await readIdentityAndProfile(sql, claims);
+    context = { userId: identity.userId, profile: identity.profile, expiresAt: Date.now() + CONTEXT_CACHE_TTL_MS };
+    writeCachedContext(claims.sub, context.userId, context.profile);
   }
-  const identity = await readIdentityAndProfile(sql, claims);
-  if (claims.client_id && String(claims.client_id) !== identity.userId) return json({ error: 'FORBIDDEN' }, 403, originHeaders(request, env));
-  await writeCachedContext(env, claims.sub, { client_id: identity.userId, profile_complete: profileComplete(identity.profile), brand_ids: [], updated_at: Date.now() });
-  return json(identity.profile, 200, originHeaders(request, env));
+  if (claims.client_id && String(claims.client_id) !== context.userId) return json({ error: 'FORBIDDEN' }, 403, originHeaders(request, env));
+  return json(context.profile, 200, originHeaders(request, env));
 }
 export default {
   async fetch(request: Request, env: Env) {
