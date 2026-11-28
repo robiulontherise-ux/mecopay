@@ -22,7 +22,7 @@
 - Wrangler deploy dry-run passed and showed only expected R2, Hyperdrive, and environment bindings; no KV binding.
 - Frontend/server production build passed.
 - `git diff --check` passed.
-- The deployment bundle is reachable from the sandbox (HTTP 200), but Cloudflare MCP execution cannot fetch the same CDN URL (HTTP 403). The multipart upload was not attempted because its source bytes could not be retrieved. The corrected bundle has **not** been uploaded or activated in production.
+- The deployment bundle is reachable from the sandbox (HTTP 200), but Cloudflare MCP execution returns HTTP 403 when fetching the same CDN URL. A multipart upload could not proceed because the connector-side fetch failed. The corrected bundle has **not** been uploaded or activated in production.
 - Latest local source passes strict Worker TypeScript, Wrangler dry-run, frontend/server build, and `git diff --check`. The production route still serves the prior version. No authenticated save/KYC/cookie continuity test has been run.
 
 ## Corrected implementation summary
@@ -30,4 +30,5 @@
 - Context cache is Worker-isolate memory only: 5-minute TTL, 500-entry bound, LRU-style insertion-order eviction. Neon remains canonical on cache miss/new isolates. Cached `/session` and `/media` identity/profile resolution avoids repeat Neon reads; private media bytes still come from R2.
 - Profile save verifies JWT before parsing payload, uploads supplied files to private R2, then uses one parameterized Neon statement to map account → user → profile ID and atomically upsert profile fields plus R2 keys. NID/selfie keys remain immutable once set; profile image is replaceable.
 - Successful POST returns `{ ok, client_id, profile }` and sets refreshed `__Host-mecopay_jwt` HttpOnly cookie. Dashboard validates returned `client_id === profile.id` and keeps it in in-memory UI state; JWT is never stored in browser storage.
-- Deployment remains blocked by Cloudflare MCP CDN fetch 403. Live unauthenticated checks at 2026-11-28 10:00 UTC remain GET health 200 and unauthenticated session GET 401. No authenticated production write was attempted.
+- Deployment remains blocked by Cloudflare MCP CDN fetch 403. Latest direct checks at 2026-11-28 10:00 UTC remain GET health 200 and unauthenticated session GET 401; Cloudflare version listing still shows the old version `2b7057c5-a486-4657-86db-df540583bde7` and the expected route. No authenticated production write was attempted.
+- Correction is pushed to GitHub `main` at commit `a2219ddd9644a5205e46cf3704ed9333aed8c85c`; generated `cloudflare/motherwrite/dist/index.js` is included in the commit.
