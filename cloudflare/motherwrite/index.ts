@@ -4,6 +4,7 @@ interface Env {
   HYPERDRIVE: { connectionString: string };
   KYC_BUCKET: R2Bucket;
   JWT_PRIVATE_KEY: string;
+  JWT_PUBLIC_KEY_PEM?: string;
   BETTER_AUTH_URL?: string;
   ALLOWED_ORIGIN?: string;
 }
@@ -29,15 +30,25 @@ function b64u(value: ArrayBuffer | Uint8Array) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 function pemBytes(pem: string) { return b64uBytes(pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '')); }
+async function verificationKey(env: Env) {
+  if (env.JWT_PUBLIC_KEY_PEM) {
+    return crypto.subtle.importKey('spki', pemBytes(env.JWT_PUBLIC_KEY_PEM), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+  }
+  const privateKey = await crypto.subtle.importKey('pkcs8', pemBytes(env.JWT_PRIVATE_KEY), { name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+  const publicJwk = await crypto.subtle.exportKey('jwk', privateKey);
+  delete (publicJwk as JsonWebKey).d;
+  return crypto.subtle.importKey('jwk', publicJwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+}
 async function verifyJwt(token: string, env: Env): Promise<Claims> {
   const parts = token.split('.');
   if (parts.length !== 3 || parts[0].length > 2048 || parts[1].length > 8192 || parts[2].length > 2048) throw new Error('INVALID_TOKEN');
   const header = JSON.parse(new TextDecoder().decode(b64uBytes(parts[0])));
   const payload = JSON.parse(new TextDecoder().decode(b64uBytes(parts[1]))) as Claims;
   if (header.alg !== 'ES256' || !payload.sub || !payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) throw new Error('INVALID_TOKEN');
-  if (env.BETTER_AUTH_URL && payload.iss && payload.iss !== env.BETTER_AUTH_URL) throw new Error('INVALID_TOKEN_ISSUER');
-  if (payload.aud && payload.aud !== 'mother-dashboard') throw new Error('INVALID_TOKEN_AUDIENCE');
-  const key = await crypto.subtle.importKey('pkcs8', pemBytes(env.JWT_PRIVATE_KEY), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+  if (env.BETTER_AUTH_URL !== payload.iss) throw new Error('INVALID_TOKEN_ISSUER');
+  if (payload.aud !== 'mother-dashboard') throw new Error('INVALID_TOKEN_AUDIENCE');
+  if (payload.surface !== 'mother') throw new Error('INVALID_TOKEN_SURFACE');
+  const key = await verificationKey(env);
   const valid = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, b64uBytes(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
   if (!valid) throw new Error('INVALID_TOKEN');
   return payload;

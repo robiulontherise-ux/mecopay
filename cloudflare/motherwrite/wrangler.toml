@@ -16,3 +16,6 @@ binding = "HYPERDRIVE"
 id = "aa216e60610b4ecd8695f95a8e8a566b"
 
 # Set with `wrangler secret put JWT_PRIVATE_KEY`.
+# Optional: set `wrangler secret put JWT_PUBLIC_KEY_PEM` to verify with the
+# Auth Worker's SPKI public key directly. Without it, the Worker derives only
+# the public JWK from JWT_PRIVATE_KEY for signature verification.

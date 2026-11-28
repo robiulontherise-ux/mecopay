@@ -5585,15 +5585,26 @@ function pemBytes(pem) {
   return b64uBytes(pem.replace(/-----[^-]+-----/g, "").replace(/\s/g, ""));
 }
 __name(pemBytes, "pemBytes");
+async function verificationKey(env) {
+  if (env.JWT_PUBLIC_KEY_PEM) {
+    return crypto.subtle.importKey("spki", pemBytes(env.JWT_PUBLIC_KEY_PEM), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+  }
+  const privateKey = await crypto.subtle.importKey("pkcs8", pemBytes(env.JWT_PRIVATE_KEY), { name: "ECDSA", namedCurve: "P-256" }, true, ["sign"]);
+  const publicJwk = await crypto.subtle.exportKey("jwk", privateKey);
+  delete publicJwk.d;
+  return crypto.subtle.importKey("jwk", publicJwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+}
+__name(verificationKey, "verificationKey");
 async function verifyJwt(token, env) {
   const parts = token.split(".");
   if (parts.length !== 3 || parts[0].length > 2048 || parts[1].length > 8192 || parts[2].length > 2048) throw new Error("INVALID_TOKEN");
   const header = JSON.parse(new TextDecoder().decode(b64uBytes(parts[0])));
   const payload = JSON.parse(new TextDecoder().decode(b64uBytes(parts[1])));
   if (header.alg !== "ES256" || !payload.sub || !payload.exp || payload.exp <= Math.floor(Date.now() / 1e3)) throw new Error("INVALID_TOKEN");
-  if (env.BETTER_AUTH_URL && payload.iss && payload.iss !== env.BETTER_AUTH_URL) throw new Error("INVALID_TOKEN_ISSUER");
-  if (payload.aud && payload.aud !== "mother-dashboard") throw new Error("INVALID_TOKEN_AUDIENCE");
-  const key = await crypto.subtle.importKey("pkcs8", pemBytes(env.JWT_PRIVATE_KEY), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+  if (env.BETTER_AUTH_URL !== payload.iss) throw new Error("INVALID_TOKEN_ISSUER");
+  if (payload.aud !== "mother-dashboard") throw new Error("INVALID_TOKEN_AUDIENCE");
+  if (payload.surface !== "mother") throw new Error("INVALID_TOKEN_SURFACE");
+  const key = await verificationKey(env);
   const valid = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, b64uBytes(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
   if (!valid) throw new Error("INVALID_TOKEN");
   return payload;
